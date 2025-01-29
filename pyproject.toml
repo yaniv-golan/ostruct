@@ -20,7 +20,7 @@
     typing-extensions = "^4.9.0"
     tiktoken = "^0.6.0"
     pyyaml = "^6.0.2"
-    openai-structured = "^0.1.0"
+    openai-structured = "^1.0.0"
 
     [tool.poetry.scripts]
     ostruct = "ostruct.cli.cli:main"
