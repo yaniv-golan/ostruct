@@ -58,6 +58,7 @@ While the CLI accepts templates with any extension (when prefixed with `@`), we 
 - `--show-model-schema`: Display the generated Pydantic model schema
 - `--debug-validation`: Show detailed schema validation debugging
 - `--verbose-schema`: Enable verbose schema debugging output
+- `--debug-openai-stream`: Enable low-level debug output for OpenAI streaming (very verbose)
 - `--progress-level {none,basic,detailed}`: Set progress reporting level (default: basic)
 
 ## Examples
@@ -246,6 +247,8 @@ This is particularly useful for:
 - Testing schema validation
 - Ensuring correct file access permissions
 
+Note: While `--debug-openai-stream` is available for debugging actual API calls, it won't show streaming data during a dry run since no API calls are made. To debug streaming, use `--debug-openai-stream` without `--dry-run`.
+
 ### Multiple Files Example
 
 Compare two files using a structured schema:
@@ -322,6 +325,19 @@ This example demonstrates:
 ## Environment Variables
 
 - `OPENAI_API_KEY`: Your OpenAI API key (required)
+
+## Logging
+
+The CLI maintains two log files in the `~/.ostruct/logs/` directory:
+
+- `ostruct.log`: Contains general application logs including debug information, errors, and operation status
+- `openai_stream.log`: Specific to OpenAI streaming operations, particularly useful when debugging API interactions with `--debug-openai-stream`
+
+Both log files capture DEBUG level messages by default and use the format:
+
+```
+%(asctime)s - %(name)s - %(levelname)s - %(message)s
+```
 
 ## Security Notes
 

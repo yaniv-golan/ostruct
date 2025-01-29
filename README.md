@@ -80,9 +80,24 @@ Template files use the `.j2` extension to indicate they contain Jinja2 template 
 
 While the CLI accepts templates with any extension (when prefixed with `@`), we recommend using `.j2` for better tooling support and clarity.
 
-## Documentation
+## Debug Options
 
-For detailed documentation, visit our [Read the Docs](https://ostruct-cli.readthedocs.io/).
+- `--show-model-schema`: Display the generated Pydantic model schema
+- `--debug-validation`: Show detailed schema validation debugging
+- `--verbose-schema`: Enable verbose schema debugging output
+- `--debug-openai-stream`: Enable low-level debug output for OpenAI streaming (very verbose)
+- `--progress-level {none,basic,detailed}`: Set progress reporting level (default: basic)
+
+All debug and error logs are written to:
+
+- `~/.ostruct/logs/ostruct.log`: General application logs
+- `~/.ostruct/logs/openai_stream.log`: OpenAI streaming operations logs
+
+For more detailed documentation and examples, visit our [documentation](https://ostruct-cli.readthedocs.io/).
+
+## Development
+
+To contribute or report issues, please visit our [GitHub repository](https://github.com/yaniv-golan/ostruct).
 
 ## Development Setup
 

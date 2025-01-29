@@ -118,6 +118,16 @@ openai_file_handler.setFormatter(
 )
 openai_logger.addHandler(openai_file_handler)
 
+# Create a file handler for the main logger that captures all levels
+ostruct_file_handler = logging.FileHandler(
+    os.path.join(log_dir, "ostruct.log")
+)
+ostruct_file_handler.setLevel(logging.DEBUG)  # Always capture debug in file
+ostruct_file_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+)
+logger.addHandler(ostruct_file_handler)
+
 # Constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 

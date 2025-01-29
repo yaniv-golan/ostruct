@@ -86,6 +86,14 @@ Requirements
 - OpenAI API key
 - ``openai-structured`` >= 0.9.1
 
+Logging
+-------
+
+The CLI writes logs to the following files in ``~/.ostruct/logs/``:
+
+- ``ostruct.log``: General application logs (debug, errors, status)
+- ``openai_stream.log``: OpenAI streaming operations logs
+
 Support
 -------
 
