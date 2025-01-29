@@ -11,6 +11,7 @@ build:
     post_install:
       - poetry install --with docs
       - pip install sphinx-rtd-theme
+      - pip install myst-parser
 
 sphinx:
   configuration: docs/source/conf.py 
