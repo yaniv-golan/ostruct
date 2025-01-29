@@ -12,7 +12,6 @@ if sys.version_info >= (3, 11):
     from enum import StrEnum
 
 from datetime import date, datetime, time
-from importlib.metadata import version
 from pathlib import Path
 from typing import (
     Any,
@@ -72,6 +71,7 @@ from pydantic.functional_validators import BeforeValidator
 from pydantic.types import constr
 from typing_extensions import TypeAlias
 
+from .. import __version__
 from .errors import (
     DirectoryNotFoundError,
     FieldDefinitionError,
@@ -93,6 +93,9 @@ from .progress import ProgressContext
 from .security import SecurityManager
 from .template_env import create_jinja_env
 from .template_utils import SystemPromptError, render_template
+
+# Constants
+DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -127,15 +130,6 @@ ostruct_file_handler.setFormatter(
     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 )
 logger.addHandler(ostruct_file_handler)
-
-# Constants
-DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
-
-# Get package version
-try:
-    __version__ = version("openai-structured")
-except Exception:
-    __version__ = "unknown"
 
 
 class ExitCode(IntEnum):

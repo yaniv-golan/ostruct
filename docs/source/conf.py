@@ -1,13 +1,27 @@
 # Configuration file for the Sphinx documentation builder.
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("../../src"))
+
+# Read version from pyproject.toml
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:
+    import tomli as tomllib  # Python <3.11
+
+# Get the project root directory
+root_dir = Path(__file__).parent.parent.parent
+pyproject_path = root_dir / "pyproject.toml"
+
+with open(pyproject_path, "rb") as f:
+    pyproject_data = tomllib.load(f)
+    version = pyproject_data["tool"]["poetry"]["version"]
 
 project = "ostruct-cli"
 copyright = "2025, Yaniv Golan"
 author = "Yaniv Golan"
-version = "0.1.0"
 
 extensions = [
     "sphinx.ext.autodoc",
