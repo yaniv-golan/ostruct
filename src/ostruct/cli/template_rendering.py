@@ -300,14 +300,6 @@ def render_template(
                     "=== Rendered result (first 1000 chars) ===\n%s",
                     result[:1000],
                 )
-                if "## File:" not in result:
-                    logger.error(
-                        "WARNING: File headers missing from rendered output!"
-                    )
-                    logger.error(
-                        "Template string excerpt: %r", template_str[:200]
-                    )
-                    logger.error("Result excerpt: %r", result[:200])
                 if progress:
                     progress.update(1)
                 return result  # type: ignore[no-any-return]

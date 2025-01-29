@@ -46,6 +46,8 @@ class FileInfo:
             FileNotFoundError: If the file does not exist
             PathSecurityError: If the path is not allowed
         """
+        logger.debug("Creating FileInfo for path: %s", path)
+
         # Validate path
         if not path:
             raise ValueError("Path cannot be empty")
@@ -61,6 +63,8 @@ class FileInfo:
 
         # First check if file exists
         abs_path = os.path.abspath(self.__path)
+        logger.debug("Absolute path for %s: %s", path, abs_path)
+
         if not os.path.exists(abs_path):
             raise FileNotFoundError(f"File not found: {path}")
         if not os.path.isfile(abs_path):
@@ -69,7 +73,10 @@ class FileInfo:
         # Then validate security
         try:
             # This will raise PathSecurityError if path is not allowed
-            self.abs_path
+            resolved_path = self.abs_path
+            logger.debug(
+                "Security-resolved path for %s: %s", path, resolved_path
+            )
         except PathSecurityError:
             raise
         except Exception as e:
@@ -77,6 +84,7 @@ class FileInfo:
 
         # If content/encoding weren't provided, read them now
         if self.__content is None or self.__encoding is None:
+            logger.debug("Reading content for %s", path)
             self._read_file()
 
     @property

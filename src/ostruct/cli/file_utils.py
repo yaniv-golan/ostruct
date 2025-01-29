@@ -132,7 +132,7 @@ def collect_files_from_pattern(
         return []
 
     # Create FileInfo objects
-    files = []
+    files: List[FileInfo] = []
     for path in matched_paths:
         try:
             file_info = FileInfo.from_path(path, security_manager)
@@ -169,37 +169,77 @@ def collect_files_from_directory(
         DirectoryNotFoundError: If directory does not exist
         PathSecurityError: If directory is not allowed
     """
+    logger.debug(
+        "Collecting files from directory: %s (recursive=%s, extensions=%s)",
+        directory,
+        recursive,
+        allowed_extensions,
+    )
+
     # Validate directory exists and is allowed
     try:
         abs_dir = str(security_manager.resolve_path(directory))
-    except PathSecurityError:
+        logger.debug("Resolved absolute directory path: %s", abs_dir)
+        logger.debug(
+            "Security manager base_dir: %s", security_manager.base_dir
+        )
+        logger.debug(
+            "Security manager allowed_dirs: %s", security_manager.allowed_dirs
+        )
+    except PathSecurityError as e:
+        logger.debug("PathSecurityError while resolving directory: %s", str(e))
         # Let the original error propagate
         raise
 
     if not os.path.exists(abs_dir):
+        logger.debug("Directory not found: %s (abs: %s)", directory, abs_dir)
         raise DirectoryNotFoundError(f"Directory not found: {directory}")
     if not os.path.isdir(abs_dir):
+        logger.debug(
+            "Path is not a directory: %s (abs: %s)", directory, abs_dir
+        )
         raise DirectoryNotFoundError(f"Path is not a directory: {directory}")
 
     # Collect files
-    files = []
-    for root, _, filenames in os.walk(abs_dir):
+    files: List[FileInfo] = []
+    for root, dirs, filenames in os.walk(abs_dir):
+        logger.debug("Walking directory: %s", root)
+        logger.debug("Found subdirectories: %s", dirs)
+        logger.debug("Found files: %s", filenames)
+
         if not recursive and root != abs_dir:
+            logger.debug(
+                "Skipping subdirectory (non-recursive mode): %s", root
+            )
             continue
 
+        logger.debug("Scanning directory: %s", root)
+        logger.debug("Current files collected: %d", len(files))
         for filename in filenames:
             # Get relative path from base directory
             abs_path = os.path.join(root, filename)
             try:
                 rel_path = os.path.relpath(abs_path, security_manager.base_dir)
-            except ValueError:
+                logger.debug("Processing file: %s -> %s", abs_path, rel_path)
+            except ValueError as e:
                 # Skip files that can't be made relative
+                logger.debug(
+                    "Skipping file that can't be made relative: %s (error: %s)",
+                    abs_path,
+                    str(e),
+                )
                 continue
 
             # Check extension if filter is specified
             if allowed_extensions is not None:
                 ext = os.path.splitext(filename)[1].lstrip(".")
                 if ext not in allowed_extensions:
+                    logger.debug(
+                        "Skipping file with non-matching extension: %s (ext=%s, allowed=%s)",
+                        filename,
+                        ext,
+                        allowed_extensions,
+                    )
                     continue
 
             try:
@@ -207,10 +247,17 @@ def collect_files_from_directory(
                     rel_path, security_manager=security_manager, **kwargs
                 )
                 files.append(file_info)
-            except (FileNotFoundError, PathSecurityError):
+                logger.debug("Added file to list: %s", rel_path)
+            except (FileNotFoundError, PathSecurityError) as e:
                 # Skip files that can't be accessed
+                logger.debug(
+                    "Skipping inaccessible file: %s (error: %s)",
+                    rel_path,
+                    str(e),
+                )
                 continue
 
+    logger.debug("Collected %d files from directory %s", len(files), directory)
     return files
 
 
@@ -272,18 +319,38 @@ def collect_files(
         PathSecurityError: If a path is outside the base directory
         DirectoryNotFoundError: If a directory is not found
     """
+    logger.debug(
+        "Collecting files (recursive=%s, extensions=%s):\n  files=%s\n  patterns=%s\n  dirs=%s",
+        dir_recursive,
+        dir_extensions,
+        file_mappings,
+        pattern_mappings,
+        dir_mappings,
+    )
+
     if security_manager is None:
         security_manager = SecurityManager(base_dir=os.getcwd())
+        logger.debug(
+            "Created default security manager with base_dir=%s", os.getcwd()
+        )
+    else:
+        logger.debug(
+            "Using provided security manager with base_dir=%s and allowed_dirs=%s",
+            security_manager.base_dir,
+            security_manager.allowed_dirs,
+        )
 
     # Normalize extensions by removing leading dots
     if dir_extensions:
         dir_extensions = [ext.lstrip(".") for ext in dir_extensions]
+        logger.debug("Normalized extensions: %s", dir_extensions)
 
     files: Dict[str, FileInfoList] = {}
 
     # Process file mappings
     if file_mappings:
         for mapping in file_mappings:
+            logger.debug("Processing file mapping: %s", mapping)
             name, path = _validate_and_split_mapping(mapping, "file")
             if name in files:
                 raise ValueError(f"Duplicate file mapping: {name}")
@@ -292,10 +359,12 @@ def collect_files(
                 path, security_manager=security_manager, **kwargs
             )
             files[name] = FileInfoList([file_info], from_dir=False)
+            logger.debug("Added single file mapping: %s -> %s", name, path)
 
     # Process pattern mappings
     if pattern_mappings:
         for mapping in pattern_mappings:
+            logger.debug("Processing pattern mapping: %s", mapping)
             name, pattern = _validate_and_split_mapping(mapping, "pattern")
             if name in files:
                 raise ValueError(f"Duplicate pattern mapping: {name}")
@@ -305,6 +374,7 @@ def collect_files(
                     pattern, security_manager=security_manager, **kwargs
                 )
             except PathSecurityError as e:
+                logger.debug("Security error in pattern mapping: %s", str(e))
                 raise PathSecurityError(
                     "Pattern mapping error: Access denied: "
                     f"{pattern} is outside base directory and not in allowed directories"
@@ -315,14 +385,24 @@ def collect_files(
                 continue
 
             files[name] = FileInfoList(matched_files, from_dir=False)
+            logger.debug(
+                "Added pattern mapping: %s -> %s (%d files)",
+                name,
+                pattern,
+                len(matched_files),
+            )
 
     # Process directory mappings
     if dir_mappings:
         for mapping in dir_mappings:
+            logger.debug("Processing directory mapping: %s", mapping)
             name, directory = _validate_and_split_mapping(mapping, "directory")
             if name in files:
                 raise ValueError(f"Duplicate directory mapping: {name}")
 
+            logger.debug(
+                "Processing directory mapping: %s -> %s", name, directory
+            )
             try:
                 dir_files = collect_files_from_directory(
                     directory=directory,
@@ -332,11 +412,13 @@ def collect_files(
                     **kwargs,
                 )
             except PathSecurityError as e:
+                logger.debug("Security error in directory mapping: %s", str(e))
                 raise PathSecurityError(
                     "Directory mapping error: Access denied: "
                     f"{directory} is outside base directory and not in allowed directories"
                 ) from e
-            except DirectoryNotFoundError:
+            except DirectoryNotFoundError as e:
+                logger.debug("Directory not found: %s", str(e))
                 raise DirectoryNotFoundError(
                     f"Directory not found: {directory}"
                 )
@@ -346,10 +428,18 @@ def collect_files(
                 files[name] = FileInfoList([], from_dir=True)
             else:
                 files[name] = FileInfoList(dir_files, from_dir=True)
+                logger.debug(
+                    "Added directory mapping: %s -> %s (%d files)",
+                    name,
+                    directory,
+                    len(dir_files),
+                )
 
     if not files:
+        logger.debug("No files found in any mappings")
         raise ValueError("No files found")
 
+    logger.debug("Collected files total mappings: %d", len(files))
     return files
 
 

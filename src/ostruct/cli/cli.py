@@ -206,7 +206,6 @@ def _get_type_with_constraints(
     Returns:
         Tuple of (type, field)
     """
-    field_type = field_schema.get("type")
     field_kwargs: Dict[str, Any] = {}
 
     # Add common field metadata
@@ -219,21 +218,40 @@ def _get_type_with_constraints(
     if "readOnly" in field_schema:
         field_kwargs["frozen"] = field_schema["readOnly"]
 
+    field_type = field_schema.get("type")
+
     # Handle array type
     if field_type == "array":
         items_schema = field_schema.get("items", {})
         if not items_schema:
             return (List[Any], Field(**field_kwargs))
 
-        # Create nested model with explicit type annotation
-        array_item_model = create_dynamic_model(
-            items_schema,
-            base_name=f"{base_name}_{field_name}_Item",
-            show_schema=False,
-            debug_validation=False,
-        )
-        array_type: Type[List[Any]] = List[array_item_model]  # type: ignore[valid-type]
-        return (array_type, Field(**field_kwargs))
+        # Create nested model for object items
+        if (
+            isinstance(items_schema, dict)
+            and items_schema.get("type") == "object"
+        ):
+            array_item_model = create_dynamic_model(
+                items_schema,
+                base_name=f"{base_name}_{field_name}_Item",
+                show_schema=False,
+                debug_validation=False,
+            )
+            array_type: Type[List[Any]] = List[array_item_model]  # type: ignore[valid-type]
+            return (array_type, Field(**field_kwargs))
+
+        # For non-object items, use the type directly
+        item_type = items_schema.get("type", "string")
+        if item_type == "string":
+            return (List[str], Field(**field_kwargs))
+        elif item_type == "integer":
+            return (List[int], Field(**field_kwargs))
+        elif item_type == "number":
+            return (List[float], Field(**field_kwargs))
+        elif item_type == "boolean":
+            return (List[bool], Field(**field_kwargs))
+        else:
+            return (List[Any], Field(**field_kwargs))
 
     # Handle object type
     if field_type == "object":
@@ -936,11 +954,7 @@ def create_template_context(
     # Add file variables
     if files:
         for name, file_list in files.items():
-            # For single files, extract the first FileInfo object
-            if len(file_list) == 1:
-                context[name] = file_list[0]
-            else:
-                context[name] = file_list
+            context[name] = file_list  # Always keep FileInfoList wrapper
 
     # Add simple variables
     if variables:
@@ -1828,13 +1842,17 @@ def create_dynamic_model(
                 logger.info("Schema missing type field, assuming object type")
             schema["type"] = "object"
 
-        # Validate root schema is object type
+        # For non-object root schemas, create a wrapper model
         if schema["type"] != "object":
             if debug_validation:
-                logger.error(
-                    "Schema type must be 'object', got %s", schema["type"]
+                logger.info(
+                    "Converting non-object root schema to object wrapper"
                 )
-            raise SchemaValidationError("Root schema must be of type 'object'")
+            schema = {
+                "type": "object",
+                "properties": {"value": schema},
+                "required": ["value"],
+            }
 
         # Create model configuration
         config = ConfigDict(

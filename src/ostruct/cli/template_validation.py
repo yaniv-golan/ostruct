@@ -87,7 +87,7 @@ __all__ = [
 ]
 
 
-class SafeUndefined(jinja2.StrictUndefined):  # type: ignore[misc]
+class SafeUndefined(jinja2.StrictUndefined):
     """A strict Undefined class that validates attribute access during validation."""
 
     def __getattr__(self, name: str) -> Any:

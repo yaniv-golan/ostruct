@@ -111,11 +111,13 @@ CMD="ostruct"
 CMD="$CMD --task @prompts/task.j2"
 CMD="$CMD --schema schemas/test_cases.json"
 CMD="$CMD --system-prompt @prompts/system.txt"
-CMD="$CMD --dir code=$CODE_PATH"
+CMD="$CMD --dir files=$CODE_PATH"
 CMD="$CMD --dir-ext py"
 CMD="$CMD --dir-recursive"
 CMD="$CMD --var framework=$FRAMEWORK"
 CMD="$CMD --var mode=$MODE"
+CMD="$CMD --debug-validation"  # Enable debug validation
+CMD="$CMD --verbose"  # Show more details
 
 # Add output file if specified
 if [ -n "$OUTPUT_FILE" ]; then

@@ -1,10 +1,13 @@
 """FileInfoList implementation providing smart file content access."""
 
-from typing import List, Union
+import logging
+from typing import Iterator, List, SupportsIndex, Union, overload
 
 from .file_info import FileInfo
 
 __all__ = ["FileInfoList", "FileInfo"]
+
+logger = logging.getLogger(__name__)
 
 
 class FileInfoList(List[FileInfo]):
@@ -44,6 +47,11 @@ class FileInfoList(List[FileInfo]):
             files: List of FileInfo objects
             from_dir: Whether this list was created from a directory mapping
         """
+        logger.debug(
+            "Creating FileInfoList with %d files, from_dir=%s",
+            len(files),
+            from_dir,
+        )
         super().__init__(files)
         self._from_dir = from_dir
 
@@ -59,9 +67,18 @@ class FileInfoList(List[FileInfo]):
             ValueError: If the list is empty
         """
         if not self:
+            logger.debug("FileInfoList.content called but list is empty")
             raise ValueError("No files in FileInfoList")
         if len(self) == 1 and not self._from_dir:
+            logger.debug(
+                "FileInfoList.content returning single file content (not from dir)"
+            )
             return self[0].content
+        logger.debug(
+            "FileInfoList.content returning list of %d contents (from_dir=%s)",
+            len(self),
+            self._from_dir,
+        )
         return [f.content for f in self]
 
     @property
@@ -149,3 +166,42 @@ class FileInfoList(List[FileInfo]):
             str: Same as str() for consistency
         """
         return str(self)
+
+    def __iter__(self) -> Iterator[FileInfo]:
+        """Return iterator over files."""
+        logger.debug(
+            "Starting iteration over FileInfoList with %d files", len(self)
+        )
+        return super().__iter__()
+
+    def __len__(self) -> int:
+        """Return number of files."""
+        return super().__len__()
+
+    def __bool__(self) -> bool:
+        """Return True if there are files."""
+        return super().__len__() > 0
+
+    @overload
+    def __getitem__(self, index: SupportsIndex, /) -> FileInfo: ...
+
+    @overload
+    def __getitem__(self, index: slice, /) -> "FileInfoList": ...
+
+    def __getitem__(
+        self, index: Union[SupportsIndex, slice], /
+    ) -> Union[FileInfo, "FileInfoList"]:
+        """Get file at index."""
+        logger.debug("Getting file at index %s", index)
+        result = super().__getitem__(index)
+        if isinstance(index, slice):
+            if not isinstance(result, list):
+                raise TypeError(
+                    f"Expected list from slice, got {type(result)}"
+                )
+            return FileInfoList(result, self._from_dir)
+        if not isinstance(result, FileInfo):
+            raise TypeError(
+                f"Expected FileInfo from index, got {type(result)}"
+            )
+        return result

@@ -96,10 +96,15 @@ class SecurityManager(SecurityManagerProtocol):
         All paths are normalized using realpath to handle symlinks
         and relative paths consistently across platforms.
         """
+        logger = logging.getLogger("ostruct")
+        logger.debug("Initializing SecurityManager")
         self._base_dir = Path(os.path.realpath(base_dir or os.getcwd()))
+        logger.debug("Base directory set to: %s", self._base_dir)
+
         self._allowed_dirs: Set[Path] = set()
         if allowed_dirs:
             for directory in allowed_dirs:
+                logger.debug("Adding allowed directory: %s", directory)
                 self.add_allowed_dir(directory)
 
     @property
@@ -121,14 +126,21 @@ class SecurityManager(SecurityManagerProtocol):
         Raises:
             DirectoryNotFoundError: If directory does not exist
         """
+        logger = logging.getLogger("ostruct")
+        logger.debug("Adding allowed directory: %s", directory)
         real_path = Path(os.path.realpath(directory))
+        logger.debug("Resolved real path: %s", real_path)
+
         if not real_path.exists():
+            logger.debug("Directory not found: %s", directory)
             raise DirectoryNotFoundError(f"Directory not found: {directory}")
         if not real_path.is_dir():
+            logger.debug("Path is not a directory: %s", directory)
             raise DirectoryNotFoundError(
                 f"Path is not a directory: {directory}"
             )
         self._allowed_dirs.add(real_path)
+        logger.debug("Successfully added allowed directory: %s", real_path)
 
     def add_allowed_dirs_from_file(self, file_path: str) -> None:
         """Add allowed directories from a file.

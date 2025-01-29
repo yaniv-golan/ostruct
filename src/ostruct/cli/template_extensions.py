@@ -9,7 +9,7 @@ from jinja2.ext import Extension
 from jinja2.parser import Parser
 
 
-class CommentExtension(Extension):  # type: ignore[misc]
+class CommentExtension(Extension):
     """Extension that ignores variables inside comment blocks.
 
     This extension ensures that:
