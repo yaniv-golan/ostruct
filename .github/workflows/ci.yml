@@ -1,0 +1,46 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+    - name: Configure Poetry
+      run: |
+        poetry config virtualenvs.create false
+    - name: Install dependencies
+      run: |
+        poetry install --no-interaction --with docs
+    - name: Lint with Black
+      run: |
+        poetry run black . --check
+    - name: Lint with isort
+      run: |
+        poetry run isort . --check
+    - name: Lint with Flake8
+      run: |
+        poetry run flake8 src/ tests/ examples/
+    - name: Type check with mypy
+      run: |
+        poetry run mypy --follow-imports=skip src/ tests/
+    - name: Run tests with pytest
+      run: |
+        # Run all tests except live tests, with verbose output and logging
+        poetry run pytest -m "not live" -vv -s --log-cli-level=DEBUG
+    - name: Build documentation
+      run: |
+        cd docs
+        poetry run make html 

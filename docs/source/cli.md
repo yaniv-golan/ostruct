@@ -10,8 +10,18 @@ ostruct --task TEMPLATE --schema SCHEMA_FILE [OPTIONS]
 
 ## Required Arguments
 
-- `--task TEMPLATE`: The task template string or @file that describes what you want the model to do
+- `--task TEMPLATE`: The task template string or @file (recommended extension: .j2)
 - `--schema SCHEMA_FILE`: JSON Schema file that defines the structure of the output
+
+## Template Files
+
+Template files use the `.j2` extension to indicate they contain Jinja2 template syntax. This convention:
+
+- Enables proper syntax highlighting in most editors
+- Makes it clear the file contains template logic
+- Follows industry standards for Jinja2 templates
+
+While the CLI accepts templates with any extension (when prefixed with `@`), we recommend using `.j2` for better tooling support and clarity.
 
 ## Common Options
 
@@ -79,7 +89,7 @@ ostruct --task TEMPLATE --schema SCHEMA_FILE [OPTIONS]
 }
 ```
 
-2. Create a task template `review.txt`:
+2. Create a task template `review.j2`:
 
 ```
 Analyze this text and provide a structured review:
@@ -91,7 +101,7 @@ Analyze this text and provide a structured review:
 
 ```bash
 ostruct \
-  --task @review.txt \
+  --task @review.j2 \
   --schema review_schema.json \
   --file input=article.txt \
   --model gpt-4o-2024-08-06
@@ -103,7 +113,7 @@ Process all Python files in a directory:
 
 ```bash
 ostruct \
-  --task @analyze.txt \
+  --task @analyze.j2 \
   --schema code_review_schema.json \
   --dir src=./src \
   --dir-recursive \
@@ -159,7 +169,7 @@ Review this Python code and provide structured feedback:
 
 ```bash
 ostruct \
-  --task @review_template.txt \
+  --task @review_template.j2 \
   --schema code_review_schema.json \
   --file code=app.py \
   --model gpt-4o-2024-08-06

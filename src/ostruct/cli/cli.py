@@ -41,6 +41,23 @@ from openai import (
     InternalServerError,
     RateLimitError,
 )
+from openai_structured.client import (
+    async_openai_structured_stream,
+    supports_structured_output,
+)
+from openai_structured.errors import (
+    APIResponseError,
+    EmptyResponseError,
+    InvalidResponseFormatError,
+    ModelNotSupportedError,
+    ModelVersionError,
+    OpenAIClientError,
+    SchemaFileError,
+    SchemaValidationError,
+    StreamBufferError,
+    StreamInterruptedError,
+    StreamParseError,
+)
 from pydantic import (
     AnyUrl,
     BaseModel,
@@ -55,20 +72,6 @@ from pydantic.functional_validators import BeforeValidator
 from pydantic.types import constr
 from typing_extensions import TypeAlias
 
-from openai_structured.client import async_openai_structured_stream, supports_structured_output
-from openai_structured.errors import (
-    APIResponseError,
-    EmptyResponseError,
-    InvalidResponseFormatError,
-    ModelNotSupportedError,
-    ModelVersionError,
-    OpenAIClientError,
-    SchemaFileError,
-    SchemaValidationError,
-    StreamBufferError,
-    StreamInterruptedError,
-    StreamParseError,
-)
 from .errors import (
     DirectoryNotFoundError,
     FieldDefinitionError,
@@ -106,9 +109,13 @@ for handler in openai_logger.handlers:
 # Create a file handler for openai_structured logger that captures all levels
 log_dir = os.path.expanduser("~/.ostruct/logs")
 os.makedirs(log_dir, exist_ok=True)
-openai_file_handler = logging.FileHandler(os.path.join(log_dir, "openai_stream.log"))
+openai_file_handler = logging.FileHandler(
+    os.path.join(log_dir, "openai_stream.log")
+)
 openai_file_handler.setLevel(logging.DEBUG)  # Always capture debug in file
-openai_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+openai_file_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+)
 openai_logger.addHandler(openai_file_handler)
 
 # Constants
@@ -921,7 +928,7 @@ def create_template_context(
         VariableError: If variable mappings are invalid
     """
     context: Dict[str, Any] = {}
-    
+
     # Add file variables
     if files:
         for name, file_list in files.items():
@@ -930,15 +937,15 @@ def create_template_context(
                 context[name] = file_list[0]
             else:
                 context[name] = file_list
-    
+
     # Add simple variables
     if variables:
         context.update(variables)
-    
+
     # Add JSON variables
     if json_variables:
         context.update(json_variables)
-    
+
     # Add stdin if provided
     if stdin_content is not None:
         context["stdin"] = stdin_content
@@ -973,7 +980,9 @@ def create_template_context_from_args(
                 pattern_mappings=args.files,
                 dir_mappings=args.dir,
                 dir_recursive=args.dir_recursive,
-                dir_extensions=args.dir_ext.split(",") if args.dir_ext else None,
+                dir_extensions=(
+                    args.dir_ext.split(",") if args.dir_ext else None
+                ),
                 security_manager=security_manager,
             )
 
@@ -990,7 +999,9 @@ def create_template_context_from_args(
                 try:
                     name, value = mapping.split("=", 1)
                     if not name.isidentifier():
-                        raise VariableNameError(f"Invalid variable name: {name}")
+                        raise VariableNameError(
+                            f"Invalid variable name: {name}"
+                        )
                     try:
                         json_value = json.loads(value)
                     except json.JSONDecodeError as e:
@@ -998,7 +1009,9 @@ def create_template_context_from_args(
                             f"Invalid JSON value for {name} ({value!r}): {str(e)}"
                         )
                     if name in json_variables:
-                        raise VariableNameError(f"Duplicate variable name: {name}")
+                        raise VariableNameError(
+                            f"Duplicate variable name: {name}"
+                        )
                     json_variables[name] = json_value
                 except ValueError:
                     raise VariableNameError(
@@ -1414,13 +1427,15 @@ async def _main() -> ExitCode:
         schema = validate_schema_file(args.schema_file, args.verbose)
 
         # Create template context
-        template_context = create_template_context_from_args(args, security_manager)
+        template_context = create_template_context_from_args(
+            args, security_manager
+        )
 
         # Create Jinja environment
         env = create_jinja_env()
 
         # Process system prompt
-        system_prompt = process_system_prompt(
+        args.system_prompt = process_system_prompt(
             task_template,
             args.system_prompt,
             template_context,
@@ -1497,7 +1512,9 @@ async def _main() -> ExitCode:
         client = AsyncOpenAI(api_key=api_key, timeout=args.timeout)
 
         # Create log callback that matches expected signature
-        def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
+        def log_callback(
+            level: int, message: str, extra: dict[str, Any]
+        ) -> None:
             # Only log if debug_openai_stream is enabled
             if args.debug_openai_stream:
                 # Include extra dictionary in the message for both DEBUG and ERROR
@@ -1543,26 +1560,49 @@ async def _main() -> ExitCode:
                         dumped = chunk.model_dump(mode="json")
                         logger.debug("Successfully dumped chunk to JSON")
                         logger.debug("Dumped chunk: %s", dumped)
-                        logger.debug("Chunk type: %s, length: %d", type(dumped), len(json.dumps(dumped)))
+                        logger.debug(
+                            "Chunk type: %s, length: %d",
+                            type(dumped),
+                            len(json.dumps(dumped)),
+                        )
 
                         if args.output_file:
-                            logger.debug("Writing to output file: %s", args.output_file)
+                            logger.debug(
+                                "Writing to output file: %s", args.output_file
+                            )
                             try:
-                                with open(args.output_file, "a", encoding="utf-8") as f:
+                                with open(
+                                    args.output_file, "a", encoding="utf-8"
+                                ) as f:
                                     json_str = json.dumps(dumped, indent=2)
-                                    logger.debug("Writing JSON string of length %d", len(json_str))
+                                    logger.debug(
+                                        "Writing JSON string of length %d",
+                                        len(json_str),
+                                    )
                                     f.write(json_str)
                                     f.write("\n")
                                     logger.debug("Successfully wrote to file")
                             except Exception as e:
-                                logger.error("Failed to write to output file: %s", e)
+                                logger.error(
+                                    "Failed to write to output file: %s", e
+                                )
                         else:
-                            logger.debug("About to call progress.print_output with JSON string")
+                            logger.debug(
+                                "About to call progress.print_output with JSON string"
+                            )
                             json_str = json.dumps(dumped, indent=2)
-                            logger.debug("JSON string length before print_output: %d", len(json_str))
-                            logger.debug("First 100 chars of JSON string: %s", json_str[:100] if json_str else "")
+                            logger.debug(
+                                "JSON string length before print_output: %d",
+                                len(json_str),
+                            )
+                            logger.debug(
+                                "First 100 chars of JSON string: %s",
+                                json_str[:100] if json_str else "",
+                            )
                             progress.print_output(json_str)
-                            logger.debug("Completed print_output call for JSON string")
+                            logger.debug(
+                                "Completed print_output call for JSON string"
+                            )
 
                         logger.debug("Starting progress update")
                         progress.update()
@@ -1571,7 +1611,7 @@ async def _main() -> ExitCode:
                         logger.error("Failed to process chunk: %s", e)
                         logger.error("Chunk: %s", chunk)
                         continue
-                
+
                 logger.debug("Finished processing API response stream")
 
         except StreamInterruptedError as e:
@@ -1625,7 +1665,7 @@ async def _main() -> ExitCode:
         )
         if not getattr(e, "has_been_logged", False):
             logger.error(str(e))
-            return ExitCode.SECURITY_ERROR
+        return ExitCode.SECURITY_ERROR
     except ValueError as e:
         # Get the original cause of the error
         cause = e.__cause__ or e.__context__
@@ -1678,7 +1718,7 @@ def main() -> None:
         )
         if not getattr(e, "has_been_logged", False):
             logger.error(str(e))
-            sys.exit(ExitCode.SECURITY_ERROR.value)
+        sys.exit(ExitCode.SECURITY_ERROR.value)
     except ValueError as e:
         # Get the original cause of the error
         cause = e.__cause__ or e.__context__

@@ -1,0 +1,147 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+        "test_suites",
+        "summary"
+    ],
+    "properties": {
+        "test_suites": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "source_file",
+                    "test_file",
+                    "test_cases"
+                ],
+                "properties": {
+                    "source_file": {
+                        "type": "string",
+                        "description": "Path to the source file being tested"
+                    },
+                    "test_file": {
+                        "type": "string",
+                        "description": "Path where the test file should be created/updated"
+                    },
+                    "framework": {
+                        "type": "string",
+                        "enum": [
+                            "pytest",
+                            "unittest",
+                            "jest"
+                        ],
+                        "description": "Testing framework to use"
+                    },
+                    "test_cases": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "name",
+                                "type",
+                                "code"
+                            ],
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "Name of the test case"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "unit",
+                                        "integration",
+                                        "edge_case"
+                                    ],
+                                    "description": "Type of test"
+                                },
+                                "target": {
+                                    "type": "string",
+                                    "description": "Function or class being tested"
+                                },
+                                "description": {
+                                    "type": "string",
+                                    "description": "What this test verifies"
+                                },
+                                "code": {
+                                    "type": "string",
+                                    "description": "The actual test code"
+                                },
+                                "setup": {
+                                    "type": "string",
+                                    "description": "Any setup code needed (fixtures, mocks)"
+                                },
+                                "dependencies": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "description": "Required imports or fixtures"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "summary": {
+            "type": "object",
+            "required": [
+                "total_files",
+                "total_tests",
+                "coverage_estimate"
+            ],
+            "properties": {
+                "total_files": {
+                    "type": "integer",
+                    "description": "Number of source files processed"
+                },
+                "total_tests": {
+                    "type": "integer",
+                    "description": "Number of test cases generated"
+                },
+                "coverage_estimate": {
+                    "type": "object",
+                    "required": [
+                        "percentage",
+                        "gaps"
+                    ],
+                    "properties": {
+                        "percentage": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100,
+                            "description": "Estimated coverage percentage"
+                        },
+                        "gaps": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "file",
+                                    "function",
+                                    "reason"
+                                ],
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "description": "File with missing coverage"
+                                    },
+                                    "function": {
+                                        "type": "string",
+                                        "description": "Function lacking tests"
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "description": "Why this needs coverage"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

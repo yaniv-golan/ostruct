@@ -189,12 +189,12 @@ class SecurityManager(SecurityManagerProtocol):
         try:
             real_path = Path(os.path.realpath(path))
             logger.debug("Resolved real path: %s", real_path)
-            
+
             # Check if the path exists
             if not real_path.exists():
                 logger.debug("Path does not exist")
                 return False
-                
+
         except (ValueError, OSError) as e:
             logger.debug("Failed to resolve real path: %s", e)
             return False
@@ -209,10 +209,16 @@ class SecurityManager(SecurityManagerProtocol):
         for allowed_dir in self._allowed_dirs:
             try:
                 if real_path.is_relative_to(allowed_dir):
-                    logger.debug("Path is relative to allowed directory: %s", allowed_dir)
+                    logger.debug(
+                        "Path is relative to allowed directory: %s",
+                        allowed_dir,
+                    )
                     return True
             except ValueError:
-                logger.debug("Path is not relative to allowed directory: %s", allowed_dir)
+                logger.debug(
+                    "Path is not relative to allowed directory: %s",
+                    allowed_dir,
+                )
                 continue
 
         logger.debug("Path is not allowed")

@@ -11,9 +11,7 @@ from ostruct.cli.errors import TemplateValidationError
 from ostruct.cli.file_utils import FileInfo
 from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_utils import render_template
-from ostruct.cli.template_validation import (
-    validate_template_placeholders,
-)
+from ostruct.cli.template_validation import validate_template_placeholders
 
 
 class ConfigDict(TypedDict, total=False):

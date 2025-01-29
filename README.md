@@ -25,7 +25,7 @@ pip install ostruct-cli
 export OPENAI_API_KEY=your-api-key
 ```
 
-2. Create a task template file `task.txt`:
+2. Create a task template file `task.j2`:
 
 ```
 Extract information about the person: {{ stdin }}
@@ -57,7 +57,7 @@ Extract information about the person: {{ stdin }}
 4. Run the CLI:
 
 ```bash
-echo "John Smith is a 35 year old software engineer" | ostruct --task @task.txt --schema schema.json
+echo "John Smith is a 35 year old software engineer" | ostruct --task @task.j2 --schema schema.json
 ```
 
 Output:
@@ -69,6 +69,16 @@ Output:
   "occupation": "software engineer"
 }
 ```
+
+### About Template Files
+
+Template files use the `.j2` extension to indicate they contain Jinja2 template syntax. This convention:
+
+- Enables proper syntax highlighting in most editors
+- Makes it clear the file contains template logic
+- Follows industry standards for Jinja2 templates
+
+While the CLI accepts templates with any extension (when prefixed with `@`), we recommend using `.j2` for better tooling support and clarity.
 
 ## Documentation
 

@@ -1,0 +1,28 @@
+Please analyze the following Python code and generate a comprehensive test suite:
+
+{% for file in files %}
+=== File: {{ file.path }} ===
+{{ file.content }}
+
+{% endfor %}
+
+Requirements:
+1. Use {{ framework if framework else 'pytest' }} as the testing framework
+2. Generate tests for all public functions and classes
+3. Include both positive and negative test cases
+4. Add appropriate fixtures and setup code
+5. Consider edge cases and error conditions
+6. Ensure clear test names and descriptions
+7. Follow testing best practices for the framework
+
+Please generate a complete test suite following the schema in schemas/test_cases.json, including:
+- Test cases for each function/class
+- Setup code and fixtures
+- Coverage analysis
+- Identification of any gaps
+
+The output should be valid JSON that matches the schema and can be used to:
+1. Create new test files
+2. Update existing tests
+3. Identify areas needing more coverage
+4. Track testing progress 

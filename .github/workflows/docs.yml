@@ -1,0 +1,60 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10']
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          poetry config virtualenvs.create false
+          
+      - name: Debug Environment
+        run: |
+          echo "Current PATH: $PATH"
+          echo "Python location: $(which python)"
+          echo "Python version: $(python --version)"
+          echo "Pip location: $(which pip)"
+          echo "Poetry location: $(which poetry)"
+          echo "Local bin contents:"
+          ls -la $HOME/.local/bin || true
+          echo "Site packages location:"
+          python -c "import site; print(site.getsitepackages())"
+          
+      - name: Install dependencies
+        run: |
+          poetry install --with dev,docs
+          pip install --user sphinx sphinx-rtd-theme myst-parser
+          echo "After pip install contents of .local/bin:"
+          ls -la $HOME/.local/bin
+          echo "Sphinx package location:"
+          python -c "import sphinx; print(sphinx.__file__)" || true
+          echo "Sphinx entry points:"
+          pip show sphinx | grep "Entry-points" || true
+          which sphinx-build || true
+          python -m sphinx --version || true
+          
+      - name: Build documentation
+        working-directory: docs
+        run: |
+          echo "Current PATH: $PATH"
+          echo "Current directory: $(pwd)"
+          echo "Python sys.path:"
+          python -c "import sys; print('\n'.join(sys.path))"
+          python -m sphinx -b html source build/html 

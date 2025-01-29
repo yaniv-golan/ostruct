@@ -34,4 +34,4 @@ napoleon_include_init_with_doc = True
 source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
-} 
+}

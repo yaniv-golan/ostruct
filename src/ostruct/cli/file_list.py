@@ -4,6 +4,8 @@ from typing import List, Union
 
 from .file_info import FileInfo
 
+__all__ = ["FileInfoList", "FileInfo"]
+
 
 class FileInfoList(List[FileInfo]):
     """List of FileInfo objects with smart content access.

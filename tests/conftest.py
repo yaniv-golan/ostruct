@@ -1,8 +1,8 @@
 """Test configuration and fixtures."""
 
 import json
-from typing import Dict, Generator
 import os
+from typing import Dict, Generator
 
 import pytest
 from dotenv import load_dotenv
@@ -25,7 +25,7 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[misc]
 def requires_openai() -> None:
     """Skip tests that require OpenAI API access if no valid API key is found."""
     api_key = os.environ.get("OPENAI_API_KEY")
