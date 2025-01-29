@@ -1,5 +1,11 @@
 # ostruct-cli
 
+[![PyPI version](https://badge.fury.io/py/ostruct-cli.svg)](https://badge.fury.io/py/ostruct-cli)
+[![Python Versions](https://img.shields.io/pypi/pyversions/ostruct-cli.svg)](https://pypi.org/project/ostruct-cli/)
+[![Documentation Status](https://readthedocs.org/projects/ostruct-cli/badge/?version=latest)](https://ostruct-cli.readthedocs.io/en/latest/?badge=latest)
+[![CI](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Command-line interface for working with OpenAI models and structured output, powered by the [openai-structured](https://github.com/yanivgolan/openai-structured) library.
 
 ## Features
