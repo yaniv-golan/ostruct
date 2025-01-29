@@ -1,4 +1,4 @@
-# ostruct Examples
+# ostruct-cli Examples
 
 This directory contains practical examples demonstrating various use cases for the `ostruct` CLI. Each example is self-contained and includes all necessary files to run it.
 

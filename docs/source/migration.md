@@ -73,7 +73,7 @@ The CLI functionality has been moved to a separate package to:
 
 ## Version Compatibility
 
-`ostruct-cli` requires `openai-structured>=0.9.1`. If you're using an older version:
+`ostruct` requires `openai-structured>=0.9.1`. If you're using an older version:
 
 ```bash
 pip install --upgrade openai-structured
