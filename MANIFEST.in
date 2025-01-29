@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+include MIGRATION.md
+include src/ostruct/py.typed
+recursive-include tests *.py
+recursive-include docs *.py *.rst *.md

@@ -1,0 +1,5 @@
+*.py text diff=python
+*.md text diff=markdown
+*.toml text
+*.yml text
+*.yaml text

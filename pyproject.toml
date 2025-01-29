@@ -1,0 +1,110 @@
+    [build-system]
+    requires = ["poetry-core"]
+    build-backend = "poetry.core.masonry.api"
+
+    [tool.poetry]
+    name = "ostruct-cli"
+    version = "0.1.0"
+    description = "CLI for OpenAI Structured Output"
+    authors = ["Yaniv Golan <yaniv@golan.name>"]
+    readme = "README.md"
+    packages = [{include = "ostruct", from = "src"}]
+
+    [tool.poetry.dependencies]
+    python = ">=3.9,<4.0"
+    pydantic = "^2.6.3"
+    jsonschema = "^4.23.0"
+    chardet = "^5.0.0"
+    cachetools = "^5.3.2"
+    ijson = "^3.2.3"
+    typing-extensions = "^4.9.0"
+    tiktoken = "^0.6.0"
+    pyyaml = "^6.0.2"
+    openai-structured = {path = "/Users/yaniv/Documents/code/openai-structured", develop = true}
+
+    [tool.poetry.scripts]
+    ostruct = "ostruct.cli.cli:main"
+
+    [tool.poetry.group.dev.dependencies]
+    pytest = "^8.3.4"
+    flake8 = "^6.0"
+    flake8-pyproject = "^1.2.3"
+    black = "24.8.0"
+    isort = "^5.13"
+    mypy = "^1.0"
+    pytest-asyncio = "^0.25.2"
+    pytest-mock = "^3.14.0"
+    build = "^1.2.2.post1"
+    twine = "^6.0.1"
+    python-dotenv = "^1.0.1"
+    types-jsonschema = "^4.23.0.20241208"
+    anyio = {version = "3.7.1", extras = ["trio"]}
+    sphinx = ">=7.0,<8.0"
+    types-pyyaml = "^6.0.12.20241230"
+    types-pygments = "^2.19.0.20250107"
+    types-chardet = "^5.0.4.6"
+    pyfakefs = "^5.7.4"
+    types-cachetools = "^5.5.0.20240820"
+
+    [tool.poetry.group.docs]
+    optional = true
+
+    [tool.poetry.group.docs.dependencies]
+    sphinx = "^7.0"
+    sphinx-rtd-theme = "^1.0"
+    myst-parser = "^2.0.0"
+
+    [tool.flake8]
+    max-line-length = 120
+    extend-ignore = ["E203"]
+
+    [tool.mypy]
+    plugins = ["pydantic.mypy"]
+    strict = true
+    exclude = [
+        "docs/",
+        "examples/"
+    ]
+    packages = ["ostruct", "tests"]
+    python_version = "3.9"
+    warn_unused_configs = true
+    disallow_untyped_defs = true
+    check_untyped_defs = true
+    warn_redundant_casts = true
+    warn_unused_ignores = true
+    warn_return_any = true
+    warn_unreachable = true
+    show_error_codes = true
+    ignore_missing_imports = false
+
+    [tool.black]
+    line-length = 79
+    target-version = ["py39"]
+    include = '\.pyi?$'
+    preview = false
+    required-version = "24.8.0"
+
+    [tool.isort]
+    profile = "black"
+    multi_line_output = 3
+    line_length = 79
+
+    [tool.pytest.ini_options]
+    asyncio_mode = "strict"
+    testpaths = ["tests"]
+    python_files = ["test_*.py"]
+    markers = [
+        "live: mark test as a live test that should use real API key",
+        "asyncio: mark test as requiring async loop",
+    ]
+    asyncio_default_fixture_loop_scope = "function"
+
+    [tool.ruff]
+    target-version = "py39"
+
+    [tool.poetry.group.examples]
+    optional = true
+
+    [tool.poetry.group.examples.dependencies]
+    tenacity = "^8.2.3"
+    asyncio-throttle = "^1.0.2"
