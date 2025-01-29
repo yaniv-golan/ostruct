@@ -11,7 +11,7 @@ build:
     post_install:
       - poetry install --with docs
       - pip install sphinx-rtd-theme
-      - python -c "import sphinx_rtd_theme; print('RTD Theme {} installed'.format(sphinx_rtd_theme.__version__))"
+      - python -c "import sphinx_rtd_theme; print('sphinx-rtd-theme version:', sphinx_rtd_theme.__version__)"
 
 sphinx:
   configuration: docs/source/conf.py 
