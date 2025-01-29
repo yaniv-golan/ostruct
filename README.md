@@ -6,7 +6,7 @@
 [![CI](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Command-line interface for working with OpenAI models and structured output, powered by the [openai-structured](https://github.com/yanivgolan/openai-structured) library.
+Command-line interface for working with OpenAI models and structured output, powered by the [openai-structured](https://github.com/yaniv-golan/openai-structured) library.
 
 ## Features
 
