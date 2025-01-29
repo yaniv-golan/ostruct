@@ -61,16 +61,6 @@ The CLI functionality has been moved to a separate package to:
      Review this code: {{ code.content }}
      ```
 
-   - Or use the `{% system_prompt %}` block:
-
-     ```
-     {% system_prompt %}
-     You are an expert code reviewer.
-     {% end_system_prompt %}
-
-     Review this code: {{ code.content }}
-     ```
-
 ## Version Compatibility
 
 `ostruct` requires `openai-structured>=0.9.1`. If you're using an older version:
@@ -121,8 +111,26 @@ The default model is now `gpt-4o-2024-08-06`, which is optimized for structured 
    - Use system prompts for model behavior
    - Keep user prompts focused on the task
    - Reference schema fields in prompts
+   - Place file content at the end with clear delimiters:
 
-3. **Handle files safely:**
+     ```
+     Review this code for security issues:
+     
+     <code>
+     {{ code.content }}
+     </code>
+     ```
+
+   - Use consistent delimiters (`<code>`, `<python>`, `<doc>`, `<text>`)
+
+3. **Handle large files:**
+   - Use `--dry-run` to preview token usage
+   - Structure prompts with instructions first, content last
+   - Break large files into manageable chunks
+   - Monitor token limits using progress reporting
+   - Note: `--debug-openai-stream` won't show streaming data during dry runs since no API calls are made
+
+4. **Handle files safely:**
    - Use absolute paths with `--allowed-dir`
    - Keep sensitive files outside project directories
    - Use file lists for bulk operations

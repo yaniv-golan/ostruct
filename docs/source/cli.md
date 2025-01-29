@@ -21,6 +21,15 @@ Template files use the `.j2` extension to indicate they contain Jinja2 template 
 - Makes it clear the file contains template logic
 - Follows industry standards for Jinja2 templates
 
+Templates can include system prompts using YAML frontmatter at the start of the file:
+
+```
+---
+system_prompt: You are an expert code reviewer focusing on security.
+---
+Review this code: {{ code.content }}
+```
+
 While the CLI accepts templates with any extension (when prefixed with `@`), we recommend using `.j2` for better tooling support and clarity.
 
 ## Common Options
@@ -48,10 +57,41 @@ While the CLI accepts templates with any extension (when prefixed with `@`), we 
 - `--frequency-penalty float`: Frequency penalty parameter (default: 0.0)
 - `--presence-penalty float`: Presence penalty parameter (default: 0.0)
 
+### Token Limits and Large Files
+
+The CLI automatically handles token limits based on the model you're using. Here's what you need to know:
+
+- Each model has a maximum context window (total tokens including both input and output)
+- The CLI estimates token usage before making API calls
+- For large files that might exceed token limits:
+  1. Structure your prompts with instructions first, then file content last. For example:
+
+     ```
+     Analyze this code for security vulnerabilities. Focus on:
+     1. SQL injection
+     2. XSS vulnerabilities
+     3. Authentication issues
+
+     CODE TO ANALYZE:
+     <code>
+     {{ code.content }}
+     </code>
+     ```
+
+  2. Use the `--dry-run` flag to preview token usage before processing
+  3. Consider breaking large files into smaller chunks
+  4. Use the `--max-tokens` option to control output length
+
+The CLI will automatically validate token limits and fail early if:
+
+- The input would exceed the model's context window
+- The requested max tokens would exceed the model's limits
+- The combined input and max tokens would exceed the context window
+
 ### System Prompt Options
 
 - `--system-prompt TEXT`: Override system prompt (can use @file)
-- `--ignore-task-sysprompt`: Ignore system prompt from task template
+- `--ignore-task-sysprompt`: Ignore system prompt from task template (useful when the template includes frontmatter)
 
 ### Debug Options
 
@@ -60,6 +100,7 @@ While the CLI accepts templates with any extension (when prefixed with `@`), we 
 - `--verbose-schema`: Enable verbose schema debugging output
 - `--debug-openai-stream`: Enable low-level debug output for OpenAI streaming (very verbose)
 - `--progress-level {none,basic,detailed}`: Set progress reporting level (default: basic)
+- `--validate-schema`: Test schema validation explicitly (note: schema validation is always performed automatically, this flag is only for testing purposes)
 
 ## Examples
 
@@ -178,37 +219,39 @@ ostruct \
 
 ### Handling Large Files
 
-When working with large files, it's recommended to structure your prompt to place the file content at the end, delimited by clear markers. This helps the model better understand the context and improves processing of large documents.
+When working with large files, proper prompt structure is crucial for effective processing:
 
-1. Create a schema for claims extraction (`claims_schema.json`):
+1. Always place instructions before the content:
+   - Start with clear, specific instructions
+   - List any special considerations or focus areas
+   - Define the expected structure of the analysis
 
-```json
-{
-  "type": "object",
-  "properties": {
-    "claims": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "claim": {
-            "type": "string",
-            "description": "The extracted claim"
-          },
-          "source": {
-            "type": "string",
-            "description": "Source or context of the claim"
-          }
-        },
-        "required": ["claim"]
-      }
-    }
-  },
-  "required": ["claims"]
-}
-```
+2. Place file content at the end with clear delimiters:
 
-2. Run the analysis with delimited content:
+   ```
+   Review this Python code for performance issues.
+   Focus on:
+   - Time complexity
+   - Memory usage
+   - Database query efficiency
+   
+   <python_code>
+   {{ code.content }}
+   </python_code>
+   ```
+
+   This structure helps because:
+   - The model sees instructions first, improving focus
+   - Delimiters help the model distinguish between instructions and content
+   - If content gets truncated due to token limits, the instructions remain intact
+
+3. Use consistent, meaningful delimiters:
+   - `<code>...</code>` for general code
+   - `<python>...</python>` for Python-specific code
+   - `<doc>...</doc>` for documentation
+   - `<text>...</text>` for general text
+
+Here's a complete example for claims extraction:
 
 ```bash
 ostruct \

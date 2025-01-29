@@ -6,11 +6,12 @@ ostruct-cli
 Key Features
 -----------
 
-- **Schema-First Approach**: Define your output structure using JSON Schema
-- **Template-Based Input**: Use Jinja2 templates for flexible input processing
+- **Schema-First Approach**: Define your output structure using JSON Schema (validation is always performed automatically)
+- **Template-Based Input**: Use Jinja2 templates with support for YAML frontmatter and system prompts
 - **File Processing**: Handle single files, multiple files, or entire directories
 - **Security-Focused**: Safe file access with explicit directory permissions
 - **Structured Output**: Guaranteed valid JSON output matching your schema
+- **Token Management**: Automatic token limit validation and handling
 
 Quick Start
 ----------
@@ -45,6 +46,9 @@ Quick Start
 
    .. code-block:: text
 
+      ---
+      system_prompt: You are an expert content analyzer.
+      ---
       Analyze this content and extract key information:
 
       {{ content.content }}
@@ -78,6 +82,18 @@ Structured output offers several advantages:
 2. **Consistency**: Get the same structure every time, making responses easier to process
 3. **Integration**: JSON output works seamlessly with other tools and systems
 4. **Validation**: Catch and handle invalid responses before they reach your application
+
+Handling Large Files
+------------------
+
+When working with large files, the CLI provides several features to help:
+
+1. **Token Validation**: Automatically validates token usage against model limits
+2. **Prompt Structure**: Recommends placing content at the end with clear delimiters
+3. **Dry Run**: Preview token usage before making API calls (note: `--debug-openai-stream` won't show streaming data during dry runs)
+4. **Progress Reporting**: Track processing status for large operations
+
+See the CLI documentation for detailed guidance on handling large files.
 
 Requirements
 -----------
