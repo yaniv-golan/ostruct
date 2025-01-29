@@ -43,6 +43,6 @@
 
 ### References
 
-- Issue tracking this fix: #XX (to be created)
+- Issue tracking this fix: #1
 - Read the Docs build logs showing successful build
 - Poetry documentation on dependency groups
