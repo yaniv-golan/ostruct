@@ -1,0 +1,43 @@
+# Development Environment Configuration
+
+app:
+  name: my-service
+  version: 1.0.0
+  debug: true  # Should be false in production
+  log_level: DEBUG
+
+database:
+  host: localhost
+  port: 5432
+  name: myapp_dev
+  user: dev_user
+  password: dev_password  # Security: Hardcoded credentials
+  pool:
+    min_size: 5
+    max_size: 20
+    idle_timeout: 10m
+
+cache:
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 30s
+
+api:
+  base_url: http://localhost:8080  # Security: Using HTTP instead of HTTPS
+  rate_limit:
+    enabled: false  # Should be enabled in production
+    max_requests: 100
+    window: 1m
+
+security:
+  jwt:
+    secret: my-dev-secret-key  # Security: Hardcoded secret
+    expiry: 24h
+  cors:
+    allowed_origins: ["*"]  # Security: Too permissive for production
+    
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  health_check: /health 

@@ -1,0 +1,183 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+        "validation_results",
+        "summary"
+    ],
+    "properties": {
+        "validation_results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "file_path",
+                    "is_valid",
+                    "findings"
+                ],
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Relative path to the configuration file"
+                    },
+                    "is_valid": {
+                        "type": "boolean",
+                        "description": "Whether the configuration is valid"
+                    },
+                    "findings": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "severity",
+                                "message",
+                                "location"
+                            ],
+                            "properties": {
+                                "severity": {
+                                    "type": "string",
+                                    "enum": [
+                                        "error",
+                                        "warning",
+                                        "info",
+                                        "security"
+                                    ],
+                                    "description": "Severity level of the finding"
+                                },
+                                "message": {
+                                    "type": "string",
+                                    "description": "Human-readable description of the issue"
+                                },
+                                "location": {
+                                    "type": "object",
+                                    "required": [
+                                        "line",
+                                        "column"
+                                    ],
+                                    "properties": {
+                                        "line": {
+                                            "type": "integer",
+                                            "description": "Line number where the issue was found"
+                                        },
+                                        "column": {
+                                            "type": "integer",
+                                            "description": "Column number where the issue was found"
+                                        },
+                                        "path": {
+                                            "type": "string",
+                                            "description": "JSON/YAML path to the problematic field"
+                                        }
+                                    }
+                                },
+                                "suggestion": {
+                                    "type": "string",
+                                    "description": "Suggested fix for the issue"
+                                },
+                                "context": {
+                                    "type": "object",
+                                    "description": "Additional context about the finding",
+                                    "properties": {
+                                        "related_files": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "description": "Other files related to this finding"
+                                        },
+                                        "documentation": {
+                                            "type": "string",
+                                            "description": "Link to relevant documentation"
+                                        },
+                                        "best_practice": {
+                                            "type": "string",
+                                            "description": "Description of the best practice being violated"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "environment": {
+                                "type": "string",
+                                "description": "Environment this config is for (e.g., dev, prod)"
+                            },
+                            "service": {
+                                "type": "string",
+                                "description": "Service this config belongs to"
+                            },
+                            "last_modified": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "When this config was last modified"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "summary": {
+            "type": "object",
+            "required": [
+                "total_files",
+                "valid_files",
+                "total_findings"
+            ],
+            "properties": {
+                "total_files": {
+                    "type": "integer",
+                    "description": "Total number of config files analyzed"
+                },
+                "valid_files": {
+                    "type": "integer",
+                    "description": "Number of valid config files"
+                },
+                "total_findings": {
+                    "type": "integer",
+                    "description": "Total number of findings across all files"
+                },
+                "findings_by_severity": {
+                    "type": "object",
+                    "properties": {
+                        "error": {
+                            "type": "integer"
+                        },
+                        "warning": {
+                            "type": "integer"
+                        },
+                        "info": {
+                            "type": "integer"
+                        },
+                        "security": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "cross_environment_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "description",
+                            "affected_environments"
+                        ],
+                        "properties": {
+                            "description": {
+                                "type": "string",
+                                "description": "Description of the cross-environment issue"
+                            },
+                            "affected_environments": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,58 @@
+# Application Configuration
+# This file contains the main application settings
+
+app:
+  name: user-management-service
+  version: 2.1.0
+  environment: ${APP_ENV:-production}
+  
+server:
+  host: 0.0.0.0
+  port: ${PORT:-8080}
+  workers: ${WORKERS:-4}
+  timeout:
+    read: 30s
+    write: 30s
+    idle: 60s
+  compression:
+    enabled: true
+    level: 6
+    
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: json
+  output:
+    - type: file
+      path: /var/log/app.log
+      max_size: 100MB
+      max_backups: 5
+    - type: stdout
+      
+metrics:
+  enabled: true
+  endpoint: /metrics
+  labels:
+    service: user-management
+    team: auth-team
+    
+features:
+  mfa:
+    enabled: ${ENABLE_MFA:-true}
+    providers:
+      - google-authenticator
+      - sms
+  password_policy:
+    min_length: 12
+    require_special: true
+    require_numbers: true
+    max_age_days: 90
+  rate_limiting:
+    enabled: true
+    window: 1m
+    max_requests: ${RATE_LIMIT:-1000}
+
+dependencies:
+  database:
+    config_file: db.yaml  # Reference to db.yaml
+  cache:
+    config_file: cache.yaml  # Reference to cache.yaml 

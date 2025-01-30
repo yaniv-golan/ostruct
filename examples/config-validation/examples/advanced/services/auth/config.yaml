@@ -1,0 +1,93 @@
+# Authentication Service Configuration
+# Handles user authentication and authorization
+
+imports:
+  - ../../shared/common.yaml
+
+service:
+  name: auth-service
+  version: 3.0.1
+  description: Authentication and Authorization Service
+  
+server:
+  host: 0.0.0.0
+  port: ${PORT:-8000}
+  grpc_port: ${GRPC_PORT:-8001}
+  
+auth:
+  session:
+    store: redis
+    duration: 24h
+    refresh_token_duration: 30d
+    cookie_secure: true
+    cookie_http_only: true
+    
+  password:
+    hash_algorithm: argon2id
+    time_cost: 2
+    memory_cost: 65536
+    threads: 4
+    
+  mfa:
+    enabled: true
+    issuer: MyApp
+    providers:
+      - totp
+      - sms
+      - webauthn
+      
+  oauth:
+    providers:
+      google:
+        client_id: ${GOOGLE_CLIENT_ID}
+        client_secret: ${GOOGLE_CLIENT_SECRET}
+        redirect_uri: https://auth.example.com/oauth/google/callback
+      github:
+        client_id: ${GITHUB_CLIENT_ID}
+        client_secret: ${GITHUB_CLIENT_SECRET}
+        redirect_uri: https://auth.example.com/oauth/github/callback
+        
+  rate_limiting:
+    login:
+      window: 5m
+      max_attempts: 5
+    mfa:
+      window: 5m
+      max_attempts: 3
+    password_reset:
+      window: 24h
+      max_attempts: 3
+      
+storage:
+  users:
+    type: postgresql
+    connection_string: ${USER_DB_URL}
+    max_connections: 20
+    
+  sessions:
+    type: redis
+    url: ${SESSION_REDIS_URL}
+    key_prefix: "session:"
+    
+events:
+  publisher:
+    type: kafka
+    brokers: ${KAFKA_BROKERS}
+    topic_prefix: auth
+    topics:
+      - user.created
+      - user.updated
+      - user.deleted
+      - login.success
+      - login.failed
+      
+monitoring:
+  health_check:
+    enabled: true
+    path: /health
+    include_dependencies: true
+  metrics:
+    path: /metrics
+    labels:
+      service: auth
+      component: authentication 

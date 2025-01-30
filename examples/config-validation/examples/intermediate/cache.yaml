@@ -1,0 +1,74 @@
+# Cache Configuration
+# Redis cache settings for user management service
+
+cache:
+  redis:
+    mode: ${REDIS_MODE:-cluster}  # cluster or standalone
+    
+    # Primary node configuration
+    primary:
+      host: ${REDIS_HOST:-localhost}
+      port: ${REDIS_PORT:-6379}
+      password: ${REDIS_PASSWORD}  # Required environment variable
+      database: ${REDIS_DB:-0}
+      
+    # Cluster configuration (used if mode is cluster)
+    cluster:
+      nodes:
+        - host: ${REDIS_NODE_1_HOST}
+          port: ${REDIS_NODE_1_PORT:-6379}
+        - host: ${REDIS_NODE_2_HOST}
+          port: ${REDIS_NODE_2_PORT:-6379}
+        - host: ${REDIS_NODE_3_HOST}
+          port: ${REDIS_NODE_3_PORT:-6379}
+      max_redirects: 3
+      
+    pool:
+      min_idle: 5
+      max_idle: 20
+      max_active: 50
+      max_wait: 5s
+      idle_timeout: 300s
+      
+    options:
+      ssl: ${REDIS_SSL:-true}
+      timeout: 2s
+      key_prefix: "user-mgmt:"
+      max_retries: 3
+      retry_backoff: 100ms
+      
+  # Cache policies for different types of data
+  policies:
+    session:
+      ttl: 24h
+      max_size: 10MB
+      invalidate_on_update: true
+    
+    user_profile:
+      ttl: 1h
+      max_size: 5MB
+      invalidate_on_update: true
+      
+    rate_limit:
+      ttl: 1m
+      max_size: 1MB
+      invalidate_on_update: false
+      
+  monitoring:
+    metrics:
+      enabled: true
+      export_interval: 15s
+      labels:
+        component: cache
+        service: user-management
+    
+    alerts:
+      memory_usage_threshold: 80
+      connection_error_threshold: 5
+      slow_operation_threshold: 100ms
+      
+  fallback:
+    enabled: true
+    local_cache:
+      max_size: 100MB
+      ttl: 5m 

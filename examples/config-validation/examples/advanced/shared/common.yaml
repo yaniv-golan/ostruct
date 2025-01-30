@@ -1,0 +1,68 @@
+# Common Configuration
+# Shared settings used across all microservices
+
+tracing:
+  provider: opentelemetry
+  service_namespace: ecommerce
+  sampling_rate: 0.1
+  exporters:
+    jaeger:
+      endpoint: ${JAEGER_ENDPOINT:-http://jaeger:14268/api/traces}
+    otlp:
+      endpoint: ${OTLP_ENDPOINT:-http://collector:4317}
+
+logging:
+  provider: fluentd
+  format: json
+  level: ${LOG_LEVEL:-INFO}
+  fields:
+    environment: ${ENV:-production}
+    region: ${REGION:-us-west-2}
+    version: ${VERSION:-latest}
+
+metrics:
+  provider: prometheus
+  push_gateway: ${PUSHGATEWAY:-http://pushgateway:9091}
+  interval: 15s
+  default_labels:
+    environment: ${ENV:-production}
+    region: ${REGION:-us-west-2}
+
+security:
+  tls:
+    enabled: true
+    min_version: TLS1.2
+    cert_path: /etc/certs/${SERVICE_NAME}/tls.crt
+    key_path: /etc/certs/${SERVICE_NAME}/tls.key
+  
+  authentication:
+    jwt:
+      issuer: auth-service
+      audience: internal-services
+      public_key_path: /etc/keys/jwt/public.pem
+
+service_discovery:
+  provider: consul
+  address: ${CONSUL_ADDR:-consul:8500}
+  datacenter: ${CONSUL_DC:-dc1}
+  register_service: true
+  deregister_critical_service_after: 90m
+
+circuit_breaker:
+  default:
+    max_requests: 100
+    interval: 10s
+    timeout: 3s
+    error_threshold_percentage: 50
+    
+retry:
+  default:
+    max_attempts: 3
+    initial_interval: 100ms
+    max_interval: 1s
+    multiplier: 2
+    
+rate_limit:
+  default:
+    requests_per_second: 100
+    burst: 50 
