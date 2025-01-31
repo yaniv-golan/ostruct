@@ -22,6 +22,7 @@
     pyyaml = "^6.0.2"
     openai-structured = "^1.0.0"
     tomli = {version = "^2.0.1", python = "<3.11"}
+    asyncclick = "^8.1.7"
 
     [tool.poetry.scripts]
     ostruct = "ostruct.cli.cli:main"

@@ -199,6 +199,22 @@ files = [
 ]
 
 [[package]]
+name = "asyncclick"
+version = "8.1.7.2"
+description = "Composable command line interface toolkit, async version"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "asyncclick-8.1.7.2-py3-none-any.whl", hash = "sha256:1ab940b04b22cb89b5b400725132b069d01b0c3472a9702c7a2c9d5d007ded02"},
+    {file = "asyncclick-8.1.7.2.tar.gz", hash = "sha256:219ea0f29ccdc1bb4ff43bcab7ce0769ac6d48a04f997b43ec6bee99a222daa0"},
+]
+
+[package.dependencies]
+anyio = "*"
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[[package]]
 name = "asyncio-throttle"
 version = "1.0.2"
 description = "Simple, easy-to-use throttler for asyncio"
@@ -3261,4 +3277,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4.0"
-content-hash = "e18b8f1e133f2c50072fb3ed4e7ed665b060d4bd7c16c7e017441c0952201478"
+content-hash = "38c5eda464bf5872ca9f96c03720e9abc5badcf9b215316c771265f1b3f1fc88"

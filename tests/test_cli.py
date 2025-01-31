@@ -3,14 +3,16 @@
 import json
 import logging
 import os
+import asyncio
 from io import StringIO
-from typing import Generator
+from typing import Generator, Any, Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
+import asyncclick.testing
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.cli import ExitCode, _main, create_template_context
+from ostruct.cli.cli import ExitCode, create_cli, create_template_context, Namespace, _main
 from ostruct.cli.file_list import FileInfo, FileInfoList
 from ostruct.cli.security import SecurityManager
 
@@ -65,61 +67,57 @@ def mock_logging(fs: FakeFilesystem) -> StringIO:
     return log_stream
 
 
+class AsyncCliRunner(asyncclick.testing.CliRunner):
+    """Custom CliRunner that supports async commands."""
+    
+    async def invoke(self, cli: Callable[..., Any], args: Any = None, **kwargs: Any) -> Any:
+        """Override invoke method to handle async commands correctly."""
+        result = await super().invoke(cli, args, **kwargs)
+        return result
+
+
+@pytest.fixture  # type: ignore[misc]
+def cli_runner() -> AsyncCliRunner:
+    """Create an async-compatible Click CLI test runner."""
+    return AsyncCliRunner()
+
+
 # Core CLI Tests
-
-
 class TestCLICore:
     """Test core CLI functionality."""
 
     @pytest.mark.asyncio  # type: ignore[misc]
-    async def test_help_text(self) -> None:
+    async def test_help_text(self, cli_runner: AsyncCliRunner) -> None:
         """Test help text display."""
-        with (
-            patch("sys.argv", ["ostruct", "--help"]),
-            patch("sys.stdout", new_callable=StringIO) as mock_stdout,
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                await _main()
-            assert exc_info.value.code == 0
-            output = mock_stdout.getvalue().lower()
-            assert "usage:" in output
-            assert "--help" in output
+        result = await cli_runner.invoke(create_cli(), ["--help"])
+        assert result.exit_code == 0
+        output = result.output.lower()
+        assert "usage:" in output
+        assert "--help" in output
 
     @pytest.mark.asyncio  # type: ignore[misc]
-    async def test_version_info(self) -> None:
+    async def test_version_info(self, cli_runner: AsyncCliRunner) -> None:
         """Test version info display."""
-        with (
-            patch("sys.argv", ["ostruct", "--version"]),
-            patch("sys.stdout", new_callable=StringIO) as mock_stdout,
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                await _main()
-            assert exc_info.value.code == 0
-            output = mock_stdout.getvalue()
-            # Check that output starts with "ostruct" and includes a version string
-            assert output.startswith("ostruct ")
-            # Version should be non-empty after "ostruct "
-            assert len(output.strip()) > len("ostruct ")
+        result = await cli_runner.invoke(create_cli(), ["--version"])
+        assert result.exit_code == 0
+        output = result.output
+        assert "version" in output.lower()
+        assert "cli" in output.lower()
 
     @pytest.mark.asyncio  # type: ignore[misc]
-    async def test_missing_required_args(self) -> None:
+    async def test_missing_required_args(self, cli_runner: AsyncCliRunner) -> None:
         """Test error handling for missing required arguments."""
-        with (
-            patch("sys.argv", ["ostruct"]),
-            patch("sys.stderr", new_callable=StringIO) as mock_stderr,
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                await _main()
-            assert exc_info.value.code != 0
-            output = mock_stderr.getvalue().lower()
-            assert "required" in output
+        result = await cli_runner.invoke(create_cli())
+        assert result.exit_code == 2  # AsyncClick uses exit code 2 for missing required args
+        assert isinstance(result.exception, SystemExit)
+        output = result.output.lower()
+        assert "missing option" in output
+        assert "--task" in output
 
     @pytest.mark.asyncio  # type: ignore[misc]
-    async def test_invalid_json_var(
-        self, fs: FakeFilesystem, mock_logging: StringIO
-    ) -> None:
+    async def test_invalid_json_var(self, cli_runner: AsyncCliRunner, fs: FakeFilesystem) -> None:
         """Test error handling for invalid JSON variable."""
-        # Create required schema file
+        # Create a minimal schema file
         schema_content = {
             "schema": {
                 "type": "object",
@@ -129,22 +127,102 @@ class TestCLICore:
         }
         fs.create_file("schema.json", contents=json.dumps(schema_content))
 
-        with patch(
-            "sys.argv",
-            [
-                "ostruct",
-                "--task",
-                "test task",  # Simple task template
-                "--schema",
-                "schema.json",  # Required schema argument
-                "--json-var",
-                "invalid_json={not json}",  # Invalid JSON to test
-            ],
-        ):
-            result = await _main()
-            assert result == ExitCode.DATA_ERROR
-            output = mock_logging.getvalue().lower()
-            assert "invalid json value" in output
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "test task",
+            "--schema", "schema.json",
+            "--json-var", "invalid_json={not json}",
+        ])
+    
+        assert result.exit_code != 0
+        expected_error = "error parsing json for variable 'invalid_json'"
+        assert expected_error in str(result.exception).lower(), f"Expected error message containing '{expected_error}' but got: {result.exception}"
+
+    @pytest.mark.asyncio  # type: ignore[misc]
+    async def test_invalid_schema_file(self, cli_runner: AsyncCliRunner, fs: FakeFilesystem) -> None:
+        """Test error handling for invalid schema file."""
+        # Create an invalid schema file
+        fs.create_file("schema.json", contents="{ invalid json }")
+        
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "test task",
+            "--schema", "schema.json",
+        ])
+        
+        assert result.exit_code != 0
+        error_msg = str(result.exception).lower()
+        # Check for both the error type and specific details
+        assert "invalid json in schema file" in error_msg
+        assert "expecting" in error_msg  # Common part of JSON parse errors
+
+    @pytest.mark.asyncio  # type: ignore[misc]
+    async def test_missing_schema_file(self, cli_runner: AsyncCliRunner) -> None:
+        """Test error handling for missing schema file."""
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "test task",
+            "--schema", "nonexistent.json",
+        ])
+        
+        assert result.exit_code != 0
+        error_msg = str(result.exception).lower()
+        # Check for both the error type and specific details
+        assert "failed to read schema file" in error_msg
+        assert "no such file or directory" in error_msg
+        assert "nonexistent.json" in error_msg
+
+    @pytest.mark.asyncio  # type: ignore[misc]
+    async def test_invalid_file_path(self, cli_runner: AsyncCliRunner, fs: FakeFilesystem) -> None:
+        """Test error handling for invalid file path."""
+        # Create a minimal schema file
+        schema_content = {
+            "schema": {
+                "type": "object",
+                "properties": {"result": {"type": "string"}},
+                "required": ["result"],
+            }
+        }
+        fs.create_file("schema.json", contents=json.dumps(schema_content))
+        
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "test task",
+            "--schema", "schema.json",
+            "--file", "input=nonexistent.txt",
+        ])
+        
+        assert result.exit_code != 0
+        error_msg = str(result.exception).lower()
+        # Check for both the error type and specific details
+        assert "file access error" in error_msg
+        assert "nonexistent.txt" in error_msg
+
+    @pytest.mark.asyncio  # type: ignore[misc]
+    async def test_invalid_template_syntax(
+        self, fs: FakeFilesystem, cli_runner: AsyncCliRunner
+    ) -> None:
+        """Test error handling for invalid template syntax."""
+        # Create necessary files
+        schema_content = {
+            "schema": {
+                "type": "object",
+                "properties": {"result": {"type": "string"}},
+                "required": ["result"],
+            }
+        }
+        fs.create_file("schema.json", contents=json.dumps(schema_content))
+        fs.create_file("task.txt", contents="Invalid syntax: {{ unclosed")
+
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+            "--dry-run",
+        ])
+        
+        assert result.exit_code != 0
+        error_msg = str(result.exception).lower()
+        # Check for both the error type and specific details
+        assert "invalid task template syntax" in error_msg
+        assert "line" in error_msg  # Template errors include line numbers
+        # Jinja2 provides specific syntax error details
+        assert "unexpected end of template" in error_msg or "end of print statement" in error_msg
 
 
 # OpenAI-dependent tests
@@ -153,9 +231,10 @@ class TestCLIPreExecution:
 
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_basic_execution_setup(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test basic CLI execution setup without OpenAI."""
+        # Create necessary files
         schema_content = {
             "schema": {
                 "type": "object",
@@ -164,37 +243,33 @@ class TestCLIPreExecution:
             }
         }
         fs.create_file("schema.json", contents=json.dumps(schema_content))
-        fs.create_file(
-            "task.txt", contents="Process this: {{ input.content }}"
-        )
+        fs.create_file("task.txt", contents="Process this: {{ input.content }}")
         fs.create_file("input.txt", contents="test content")
 
-        with patch(
-            "sys.argv",
-            [
-                "ostruct",
-                "--task",
-                "@task.txt",
-                "--schema",
-                "schema.json",
-                "--file",
-                "input=input.txt",
-                "--debug-validation",
-                "--verbose",
-                "--dry-run",
-            ],
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
-            output = mock_logging.getvalue()
-            assert "Process this: test content" in output
-            assert "DRY RUN MODE" in output
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+            "--file", "input=input.txt",
+            "--debug-validation",
+            "--verbose",
+            "--dry-run",
+        ])
+        
+        assert result.exit_code == 0
+        log_output = mock_logging.getvalue()
+        expected_messages = [
+            "Process this: test content",
+            "DRY RUN MODE"
+        ]
+        for msg in expected_messages:
+            assert msg in log_output, f"Expected message '{msg}' not found in log output"
 
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_stdin_setup(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test stdin setup without OpenAI."""
+        # Create necessary files
         schema_content = {
             "schema": {
                 "type": "object",
@@ -205,32 +280,28 @@ class TestCLIPreExecution:
         fs.create_file("schema.json", contents=json.dumps(schema_content))
         fs.create_file("task.txt", contents="Input: {{ stdin }}")
 
-        with (
-            patch(
-                "sys.argv",
-                [
-                    "ostruct",
-                    "--task",
-                    "@task.txt",
-                    "--schema",
-                    "schema.json",
-                    "--dry-run",
-                ],
-            ),
-            patch("sys.stdin.isatty", return_value=False),
-            patch("sys.stdin.read", return_value="test input"),
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
-            output = mock_logging.getvalue()
-            assert "Input: test input" in output
-            assert "DRY RUN MODE" in output
+        with patch("sys.stdin.isatty", return_value=False):  # Mock isatty only
+            result = await cli_runner.invoke(create_cli(), [
+                "--task", "@task.txt",
+                "--schema", "schema.json",
+                "--dry-run",
+            ], input="test input")  # Provide input via Click's runner
+            
+            assert result.exit_code == 0
+            log_output = mock_logging.getvalue()
+            expected_messages = [
+                "Input: test input",
+                "DRY RUN MODE"
+            ]
+            for msg in expected_messages:
+                assert msg in log_output, f"Expected message '{msg}' not found in log output"
 
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_directory_traversal(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test directory traversal without OpenAI."""
+        # Create necessary files and directories
         schema_content = {
             "schema": {
                 "type": "object",
@@ -245,33 +316,30 @@ class TestCLIPreExecution:
         fs.create_file("test_dir/file2.txt", contents="content 2")
         fs.create_file("test_dir/file3.txt", contents="content 3")
 
-        with patch(
-            "sys.argv",
-            [
-                "ostruct",
-                "--task",
-                "@task.txt",
-                "--schema",
-                "schema.json",
-                "--dir",
-                "files=test_dir",
-                "--dir-recursive",
-                "--dir-ext",
-                "txt",
-                "--dry-run",
-            ],
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
-            output = mock_logging.getvalue()
-            assert "Files: 3" in output
-            assert "DRY RUN MODE" in output
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+            "--dir", "files=test_dir",
+            "--dir-recursive",
+            "--dir-ext", "txt",
+            "--dry-run",
+        ])
+        
+        assert result.exit_code == 0
+        log_output = mock_logging.getvalue()
+        expected_messages = [
+            "Files: 3",
+            "DRY RUN MODE"
+        ]
+        for msg in expected_messages:
+            assert msg in log_output, f"Expected message '{msg}' not found in log output"
 
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_template_rendering_mixed(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test template rendering with mixed inputs."""
+        # Create necessary files
         schema_content = {
             "schema": {
                 "type": "object",
@@ -286,31 +354,24 @@ class TestCLIPreExecution:
         )
         fs.create_file("input.txt", contents="file content")
 
-        with patch(
-            "sys.argv",
-            [
-                "ostruct",
-                "--task",
-                "@task.txt",
-                "--schema",
-                "schema.json",
-                "--file",
-                "input=input.txt",
-                "--var",
-                "var1=test value",
-                "--json-var",
-                'config={"key": "value"}',
-                "--verbose",
-                "--dry-run",
-            ],
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
-            output = mock_logging.getvalue()
-            assert (
-                "File: file content, Var: test value, Config: value" in output
-            )
-            assert "DRY RUN MODE" in output
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+            "--file", "input=input.txt",
+            "--var", "var1=test value",
+            "--json-var", 'config={"key": "value"}',
+            "--verbose",
+            "--dry-run",
+        ])
+        
+        assert result.exit_code == 0
+        log_output = mock_logging.getvalue()
+        expected_messages = [
+            "File: file content, Var: test value, Config: value",
+            "DRY RUN MODE"
+        ]
+        for msg in expected_messages:
+            assert msg in log_output, f"Expected message '{msg}' not found in log output"
 
 
 @pytest.mark.live
@@ -319,7 +380,7 @@ class TestCLIExecution:
 
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_basic_execution(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test basic CLI execution with OpenAI."""
         schema_content = {
@@ -335,27 +396,21 @@ class TestCLIExecution:
         )
         fs.create_file("input.txt", contents="test content")
 
-        with patch(
-            "sys.argv",
-            [
-                "ostruct",
-                "--task",
-                "@task.txt",
-                "--schema",
-                "schema.json",
-                "--file",
-                "input=input.txt",
-                "--debug-validation",
-                "--verbose",
-            ],
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+            "--file", "input=input.txt",
+            "--debug-validation",
+            "--verbose",
+        ])
+        assert result.exit_code == 0
+        output = mock_logging.getvalue()
+        assert "Process this: test content" in output
 
     @pytest.mark.live  # type: ignore[misc]
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_file_input(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test file input with OpenAI."""
         schema_content = {
@@ -369,25 +424,19 @@ class TestCLIExecution:
         fs.create_file("task.txt", contents="Content: {{ input.content }}")
         fs.create_file("input.txt", contents="test content")
 
-        with patch(
-            "sys.argv",
-            [
-                "ostruct",
-                "--task",
-                "@task.txt",
-                "--schema",
-                "schema.json",
-                "--file",
-                "input=input.txt",
-            ],
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+            "--file", "input=input.txt",
+        ])
+        assert result.exit_code == 0
+        output = mock_logging.getvalue()
+        assert "Content: test content" in output
 
     @pytest.mark.live  # type: ignore[misc]
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_stdin_input(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test stdin input with OpenAI."""
         schema_content = {
@@ -400,27 +449,19 @@ class TestCLIExecution:
         fs.create_file("schema.json", contents=json.dumps(schema_content))
         fs.create_file("task.txt", contents="Input: {{ stdin }}")
 
-        with (
-            patch(
-                "sys.argv",
-                [
-                    "ostruct",
-                    "--task",
-                    "@task.txt",
-                    "--schema",
-                    "schema.json",
-                ],
-            ),
-            patch("sys.stdin.isatty", return_value=False),
-            patch("sys.stdin.read", return_value="test input"),
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+        ], input="test input")  # Provide input directly to invoke
+            
+        assert result.exit_code == 0
+        output = mock_logging.getvalue()
+        assert "Input: test input" in output
 
     @pytest.mark.live  # type: ignore[misc]
     @pytest.mark.asyncio  # type: ignore[misc]
     async def test_directory_input(
-        self, fs: FakeFilesystem, mock_logging: StringIO
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: AsyncCliRunner
     ) -> None:
         """Test directory input with OpenAI."""
         schema_content = {
@@ -436,20 +477,14 @@ class TestCLIExecution:
         fs.create_file("test_dir/file1.txt", contents="content 1")
         fs.create_file("test_dir/file2.txt", contents="content 2")
 
-        with patch(
-            "sys.argv",
-            [
-                "ostruct",
-                "--task",
-                "@task.txt",
-                "--schema",
-                "schema.json",
-                "--dir",
-                "files=test_dir",
-            ],
-        ):
-            result = await _main()
-            assert result == ExitCode.SUCCESS
+        result = await cli_runner.invoke(create_cli(), [
+            "--task", "@task.txt",
+            "--schema", "schema.json",
+            "--dir", "files=test_dir",
+        ])
+        assert result.exit_code == 0
+        output = mock_logging.getvalue()
+        assert "Files: 2" in output
 
 
 # Template Context Tests

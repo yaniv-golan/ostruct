@@ -1,18 +1,12 @@
 """Command-line interface for making structured OpenAI API calls."""
 
-import argparse
 import asyncio
 import json
 import logging
 import os
 import sys
 from enum import Enum, IntEnum
-
-if sys.version_info >= (3, 11):
-    from enum import StrEnum
-
-from datetime import date, datetime, time
-from pathlib import Path
+from dataclasses import dataclass
 from typing import (
     Any,
     Dict,
@@ -27,8 +21,16 @@ from typing import (
     cast,
     get_origin,
     overload,
+    Callable,
 )
 
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+
+from datetime import date, datetime, time
+from pathlib import Path
+
+import asyncclick as click
 import jinja2
 import tiktoken
 import yaml
@@ -73,6 +75,7 @@ from typing_extensions import TypeAlias
 
 from .. import __version__
 from .errors import (
+    CLIError,
     DirectoryNotFoundError,
     FieldDefinitionError,
     FileNotFoundError,
@@ -96,6 +99,41 @@ from .template_utils import SystemPromptError, render_template
 
 # Constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+@dataclass
+class Namespace:
+    """Compatibility class to mimic argparse.Namespace for existing code."""
+    task: str
+    file: List[str]
+    files: List[str]
+    dir: List[str]
+    allowed_dir: List[str]
+    base_dir: str
+    allowed_dirs_file: Optional[str]
+    dir_recursive: bool
+    dir_ext: Optional[str]
+    var: List[str]
+    json_var: List[str]
+    system_prompt: str
+    ignore_task_sysprompt: bool
+    schema_file: str
+    validate_schema: bool
+    model: str
+    temperature: float
+    max_tokens: Optional[int]
+    top_p: float
+    frequency_penalty: float
+    presence_penalty: float
+    timeout: float
+    output_file: Optional[str]
+    dry_run: bool
+    no_progress: bool
+    api_key: Optional[str]
+    verbose: bool
+    debug_openai_stream: bool
+    show_model_schema: bool
+    debug_validation: bool
+    progress_level: str
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -813,7 +851,7 @@ def validate_schema_file(
 
 
 def collect_template_files(
-    args: argparse.Namespace,
+    args: Namespace,
     security_manager: SecurityManager,
 ) -> Dict[str, TemplateValue]:
     """Collect files from command line arguments.
@@ -853,7 +891,7 @@ def collect_template_files(
         raise ValueError(f"Error collecting files: {e}")
 
 
-def collect_simple_variables(args: argparse.Namespace) -> Dict[str, str]:
+def collect_simple_variables(args: Namespace) -> Dict[str, str]:
     """Collect simple string variables from --var arguments.
 
     Args:
@@ -886,7 +924,7 @@ def collect_simple_variables(args: argparse.Namespace) -> Dict[str, str]:
     return variables
 
 
-def collect_json_variables(args: argparse.Namespace) -> Dict[str, Any]:
+def collect_json_variables(args: Namespace) -> Dict[str, Any]:
     """Collect JSON variables from --json-var arguments.
 
     Args:
@@ -916,7 +954,7 @@ def collect_json_variables(args: argparse.Namespace) -> Dict[str, Any]:
                     all_names.add(name)
                 except json.JSONDecodeError as e:
                     raise InvalidJSONError(
-                        f"Invalid JSON value for {name}: {str(e)}"
+                        f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}"
                     )
             except ValueError:
                 raise VariableNameError(
@@ -972,7 +1010,7 @@ def create_template_context(
 
 
 def create_template_context_from_args(
-    args: argparse.Namespace,
+    args: "Namespace",
     security_manager: SecurityManager,
 ) -> Dict[str, Any]:
     """Create template context from command line arguments.
@@ -1024,7 +1062,7 @@ def create_template_context_from_args(
                         json_value = json.loads(value)
                     except json.JSONDecodeError as e:
                         raise InvalidJSONError(
-                            f"Invalid JSON value for {name} ({value!r}): {str(e)}"
+                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}"
                         )
                     if name in json_variables:
                         raise VariableNameError(
@@ -1157,8 +1195,8 @@ def parse_json_var(var_str: str) -> Tuple[str, Any]:
             value = json.loads(json_str)
         except json.JSONDecodeError as e:
             raise InvalidJSONError(
-                f"Invalid JSON value for variable {name!r}: {json_str!r}"
-            ) from e
+                f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}"
+            )
 
         return name, value
 
@@ -1205,232 +1243,148 @@ def _create_enum_type(values: List[Any], field_name: str) -> Type[Enum]:
     return type(f"{field_name.title()}Enum", (str, Enum), enum_dict)
 
 
-def create_argument_parser() -> argparse.ArgumentParser:
-    """Create argument parser for CLI."""
-    parser = argparse.ArgumentParser(
-        description="Make structured OpenAI API calls.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+def debug_options(f: Callable) -> Callable:
+    """Debug output options group."""
+    f = click.option('--show-model-schema', is_flag=True, 
+                    help="Display the generated Pydantic model schema")(f)
+    f = click.option('--debug-validation', is_flag=True,
+                    help="Show detailed schema validation debugging information")(f)
+    f = click.option('--progress-level', type=click.Choice(['none', 'basic', 'detailed']),
+                    default='basic', help="Set the level of progress reporting")(f)
+    return f
 
-    # Debug output options
-    debug_group = parser.add_argument_group("Debug Output Options")
-    debug_group.add_argument(
-        "--show-model-schema",
-        action="store_true",
-        help="Display the generated Pydantic model schema",
-    )
-    debug_group.add_argument(
-        "--debug-validation",
-        action="store_true",
-        help="Show detailed schema validation debugging information",
-    )
-    debug_group.add_argument(
-        "--verbose-schema",
-        action="store_true",
-        help="Enable verbose schema debugging output",
-    )
-    debug_group.add_argument(
-        "--progress-level",
-        choices=["none", "basic", "detailed"],
-        default="basic",
-        help="Set the level of progress reporting (default: basic)",
-    )
+def file_options(f: Callable) -> Callable:
+    """File access options group."""
+    f = click.option('--file', 'file_args', multiple=True, 
+                    help="Map file to variable (name=path)", metavar="NAME=PATH")(f)
+    f = click.option('--files', 'files_args', multiple=True,
+                    help="Map file pattern to variable (name=pattern)", metavar="NAME=PATTERN")(f)
+    f = click.option('--dir', 'dir_args', multiple=True,
+                    help="Map directory to variable (name=path)", metavar="NAME=PATH")(f)
+    f = click.option('--allowed-dir', 'allowed_dir_args', multiple=True,
+                    help="Additional allowed directory or @file", metavar="PATH")(f)
+    f = click.option('--base-dir', default=os.getcwd(),
+                    help="Base directory for file access (defaults to current directory)")(f)
+    f = click.option('--allowed-dirs-file',
+                    help="File containing list of allowed directories")(f)
+    f = click.option('--dir-recursive', is_flag=True,
+                    help="Process directories recursively")(f)
+    f = click.option('--dir-ext',
+                    help="Comma-separated list of file extensions in directory processing")(f)
+    return f
 
-    # Required arguments
-    parser.add_argument(
-        "--task",
-        required=True,
-        help="Task template string or @file",
-    )
+def variable_options(f: Callable) -> Callable:
+    """Variable options group."""
+    f = click.option('--var', 'var_args', multiple=True,
+                    help="Pass simple variables (name=value)", metavar="NAME=VALUE")(f)
+    f = click.option('--json-var', 'json_var_args', multiple=True,
+                    help="Pass JSON variables (name=json)", metavar="NAME=JSON")(f)
+    return f
 
-    # File access arguments
-    parser.add_argument(
-        "--file",
-        action="append",
-        default=[],
-        help="Map file to variable (name=path)",
-        metavar="NAME=PATH",
-    )
-    parser.add_argument(
-        "--files",
-        action="append",
-        default=[],
-        help="Map file pattern to variable (name=pattern)",
-        metavar="NAME=PATTERN",
-    )
-    parser.add_argument(
-        "--dir",
-        action="append",
-        default=[],
-        help="Map directory to variable (name=path)",
-        metavar="NAME=PATH",
-    )
-    parser.add_argument(
-        "--allowed-dir",
-        action="append",
-        default=[],
-        help="Additional allowed directory or @file",
-        metavar="PATH",
-    )
-    parser.add_argument(
-        "--base-dir",
-        help="Base directory for file access (defaults to current directory)",
-        default=os.getcwd(),
-    )
-    parser.add_argument(
-        "--allowed-dirs-file",
-        help="File containing list of allowed directories",
-    )
-    parser.add_argument(
-        "--dir-recursive",
-        action="store_true",
-        help="Process directories recursively",
-    )
-    parser.add_argument(
-        "--dir-ext",
-        help="Comma-separated list of file extensions to include in directory processing",
-    )
+def model_options(f: Callable) -> Callable:
+    """Model configuration options group."""
+    f = click.option('--model', default="gpt-4o-2024-08-06", help="Model to use")(f)
+    f = click.option('--temperature', type=float, default=0.0, help="Temperature (0.0-2.0)")(f)
+    f = click.option('--max-tokens', type=int, help="Maximum tokens to generate")(f)
+    f = click.option('--top-p', type=float, default=1.0, help="Top-p sampling (0.0-1.0)")(f)
+    f = click.option('--frequency-penalty', type=float, default=0.0,
+                    help="Frequency penalty (-2.0-2.0)")(f)
+    f = click.option('--presence-penalty', type=float, default=0.0,
+                    help="Presence penalty (-2.0-2.0)")(f)
+    return f
 
-    # Variable arguments
-    parser.add_argument(
-        "--var",
-        action="append",
-        default=[],
-        help="Pass simple variables (name=value)",
-        metavar="NAME=VALUE",
-    )
-    parser.add_argument(
-        "--json-var",
-        action="append",
-        default=[],
-        help="Pass JSON variables (name=json)",
-        metavar="NAME=JSON",
-    )
+def create_cli() -> click.Command:
+    """Create Click command for CLI."""
+    @click.command(help="Make structured OpenAI API calls.")
+    @click.option('--task', required=True, help="Task template string or @file")
+    @click.option('--schema', 'schema_file', required=True, help="JSON schema file for response validation")
+    @click.option('--validate-schema', is_flag=True, help="Validate schema and response")
+    @click.option('--system-prompt', default=DEFAULT_SYSTEM_PROMPT,
+                help="System prompt for the model (use @file to load from file)")
+    @click.option('--ignore-task-sysprompt', is_flag=True,
+                help="Ignore system prompt from task template YAML frontmatter")
+    @click.option('--timeout', type=float, default=60.0, help="API timeout in seconds")
+    @click.option('--output-file', help="Write JSON output to file")
+    @click.option('--dry-run', is_flag=True, help="Simulate API call without making request")
+    @click.option('--no-progress', is_flag=True, help="Disable progress indicators")
+    @click.option('--api-key', help="OpenAI API key (overrides env var)")
+    @click.option('--verbose', is_flag=True, help="Enable verbose output and detailed logging")
+    @click.option('--debug-openai-stream', is_flag=True,
+                help="Enable low-level debug output for OpenAI streaming")
+    @debug_options
+    @file_options
+    @variable_options
+    @model_options
+    @click.version_option(version=__version__)
+    async def cli(**kwargs) -> None:
+        """CLI entry point."""
+        try:
+            # Convert Click's multiple options to lists and create Namespace
+            args = Namespace(
+                task=kwargs['task'],
+                file=list(kwargs['file_args']),
+                files=list(kwargs['files_args']),
+                dir=list(kwargs['dir_args']),
+                allowed_dir=list(kwargs['allowed_dir_args']),
+                base_dir=kwargs['base_dir'],
+                allowed_dirs_file=kwargs['allowed_dirs_file'],
+                dir_recursive=kwargs['dir_recursive'],
+                dir_ext=kwargs['dir_ext'],
+                var=list(kwargs['var_args']),
+                json_var=list(kwargs['json_var_args']),
+                system_prompt=kwargs['system_prompt'],
+                ignore_task_sysprompt=kwargs['ignore_task_sysprompt'],
+                schema_file=kwargs['schema_file'],
+                validate_schema=kwargs['validate_schema'],
+                model=kwargs['model'],
+                temperature=kwargs['temperature'],
+                max_tokens=kwargs['max_tokens'],
+                top_p=kwargs['top_p'],
+                frequency_penalty=kwargs['frequency_penalty'],
+                presence_penalty=kwargs['presence_penalty'],
+                timeout=kwargs['timeout'],
+                output_file=kwargs['output_file'],
+                dry_run=kwargs['dry_run'],
+                no_progress=kwargs['no_progress'],
+                api_key=kwargs['api_key'],
+                verbose=kwargs['verbose'],
+                debug_openai_stream=kwargs['debug_openai_stream'],
+                show_model_schema=kwargs['show_model_schema'],
+                debug_validation=kwargs['debug_validation'],
+                progress_level=kwargs['progress_level']
+            )
 
-    # System prompt options
-    parser.add_argument(
-        "--system-prompt",
-        help=(
-            "System prompt for the model (use @file to load from file, "
-            "can also be specified in task template YAML frontmatter)"
-        ),
-        default=DEFAULT_SYSTEM_PROMPT,
-    )
-    parser.add_argument(
-        "--ignore-task-sysprompt",
-        action="store_true",
-        help="Ignore system prompt from task template YAML frontmatter",
-    )
+            # Configure logging
+            log_level = logging.DEBUG if args.verbose else logging.INFO
+            logger.setLevel(log_level)
 
-    # Schema validation
-    parser.add_argument(
-        "--schema",
-        dest="schema_file",
-        required=True,
-        help="JSON schema file for response validation",
-    )
-    parser.add_argument(
-        "--validate-schema",
-        action="store_true",
-        help="Validate schema and response",
-    )
+            # Run main logic
+            exit_code = await _main(args)
+            sys.exit(exit_code.value)
 
-    # Model configuration
-    parser.add_argument(
-        "--model",
-        default="gpt-4o-2024-08-06",
-        help="Model to use",
-    )
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        default=0.0,
-        help="Temperature (0.0-2.0)",
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        help="Maximum tokens to generate",
-    )
-    parser.add_argument(
-        "--top-p",
-        type=float,
-        default=1.0,
-        help="Top-p sampling (0.0-1.0)",
-    )
-    parser.add_argument(
-        "--frequency-penalty",
-        type=float,
-        default=0.0,
-        help="Frequency penalty (-2.0-2.0)",
-    )
-    parser.add_argument(
-        "--presence-penalty",
-        type=float,
-        default=0.0,
-        help="Presence penalty (-2.0-2.0)",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=float,
-        default=60.0,
-        help="API timeout in seconds",
-    )
+        except CLIError as e:
+            # Let Click handle the error display
+            raise
+        except Exception as e:
+            # Wrap unexpected errors
+            raise CLIError(str(e))
 
-    # Output options
-    parser.add_argument(
-        "--output-file",
-        help="Write JSON output to file",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Simulate API call without making request",
-    )
-    parser.add_argument(
-        "--no-progress",
-        action="store_true",
-        help="Disable progress indicators",
-    )
-
-    # Other options
-    parser.add_argument(
-        "--api-key",
-        help="OpenAI API key (overrides env var)",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose output",
-    )
-    parser.add_argument(
-        "--debug-openai-stream",
-        action="store_true",
-        help="Enable low-level debug output for OpenAI streaming (very verbose)",
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-    )
-
-    return parser
+    return cli
 
 
-async def _main() -> ExitCode:
-    """Main CLI function.
+async def _main(args: Namespace) -> ExitCode:
+    """Main CLI function."""
+    # Handle help flag
+    if getattr(args, "help", False):
+        # Print help text
+        print("Usage: ostruct [OPTIONS]")
+        print("\nMake structured OpenAI API calls.")
+        print("\nOptions:")
+        print("  --help                Show this message and exit.")
+        # Add more help text here...
+        sys.exit(0)
 
-    Returns:
-        ExitCode: Exit code indicating success or failure
-    """
     try:
-        parser = create_argument_parser()
-        args = parser.parse_args()
-
-        # Configure logging
-        log_level = logging.DEBUG if args.verbose else logging.INFO
-        logger.setLevel(log_level)
-
         # Create security manager
         security_manager = validate_security_manager(
             base_dir=args.base_dir,
@@ -1473,9 +1427,7 @@ async def _main() -> ExitCode:
         # Load and validate schema
         try:
             logger.debug("[_main] Loading schema from %s", args.schema_file)
-            schema = validate_schema_file(
-                args.schema_file, verbose=args.verbose_schema
-            )
+            schema = validate_schema_file(args.schema_file, args.verbose)
             logger.debug("[_main] Creating output model")
             output_model = create_dynamic_model(
                 schema,
@@ -1675,100 +1627,31 @@ async def _main() -> ExitCode:
         logger.error("Operation cancelled by user")
         return ExitCode.INTERRUPTED
     except PathSecurityError as e:
-        # Only log security errors if they haven't been logged already
-        logger.debug(
-            "[_main] Caught PathSecurityError: %s (logged=%s)",
-            str(e),
-            getattr(e, "has_been_logged", False),
-        )
         if not getattr(e, "has_been_logged", False):
             logger.error(str(e))
-        return ExitCode.SECURITY_ERROR
+        raise
     except ValueError as e:
-        # Get the original cause of the error
         cause = e.__cause__ or e.__context__
         if isinstance(cause, PathSecurityError):
-            logger.debug(
-                "[_main] Caught wrapped PathSecurityError in ValueError: %s (logged=%s)",
-                str(cause),
-                getattr(cause, "has_been_logged", False),
-            )
-            # Only log security errors if they haven't been logged already
             if not getattr(cause, "has_been_logged", False):
                 logger.error(str(cause))
-            return ExitCode.SECURITY_ERROR
+            raise cause
         else:
-            logger.debug("[_main] Caught ValueError: %s", str(e))
             logger.error(f"Invalid input: {e}")
-            return ExitCode.DATA_ERROR
+            raise CLIError(str(e))
     except Exception as e:
-        # Check if this is a wrapped security error
         if isinstance(e.__cause__, PathSecurityError):
-            logger.debug(
-                "[_main] Caught wrapped PathSecurityError in Exception: %s (logged=%s)",
-                str(e.__cause__),
-                getattr(e.__cause__, "has_been_logged", False),
-            )
-            # Only log security errors if they haven't been logged already
             if not getattr(e.__cause__, "has_been_logged", False):
                 logger.error(str(e.__cause__))
-            return ExitCode.SECURITY_ERROR
-        logger.debug("[_main] Caught unexpected error: %s", str(e))
+            raise e.__cause__
         logger.error(f"Unexpected error: {e}")
-        return ExitCode.INTERNAL_ERROR
+        raise CLIError(str(e))
 
 
 def main() -> None:
     """CLI entry point that handles all errors."""
-    try:
-        logger.debug("[main] Starting main execution")
-        exit_code = asyncio.run(_main())
-        sys.exit(exit_code.value)
-    except KeyboardInterrupt:
-        logger.error("Operation cancelled by user")
-        sys.exit(ExitCode.INTERRUPTED.value)
-    except PathSecurityError as e:
-        # Only log security errors if they haven't been logged already
-        logger.debug(
-            "[main] Caught PathSecurityError: %s (logged=%s)",
-            str(e),
-            getattr(e, "has_been_logged", False),
-        )
-        if not getattr(e, "has_been_logged", False):
-            logger.error(str(e))
-        sys.exit(ExitCode.SECURITY_ERROR.value)
-    except ValueError as e:
-        # Get the original cause of the error
-        cause = e.__cause__ or e.__context__
-        if isinstance(cause, PathSecurityError):
-            logger.debug(
-                "[main] Caught wrapped PathSecurityError in ValueError: %s (logged=%s)",
-                str(cause),
-                getattr(cause, "has_been_logged", False),
-            )
-            # Only log security errors if they haven't been logged already
-            if not getattr(cause, "has_been_logged", False):
-                logger.error(str(cause))
-            sys.exit(ExitCode.SECURITY_ERROR.value)
-        else:
-            logger.debug("[main] Caught ValueError: %s", str(e))
-            logger.error(f"Invalid input: {e}")
-            sys.exit(ExitCode.DATA_ERROR.value)
-    except Exception as e:
-        # Check if this is a wrapped security error
-        if isinstance(e.__cause__, PathSecurityError):
-            logger.debug(
-                "[main] Caught wrapped PathSecurityError in Exception: %s (logged=%s)",
-                str(e.__cause__),
-                getattr(e.__cause__, "has_been_logged", False),
-            )
-            # Only log security errors if they haven't been logged already
-            if not getattr(e.__cause__, "has_been_logged", False):
-                logger.error(str(e.__cause__))
-            sys.exit(ExitCode.SECURITY_ERROR.value)
-        logger.debug("[main] Caught unexpected error: %s", str(e))
-        logger.error(f"Unexpected error: {e}")
-        sys.exit(ExitCode.INTERNAL_ERROR.value)
+    cli = create_cli()
+    cli(standalone_mode=False)
 
 
 # Export public API
@@ -1780,7 +1663,7 @@ __all__ = [
     "parse_json_var",
     "create_dynamic_model",
     "validate_path_mapping",
-    "create_argument_parser",
+    "create_cli",
     "main",
 ]
 
