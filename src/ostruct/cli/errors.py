@@ -2,7 +2,7 @@
 
 import click
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TextIO, cast
 import os
 
 
@@ -24,10 +24,10 @@ class CLIError(click.ClickException):
         """Set whether this error has been logged."""
         self._has_been_logged = value
 
-    def show(self, file=None) -> None:
+    def show(self, file: Optional[TextIO] = None) -> None:
         """Show the error message with optional context."""
         if file is None:
-            file = click.get_text_stream('stderr')
+            file = cast(TextIO, click.get_text_stream('stderr'))
         
         # Format message with context if available
         if self.context:

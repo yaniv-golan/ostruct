@@ -5,13 +5,21 @@
 ## Basic Usage
 
 ```bash
-ostruct --task TEMPLATE --schema SCHEMA_FILE [OPTIONS]
+ostruct --task TEMPLATE_STRING --schema-file SCHEMA_FILE [OPTIONS]
+# OR
+ostruct --task-file TEMPLATE_FILE --schema-file SCHEMA_FILE [OPTIONS]
 ```
 
 ## Required Arguments
 
-- `--task TEMPLATE`: The task template string or @file (recommended extension: .j2)
-- `--schema SCHEMA_FILE`: JSON Schema file that defines the structure of the output
+- `--schema-file SCHEMA_FILE`: JSON Schema file that defines the structure of the output
+
+## Task Template Options
+
+You must specify either:
+
+- `--task TEMPLATE`: The task template string directly
+- `--task-file TEMPLATE_FILE`: Path to a task template file (recommended extension: .j2)
 
 ## Template Files
 
@@ -30,8 +38,6 @@ system_prompt: You are an expert code reviewer focusing on security.
 Review this code: {{ code.content }}
 ```
 
-While the CLI accepts templates with any extension (when prefixed with `@`), we recommend using `.j2` for better tooling support and clarity.
-
 ## Common Options
 
 ### Input Options
@@ -41,7 +47,8 @@ While the CLI accepts templates with any extension (when prefixed with `@`), we 
 - `--dir NAME=PATH`: Map directory to variable (can be used multiple times)
 - `--dir-recursive`: Process directories recursively
 - `--dir-ext EXTENSIONS`: Comma-separated list of file extensions to include in directory processing
-- `--allowed-dir PATH`: Additional allowed directory or @file
+- `--allowed-dir PATH`: Additional allowed directory
+- `--allowed-dir-file PATH`: File containing list of allowed directories
 
 ### Variable Options
 
@@ -90,7 +97,13 @@ The CLI will automatically validate token limits and fail early if:
 
 ### System Prompt Options
 
-- `--system-prompt TEXT`: Override system prompt (can use @file)
+You can specify either:
+
+- `--system-prompt TEXT`: System prompt string directly
+- `--system-prompt-file PATH`: Path to system prompt file
+
+Additional options:
+
 - `--ignore-task-sysprompt`: Ignore system prompt from task template (useful when the template includes frontmatter)
 
 ### Debug Options
@@ -100,7 +113,6 @@ The CLI will automatically validate token limits and fail early if:
 - `--verbose-schema`: Enable verbose schema debugging output
 - `--debug-openai-stream`: Enable low-level debug output for OpenAI streaming (very verbose)
 - `--progress-level {none,basic,detailed}`: Set progress reporting level (default: basic)
-- `--validate-schema`: Test schema validation explicitly (note: schema validation is always performed automatically, this flag is only for testing purposes)
 
 ## Examples
 
@@ -143,8 +155,8 @@ Analyze this text and provide a structured review:
 
 ```bash
 ostruct \
-  --task @review.j2 \
-  --schema review_schema.json \
+  --task-file review.j2 \
+  --schema-file review_schema.json \
   --file input=article.txt \
   --model gpt-4o-2024-08-06
 ```
@@ -155,15 +167,15 @@ Process all Python files in a directory:
 
 ```bash
 ostruct \
-  --task @analyze.j2 \
-  --schema code_review_schema.json \
+  --task-file analyze.j2 \
+  --schema-file code_review_schema.json \
   --dir src=./src \
   --dir-recursive \
   --dir-ext py \
   --model gpt-4o-2024-08-06
 ```
 
-### Code Review Example
+### Code Review Example with System Prompt File
 
 1. Create a schema for code review `code_review_schema.json`:
 
@@ -195,24 +207,27 @@ ostruct \
 }
 ```
 
-2. Create a task template with system prompt:
+2. Create a system prompt file `system_prompt.txt`:
 
 ```
-{% system_prompt %}
 You are an expert code reviewer focusing on Python best practices and security.
-{% end_system_prompt %}
+```
 
+3. Create a task template `review_template.j2`:
+
+```
 Review this Python code and provide structured feedback:
 
 {{ code.content }}
 ```
 
-3. Run the code review:
+4. Run the code review:
 
 ```bash
 ostruct \
-  --task @review_template.j2 \
-  --schema code_review_schema.json \
+  --task-file review_template.j2 \
+  --schema-file code_review_schema.json \
+  --system-prompt-file system_prompt.txt \
   --file code=app.py \
   --model gpt-4o-2024-08-06
 ```
@@ -277,17 +292,18 @@ ostruct \
 The dry run will show:
 
 - The rendered system and user prompts
+- Schema validation status (schema validation is always performed, with detailed output if --verbose-schema is enabled)
 - Estimated token count
 - Model parameters (temperature, max tokens, etc.)
-- Schema validation status
 - Output file path (if specified)
 - No API call will be made
 
 This is particularly useful for:
 
 - Verifying prompt rendering
+- Validating schema correctness and compatibility
 - Checking token usage before processing large files
-- Testing schema validation
+- Testing schema validation with detailed feedback
 - Ensuring correct file access permissions
 
 Note: While `--debug-openai-stream` is available for debugging actual API calls, it won't show streaming data during a dry run since no API calls are made. To debug streaming, use `--debug-openai-stream` without `--dry-run`.

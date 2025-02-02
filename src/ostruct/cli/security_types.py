@@ -5,7 +5,7 @@ from typing import List, Protocol
 
 
 class SecurityManagerProtocol(Protocol):
-    """Protocol defining the interface for security managers."""
+    """Protocol defining the interface for security management."""
 
     @property
     def base_dir(self) -> Path:
@@ -17,7 +17,7 @@ class SecurityManagerProtocol(Protocol):
         """Get the list of allowed directories."""
         ...
 
-    def add_allowed_dir(self, directory: str) -> None:
+    def add_allowed_directory(self, directory: str) -> None:
         """Add a directory to the set of allowed directories."""
         ...
 
@@ -42,8 +42,5 @@ class SecurityManagerProtocol(Protocol):
         ...
 
     def resolve_path(self, path: str) -> Path:
-        """Resolve and validate a path.
-
-        This is an alias for validate_path() for backward compatibility.
-        """
+        """Resolve and validate a path."""
         ...

@@ -108,9 +108,9 @@ esac
 
 # Build the command
 CMD="ostruct"
-CMD="$CMD --task @prompts/task.j2"
-CMD="$CMD --schema schemas/test_cases.json"
-CMD="$CMD --system-prompt @prompts/system.txt"
+CMD="$CMD --task-file prompts/task.j2"
+CMD="$CMD --schema-file schemas/test_cases.json"
+CMD="$CMD --system-prompt-file prompts/system.txt"
 CMD="$CMD --dir files=$CODE_PATH"
 CMD="$CMD --dir-ext py"
 CMD="$CMD --dir-recursive"

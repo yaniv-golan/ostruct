@@ -42,7 +42,7 @@ Quick Start
         "required": ["summary", "topics"]
       }
 
-3. Create a task template (``task.txt``):
+3. Create a task template (``task.j2``):
 
    .. code-block:: text
 
@@ -58,8 +58,8 @@ Quick Start
    .. code-block:: bash
 
       ostruct \
-        --task @task.txt \
-        --schema schema.json \
+        --task-file task.j2 \
+        --schema-file schema.json \
         --file content=input.txt \
         --model gpt-4o-2024-08-06
 

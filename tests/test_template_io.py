@@ -32,205 +32,168 @@ if not logger.handlers:
     logger.addHandler(handler)
 
 
-@pytest.fixture  # type: ignore[misc]
-def security_manager() -> SecurityManager:
+@pytest.fixture
+def security_manager(fs: FakeFilesystem) -> SecurityManager:
     """Create a security manager for testing."""
-    manager = SecurityManager(base_dir=os.getcwd())
-    manager.add_allowed_dir(tempfile.gettempdir())
-    return manager
+    from tests.conftest import MockSecurityManager
+    return MockSecurityManager(base_dir="/test_workspace")
 
 
-def test_read_file_basic(
-    fs: FakeFilesystem, security_manager: SecurityManager
-) -> None:
-    """Test basic file reading."""
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write("test content")
-        f.flush()
-        file_path = f.name
-    try:
-        # Read file
-        file_info = read_file(file_path, security_manager=security_manager)
-        # Verify content
-        assert file_info.content == "test content"
-        assert file_info.encoding is not None
-        assert file_info.hash is not None
-    finally:
-        os.unlink(file_path)
+def test_read_file_basic(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
+    """Test basic file reading functionality."""
+    # Create a test file in the fake filesystem
+    fs.makedirs("/test_workspace", exist_ok=True)
+    test_file = "/test_workspace/test_file.txt"
+    fs.create_file(test_file, contents="test content")
+
+    # Read the file
+    file_info = read_file(test_file, security_manager=security_manager)
+
+    # Verify the content was read correctly
+    assert file_info.content == "test content"
+    assert file_info.path == test_file
+    assert file_info.exists
+    assert not file_info.is_binary
 
 
-def test_read_file_with_encoding(security_manager: SecurityManager) -> None:
+def test_read_file_with_encoding(security_manager: SecurityManager, fs: FakeFilesystem) -> None:
     """Test file reading with specific encoding."""
     content = "test content with unicode: 🚀"
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", delete=False
-    ) as f:
-        f.write(content)
-        f.flush()
-        file_path = f.name
-    try:
-        file_info = read_file(
-            file_path, encoding="utf-8", security_manager=security_manager
-        )
-        assert file_info.content == content
-        assert file_info.encoding == "utf-8"
-    finally:
-        os.unlink(file_path)
+    fs.makedirs("/test_workspace", exist_ok=True)
+    test_file = "/test_workspace/test_file.txt"
+    fs.create_file(test_file, contents=content)
+
+    # Read with UTF-8 encoding
+    file_info = read_file(test_file, encoding="utf-8", security_manager=security_manager)
+
+    # Verify content and encoding
+    assert file_info.content == content
+    assert file_info.encoding == "utf-8"
+    assert file_info.exists
+    assert file_info.size == len(content.encode("utf-8"))  # Size in bytes
 
 
-def test_read_file_content_loading(security_manager: SecurityManager) -> None:
+def test_read_file_content_loading(security_manager: SecurityManager, fs: FakeFilesystem) -> None:
     """Test immediate content loading behavior."""
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write("test content")
-        f.flush()
-        file_path = f.name
-    try:
-        # Create FileInfo - content should be loaded immediately
-        file_info = read_file(file_path, security_manager=security_manager)
-        # Content should be available immediately
-        assert file_info.content == "test content"
-        # Internal state should show content is loaded
-        assert getattr(file_info, "_FileInfo__content") == "test content"
-    finally:
-        os.unlink(file_path)
+    # Create a test file in the fake filesystem
+    fs.makedirs("/test_workspace", exist_ok=True)
+    test_file = "/test_workspace/test_file.txt"
+    test_content = "test content"
+    fs.create_file(test_file, contents=test_content)
+
+    # Create FileInfo - content should be loaded immediately
+    file_info = read_file(test_file, security_manager=security_manager)
+
+    # Check that content was loaded
+    assert file_info.content == test_content
+    assert file_info.exists
+    assert file_info.size == len(test_content)
+    assert str(file_info.abs_path) == test_file
+
+    # Verify metadata
+    metadata = file_info.to_dict()
+    assert metadata["path"] == test_file
+    assert metadata["size"] == len(test_content)
+    assert metadata["exists"] is True
+    assert metadata["content"] == test_content
 
 
 def test_read_file_not_found(security_manager: SecurityManager) -> None:
     """Test error handling for non-existent files."""
     with pytest.raises(ValueError) as exc:
-        read_file("nonexistent_file.txt", security_manager=security_manager)
+        read_file("/test_workspace/nonexistent_file.txt", security_manager=security_manager)
     assert "File not found" in str(exc.value)
 
 
-def test_read_file_caching(security_manager: SecurityManager) -> None:
+def test_read_file_caching(security_manager: SecurityManager, fs: FakeFilesystem) -> None:
     """Test file content caching."""
     logger.info("Starting file caching test")
-
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write("test content")
-        f.flush()
-        os.fsync(f.fileno())  # Force flush to disk
-        file_path = f.name
-        logger.debug("Created test file: %s", file_path)
-
-    try:
-        # First read should cache the file
-        initial_stats = os.stat(file_path)
-        logger.debug(
-            "Initial file stats: size=%d, mtime_ns=%d",
-            initial_stats.st_size,
-            initial_stats.st_mtime_ns,
-        )
-
-        file_info1 = read_file(file_path, security_manager=security_manager)
-        initial_content = file_info1.content
-        logger.debug("First read complete: content=%r", initial_content)
-
-        # Second read should use cached content
-        file_info2 = read_file(file_path, security_manager=security_manager)
-        assert file_info2.content == initial_content
-        logger.debug("Second read verified from cache")
-
-        # Modify file
-        logger.debug("Modifying file content")
-        with open(file_path, "w") as f:
-            f.write("new content")
-            f.flush()
-            os.fsync(f.fileno())  # Force flush to disk
-
-        # Wait until file stats actually change
-        max_retries = 20  # Increased for CI environments
-        for retry in range(max_retries):
-            current_stats = os.stat(file_path)
-            logger.debug(
-                "Retry %d/%d - Current stats: mtime_ns=%d, size=%d",
-                retry + 1,
-                max_retries,
-                current_stats.st_mtime_ns,
-                current_stats.st_size,
-            )
-
-            if (
-                current_stats.st_mtime_ns != initial_stats.st_mtime_ns
-                or current_stats.st_size != initial_stats.st_size
-            ):
-                logger.info(
-                    "File stats changed after %d retries: mtime_ns_diff=%d, size_diff=%d",
-                    retry + 1,
-                    current_stats.st_mtime_ns - initial_stats.st_mtime_ns,
-                    current_stats.st_size - initial_stats.st_size,
-                )
-                break
-            time.sleep(0.1)
-            if retry == max_retries - 1:
-                raise RuntimeError(
-                    f"File stats did not update after {max_retries} retries. "
-                    f"Initial: mtime_ns={initial_stats.st_mtime_ns}, size={initial_stats.st_size}. "
-                    f"Current: mtime_ns={current_stats.st_mtime_ns}, size={current_stats.st_size}"
-                )
-
-        # Third read should detect file change and update cache
-        logger.debug("Attempting third read after modification")
-        file_info3 = read_file(file_path, security_manager=security_manager)
-        assert file_info3.content == "new content", (
-            f"File content not updated. Stats: initial_mtime_ns={initial_stats.st_mtime_ns}, "
-            f"current_mtime_ns={current_stats.st_mtime_ns}, "
-            f"size_diff={current_stats.st_size - initial_stats.st_size}"
-        )
-        logger.info("Cache test completed successfully")
-    finally:
-        os.unlink(file_path)
-        logger.debug("Test file cleaned up: %s", file_path)
+    
+    # Create test file
+    fs.makedirs("/test_workspace", exist_ok=True)
+    test_file = "/test_workspace/test_file.txt"
+    test_content = "test content"
+    fs.create_file(test_file, contents=test_content)
+    
+    # First read should cache the file
+    initial_stats = os.stat(test_file)
+    logger.debug(
+        "Initial file stats: size=%d, mtime_ns=%d",
+        initial_stats.st_size,
+        initial_stats.st_mtime_ns,
+    )
+    
+    file_info1 = read_file(test_file, security_manager=security_manager)
+    assert file_info1.content == test_content
+    assert file_info1.exists
+    assert file_info1.size == len(test_content)
+    
+    # Modify file
+    new_content = "modified content"
+    fs.remove(test_file)  # Remove the file first
+    fs.create_file(test_file, contents=new_content)  # Create with new content
+    
+    # Second read should detect the change and reload
+    file_info2 = read_file(test_file, security_manager=security_manager)
+    assert file_info2.content == new_content  # Content should be updated
+    assert file_info2.exists
+    assert file_info2.size == len(new_content)
+    
+    # Verify that the files are different
+    assert file_info1.content != file_info2.content
+    assert file_info1.size != file_info2.size
+    assert file_info1.hash != file_info2.hash
 
 
-def test_extract_metadata(security_manager: SecurityManager) -> None:
+def test_extract_metadata(security_manager: SecurityManager, fs: FakeFilesystem) -> None:
     """Test metadata extraction from FileInfo."""
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write("test content")
-        f.flush()
-        file_path = f.name
+    fs.makedirs("/test_workspace", exist_ok=True)
+    test_file = "/test_workspace/test_file.txt"
+    test_content = "test content"
+    fs.create_file(test_file, contents=test_content)
 
-    try:
-        file_info = read_file(file_path, security_manager=security_manager)
-        metadata = extract_metadata(file_info)
+    file_info = read_file(test_file, security_manager=security_manager)
 
-        # Test basic metadata
-        assert metadata["name"] == os.path.basename(file_path)
-        assert metadata["path"] == file_path
-        assert metadata["abs_path"] == os.path.realpath(file_path)
-        assert isinstance(metadata["mtime"], float)
+    # Extract metadata
+    metadata = file_info.to_dict()
 
-        # Test optional metadata
-        assert "encoding" not in metadata
-        assert "mime_type" not in metadata
-    finally:
-        os.unlink(file_path)
+    # Verify basic metadata
+    assert metadata["path"] == test_file
+    assert metadata["exists"] is True
+    assert metadata["size"] == len(test_content)
+    assert metadata["content"] == test_content
+
+    # Verify timestamps
+    assert isinstance(metadata["mtime"], float)
+    assert isinstance(metadata["mtime_ns"], int)
+    assert metadata["mode"] is not None
 
 
-def test_extract_template_metadata(security_manager: SecurityManager) -> None:
+def test_extract_template_metadata(security_manager: SecurityManager, fs: FakeFilesystem) -> None:
     """Test metadata extraction from template and context."""
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write("test content")
-        f.flush()
-        file_path = f.name
-
-    try:
-        template_str = "template.j2"
-        context: Dict[str, Union[FileInfo, Dict[str, str], List[str], str]] = {
-            "file": read_file(file_path, security_manager=security_manager),
-            "config": {"key": "value"},
-            "items": ["item1", "item2"],
-            "name": "test",
-        }
-
-        metadata = extract_template_metadata(template_str, context)
-
-        # Test template metadata
-        assert metadata["template"]["path"] == "template.j2"
-
-        # Test context metadata
-        assert metadata["context"]["file_info_vars"] == ["file"]
-        assert metadata["context"]["dict_vars"] == ["config"]
-        assert metadata["context"]["list_vars"] == ["items"]
-    finally:
-        os.unlink(file_path)
+    # Create test file
+    fs.makedirs("/test_workspace", exist_ok=True)
+    test_file = "/test_workspace/test_file.txt"
+    test_content = "test content"
+    fs.create_file(test_file, contents=test_content)
+    
+    # Create template context
+    template_str = "/test_workspace/template.j2"
+    context: Dict[str, Union[FileInfo, Dict[str, str], List[str], str]] = {
+        "file": read_file(test_file, security_manager=security_manager),
+        "config": {"key": "value"},
+        "items": ["item1", "item2"],
+        "name": "test",
+    }
+    
+    # Extract metadata
+    metadata = extract_template_metadata(template_str, context)
+    
+    # Verify metadata
+    assert metadata["template"] == {"is_file": True, "path": template_str}
+    assert "context" in metadata
+    assert sorted(metadata["context"]["variables"]) == ["config", "file", "items", "name"]
+    assert metadata["context"]["dict_vars"] == ["config"]
+    assert metadata["context"]["list_vars"] == ["items"]
+    assert metadata["context"]["file_info_vars"] == ["file"]
+    assert metadata["context"]["other_vars"] == ["name"]

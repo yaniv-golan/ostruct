@@ -22,8 +22,8 @@ from ostruct.cli.template_validation import (
 @pytest.fixture  # type: ignore[misc]
 def security_manager() -> SecurityManager:
     """Create a security manager for testing."""
-    manager = SecurityManager(base_dir=os.getcwd())
-    manager.add_allowed_dir(tempfile.gettempdir())
+    manager = SecurityManager()
+    manager.add_allowed_directory(tempfile.gettempdir())
     return manager
 
 
@@ -147,11 +147,11 @@ def test_validate_fileinfo_attributes(
 ) -> None:
     """Test validation of FileInfo attribute access."""
     # Create test file in fake filesystem
-    fs.create_file("/path/to/file.txt", contents="test content")
+    fs.create_file("/test_workspace/test_file.txt", contents="test content")
 
     template = "Content: {{ file.content }}, Path: {{ file.abs_path }}"
     file_info = FileInfo.from_path(
-        path="/path/to/file.txt", security_manager=security_manager
+        path="/test_workspace/test_file.txt", security_manager=security_manager
     )
     file_mappings: Dict[str, Any] = {"file": file_info}
     validate_template_placeholders(template, file_mappings)
@@ -161,8 +161,9 @@ def create_test_file(
     fs: FakeFilesystem, filename: str, security_manager: SecurityManager
 ) -> FileInfo:
     """Create a test file and return FileInfo instance."""
-    fs.create_file(filename, contents="test content")
-    return FileInfo.from_path(path=filename, security_manager=security_manager)
+    full_path = os.path.join("/test_workspace", filename)
+    fs.create_file(full_path, contents="test content")
+    return FileInfo.from_path(path=full_path, security_manager=security_manager)
 
 
 @pytest.mark.parametrize(  # type: ignore[misc]
@@ -199,8 +200,8 @@ def test_validate_complex_template(
 ) -> None:
     """Test validation of complex template with multiple features."""
     # Set up fake filesystem
-    fs.create_file("/test/file1.txt", contents="content1")
-    fs.create_file("/test/file2.txt", contents="content2")
+    fs.create_file("/test_workspace/file1.txt", contents="content1")
+    fs.create_file("/test_workspace/file2.txt", contents="content2")
 
     template = """
     {% for file in source_files %}
@@ -219,10 +220,10 @@ def test_validate_complex_template(
     file_mappings: Dict[str, Any] = {
         "source_files": [
             FileInfo.from_path(
-                path="/test/file1.txt", security_manager=security_manager
+                path="/test_workspace/file1.txt", security_manager=security_manager
             ),
             FileInfo.from_path(
-                path="/test/file2.txt", security_manager=security_manager
+                path="/test_workspace/file2.txt", security_manager=security_manager
             ),
         ],
         "config": {

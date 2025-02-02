@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, Dict, List, Literal, Type, Union, cast
+from typing import Any, Dict, List, Literal, Type, Union, cast, Optional
 
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -144,7 +144,7 @@ def test_validate_path_mapping_outside_base(fs: FakeFilesystem) -> None:
 def test_validate_task_template_string() -> None:
     """Test task template string validation."""
     template = "Hello {{ name }}!"
-    result = validate_task_template(template)
+    result = validate_task_template(template, None)
     assert result == template
 
 
@@ -152,23 +152,41 @@ def test_validate_task_template_file(fs: FakeFilesystem) -> None:
     """Test task template file validation."""
     template = "Hello {{ name }}!"
     fs.create_file("template.txt", contents=template)
-    result = validate_task_template("@template.txt")
+    result = validate_task_template(None, "template.txt")
     assert result == template
+
+
+def test_validate_task_template_missing_both() -> None:
+    """Test error when neither string nor file is provided."""
+    with pytest.raises(TaskTemplateVariableError) as exc:
+        validate_task_template(None, None)
+    assert "Must specify either" in str(exc.value)
+
+
+def test_validate_task_template_both_provided(fs: FakeFilesystem) -> None:
+    """Test error when both string and file are provided."""
+    fs.create_file("template.txt", contents="Hello {{ name }}!")
+    with pytest.raises(TaskTemplateVariableError) as exc:
+        validate_task_template("direct template", "template.txt")
+    assert "Cannot specify both" in str(exc.value)
 
 
 @pytest.mark.parametrize(  # type: ignore[misc]
     "template,error_type",
     [
         ("Hello {{ name!", TaskTemplateSyntaxError),  # Invalid syntax
-        ("@nonexistent.txt", TaskTemplateVariableError),  # Non-existent file
+        (None, TaskTemplateVariableError),  # Non-existent file with task_file="nonexistent.txt"
     ],
 )
 def test_validate_task_template_errors(
-    template: str, error_type: Type[Exception]
+    template: Optional[str], error_type: Type[Exception]
 ) -> None:
     """Test task template validation errors."""
     with pytest.raises(error_type) as exc:
-        validate_task_template(template)
+        if template is None:
+            validate_task_template(None, "nonexistent.txt")
+        else:
+            validate_task_template(template, None)
     assert str(exc.value)  # Just verify error message exists
 
 

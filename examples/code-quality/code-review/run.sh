@@ -66,7 +66,7 @@ if [ ! -d "$CODE_PATH" ]; then
 fi
 
 # Build the command
-CMD="ostruct --task @prompts/task.j2 --schema schemas/code_review.json --system-prompt @prompts/system.txt --dir code=$CODE_PATH --dir-ext $EXTENSIONS --dir-recursive"
+CMD="ostruct --task-file prompts/task.j2 --schema-file schemas/code_review.json --system-prompt-file prompts/system.txt --dir code=$CODE_PATH --dir-ext $EXTENSIONS --dir-recursive"
 
 # Add output file if specified
 if [ -n "$OUTPUT_FILE" ]; then

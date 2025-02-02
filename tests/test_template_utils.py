@@ -80,29 +80,27 @@ def fs() -> Generator[FakeFilesystem, None, None]:
     with Patcher() as patcher:
         fs = patcher.fs
         assert fs is not None  # Type assertion for mypy
-        # Create test files and directories
-        fs.create_file("/path/to/file.txt", contents="Test file content")
-        fs.create_file(
-            "/absolute/path/to/file.txt", contents="Test file content"
-        )
+        # Create test workspace directory
+        fs.makedirs("/test_workspace", exist_ok=True)
         yield fs
 
 
 @pytest.fixture  # type: ignore[misc]
-def security_manager() -> SecurityManager:
+def security_manager(fs: FakeFilesystem) -> SecurityManager:
     """Create a security manager for testing."""
-    return SecurityManager(base_dir=os.getcwd())
+    from tests.conftest import MockSecurityManager
+    return MockSecurityManager(base_dir="/test_workspace")
 
 
 def test_validate_fileinfo_attributes(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
     """Test validation of FileInfo attribute access."""
-    fs.create_dir("/test1")
-    fs.create_file("/test1/file.txt", contents="test content")
+    fs.makedirs("/test_workspace", exist_ok=True)
+    fs.create_file("/test_workspace/file.txt", contents="test content")
     template = "Content: {{ file.content }}, Path: {{ file.abs_path }}"
     file_info = FileInfo.from_path(
-        path="/test1/file.txt", security_manager=security_manager
+        path="/test_workspace/file.txt", security_manager=security_manager
     )
     file_mappings = {"file": file_info}
     validate_template_placeholders(template, file_mappings)
@@ -114,11 +112,11 @@ def test_validate_fileinfo_invalid_attribute(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
     """Test validation with invalid FileInfo attribute."""
-    fs.create_dir("/test2")
-    fs.create_file("/test2/file.txt", contents="test content")
+    fs.makedirs("/test_workspace", exist_ok=True)
+    fs.create_file("/test_workspace/file.txt", contents="test content")
     template = "{{ file.invalid_attr }}"
     file_info = FileInfo.from_path(
-        path="/test2/file.txt", security_manager=security_manager
+        path="/test_workspace/file.txt", security_manager=security_manager
     )
     file_mappings = {"file": file_info}
     with pytest.raises(TemplateValidationError):
@@ -150,8 +148,9 @@ def test_validate_complex_template(
 ) -> None:
     """Test validation of complex template with multiple features."""
     # Set up test files
-    fs.create_file("/test/file1.txt", contents="File 1 content")
-    fs.create_file("/test/file2.txt", contents="File 2 content")
+    fs.makedirs("/test_workspace", exist_ok=True)
+    fs.create_file("/test_workspace/file1.txt", contents="File 1 content")
+    fs.create_file("/test_workspace/file2.txt", contents="File 2 content")
 
     template = """
     {% for file in source_files %}
@@ -172,10 +171,10 @@ def test_validate_complex_template(
         {
             "source_files": [
                 FileInfo.from_path(
-                    path="/test/file1.txt", security_manager=security_manager
+                    path="/test_workspace/file1.txt", security_manager=security_manager
                 ),
                 FileInfo.from_path(
-                    path="/test/file2.txt", security_manager=security_manager
+                    path="/test_workspace/file2.txt", security_manager=security_manager
                 ),
             ],
             "config": {
@@ -193,7 +192,8 @@ def test_validate_template_with_filters(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
     """Test validation of template using built-in filters and functions."""
-    fs.create_file("/test/data.txt", contents="Test data content")
+    fs.makedirs("/test_workspace", exist_ok=True)
+    fs.create_file("/test_workspace/data.txt", contents="Test data content")
 
     template = """
     {% set content = file.content|trim %}
@@ -202,7 +202,7 @@ def test_validate_template_with_filters(
     """
     file_mappings = {
         "file": FileInfo.from_path(
-            path="/test/data.txt", security_manager=security_manager
+            path="/test_workspace/data.txt", security_manager=security_manager
         )
     }
     validate_template_placeholders(template, file_mappings)
@@ -259,8 +259,9 @@ def test_validate_template_custom_functions(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
     """Test validation allows custom template functions."""
-    fs.create_file("/test/file.txt", contents="Test file content")
-    fs.create_file("/test/data.json", contents='{"status": "active"}')
+    fs.makedirs("/test_workspace", exist_ok=True)
+    fs.create_file("/test_workspace/file.txt", contents="Test file content")
+    fs.create_file("/test_workspace/data.json", contents='{"status": "active"}')
 
     template = """
     {{ file.content|extract_field("status") }}
@@ -271,7 +272,7 @@ def test_validate_template_custom_functions(
         Dict[str, Any],
         {
             "file": FileInfo.from_path(
-                path="/test/file.txt", security_manager=security_manager
+                path="/test_workspace/file.txt", security_manager=security_manager
             ),
             "data": {"category": "test", "value": 1},
             "text": "print('hello')",
@@ -285,11 +286,12 @@ def test_render_template_with_file_content(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
     """Test rendering template with actual file content."""
-    fs.create_file("/test/input.txt", contents="Hello from file!")
+    fs.makedirs("/test_workspace", exist_ok=True)
+    fs.create_file("/test_workspace/input.txt", contents="Hello from file!")
 
     template = "Content: {{ file.content }}"
     file_info = FileInfo.from_path(
-        path="/test/input.txt", security_manager=security_manager
+        path="/test_workspace/input.txt", security_manager=security_manager
     )
     result = render_template(template, {"file": file_info})
     assert result == "Content: Hello from file!"

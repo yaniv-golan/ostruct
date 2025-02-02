@@ -102,9 +102,9 @@ fi
 
 # Build the ostruct command
 CMD="ostruct"
-CMD+=" --task @prompts/task.j2"
-CMD+=" --schema schemas/validation_result.json"
-CMD+=" --system-prompt @prompts/system.txt"
+CMD+=" --task-file prompts/task.j2"
+CMD+=" --schema-file schemas/validation_result.json"
+CMD+=" --system-prompt-file prompts/system.txt"
 CMD+=" --dir configs=$CONFIG_DIR"
 CMD+=" --dir-recursive"
 CMD+=" --dir-ext yaml,yml,json"

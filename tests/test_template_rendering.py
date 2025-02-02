@@ -17,14 +17,7 @@ from ostruct.cli.template_io import read_file
 from ostruct.cli.template_rendering import render_template
 from ostruct.cli.template_schema import DotDict
 from ostruct.cli.template_validation import validate_template_placeholders
-
-
-@pytest.fixture  # type: ignore[misc]
-def security_manager() -> SecurityManager:
-    """Create a security manager for testing."""
-    manager = SecurityManager(base_dir=os.getcwd())
-    manager.add_allowed_dir(tempfile.gettempdir())
-    return manager
+from tests.conftest import MockSecurityManager
 
 
 def test_create_jinja_env() -> None:
@@ -67,53 +60,45 @@ def test_render_template_with_filters() -> None:
 
 
 def test_render_template_with_file_info(
-    security_manager: SecurityManager,
+    fs: FakeFilesystem, security_manager: SecurityManager,
 ) -> None:
     """Test template rendering with FileInfo objects."""
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write("test content")
-        f.flush()
-        file_path = f.name
+    # Create test file in test workspace
+    test_file = "/test_workspace/base/test.txt"
+    fs.create_file(test_file, contents="test content")
 
-    try:
-        file_info = FileInfo.from_path(
-            path=file_path, security_manager=security_manager
-        )
-        template = "Content: {{ file.content }}"
-        context = {"file": file_info}
-        env = Environment()
-        result = render_template(template, context, env)
-        assert result == "Content: test content"
-    finally:
-        os.unlink(file_path)
+    file_info = FileInfo.from_path(
+        path=test_file, security_manager=security_manager
+    )
+    template = "Content: {{ file.content }}"
+    context = {"file": file_info}
+    env = Environment()
+    result = render_template(template, context, env)
+    assert result == "Content: test content"
 
 
 def test_render_template_with_immediate_loading(
-    security_manager: SecurityManager,
+    fs: FakeFilesystem, security_manager: SecurityManager,
 ) -> None:
     """Test template rendering with immediate loading of file content."""
     logger = logging.getLogger(__name__)
 
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-        f.write("test content")
-        f.flush()
-        file_path = f.name
-        logger.debug(
-            "Created test file %s with content 'test content'", file_path
-        )
+    # Create test file in test workspace
+    test_file = "/test_workspace/base/test.txt"
+    fs.create_file(test_file, contents="test content")
+    logger.debug(
+        "Created test file %s with content 'test content'", test_file
+    )
 
-    try:
-        file_info = FileInfo.from_path(
-            path=file_path, security_manager=security_manager
-        )
-        template = "Content: {{ file.content }}"
-        context = {"file": file_info}
-        env = Environment()
-        result = render_template(template, context, env)
-        assert result == "Content: test content"
-        assert file_info.content == "test content"
-    finally:
-        os.unlink(file_path)
+    file_info = FileInfo.from_path(
+        path=test_file, security_manager=security_manager
+    )
+    template = "Content: {{ file.content }}"
+    context = {"file": file_info}
+    env = Environment()
+    result = render_template(template, context, env)
+    assert result == "Content: test content"
+    assert file_info.content == "test content"
 
 
 def test_render_template_with_dot_dict() -> None:
@@ -186,13 +171,14 @@ def test_dot_dict() -> None:
         dot_dict["missing"]
 
 
-def test_read_file(fs: FakeFilesystem) -> None:
+def test_read_file(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
     """Test reading file contents."""
-    # Create test file
-    fs.create_file("test.txt", contents="test content")
+    # Create test file in test workspace
+    test_file = "/test_workspace/base/test.txt"
+    fs.create_file(test_file, contents="test content")
 
     # Read file
-    file_info = read_file("test.txt")
+    file_info = read_file(test_file, security_manager=security_manager)
     assert file_info.content == "test content"
 
 
@@ -200,16 +186,16 @@ def test_render_template_with_file(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
     """Test template rendering with file content."""
-    # Create test file
-    fs.create_file("test.txt", contents="test content")
+    # Create test file in test workspace
+    test_file = "/test_workspace/base/test.txt"
+    fs.create_file(test_file, contents="test content")
 
     # Create template using file content
     template = "Content: {{ file.content }}"
     context = {
-        "file": read_file("test.txt", security_manager=security_manager)
+        "file": read_file(test_file, security_manager=security_manager)
     }
-    env = Environment()
-    result = render_template(template, context, env)
+    result = render_template(template, context)
     assert result == "Content: test content"
 
 

@@ -18,6 +18,7 @@ class TestSystemPrompts:
         prompt = process_system_prompt(
             task_template="Test task",
             system_prompt=None,
+            system_prompt_file=None,
             template_context={},
             env=env,
         )
@@ -30,6 +31,7 @@ class TestSystemPrompts:
         prompt = process_system_prompt(
             task_template="Test task",
             system_prompt=test_prompt,
+            system_prompt_file=None,
             template_context={},
             env=env,
         )
@@ -43,7 +45,8 @@ class TestSystemPrompts:
 
         prompt = process_system_prompt(
             task_template="Test task",
-            system_prompt="@prompt.txt",
+            system_prompt=None,
+            system_prompt_file="prompt.txt",
             template_context={},
             env=env,
         )
@@ -63,6 +66,7 @@ Test task"""
         prompt = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
+            system_prompt_file=None,
             template_context={},
             env=env,
         )
@@ -85,11 +89,12 @@ Test task"""
 
         env = create_jinja_env()
 
-        # Direct prompt should take precedence
+        # Direct prompt should take precedence over all
         direct_prompt = "Direct prompt"
         prompt1 = process_system_prompt(
             task_template=template_content,
             system_prompt=direct_prompt,
+            system_prompt_file=None,
             template_context={},
             env=env,
         )
@@ -98,7 +103,8 @@ Test task"""
         # File prompt should take precedence over template
         prompt2 = process_system_prompt(
             task_template=template_content,
-            system_prompt="@prompt.txt",
+            system_prompt=None,
+            system_prompt_file="prompt.txt",
             template_context={},
             env=env,
         )
@@ -108,6 +114,7 @@ Test task"""
         prompt3 = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
+            system_prompt_file=None,
             template_context={},
             env=env,
         )
@@ -129,6 +136,7 @@ Test task"""
         prompt = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
+            system_prompt_file=None,
             template_context=template_context,
             env=env,
         )
@@ -140,7 +148,8 @@ Test task"""
         with pytest.raises(SystemPromptError):
             process_system_prompt(
                 task_template="Test task",
-                system_prompt="@nonexistent.txt",
+                system_prompt=None,
+                system_prompt_file="nonexistent.txt",
                 template_context={},
                 env=env,
             )
@@ -160,6 +169,21 @@ Test task"""
             process_system_prompt(
                 task_template=template_content,
                 system_prompt=None,
+                system_prompt_file=None,
                 template_context={},
                 env=env,
             )
+
+    def test_conflicting_system_prompts(self, fs: Any) -> None:
+        """Test error handling when both system prompt string and file are provided."""
+        fs.create_file("prompt.txt", contents="File prompt")
+        env = create_jinja_env()
+        with pytest.raises(SystemPromptError) as exc:
+            process_system_prompt(
+                task_template="Test task",
+                system_prompt="Direct prompt",
+                system_prompt_file="prompt.txt",
+                template_context={},
+                env=env,
+            )
+        assert "Cannot specify both" in str(exc.value)

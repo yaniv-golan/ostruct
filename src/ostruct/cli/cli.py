@@ -30,7 +30,7 @@ if sys.version_info >= (3, 11):
 from datetime import date, datetime, time
 from pathlib import Path
 
-import asyncclick as click
+import click
 import jinja2
 import tiktoken
 import yaml
@@ -84,8 +84,9 @@ from .errors import (
     ModelValidationError,
     NestedModelError,
     PathSecurityError,
-    TaskTemplateSyntaxError,
+    TaskTemplateError,
     TaskTemplateVariableError,
+    TaskTemplateSyntaxError,
     VariableError,
     VariableNameError,
     VariableValueError,
@@ -96,6 +97,7 @@ from .progress import ProgressContext
 from .security import SecurityManager
 from .template_env import create_jinja_env
 from .template_utils import SystemPromptError, render_template
+from ostruct.cli.click_options import create_click_command
 
 # Constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
@@ -103,21 +105,22 @@ DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 @dataclass
 class Namespace:
     """Compatibility class to mimic argparse.Namespace for existing code."""
-    task: str
+    task: Optional[str]
+    task_file: Optional[str]
     file: List[str]
     files: List[str]
     dir: List[str]
     allowed_dir: List[str]
     base_dir: str
-    allowed_dirs_file: Optional[str]
+    allowed_dir_file: Optional[str]
     dir_recursive: bool
     dir_ext: Optional[str]
     var: List[str]
     json_var: List[str]
-    system_prompt: str
+    system_prompt: Optional[str]
+    system_prompt_file: Optional[str]
     ignore_task_sysprompt: bool
     schema_file: str
-    validate_schema: bool
     model: str
     temperature: float
     max_tokens: Optional[int]
@@ -133,7 +136,7 @@ class Namespace:
     debug_openai_stream: bool
     show_model_schema: bool
     debug_validation: bool
-    progress_level: str
+    progress_level: str = 'basic'  # Default to 'basic' if not specified
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -402,7 +405,8 @@ def estimate_tokens_for_chat(
 ) -> int:
     """Estimate the number of tokens in a chat completion."""
     try:
-        encoding = tiktoken.encoding_for_model(model)
+        # Try to get the encoding for the specific model
+        encoding = tiktoken.get_encoding("o200k_base")
     except KeyError:
         # Fall back to cl100k_base for unknown models
         encoding = tiktoken.get_encoding("cl100k_base")
@@ -414,7 +418,7 @@ def estimate_tokens_for_chat(
         for key, value in message.items():
             num_tokens += len(encoding.encode(str(value)))
             if key == "name":  # if there's a name, the role is omitted
-                num_tokens += -1  # role is always required and always 1 token
+                num_tokens -= 1  # role is omitted
     num_tokens += 2  # every reply is primed with <im_start>assistant
     return num_tokens
 
@@ -426,15 +430,17 @@ def get_default_token_limit(model: str) -> int:
     need to be updated if OpenAI changes the models' capabilities.
 
     Args:
-        model: The model name (e.g., 'gpt-4o', 'gpt-4o-mini', 'o1')
+        model: The model name (e.g., 'gpt-4o', 'o1-mini', 'o3-mini')
 
     Returns:
         The default token limit for the model
     """
-    if "o1" in model:
-        return 100_000  # o1 supports up to 100K output tokens
+    if "o1-" in model:
+        return 100_000  # o1-mini supports up to 100K output tokens
     elif "gpt-4o" in model:
-        return 16_384  # gpt-4o and gpt-4o-mini support up to 16K output tokens
+        return 16_384  # gpt-4o supports up to 16K output tokens
+    elif "o3-" in model:
+        return 16_384  # o3-mini supports up to 16K output tokens
     else:
         return 4_096  # default fallback
 
@@ -446,15 +452,15 @@ def get_context_window_limit(model: str) -> int:
     need to be updated if OpenAI changes the models' capabilities.
 
     Args:
-        model: The model name (e.g., 'gpt-4o', 'gpt-4o-mini', 'o1')
+        model: The model name (e.g., 'gpt-4o', 'o1-mini', 'o3-mini')
 
     Returns:
         The context window limit for the model
     """
-    if "o1" in model:
-        return 200_000  # o1 supports 200K total context window
-    elif "gpt-4o" in model:
-        return 128_000  # gpt-4o and gpt-4o-mini support 128K context window
+    if "o1-" in model:
+        return 200_000  # o1-mini supports 200K total context window
+    elif "gpt-4o" in model or "o3-" in model:
+        return 128_000  # gpt-4o and o3-mini support 128K context window
     else:
         return 8_192  # default fallback
 
@@ -498,6 +504,7 @@ def validate_token_limits(
 def process_system_prompt(
     task_template: str,
     system_prompt: Optional[str],
+    system_prompt_file: Optional[str],
     template_context: Dict[str, Any],
     env: jinja2.Environment,
     ignore_task_sysprompt: bool = False,
@@ -506,7 +513,8 @@ def process_system_prompt(
 
     Args:
         task_template: The task template string
-        system_prompt: Optional system prompt string or file path (with @ prefix)
+        system_prompt: Optional system prompt string
+        system_prompt_file: Optional path to system prompt file
         template_context: Template context for rendering
         env: Jinja2 environment
         ignore_task_sysprompt: Whether to ignore system prompt in task template
@@ -522,18 +530,20 @@ def process_system_prompt(
     # Default system prompt
     default_prompt = "You are a helpful assistant."
 
-    # Try to get system prompt from CLI argument first
-    if system_prompt:
-        if system_prompt.startswith("@"):
-            # Load from file
-            path = system_prompt[1:]
-            try:
-                name, path = validate_path_mapping(f"system_prompt={path}")
-                with open(path, "r", encoding="utf-8") as f:
-                    system_prompt = f.read().strip()
-            except (FileNotFoundError, PathSecurityError) as e:
-                raise SystemPromptError(f"Invalid system prompt file: {e}")
+    # Check for conflicting arguments
+    if system_prompt is not None and system_prompt_file is not None:
+        raise SystemPromptError("Cannot specify both --system-prompt and --system-prompt-file")
 
+    # Try to get system prompt from CLI argument first
+    if system_prompt_file is not None:
+        try:
+            name, path = validate_path_mapping(f"system_prompt={system_prompt_file}")
+            with open(path, "r", encoding="utf-8") as f:
+                system_prompt = f.read().strip()
+        except (FileNotFoundError, PathSecurityError) as e:
+            raise SystemPromptError(f"Invalid system prompt file: {e}")
+
+    if system_prompt is not None:
         # Render system prompt with template context
         try:
             template = env.from_string(system_prompt)
@@ -656,30 +666,45 @@ def _validate_path_mapping_internal(
         ValueError: If the format is invalid (missing "=").
         OSError: If there is an underlying OS error (permissions, etc.).
     """
+    logger = logging.getLogger(__name__)
+    logger.debug("Starting path validation for mapping: %r", mapping)
+    logger.debug("Parameters - is_dir: %r, base_dir: %r", is_dir, base_dir)
+    
     try:
         if not mapping or "=" not in mapping:
+            logger.debug("Invalid mapping format: %r", mapping)
             raise ValueError(
                 "Invalid path mapping format. Expected format: name=path"
             )
 
         name, path = mapping.split("=", 1)
+        logger.debug("Split mapping - name: %r, path: %r", name, path)
+        
         if not name:
+            logger.debug("Empty name in mapping")
             raise VariableNameError(
                 f"Empty name in {'directory' if is_dir else 'file'} mapping"
             )
 
         if not path:
+            logger.debug("Empty path in mapping")
             raise VariableValueError("Path cannot be empty")
 
         # Convert to Path object and resolve against base_dir if provided
+        logger.debug("Creating Path object for: %r", path)
         path_obj = Path(path)
         if base_dir:
+            logger.debug("Resolving against base_dir: %r", base_dir)
             path_obj = Path(base_dir) / path_obj
+        logger.debug("Path object created: %r", path_obj)
 
         # Resolve the path to catch directory traversal attempts
         try:
+            logger.debug("Attempting to resolve path: %r", path_obj)
             resolved_path = path_obj.resolve()
+            logger.debug("Resolved path: %r", resolved_path)
         except OSError as e:
+            logger.error("Failed to resolve path: %s", e)
             raise OSError(f"Failed to resolve path: {e}")
 
         # Check for directory traversal
@@ -747,34 +772,39 @@ def _validate_path_mapping_internal(
         raise
 
 
-def validate_task_template(task: str) -> str:
+def validate_task_template(task: Optional[str], task_file: Optional[str]) -> str:
     """Validate and load a task template.
 
     Args:
-        task: The task template string or path to task template file (with @ prefix)
+        task: The task template string
+        task_file: Path to task template file
 
     Returns:
         The task template string
 
     Raises:
-        TaskTemplateVariableError: If the template file cannot be read or is invalid
+        TaskTemplateVariableError: If neither task nor task_file is provided, or if both are provided
         TaskTemplateSyntaxError: If the template has invalid syntax
         FileNotFoundError: If the template file does not exist
         PathSecurityError: If the template file path violates security constraints
     """
-    template_content = task
+    if task is not None and task_file is not None:
+        raise TaskTemplateVariableError("Cannot specify both --task and --task-file")
+    
+    if task is None and task_file is None:
+        raise TaskTemplateVariableError("Must specify either --task or --task-file")
 
-    # Check if task is a file path
-    if task.startswith("@"):
-        path = task[1:]
+    template_content: str
+    if task_file is not None:
         try:
-            name, path = validate_path_mapping(f"task={path}")
+            name, path = validate_path_mapping(f"task={task_file}")
             with open(path, "r", encoding="utf-8") as f:
                 template_content = f.read()
         except (FileNotFoundError, PathSecurityError) as e:
-            raise TaskTemplateVariableError(f"Invalid task template file: {e}")
+            raise TaskTemplateVariableError(str(e))
+    else:
+        template_content = task  # type: ignore  # We know task is str here due to the checks above
 
-    # Validate template syntax
     try:
         env = jinja2.Environment(undefined=jinja2.StrictUndefined)
         env.parse(template_content)
@@ -884,10 +914,13 @@ def collect_template_files(
         # Wrap file-related errors
         raise ValueError(f"File access error: {e}")
     except Exception as e:
+        # Don't wrap InvalidJSONError
+        if isinstance(e, InvalidJSONError):
+            raise
         # Check if this is a wrapped security error
         if isinstance(e.__cause__, PathSecurityError):
             raise e.__cause__
-        # Wrap unexpected errors
+        # Wrap other errors
         raise ValueError(f"Error collecting files: {e}")
 
 
@@ -1098,44 +1131,87 @@ def create_template_context_from_args(
         # Wrap file-related errors
         raise ValueError(f"File access error: {e}")
     except Exception as e:
+        # Don't wrap InvalidJSONError
+        if isinstance(e, InvalidJSONError):
+            raise
         # Check if this is a wrapped security error
         if isinstance(e.__cause__, PathSecurityError):
             raise e.__cause__
-        # Wrap unexpected errors
+        # Wrap other errors
         raise ValueError(f"Error collecting files: {e}")
 
 
 def validate_security_manager(
     base_dir: Optional[str] = None,
     allowed_dirs: Optional[List[str]] = None,
-    allowed_dirs_file: Optional[str] = None,
+    allowed_dir_file: Optional[str] = None,
 ) -> SecurityManager:
-    """Create and validate a security manager.
+    """Validate and create security manager.
 
     Args:
-        base_dir: Optional base directory to resolve paths against
-        allowed_dirs: Optional list of allowed directory paths
-        allowed_dirs_file: Optional path to file containing allowed directories
+        base_dir: Base directory for file access. Defaults to current working directory.
+        allowed_dirs: Optional list of additional allowed directories
+        allowed_dir_file: Optional file containing allowed directories
 
     Returns:
         Configured SecurityManager instance
 
     Raises:
-        FileNotFoundError: If allowed_dirs_file does not exist
-        PathSecurityError: If any paths are outside base directory
+        PathSecurityError: If any paths violate security constraints
+        DirectoryNotFoundError: If any directories do not exist
     """
-    # Convert base_dir to string if it's a Path
-    base_dir_str = str(base_dir) if base_dir else None
-    security_manager = SecurityManager(base_dir_str)
+    # Use current working directory if base_dir is None
+    if base_dir is None:
+        base_dir = os.getcwd()
 
-    if allowed_dirs_file:
-        security_manager.add_allowed_dirs_from_file(str(allowed_dirs_file))
+    # Default to empty list if allowed_dirs is None
+    if allowed_dirs is None:
+        allowed_dirs = []
 
-    if allowed_dirs:
-        for allowed_dir in allowed_dirs:
-            security_manager.add_allowed_dir(str(allowed_dir))
+    # Add base directory if it exists
+    try:
+        base_dir_path = Path(base_dir).resolve()
+        if not base_dir_path.exists():
+            raise DirectoryNotFoundError(f"Base directory not found: {base_dir}")
+        if not base_dir_path.is_dir():
+            raise DirectoryNotFoundError(f"Base directory is not a directory: {base_dir}")
+        all_allowed_dirs = [str(base_dir_path)]
+    except OSError as e:
+        raise DirectoryNotFoundError(f"Invalid base directory: {e}")
 
-    return security_manager
+    # Add explicitly allowed directories
+    for dir_path in allowed_dirs:
+        try:
+            resolved_path = Path(dir_path).resolve()
+            if not resolved_path.exists():
+                raise DirectoryNotFoundError(f"Directory not found: {dir_path}")
+            if not resolved_path.is_dir():
+                raise DirectoryNotFoundError(f"Path is not a directory: {dir_path}")
+            all_allowed_dirs.append(str(resolved_path))
+        except OSError as e:
+            raise DirectoryNotFoundError(f"Invalid directory path: {e}")
+
+    # Add directories from file if specified
+    if allowed_dir_file:
+        try:
+            with open(allowed_dir_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        try:
+                            resolved_path = Path(line).resolve()
+                            if not resolved_path.exists():
+                                raise DirectoryNotFoundError(f"Directory not found: {line}")
+                            if not resolved_path.is_dir():
+                                raise DirectoryNotFoundError(f"Path is not a directory: {line}")
+                            all_allowed_dirs.append(str(resolved_path))
+                        except OSError as e:
+                            raise DirectoryNotFoundError(f"Invalid directory path in {allowed_dir_file}: {e}")
+        except OSError as e:
+            raise DirectoryNotFoundError(f"Failed to read allowed directories file: {e}")
+
+    # Create security manager with all allowed directories
+    return SecurityManager(base_dir=base_dir, allowed_dirs=all_allowed_dirs)
 
 
 def parse_var(var_str: str) -> Tuple[str, str]:
@@ -1243,413 +1319,264 @@ def _create_enum_type(values: List[Any], field_name: str) -> Type[Enum]:
     return type(f"{field_name.title()}Enum", (str, Enum), enum_dict)
 
 
-def debug_options(f: Callable) -> Callable:
-    """Debug output options group."""
-    f = click.option('--show-model-schema', is_flag=True, 
-                    help="Display the generated Pydantic model schema")(f)
-    f = click.option('--debug-validation', is_flag=True,
-                    help="Show detailed schema validation debugging information")(f)
-    f = click.option('--progress-level', type=click.Choice(['none', 'basic', 'detailed']),
-                    default='basic', help="Set the level of progress reporting")(f)
-    return f
+def handle_error(e: Exception) -> None:
+    """Handle errors by printing appropriate message and exiting with status code."""
+    if isinstance(e, click.UsageError):
+        # For UsageError, preserve the original message format
+        if hasattr(e, 'param') and e.param:
+            # Missing parameter error
+            msg = f"Missing option '--{e.param.name}'"
+            click.echo(msg, err=True)
+        else:
+            # Other usage errors (like conflicting options)
+            click.echo(str(e), err=True)
+        sys.exit(ExitCode.USAGE_ERROR)
+    elif isinstance(e, InvalidJSONError):
+        # Use the original error message if available
+        msg = str(e) if str(e) != "None" else "Invalid JSON"
+        click.secho(msg, fg='red', err=True)
+        sys.exit(ExitCode.DATA_ERROR)
+    elif isinstance(e, FileNotFoundError):
+        # Use the original error message if available
+        msg = str(e) if str(e) != "None" else "File not found"
+        click.secho(msg, fg='red', err=True)
+        sys.exit(ExitCode.SCHEMA_ERROR)
+    elif isinstance(e, TaskTemplateSyntaxError):
+        # Use the original error message if available
+        msg = str(e) if str(e) != "None" else "Template syntax error"
+        click.secho(msg, fg='red', err=True)
+        sys.exit(ExitCode.INTERNAL_ERROR)
+    elif isinstance(e, CLIError):
+        # Use the show method for CLIError and its subclasses
+        e.show()
+        sys.exit(e.exit_code if hasattr(e, 'exit_code') else ExitCode.INTERNAL_ERROR)
+    else:
+        click.secho(f"Unexpected error: {str(e)}", fg='red', err=True)
+        sys.exit(ExitCode.INTERNAL_ERROR)
 
-def file_options(f: Callable) -> Callable:
-    """File access options group."""
-    f = click.option('--file', 'file_args', multiple=True, 
-                    help="Map file to variable (name=path)", metavar="NAME=PATH")(f)
-    f = click.option('--files', 'files_args', multiple=True,
-                    help="Map file pattern to variable (name=pattern)", metavar="NAME=PATTERN")(f)
-    f = click.option('--dir', 'dir_args', multiple=True,
-                    help="Map directory to variable (name=path)", metavar="NAME=PATH")(f)
-    f = click.option('--allowed-dir', 'allowed_dir_args', multiple=True,
-                    help="Additional allowed directory or @file", metavar="PATH")(f)
-    f = click.option('--base-dir', default=os.getcwd(),
-                    help="Base directory for file access (defaults to current directory)")(f)
-    f = click.option('--allowed-dirs-file',
-                    help="File containing list of allowed directories")(f)
-    f = click.option('--dir-recursive', is_flag=True,
-                    help="Process directories recursively")(f)
-    f = click.option('--dir-ext',
-                    help="Comma-separated list of file extensions in directory processing")(f)
-    return f
-
-def variable_options(f: Callable) -> Callable:
-    """Variable options group."""
-    f = click.option('--var', 'var_args', multiple=True,
-                    help="Pass simple variables (name=value)", metavar="NAME=VALUE")(f)
-    f = click.option('--json-var', 'json_var_args', multiple=True,
-                    help="Pass JSON variables (name=json)", metavar="NAME=JSON")(f)
-    return f
-
-def model_options(f: Callable) -> Callable:
-    """Model configuration options group."""
-    f = click.option('--model', default="gpt-4o-2024-08-06", help="Model to use")(f)
-    f = click.option('--temperature', type=float, default=0.0, help="Temperature (0.0-2.0)")(f)
-    f = click.option('--max-tokens', type=int, help="Maximum tokens to generate")(f)
-    f = click.option('--top-p', type=float, default=1.0, help="Top-p sampling (0.0-1.0)")(f)
-    f = click.option('--frequency-penalty', type=float, default=0.0,
-                    help="Frequency penalty (-2.0-2.0)")(f)
-    f = click.option('--presence-penalty', type=float, default=0.0,
-                    help="Presence penalty (-2.0-2.0)")(f)
-    return f
-
-def create_cli() -> click.Command:
-    """Create Click command for CLI."""
-    @click.command(help="Make structured OpenAI API calls.")
-    @click.option('--task', required=True, help="Task template string or @file")
-    @click.option('--schema', 'schema_file', required=True, help="JSON schema file for response validation")
-    @click.option('--validate-schema', is_flag=True, help="Validate schema and response")
-    @click.option('--system-prompt', default=DEFAULT_SYSTEM_PROMPT,
-                help="System prompt for the model (use @file to load from file)")
-    @click.option('--ignore-task-sysprompt', is_flag=True,
-                help="Ignore system prompt from task template YAML frontmatter")
-    @click.option('--timeout', type=float, default=60.0, help="API timeout in seconds")
-    @click.option('--output-file', help="Write JSON output to file")
-    @click.option('--dry-run', is_flag=True, help="Simulate API call without making request")
-    @click.option('--no-progress', is_flag=True, help="Disable progress indicators")
-    @click.option('--api-key', help="OpenAI API key (overrides env var)")
-    @click.option('--verbose', is_flag=True, help="Enable verbose output and detailed logging")
-    @click.option('--debug-openai-stream', is_flag=True,
-                help="Enable low-level debug output for OpenAI streaming")
-    @debug_options
-    @file_options
-    @variable_options
-    @model_options
-    @click.version_option(version=__version__)
-    async def cli(**kwargs) -> None:
-        """CLI entry point."""
-        try:
-            # Convert Click's multiple options to lists and create Namespace
-            args = Namespace(
-                task=kwargs['task'],
-                file=list(kwargs['file_args']),
-                files=list(kwargs['files_args']),
-                dir=list(kwargs['dir_args']),
-                allowed_dir=list(kwargs['allowed_dir_args']),
-                base_dir=kwargs['base_dir'],
-                allowed_dirs_file=kwargs['allowed_dirs_file'],
-                dir_recursive=kwargs['dir_recursive'],
-                dir_ext=kwargs['dir_ext'],
-                var=list(kwargs['var_args']),
-                json_var=list(kwargs['json_var_args']),
-                system_prompt=kwargs['system_prompt'],
-                ignore_task_sysprompt=kwargs['ignore_task_sysprompt'],
-                schema_file=kwargs['schema_file'],
-                validate_schema=kwargs['validate_schema'],
-                model=kwargs['model'],
-                temperature=kwargs['temperature'],
-                max_tokens=kwargs['max_tokens'],
-                top_p=kwargs['top_p'],
-                frequency_penalty=kwargs['frequency_penalty'],
-                presence_penalty=kwargs['presence_penalty'],
-                timeout=kwargs['timeout'],
-                output_file=kwargs['output_file'],
-                dry_run=kwargs['dry_run'],
-                no_progress=kwargs['no_progress'],
-                api_key=kwargs['api_key'],
-                verbose=kwargs['verbose'],
-                debug_openai_stream=kwargs['debug_openai_stream'],
-                show_model_schema=kwargs['show_model_schema'],
-                debug_validation=kwargs['debug_validation'],
-                progress_level=kwargs['progress_level']
-            )
-
-            # Configure logging
-            log_level = logging.DEBUG if args.verbose else logging.INFO
-            logger.setLevel(log_level)
-
-            # Run main logic
-            exit_code = await _main(args)
-            sys.exit(exit_code.value)
-
-        except CLIError as e:
-            # Let Click handle the error display
-            raise
-        except Exception as e:
-            # Wrap unexpected errors
-            raise CLIError(str(e))
-
-    return cli
-
-
-async def _main(args: Namespace) -> ExitCode:
-    """Main CLI function."""
-    # Handle help flag
-    if getattr(args, "help", False):
-        # Print help text
-        print("Usage: ostruct [OPTIONS]")
-        print("\nMake structured OpenAI API calls.")
-        print("\nOptions:")
-        print("  --help                Show this message and exit.")
-        # Add more help text here...
-        sys.exit(0)
-
+async def stream_structured_output(
+    client: AsyncOpenAI,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    output_schema: Type[BaseModel],
+    output_file: Optional[str] = None,
+    **kwargs
+) -> None:
+    """Stream structured output from OpenAI API.
+    
+    This function follows the guide's recommendation for a focused async streaming function.
+    It handles the core streaming logic and resource cleanup.
+    """
     try:
-        # Create security manager
+        async for chunk in async_openai_structured_stream(
+            client=client,
+            model=model,
+            output_schema=output_schema,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            **kwargs
+        ):
+            if not chunk:
+                continue
+
+            # Process and output the chunk
+            dumped = chunk.model_dump(mode="json")
+            json_str = json.dumps(dumped, indent=2)
+
+            if output_file:
+                with open(output_file, "a", encoding="utf-8") as f:
+                    f.write(json_str)
+                    f.write("\n")
+                    f.flush()  # Ensure immediate flush to file
+            else:
+                # Print directly to stdout with immediate flush
+                print(json_str, flush=True)
+
+    except (StreamInterruptedError, StreamBufferError, StreamParseError,
+            APIResponseError, EmptyResponseError, InvalidResponseFormatError) as e:
+        logger.error(f"Stream error: {e}")
+        raise
+    finally:
+        # Always ensure client is properly closed
+        await client.close()
+
+async def run_cli_async(args: Namespace) -> ExitCode:
+    """Async wrapper for CLI operations.
+    
+    This function prepares everything needed for streaming and then calls
+    the focused streaming function.
+    """
+    try:
+        # Validate and prepare all inputs
         security_manager = validate_security_manager(
             base_dir=args.base_dir,
             allowed_dirs=args.allowed_dir,
-            allowed_dirs_file=args.allowed_dirs_file,
+            allowed_dir_file=args.allowed_dir_file,
         )
 
-        # Validate task template
-        task_template = validate_task_template(args.task)
-
-        # Validate schema file
+        task_template = validate_task_template(args.task, args.task_file)
+        logger.debug("Validating schema from %s", args.schema_file)
         schema = validate_schema_file(args.schema_file, args.verbose)
-
-        # Create template context
-        template_context = create_template_context_from_args(
-            args, security_manager
-        )
-
-        # Create Jinja environment
+        template_context = create_template_context_from_args(args, security_manager)
         env = create_jinja_env()
 
-        # Process system prompt
-        args.system_prompt = process_system_prompt(
+        # Process system prompt and render task
+        system_prompt = process_system_prompt(
             task_template,
             args.system_prompt,
+            args.system_prompt_file,
             template_context,
             env,
             args.ignore_task_sysprompt,
         )
-
-        # Render task template
         rendered_task = render_template(task_template, template_context, env)
-        logger.info(rendered_task)  # Log the rendered template
+        logger.info("Rendered task template: %s", rendered_task)
 
-        # If dry run, exit here
         if args.dry_run:
             logger.info("DRY RUN MODE")
             return ExitCode.SUCCESS
 
-        # Load and validate schema
+        # Create output model
+        logger.debug("Creating output model")
         try:
-            logger.debug("[_main] Loading schema from %s", args.schema_file)
-            schema = validate_schema_file(args.schema_file, args.verbose)
-            logger.debug("[_main] Creating output model")
             output_model = create_dynamic_model(
                 schema,
                 base_name="OutputModel",
                 show_schema=args.show_model_schema,
                 debug_validation=args.debug_validation,
             )
-            logger.debug("[_main] Successfully created output model")
-        except (SchemaFileError, InvalidJSONError, SchemaValidationError) as e:
-            logger.error(str(e))
-            return ExitCode.SCHEMA_ERROR
-        except ModelCreationError as e:
-            logger.error(f"Model creation error: {e}")
-            return ExitCode.SCHEMA_ERROR
-        except Exception as e:
-            logger.error(f"Unexpected error creating model: {e}")
-            return ExitCode.SCHEMA_ERROR
+            logger.debug("Successfully created output model")
+        except (SchemaFileError, InvalidJSONError, SchemaValidationError, ModelCreationError) as e:
+            logger.error("Schema error: %s", str(e))
+            raise  # Let the error propagate with its context
 
-        # Validate model support
+        # Validate model support and token usage
         try:
             supports_structured_output(args.model)
-        except ModelNotSupportedError as e:
-            logger.error(str(e))
-            return ExitCode.DATA_ERROR
-        except ModelVersionError as e:
-            logger.error(str(e))
-            return ExitCode.DATA_ERROR
+        except (ModelNotSupportedError, ModelVersionError) as e:
+            logger.error("Model validation error: %s", str(e))
+            raise  # Let the error propagate with its context
 
-        # Estimate token usage
         messages = [
-            {"role": "system", "content": args.system_prompt},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": rendered_task},
         ]
         total_tokens = estimate_tokens_for_chat(messages, args.model)
         context_limit = get_context_window_limit(args.model)
-
         if total_tokens > context_limit:
-            logger.error(
-                f"Total tokens ({total_tokens}) exceeds model context limit ({context_limit})"
-            )
-            return ExitCode.DATA_ERROR
+            msg = f"Total tokens ({total_tokens}) exceeds model context limit ({context_limit})"
+            logger.error(msg)
+            raise CLIError(msg, context={
+                "total_tokens": total_tokens,
+                "context_limit": context_limit
+            })
 
-        # Get API key
+        # Get API key and create client
         api_key = args.api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
-            logger.error(
-                "No OpenAI API key provided (--api-key or OPENAI_API_KEY env var)"
-            )
-            return ExitCode.USAGE_ERROR
+            msg = "No OpenAI API key provided (--api-key or OPENAI_API_KEY env var)"
+            logger.error(msg)
+            raise CLIError(msg)
 
-        # Create OpenAI client
         client = AsyncOpenAI(api_key=api_key, timeout=args.timeout)
 
-        # Create log callback that matches expected signature
-        def log_callback(
-            level: int, message: str, extra: dict[str, Any]
-        ) -> None:
-            # Only log if debug_openai_stream is enabled
+        # Create detailed log callback
+        def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
             if args.debug_openai_stream:
-                # Include extra dictionary in the message for both DEBUG and ERROR
-                if extra:  # Only add if there's actually extra data
+                if extra:
                     extra_str = json.dumps(extra, indent=2)
                     message = f"{message}\nDetails:\n{extra_str}"
-                openai_logger.log(level, message, extra=extra)
+                logger.log(level, message, extra=extra)
 
-        # Make API request
+        # Stream the output
         try:
-            logger.debug("Creating ProgressContext for API response handling")
-            with ProgressContext(
-                description="Processing API response",
-                level=args.progress_level,
-            ) as progress:
-                logger.debug("Starting API response stream processing")
-                logger.debug("Debug flag status: %s", args.debug_openai_stream)
-                logger.debug("OpenAI logger level: %s", openai_logger.level)
-                for handler in openai_logger.handlers:
-                    logger.debug("Handler level: %s", handler.level)
-                async for chunk in async_openai_structured_stream(
-                    client=client,
-                    model=args.model,
-                    temperature=args.temperature,
-                    max_tokens=args.max_tokens,
-                    top_p=args.top_p,
-                    frequency_penalty=args.frequency_penalty,
-                    presence_penalty=args.presence_penalty,
-                    system_prompt=args.system_prompt,
-                    user_prompt=rendered_task,
-                    output_schema=output_model,
-                    timeout=args.timeout,
-                    on_log=log_callback,
-                ):
-                    logger.debug("Received API response chunk")
-                    if not chunk:
-                        logger.debug("Empty chunk received, skipping")
-                        continue
-
-                    # Write output
-                    try:
-                        logger.debug("Starting to process output chunk")
-                        dumped = chunk.model_dump(mode="json")
-                        logger.debug("Successfully dumped chunk to JSON")
-                        logger.debug("Dumped chunk: %s", dumped)
-                        logger.debug(
-                            "Chunk type: %s, length: %d",
-                            type(dumped),
-                            len(json.dumps(dumped)),
-                        )
-
-                        if args.output_file:
-                            logger.debug(
-                                "Writing to output file: %s", args.output_file
-                            )
-                            try:
-                                with open(
-                                    args.output_file, "a", encoding="utf-8"
-                                ) as f:
-                                    json_str = json.dumps(dumped, indent=2)
-                                    logger.debug(
-                                        "Writing JSON string of length %d",
-                                        len(json_str),
-                                    )
-                                    f.write(json_str)
-                                    f.write("\n")
-                                    logger.debug("Successfully wrote to file")
-                            except Exception as e:
-                                logger.error(
-                                    "Failed to write to output file: %s", e
-                                )
-                        else:
-                            logger.debug(
-                                "About to call progress.print_output with JSON string"
-                            )
-                            json_str = json.dumps(dumped, indent=2)
-                            logger.debug(
-                                "JSON string length before print_output: %d",
-                                len(json_str),
-                            )
-                            logger.debug(
-                                "First 100 chars of JSON string: %s",
-                                json_str[:100] if json_str else "",
-                            )
-                            progress.print_output(json_str)
-                            logger.debug(
-                                "Completed print_output call for JSON string"
-                            )
-
-                        logger.debug("Starting progress update")
-                        progress.update()
-                        logger.debug("Completed progress update")
-                    except Exception as e:
-                        logger.error("Failed to process chunk: %s", e)
-                        logger.error("Chunk: %s", chunk)
-                        continue
-
-                logger.debug("Finished processing API response stream")
-
-        except StreamInterruptedError as e:
-            logger.error(f"Stream interrupted: {e}")
-            return ExitCode.API_ERROR
-        except StreamBufferError as e:
-            logger.error(f"Stream buffer error: {e}")
-            return ExitCode.API_ERROR
-        except StreamParseError as e:
-            logger.error(f"Stream parse error: {e}")
-            return ExitCode.API_ERROR
-        except APIResponseError as e:
-            logger.error(f"API response error: {e}")
-            return ExitCode.API_ERROR
-        except EmptyResponseError as e:
-            logger.error(f"Empty response error: {e}")
-            return ExitCode.API_ERROR
-        except InvalidResponseFormatError as e:
-            logger.error(f"Invalid response format: {e}")
-            return ExitCode.API_ERROR
+            await stream_structured_output(
+                client=client,
+                model=args.model,
+                system_prompt=system_prompt,
+                user_prompt=rendered_task,
+                output_schema=output_model,
+                output_file=args.output_file,
+                temperature=args.temperature,
+                max_tokens=args.max_tokens,
+                top_p=args.top_p,
+                frequency_penalty=args.frequency_penalty,
+                presence_penalty=args.presence_penalty,
+                timeout=args.timeout,
+                on_log=log_callback
+            )
+            return ExitCode.SUCCESS
+        except (StreamInterruptedError, StreamBufferError, StreamParseError,
+                APIResponseError, EmptyResponseError, InvalidResponseFormatError) as e:
+            logger.error("Stream error: %s", str(e))
+            raise  # Let stream errors propagate
         except (APIConnectionError, InternalServerError) as e:
-            logger.error(f"API connection error: {e}")
-            return ExitCode.API_ERROR
+            logger.error("API connection error: %s", str(e))
+            raise APIResponseError(str(e))  # Convert to our error type
         except RateLimitError as e:
-            logger.error(f"Rate limit exceeded: {e}")
-            return ExitCode.API_ERROR
-        except BadRequestError as e:
-            logger.error(f"Bad request: {e}")
-            return ExitCode.API_ERROR
-        except AuthenticationError as e:
-            logger.error(f"Authentication failed: {e}")
-            return ExitCode.API_ERROR
-        except OpenAIClientError as e:
-            logger.error(f"OpenAI client error: {e}")
-            return ExitCode.API_ERROR
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            return ExitCode.INTERNAL_ERROR
-
-        return ExitCode.SUCCESS
+            logger.error("Rate limit exceeded: %s", str(e))
+            raise APIResponseError(str(e))  # Convert to our error type
+        except (BadRequestError, AuthenticationError, OpenAIClientError) as e:
+            logger.error("API client error: %s", str(e))
+            raise APIResponseError(str(e))  # Convert to our error type
+        finally:
+            await client.close()
 
     except KeyboardInterrupt:
-        logger.error("Operation cancelled by user")
+        logger.info("Operation cancelled by user")
         return ExitCode.INTERRUPTED
-    except PathSecurityError as e:
-        if not getattr(e, "has_been_logged", False):
-            logger.error(str(e))
-        raise
-    except ValueError as e:
-        cause = e.__cause__ or e.__context__
-        if isinstance(cause, PathSecurityError):
-            if not getattr(cause, "has_been_logged", False):
-                logger.error(str(cause))
-            raise cause
-        else:
-            logger.error(f"Invalid input: {e}")
-            raise CLIError(str(e))
     except Exception as e:
-        if isinstance(e.__cause__, PathSecurityError):
-            if not getattr(e.__cause__, "has_been_logged", False):
-                logger.error(str(e.__cause__))
-            raise e.__cause__
-        logger.error(f"Unexpected error: {e}")
-        raise CLIError(str(e))
+        if isinstance(e, CLIError):
+            raise  # Let our custom errors propagate
+        logger.exception("Unexpected error")
+        raise CLIError(str(e), context={"error_type": type(e).__name__})
 
+def create_cli() -> click.Command:
+    """Create the Click command with all options."""
+    @create_click_command()
+    def cli(**kwargs: Any) -> None:
+        """CLI entry point for structured OpenAI API calls."""
+        try:
+            args = Namespace(**kwargs)
+
+            # Validate required arguments first
+            if not args.task and not args.task_file:
+                raise click.UsageError("Must specify either --task or --task-file")
+            if not args.schema_file:
+                raise click.UsageError("Missing option '--schema-file'")
+            if args.task and args.task_file:
+                raise click.UsageError("Cannot specify both --task and --task-file")
+            if args.system_prompt and args.system_prompt_file:
+                raise click.UsageError("Cannot specify both --system-prompt and --system-prompt-file")
+
+            # Run the async function synchronously
+            exit_code = asyncio.run(run_cli_async(args))
+            
+            if exit_code != ExitCode.SUCCESS:
+                error_msg = f"Command failed with exit code {exit_code}"
+                if hasattr(ExitCode, exit_code.name):
+                    error_msg = f"{error_msg} ({exit_code.name})"
+                raise CLIError(error_msg, context={"exit_code": exit_code})
+
+        except click.UsageError:
+            # Let Click handle usage errors directly
+            raise
+        except InvalidJSONError:
+            # Let InvalidJSONError propagate directly
+            raise
+        except CLIError:
+            # Let our custom errors propagate with their context
+            raise
+        except Exception as e:
+            # Convert other exceptions to CLIError
+            logger.exception("Unexpected error")
+            raise CLIError(str(e), context={"error_type": type(e).__name__})
+
+    return cli
 
 def main() -> None:
-    """CLI entry point that handles all errors."""
+    """Main entry point for the CLI."""
     cli = create_cli()
     cli(standalone_mode=False)
 

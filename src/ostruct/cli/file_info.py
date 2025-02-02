@@ -61,26 +61,31 @@ class FileInfo:
         self.__size: Optional[int] = None
         self.__mtime: Optional[float] = None
 
-        # First check if file exists
-        abs_path = os.path.abspath(self.__path)
-        logger.debug("Absolute path for %s: %s", path, abs_path)
-
-        if not os.path.exists(abs_path):
-            raise FileNotFoundError(f"File not found: {path}")
-        if not os.path.isfile(abs_path):
-            raise FileNotFoundError(f"Path is not a file: {path}")
-
-        # Then validate security
+        # First validate security and resolve path
         try:
             # This will raise PathSecurityError if path is not allowed
-            resolved_path = self.abs_path
+            resolved_path = self.__security_manager.resolve_path(self.__path)
             logger.debug(
                 "Security-resolved path for %s: %s", path, resolved_path
             )
+            
+            # Now check if the file exists and is accessible
+            if not resolved_path.exists():
+                # Use the original path in the error message
+                raise FileNotFoundError(f"File not found: {os.path.basename(path)}")
+            
+            if not resolved_path.is_file():
+                raise FileNotFoundError(f"Not a file: {os.path.basename(path)}")
+                
         except PathSecurityError:
+            # Re-raise security errors as is
             raise
+        except FileNotFoundError:
+            # Re-raise file not found errors with simplified message
+            raise FileNotFoundError(f"File not found: {os.path.basename(path)}")
         except Exception as e:
-            raise FileNotFoundError(f"Invalid file path: {e}")
+            # Convert other errors to FileNotFoundError with simplified message
+            raise FileNotFoundError(f"File not found: {os.path.basename(path)}")
 
         # If content/encoding weren't provided, read them now
         if self.__content is None or self.__encoding is None:
@@ -208,6 +213,32 @@ class FileInfo:
         """Prevent setting hash directly."""
         raise AttributeError("Cannot modify hash directly")
 
+    @property
+    def exists(self) -> bool:
+        """Check if the file exists.
+
+        Returns:
+            bool: True if the file exists, False otherwise
+        """
+        try:
+            return os.path.exists(self.abs_path)
+        except (OSError, PathSecurityError):
+            return False
+
+    @property
+    def is_binary(self) -> bool:
+        """Check if the file appears to be binary.
+
+        Returns:
+            bool: True if the file appears to be binary, False otherwise
+        """
+        try:
+            with open(self.abs_path, 'rb') as f:
+                chunk = f.read(1024)
+                return b'\0' in chunk
+        except (OSError, PathSecurityError):
+            return False
+
     def _read_file(self) -> None:
         """Read file content and encoding from disk."""
         try:
@@ -322,3 +353,25 @@ class FileInfo:
             )
         finally:
             del frame  # Avoid reference cycles
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert file info to a dictionary.
+        
+        Returns:
+            Dictionary containing file metadata and content
+        """
+        # Get file stats
+        stats = os.stat(self.abs_path)
+        
+        return {
+            "path": self.path,
+            "abs_path": str(self.abs_path),
+            "exists": self.exists,
+            "size": self.size,
+            "content": self.content,
+            "encoding": self.encoding,
+            "hash": self.hash,
+            "mtime": self.mtime,
+            "mtime_ns": int(self.mtime * 1e9) if self.mtime is not None else None,
+            "mode": stats.st_mode
+        }
