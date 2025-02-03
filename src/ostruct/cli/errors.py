@@ -105,6 +105,15 @@ class PathSecurityError(PathError):
         context['wrapped'] = False  # Initialize wrapped state
         super().__init__(message, path, context)
 
+    def __str__(self) -> str:
+        """Return string representation with allowed directories if present."""
+        base = super().__str__()
+        if self.context and 'allowed_dirs' in self.context:
+            allowed = self.context['allowed_dirs']
+            if allowed:  # Only add if there are actually allowed dirs
+                return f"{base} (allowed directories: {', '.join(allowed)})"
+        return base
+
     @property
     def has_been_logged(self) -> bool:
         """Whether this error has been logged."""

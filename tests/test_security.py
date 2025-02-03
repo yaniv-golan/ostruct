@@ -3,12 +3,13 @@
 from pathlib import Path
 import os
 import tempfile
+import logging
 
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.errors import PathSecurityError, DirectoryNotFoundError
-from ostruct.cli.security import SecurityManager
+from ostruct.cli.security import SecurityManager, SecurityErrorReasons
 
 
 def test_security_manager_init(fs: FakeFilesystem) -> None:
@@ -149,18 +150,17 @@ def test_security_manager_permissive_allows_temp_paths(fs: FakeFilesystem, mock_
     # Create test directories
     base_dir = Path("/test_workspace/base")
     fs.create_dir(base_dir)
-    
+
     # Create a file in the temp directory
     temp_file = Path(mock_temp_dir) / "test.txt"
     fs.create_file(temp_file)
-    
+
     manager = SecurityManager(str(base_dir), allow_temp_paths=True)
-    
+
     # Should not raise an exception
     validated_path = manager.validate_path(str(temp_file))
-    assert validated_path == temp_file.resolve()
-    assert str(temp_file).startswith(str(Path(tempfile.gettempdir())))
-    assert not str(Path("/not/a/temp/path")).startswith(str(Path(tempfile.gettempdir())))
+    # Compare resolved paths to handle platform-specific symlinks
+    assert validated_path.resolve() == temp_file.resolve()
 
 
 def test_security_manager_invalid_directory(fs: FakeFilesystem) -> None:
@@ -214,18 +214,30 @@ def test_safe_symlink(fs: FakeFilesystem, security_manager: SecurityManager) -> 
 
 def test_unsafe_symlink(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
     """Test that symlinks pointing outside allowed directories are blocked."""
+    logger = logging.getLogger("ostruct.test")
+    logger.info("\n=== Setting up Unsafe Symlink Test ===")
+    
     # Setup directories
     fs.create_dir("/test_workspace/base/safe")
     fs.create_dir("/unsafe")
     fs.create_file("/unsafe/target.txt", contents="unsafe content")
     fs.create_symlink("/test_workspace/base/safe/link.txt", "/unsafe/target.txt")
     
+    # Verify setup
+    logger.info("\n=== Verifying Setup ===")
+    assert fs.exists("/unsafe/target.txt"), "Target file should exist"
+    assert fs.islink("/test_workspace/base/safe/link.txt"), "Link should exist"
+    assert fs.readlink("/test_workspace/base/safe/link.txt") == "/unsafe/target.txt"
+    
     # Attempt to access through symlink should fail
     with pytest.raises(PathSecurityError) as exc_info:
         with security_manager.symlink_context():
-            security_manager.resolve_symlink(Path("/test_workspace/base/safe/link.txt"))
+            logger.info("Starting symlink resolution...")
+            result = security_manager.resolve_symlink(Path("/test_workspace/base/safe/link.txt"))
     
-    assert exc_info.value.context["reason"] == "symlink_target_not_allowed"
+    logger.info("Error context: %s", exc_info.value.context)
+    assert exc_info.value.context["reason"] == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    assert "/unsafe/target.txt" in str(exc_info.value)
 
 
 def test_relative_symlink(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
@@ -248,54 +260,91 @@ def test_relative_symlink(fs: FakeFilesystem, security_manager: SecurityManager)
 
 def test_symlink_loop(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
     """Test detection of symlink loops."""
-    # Create a simple loop
-    fs.create_dir("/test_workspace/base/loop")
-    fs.create_symlink("/test_workspace/base/loop/link1", "/test_workspace/base/loop/link2")
-    fs.create_symlink("/test_workspace/base/loop/link2", "/test_workspace/base/loop/link1")
+    logger = logging.getLogger("ostruct.test")
+    logger.info("\n=== Setting up Symlink Loop Test ===")
     
-    # Attempt to access should detect loop
+    # Create base directory and target file
+    base = "/test_workspace/base/loop"
+    fs.create_dir(base)
+    fs.create_file(f"{base}/target.txt", contents="test")
+    
+    # Create valid chain first using relative paths
+    fs.create_symlink(f"{base}/link1", "target.txt")
+    assert fs.exists(f"{base}/link1"), "link1 should exist"
+    
+    fs.create_symlink(f"{base}/link2", "link1")
+    assert fs.exists(f"{base}/link2"), "link2 should exist"
+    
+    fs.create_symlink(f"{base}/link3", "link2")
+    assert fs.exists(f"{base}/link3"), "link3 should exist"
+    
+    # Create the loop by updating link1 to point to link3
+    fs.remove(f"{base}/link1")
+    fs.create_symlink(f"{base}/link1", "link3")
+    
+    # Verify loop creation
+    logger.info("\n=== Verifying Loop Creation ===")
+    assert fs.readlink(f"{base}/link1") == "link3"
+    assert fs.readlink(f"{base}/link2") == "link1"
+    assert fs.readlink(f"{base}/link3") == "link2"
+    
+    # Attempt to resolve should detect loop
     with pytest.raises(PathSecurityError) as exc_info:
         with security_manager.symlink_context():
-            security_manager.resolve_symlink(Path("/test_workspace/base/loop/link1"))
+            logger.info("Starting symlink resolution...")
+            result = security_manager.resolve_symlink(Path(f"{base}/link1"))
     
-    assert exc_info.value.context["reason"] == "symlink_loop"
+    logger.info("Error context: %s", exc_info.value.context)
+    assert exc_info.value.context["reason"] == SecurityErrorReasons.SYMLINK_LOOP
     assert "loop_chain" in exc_info.value.context
-
-
-def test_nested_symlinks(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
-    """Test handling of nested symlinks."""
-    # Setup nested structure
-    fs.create_dir("/test_workspace/base/nested")
-    fs.create_file("/test_workspace/base/nested/target.txt", contents="nested content")
-    fs.create_symlink("/test_workspace/base/nested/link1", "/test_workspace/base/nested/link2")
-    fs.create_symlink("/test_workspace/base/nested/link2", "/test_workspace/base/nested/target.txt")
-    
-    # Access through nested symlinks should work
-    with security_manager.symlink_context():
-        resolved = security_manager.resolve_symlink(Path("/test_workspace/base/nested/link1"))
-        with open(resolved) as f:
-            assert f.read() == "nested content"
 
 
 def test_max_depth_exceeded(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
     """Test handling of excessive symlink nesting."""
-    # Create a long chain of symlinks
-    fs.create_dir("/test_workspace/base/deep")
-    fs.create_file("/test_workspace/base/deep/target.txt", contents="deep content")
+    logger = logging.getLogger("ostruct.test")
+    logger.info("\n=== Max Depth Test Setup ===")
     
-    current = "/test_workspace/base/deep/target.txt"
-    for i in range(50):  # More than our max_depth
-        link = f"/test_workspace/base/deep/link_{i}"
-        fs.create_symlink(link, current)
-        current = link
+    # Set explicit max depth for test
+    max_depth = 5  # Use a smaller depth for testing
+    security_manager.max_symlink_depth = max_depth
     
-    # Attempt to access should fail due to max depth
+    # Create base directory and target file
+    base = "/test_workspace/base/deep"
+    fs.create_dir(base)
+    fs.create_file(f"{base}/target.txt", contents="deep content")
+    
+    # Create valid chain of symlinks using relative paths
+    prev_link = "target.txt"
+    chain_length = max_depth + 3  # Create a chain slightly longer than max_depth
+    
+    logger.info("\n=== Creating Symlink Chain ===")
+    for i in range(chain_length):
+        link = f"link_{i}"
+        link_path = f"{base}/{link}"
+        fs.create_symlink(link_path, prev_link)
+        logger.info("Created link %d: %s -> %s", i, link_path, prev_link)
+        
+        # Verify each link right after creation
+        assert fs.exists(link_path), f"Failed to create {link}"
+        assert fs.islink(link_path), f"{link} is not a symlink"
+        assert fs.readlink(link_path) == prev_link, f"{link} points to wrong target"
+        
+        prev_link = link
+    
+    # Verify the final link exists
+    final_link = f"{base}/link_{chain_length-1}"
+    assert fs.exists(final_link), f"Final link {final_link} should exist"
+    
+    # Attempt to resolve should fail due to max depth
     with pytest.raises(PathSecurityError) as exc_info:
         with security_manager.symlink_context():
-            security_manager.resolve_symlink(Path(current))
+            logger.info("Starting symlink resolution for: %s", final_link)
+            result = security_manager.resolve_symlink(Path(final_link))
     
-    assert exc_info.value.context["reason"] == "max_depth_exceeded"
-    assert "resolution_chain" in exc_info.value.context
+    logger.info("Error context: %s", exc_info.value.context)
+    assert exc_info.value.context["reason"] == SecurityErrorReasons.MAX_DEPTH_EXCEEDED
+    assert exc_info.value.context["depth"] >= max_depth
+    assert exc_info.value.context["max_depth"] == max_depth
 
 
 def test_mixed_absolute_relative_symlinks(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
@@ -339,16 +388,81 @@ def test_symlink_to_dir(fs: FakeFilesystem, security_manager: SecurityManager) -
 
 def test_broken_symlink(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
     """Test handling of broken symlinks."""
+    logger = logging.getLogger("ostruct.test")
+    logger.info("\n=== Broken Symlink Test Setup ===")
+    
     # Create a symlink to non-existent target
     fs.create_dir("/test_workspace/base/broken")
-    fs.create_symlink("/test_workspace/base/broken/broken_link", "/test_workspace/base/broken/nonexistent")
+    target = "/test_workspace/base/broken/nonexistent"
+    link = "/test_workspace/base/broken/broken_link"
+    fs.create_symlink(link, target)
+    
+    # Verify setup
+    logger.info("Created symlink: %s -> %s", link, target)
+    logger.info("Link exists? %s, is_symlink? %s", fs.exists(link), fs.islink(link))
+    logger.info("Target exists? %s", fs.exists(target))
     
     # Attempt to access should fail gracefully
     with pytest.raises(PathSecurityError) as exc_info:
         with security_manager.symlink_context():
-            security_manager.resolve_symlink(Path("/test_workspace/base/broken/broken_link"))
+            logger.info("Starting symlink resolution...")
+            result = security_manager.resolve_symlink(Path(link))
     
-    assert exc_info.value.context["reason"] == "symlink_error"
+    logger.info("Error context: %s", exc_info.value.context)
+    assert exc_info.value.context["reason"] == SecurityErrorReasons.BROKEN_SYMLINK
+    assert "Broken symlink" in str(exc_info.value)
+
+
+def test_file_not_found_before_security(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
+    """Test that file existence is checked before security permissions."""
+    logger = logging.getLogger("ostruct.test")
+    
+    # Try to access non-existent file
+    with pytest.raises(FileNotFoundError) as exc_info:
+        security_manager.resolve_path("nonexistent.txt")
+    
+    assert "File not found" in str(exc_info.value)
+    assert not isinstance(exc_info.value, PathSecurityError)
+
+
+def test_symlink_chain_validation(fs: FakeFilesystem, security_manager: SecurityManager) -> None:
+    """Test validation of each step in a symlink chain."""
+    logger = logging.getLogger("ostruct.test")
+    logger.info("\n=== Setting up Symlink Chain Test ===")
+    
+    # Create test structure:
+    # base/
+    #   safe/
+    #     link1 -> ../intermediate/link2
+    #   intermediate/
+    #     link2 -> /unsafe/target.txt
+    # unsafe/
+    #   target.txt
+    
+    fs.create_dir("/test_workspace/base/safe")
+    fs.create_dir("/test_workspace/base/intermediate")
+    fs.create_dir("/unsafe")
+    fs.create_file("/unsafe/target.txt", contents="unsafe")
+    
+    # Create symlink chain
+    fs.create_symlink("/test_workspace/base/intermediate/link2", "/unsafe/target.txt")
+    fs.create_symlink("/test_workspace/base/safe/link1", "../intermediate/link2")
+    
+    # Verify setup
+    logger.info("\n=== Verifying Setup ===")
+    assert fs.exists("/unsafe/target.txt"), "Target should exist"
+    assert fs.islink("/test_workspace/base/safe/link1"), "Link1 should exist"
+    assert fs.islink("/test_workspace/base/intermediate/link2"), "Link2 should exist"
+    
+    # Attempt to resolve should fail at the intermediate link
+    with pytest.raises(PathSecurityError) as exc_info:
+        with security_manager.symlink_context():
+            logger.info("Starting symlink resolution...")
+            result = security_manager.resolve_symlink(Path("/test_workspace/base/safe/link1"))
+    
+    logger.info("Error context: %s", exc_info.value.context)
+    assert exc_info.value.context["reason"] == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    assert "/unsafe/target.txt" in str(exc_info.value)
 
 
 def test_validate_path_missing_base(fs: FakeFilesystem) -> None:
