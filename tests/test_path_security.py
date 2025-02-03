@@ -112,7 +112,7 @@ def test_symlink_security(fs: FakeFilesystem) -> None:
 
 def test_allowed_paths_normalization(fs: FakeFilesystem) -> None:
     """Test path normalization in allowed paths checking.
-    
+
     The SecurityManager should allow any path within the base or allowed directories,
     regardless of filename case. Case sensitivity is a filesystem concern, not a
     security boundary. The SecurityManager's role is to prevent path traversal,
@@ -130,9 +130,15 @@ def test_allowed_paths_normalization(fs: FakeFilesystem) -> None:
     # Test paths that won't conflict on case-sensitive systems
     test_paths = [
         ("/test_workspace/base/file1.txt", True),
-        ("/test_workspace/base/FILE2.txt", True),  # Always allowed if within base dir
+        (
+            "/test_workspace/base/FILE2.txt",
+            True,
+        ),  # Always allowed if within base dir
         ("/test_workspace/allowed/file3.txt", True),
-        ("/test_workspace/allowed/FILE4.txt", True),  # Always allowed if within allowed dir
+        (
+            "/test_workspace/allowed/FILE4.txt",
+            True,
+        ),  # Always allowed if within allowed dir
     ]
 
     for path, expected in test_paths:
