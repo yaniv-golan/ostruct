@@ -1,8 +1,8 @@
 # ostruct-cli
 
 [![PyPI version](https://badge.fury.io/py/ostruct-cli.svg)](https://badge.fury.io/py/ostruct-cli)
-[![Python Versions](https://img.shields.io/pypi/pyversions/ostruct-cli.svg)](https://pypi.org/project/ostruct-cli/)
-[![Documentation Status](https://readthedocs.org/projects/ostruct-cli/badge/?version=latest)](https://ostruct-cli.readthedocs.io/en/latest/?badge=latest)
+[![Python Versions](https://img.shields.io/pypi/pyversions/ostruct-cli.svg)](https://pypi.org/project/ostruct-cli)
+[![Documentation Status](https://readthedocs.org/projects/ostruct/badge/?version=latest)](https://ostruct.readthedocs.io/en/latest/?badge=latest)
 [![CI](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -99,7 +99,7 @@ All debug and error logs are written to:
 - `~/.ostruct/logs/ostruct.log`: General application logs
 - `~/.ostruct/logs/openai_stream.log`: OpenAI streaming operations logs
 
-For more detailed documentation and examples, visit our [documentation](https://ostruct-cli.readthedocs.io/).
+For more detailed documentation and examples, visit our [documentation](https://ostruct.readthedocs.io/).
 
 ## Development
 
