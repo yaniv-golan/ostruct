@@ -235,9 +235,15 @@ class CliTestRunner:
                     )
                 )
 
+            # Include chained exception info if available
+            if result.exception.__cause__:
+                error_sources.append(str(result.exception.__cause__))
+
         # 3. Handle other exceptions
         elif result.exception:
             error_sources.append(str(result.exception))
+            if result.exception.__cause__:
+                error_sources.append(str(result.exception.__cause__))
 
         # 4. Include output streams
         if result.stderr:
@@ -260,7 +266,12 @@ class CliTestRunner:
         if expected_message_lower == "file not found":
             assert any(
                 msg in error_text_lower
-                for msg in ["file not found", "no such file", "does not exist"]
+                for msg in [
+                    "file not found",
+                    "no such file",
+                    "does not exist",
+                    "cannot access file",
+                ]
             ), (
                 f"Expected file not found error in output.\n"
                 f"Got:\nExit Code: {result.exit_code}\n"
@@ -289,16 +300,19 @@ class CliTestRunner:
                     "invalid json",
                     "error parsing json",
                     "json decode error",
+                    "expecting property name",
+                    "expecting value",
                 ]
             ), (
-                f"Expected invalid JSON error in output.\n"
+                f"Expected JSON error in output.\n"
                 f"Got:\nExit Code: {result.exit_code}\n"
                 f"Exception Type: {type(result.exception).__name__}\n"
                 f"Error Text:\n{error_text}"
             )
         else:
+            # For other messages, check if the expected message is a substring
             assert expected_message_lower in error_text_lower, (
-                f"Expected '{expected_message}' in error output.\n"
+                f"Expected error message '{expected_message}' not found in output.\n"
                 f"Got:\nExit Code: {result.exit_code}\n"
                 f"Exception Type: {type(result.exception).__name__}\n"
                 f"Error Text:\n{error_text}"

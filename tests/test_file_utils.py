@@ -131,12 +131,19 @@ def test_file_info_missing_file(
     """Test FileInfo handling of missing files."""
     os.chdir("/test_workspace/base")  # Change to base directory
 
-    with pytest.raises(
-        FileNotFoundError, match="File not found: nonexistent.txt"
-    ):
+    with pytest.raises(FileNotFoundError) as exc_info:
         FileInfo.from_path(
             "nonexistent.txt", security_manager=security_manager
         )
+
+    # Verify error message and context
+    error_msg = str(exc_info.value)
+    assert "nonexistent.txt" in error_msg
+    assert any(
+        msg in error_msg
+        for msg in ["Cannot access file", "File not found", "No such file"]
+    )
+    assert exc_info.value.__cause__ is not None
 
 
 def test_collect_files_from_pattern(
@@ -349,10 +356,19 @@ def test_file_info_missing_file_stats(
     """Test stats loading for missing file."""
     os.chdir("/test_workspace/base")  # Change to base directory
 
-    with pytest.raises(FileNotFoundError, match="File not found"):
+    with pytest.raises(FileNotFoundError) as exc_info:
         FileInfo.from_path(
             "nonexistent.txt", security_manager=security_manager
         )
+
+    # Verify error message and context
+    error_msg = str(exc_info.value)
+    assert "nonexistent.txt" in error_msg
+    assert any(
+        msg in error_msg
+        for msg in ["Cannot access file", "File not found", "No such file"]
+    )
+    assert exc_info.value.__cause__ is not None
 
 
 def test_file_info_content_errors(
@@ -362,10 +378,19 @@ def test_file_info_content_errors(
     os.chdir("/test_workspace/base")  # Change to base directory
 
     # Test with missing file
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError) as exc_info:
         FileInfo.from_path(
             "nonexistent.txt", security_manager=security_manager
         )
+
+    # Verify error message and context
+    error_msg = str(exc_info.value)
+    assert "nonexistent.txt" in error_msg
+    assert any(
+        msg in error_msg
+        for msg in ["Cannot access file", "File not found", "No such file"]
+    )
+    assert exc_info.value.__cause__ is not None
 
 
 def test_security_error_single_message(

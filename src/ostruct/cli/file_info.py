@@ -82,18 +82,38 @@ class FileInfo:
                 )
 
         except PathSecurityError:
-            # Re-raise security errors as is
+            # Re-raise security errors as is - they already have proper context
             raise
-        except FileNotFoundError:
-            # Re-raise file not found errors with simplified message
+        except FileNotFoundError as e:
+            # Re-raise file not found errors with proper context
+            logger.debug("File not found error: %s", e)
             raise FileNotFoundError(
                 f"File not found: {os.path.basename(path)}"
-            )
-        except Exception:  # Catch all other exceptions
-            # Convert other errors to FileNotFoundError with simplified message
+            ) from e
+        except PermissionError as e:
+            # Handle permission errors specifically
+            logger.error("Permission denied: %s", e)
             raise FileNotFoundError(
-                f"File not found: {os.path.basename(path)}"
+                f"Permission denied for file: {os.path.basename(path)}"
+            ) from e
+        except OSError as e:
+            # Handle OS-level errors with context
+            logger.error("OS error accessing file: %s", e)
+            raise FileNotFoundError(
+                f"Cannot access file: {os.path.basename(path)} ({e.strerror})"
+            ) from e
+        except Exception as e:
+            # Last resort catch-all with full context
+            logger.error(
+                "Unexpected error accessing file %s: %s (%s)",
+                path,
+                str(e),
+                type(e).__name__,
+                exc_info=True,
             )
+            raise FileNotFoundError(
+                f"Cannot access file {os.path.basename(path)}: {type(e).__name__} - {str(e)}"
+            ) from e
 
         # If content/encoding weren't provided, read them now
         if self.__content is None or self.__encoding is None:
