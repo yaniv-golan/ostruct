@@ -1,7 +1,8 @@
 """FileInfoList implementation providing smart file content access."""
 
 import logging
-from typing import Iterator, List, SupportsIndex, Union, overload
+import threading
+from typing import Iterable, Iterator, List, SupportsIndex, Union, overload
 
 from .file_info import FileInfo
 
@@ -17,6 +18,12 @@ class FileInfoList(List[FileInfo]):
     and metadata. When the list contains exactly one file from a single file mapping,
     properties like content return the value directly. For multiple files or directory
     mappings, properties return a list of values.
+
+    This class is thread-safe. All operations that access or modify the internal list
+    are protected by a reentrant lock (RLock). This allows nested method calls while
+    holding the lock, preventing deadlocks in cases like:
+        content property → __len__ → lock
+        content property → __getitem__ → lock
 
     Examples:
         Single file (--file):
@@ -52,6 +59,7 @@ class FileInfoList(List[FileInfo]):
             len(files),
             from_dir,
         )
+        self._lock = threading.RLock()  # Use RLock for nested method calls
         super().__init__(files)
         self._from_dir = from_dir
 
@@ -66,20 +74,37 @@ class FileInfoList(List[FileInfo]):
         Raises:
             ValueError: If the list is empty
         """
-        if not self:
-            logger.debug("FileInfoList.content called but list is empty")
-            raise ValueError("No files in FileInfoList")
-        if len(self) == 1 and not self._from_dir:
+        # Take snapshot under lock
+        with self._lock:
+            if not self:
+                logger.debug("FileInfoList.content called but list is empty")
+                raise ValueError("No files in FileInfoList")
+
+            # Make a copy of the files we need to access
+            if len(self) == 1 and not self._from_dir:
+                file_info = self[0]
+                is_single = True
+            else:
+                files = list(self)
+                is_single = False
+
+        # Access file contents outside lock to prevent deadlocks
+        try:
+            if is_single:
+                logger.debug(
+                    "FileInfoList.content returning single file content (not from dir)"
+                )
+                return file_info.content
+
             logger.debug(
-                "FileInfoList.content returning single file content (not from dir)"
+                "FileInfoList.content returning list of %d contents (from_dir=%s)",
+                len(files),
+                self._from_dir,
             )
-            return self[0].content
-        logger.debug(
-            "FileInfoList.content returning list of %d contents (from_dir=%s)",
-            len(self),
-            self._from_dir,
-        )
-        return [f.content for f in self]
+            return [f.content for f in files]
+        except Exception as e:
+            logger.error("Error accessing file content: %s", e)
+            raise
 
     @property
     def path(self) -> Union[str, List[str]]:
@@ -92,11 +117,25 @@ class FileInfoList(List[FileInfo]):
         Raises:
             ValueError: If the list is empty
         """
-        if not self:
-            raise ValueError("No files in FileInfoList")
-        if len(self) == 1 and not self._from_dir:
-            return self[0].path
-        return [f.path for f in self]
+        # First get a snapshot of the list state under the lock
+        with self._lock:
+            if not self:
+                raise ValueError("No files in FileInfoList")
+            if len(self) == 1 and not self._from_dir:
+                file_info = self[0]
+                is_single = True
+            else:
+                files = list(self)
+                is_single = False
+
+        # Now access file paths outside the lock
+        try:
+            if is_single:
+                return file_info.path
+            return [f.path for f in files]
+        except Exception as e:
+            logger.error("Error accessing file path: %s", e)
+            raise
 
     @property
     def abs_path(self) -> Union[str, List[str]]:
@@ -109,11 +148,25 @@ class FileInfoList(List[FileInfo]):
         Raises:
             ValueError: If the list is empty
         """
-        if not self:
-            raise ValueError("No files in FileInfoList")
-        if len(self) == 1 and not self._from_dir:
-            return self[0].abs_path
-        return [f.abs_path for f in self]
+        # First get a snapshot of the list state under the lock
+        with self._lock:
+            if not self:
+                raise ValueError("No files in FileInfoList")
+            if len(self) == 1 and not self._from_dir:
+                file_info = self[0]
+                is_single = True
+            else:
+                files = list(self)
+                is_single = False
+
+        # Now access file paths outside the lock
+        try:
+            if is_single:
+                return file_info.abs_path
+            return [f.abs_path for f in files]
+        except Exception as e:
+            logger.error("Error accessing absolute path: %s", e)
+            raise
 
     @property
     def size(self) -> Union[int, List[int]]:
@@ -126,26 +179,39 @@ class FileInfoList(List[FileInfo]):
         Raises:
             ValueError: If the list is empty or if any file size is None
         """
-        if not self:
-            raise ValueError("No files in FileInfoList")
+        # First get a snapshot of the list state under the lock
+        with self._lock:
+            if not self:
+                raise ValueError("No files in FileInfoList")
 
-        # For single file not from directory, return its size
-        if len(self) == 1 and not self._from_dir:
-            size = self[0].size
-            if size is None:
-                raise ValueError(
-                    f"Could not get size for file: {self[0].path}"
-                )
-            return size
+            # Make a copy of the files we need to access
+            if len(self) == 1 and not self._from_dir:
+                file_info = self[0]
+                is_single = True
+            else:
+                files = list(self)
+                is_single = False
 
-        # For multiple files, collect all sizes
-        sizes = []
-        for f in self:
-            size = f.size
-            if size is None:
-                raise ValueError(f"Could not get size for file: {f.path}")
-            sizes.append(size)
-        return sizes
+        # Now access file sizes outside the lock
+        try:
+            if is_single:
+                size = file_info.size
+                if size is None:
+                    raise ValueError(
+                        f"Could not get size for file: {file_info.path}"
+                    )
+                return size
+
+            sizes = []
+            for f in files:
+                size = f.size
+                if size is None:
+                    raise ValueError(f"Could not get size for file: {f.path}")
+                sizes.append(size)
+            return sizes
+        except Exception as e:
+            logger.error("Error accessing file size: %s", e)
+            raise
 
     def __str__(self) -> str:
         """Get string representation of the file list.
@@ -153,11 +219,12 @@ class FileInfoList(List[FileInfo]):
         Returns:
             str: String representation in format FileInfoList([paths])
         """
-        if not self:
-            return "FileInfoList([])"
-        if len(self) == 1:
-            return f"FileInfoList(['{self[0].path}'])"
-        return f"FileInfoList({[f.path for f in self]})"
+        with self._lock:
+            if not self:
+                return "FileInfoList([])"
+            if len(self) == 1:
+                return f"FileInfoList(['{self[0].path}'])"
+            return f"FileInfoList({[f.path for f in self]})"
 
     def __repr__(self) -> str:
         """Get detailed string representation of the file list.
@@ -169,18 +236,23 @@ class FileInfoList(List[FileInfo]):
 
     def __iter__(self) -> Iterator[FileInfo]:
         """Return iterator over files."""
+        with self._lock:
+            # Create a copy of the list to avoid concurrent modification issues
+            items = list(super().__iter__())
         logger.debug(
-            "Starting iteration over FileInfoList with %d files", len(self)
+            "Starting iteration over FileInfoList with %d files", len(items)
         )
-        return super().__iter__()
+        return iter(items)
 
     def __len__(self) -> int:
         """Return number of files."""
-        return super().__len__()
+        with self._lock:
+            return super().__len__()
 
     def __bool__(self) -> bool:
         """Return True if there are files."""
-        return super().__len__() > 0
+        with self._lock:
+            return super().__len__() > 0
 
     @overload
     def __getitem__(self, index: SupportsIndex, /) -> FileInfo: ...
@@ -191,17 +263,70 @@ class FileInfoList(List[FileInfo]):
     def __getitem__(
         self, index: Union[SupportsIndex, slice], /
     ) -> Union[FileInfo, "FileInfoList"]:
-        """Get file at index."""
-        logger.debug("Getting file at index %s", index)
-        result = super().__getitem__(index)
-        if isinstance(index, slice):
-            if not isinstance(result, list):
-                raise TypeError(
-                    f"Expected list from slice, got {type(result)}"
+        """Get file at index.
+
+        This method is thread-safe and handles both integer indexing and slicing.
+        For slicing, it ensures the result is always converted to a list before
+        creating a new FileInfoList instance.
+        """
+        with self._lock:
+            logger.debug("Getting file at index %s", index)
+            result = super().__getitem__(index)
+            if isinstance(index, slice):
+                # Always convert to list to handle any sequence type
+                # Cast to Iterable[FileInfo] to satisfy mypy
+                result_list = list(
+                    result if isinstance(result, list) else [result]
                 )
-            return FileInfoList(result, self._from_dir)
-        if not isinstance(result, FileInfo):
-            raise TypeError(
-                f"Expected FileInfo from index, got {type(result)}"
-            )
-        return result
+                return FileInfoList(result_list, self._from_dir)
+            if not isinstance(result, FileInfo):
+                raise TypeError(
+                    f"Expected FileInfo from index, got {type(result)}"
+                )
+            return result
+
+    def append(self, value: FileInfo) -> None:
+        """Append a FileInfo object to the list."""
+        with self._lock:
+            super().append(value)
+
+    def extend(self, values: Iterable[FileInfo]) -> None:
+        """Extend the list with FileInfo objects.
+
+        Args:
+            values: Iterable of FileInfo objects to add
+        """
+        with self._lock:
+            super().extend(values)
+
+    def insert(self, index: SupportsIndex, value: FileInfo) -> None:
+        """Insert a FileInfo object at the given index.
+
+        Args:
+            index: Position to insert at
+            value: FileInfo object to insert
+        """
+        with self._lock:
+            super().insert(index, value)
+
+    def pop(self, index: SupportsIndex = -1) -> FileInfo:
+        """Remove and return item at index (default last).
+
+        Args:
+            index: Position to remove from (default: -1 for last item)
+
+        Returns:
+            The removed FileInfo object
+        """
+        with self._lock:
+            return super().pop(index)
+
+    def remove(self, value: FileInfo) -> None:
+        """Remove first occurrence of value."""
+        with self._lock:
+            super().remove(value)
+
+    def clear(self) -> None:
+        """Remove all items from list."""
+        with self._lock:
+            super().clear()
