@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Any, Optional
 
-from .errors import FileNotFoundError, PathSecurityError
+from .errors import FileNotFoundError, FileReadError, PathSecurityError
 from .security import SecurityManager
 
 logger = logging.getLogger(__name__)
@@ -115,11 +115,6 @@ class FileInfo:
                 f"Cannot access file {os.path.basename(path)}: {type(e).__name__} - {str(e)}"
             ) from e
 
-        # If content/encoding weren't provided, read them now
-        if self.__content is None or self.__encoding is None:
-            logger.debug("Reading content for %s", path)
-            self._read_file()
-
     @property
     def path(self) -> str:
         """Get the relative path of the file."""
@@ -203,10 +198,25 @@ class FileInfo:
 
     @property
     def content(self) -> str:
-        """Get the content of the file."""
+        """Get the content of the file.
+
+        Returns:
+            str: The file content
+
+        Raises:
+            FileReadError: If the file cannot be read, wrapping the underlying cause
+                         (FileNotFoundError, UnicodeDecodeError, etc)
+        """
+        if self.__content is None:
+            try:
+                self._read_file()
+            except Exception as e:
+                raise FileReadError(
+                    f"Failed to load content: {self.__path}", self.__path
+                ) from e
         assert (
             self.__content is not None
-        ), "Content should be initialized in constructor"
+        )  # Help mypy understand content is set
         return self.__content
 
     @content.setter
@@ -216,10 +226,20 @@ class FileInfo:
 
     @property
     def encoding(self) -> str:
-        """Get the encoding of the file."""
+        """Get the encoding of the file.
+
+        Returns:
+            str: The file encoding (utf-8 or system)
+
+        Raises:
+            FileReadError: If the file cannot be read or decoded
+        """
+        if self.__encoding is None:
+            # This will trigger content loading and may raise FileReadError
+            self.content
         assert (
             self.__encoding is not None
-        ), "Encoding should be initialized in constructor"
+        )  # Help mypy understand encoding is set
         return self.__encoding
 
     @encoding.setter
@@ -268,34 +288,24 @@ class FileInfo:
             return False
 
     def _read_file(self) -> None:
-        """Read file content and encoding from disk."""
+        """Read and decode file content.
+
+        Implementation detail: Attempts UTF-8 first, falls back to system encoding.
+        All exceptions will be caught and wrapped by the content property.
+        """
         try:
             with open(self.abs_path, "rb") as f:
                 raw_content = f.read()
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"File not found: {self.__path}") from e
-        except OSError as e:
-            raise FileNotFoundError(
-                f"Could not read file {self.__path}: {e}"
-            ) from e
-
-        # Try UTF-8 first
-        try:
-            self.__content = raw_content.decode("utf-8")
-            self.__encoding = "utf-8"
-            return
-        except UnicodeDecodeError:
-            pass
-
-        # Fall back to system default encoding
-        try:
-            self.__content = raw_content.decode()
-            self.__encoding = "system"
-            return
-        except UnicodeDecodeError as e:
-            raise ValueError(
-                f"Could not decode file {self.__path}: {e}"
-            ) from e
+            try:
+                self.__content = raw_content.decode("utf-8")
+                self.__encoding = "utf-8"
+            except UnicodeDecodeError:
+                # Fall back to system encoding
+                self.__content = raw_content.decode()
+                self.__encoding = "system"
+        except Exception:
+            # Let content property handle all errors
+            raise
 
     def update_cache(
         self,

@@ -6,7 +6,11 @@ import os
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.errors import FileNotFoundError, PathSecurityError
+from ostruct.cli.errors import (
+    FileNotFoundError,
+    FileReadError,
+    PathSecurityError,
+)
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
 from ostruct.cli.file_utils import (
@@ -377,20 +381,46 @@ def test_file_info_content_errors(
     """Test error handling in content loading."""
     os.chdir("/test_workspace/base")  # Change to base directory
 
-    # Test with missing file
+    # Test 1: Missing file at initialization
     with pytest.raises(FileNotFoundError) as exc_info:
         FileInfo.from_path(
             "nonexistent.txt", security_manager=security_manager
         )
 
-    # Verify error message and context
+    # Verify initialization error
     error_msg = str(exc_info.value)
     assert "nonexistent.txt" in error_msg
     assert any(
         msg in error_msg
         for msg in ["Cannot access file", "File not found", "No such file"]
     )
-    assert exc_info.value.__cause__ is not None
+
+    # Test 2: File exists at init but is removed before content access
+    fs.create_file("/test_workspace/base/disappearing.txt", contents="test")
+    file_info = FileInfo.from_path(
+        "disappearing.txt", security_manager=security_manager
+    )
+    fs.remove("/test_workspace/base/disappearing.txt")  # Remove after init
+
+    with pytest.raises(FileReadError) as exc_info:
+        _ = file_info.content  # Try to access content after file removal
+
+    # Verify content access error
+    assert "Failed to load content: disappearing.txt" in str(exc_info.value)
+    assert isinstance(exc_info.value.__cause__, (FileNotFoundError, OSError))
+
+    # Test 3: Undecodable content
+    fs.create_file("/test_workspace/base/binary.dat", contents=b"\x80\x81")
+
+    file_info = FileInfo.from_path(
+        "binary.dat", security_manager=security_manager
+    )
+    with pytest.raises(FileReadError) as exc_info:
+        _ = file_info.content  # Try to decode invalid content
+
+    # Verify encoding error
+    assert "Failed to load content: binary.dat" in str(exc_info.value)
+    assert isinstance(exc_info.value.__cause__, UnicodeDecodeError)
 
 
 def test_security_error_single_message(

@@ -96,6 +96,19 @@ class FileNotFoundError(PathError):
         super().__init__(path, path, context)
 
 
+class FileReadError(PathError):
+    """Raised when a file cannot be read or decoded.
+
+    This is a wrapper exception that preserves the original cause (FileNotFoundError,
+    UnicodeDecodeError, etc) while providing a consistent interface for error handling.
+    """
+
+    def __init__(
+        self, message: str, path: str, context: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(message, path, context)
+
+
 class DirectoryNotFoundError(PathError):
     """Raised when a specified directory does not exist."""
 
@@ -470,6 +483,7 @@ __all__ = [
     "PathError",
     "PathSecurityError",
     "FileNotFoundError",
+    "FileReadError",
     "DirectoryNotFoundError",
     "SchemaValidationError",
     "SchemaFileError",
