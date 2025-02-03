@@ -1361,7 +1361,7 @@ async def stream_structured_output(
     user_prompt: str,
     output_schema: Type[BaseModel],
     output_file: Optional[str] = None,
-    **kwargs
+    **kwargs: Any,
 ) -> None:
     """Stream structured output from OpenAI API.
     
@@ -1533,7 +1533,11 @@ async def run_cli_async(args: Namespace) -> ExitCode:
         raise CLIError(str(e), context={"error_type": type(e).__name__})
 
 def create_cli() -> click.Command:
-    """Create the Click command with all options."""
+    """Create the CLI command.
+    
+    Returns:
+        click.Command: The CLI command object
+    """
     @create_click_command()
     def cli(**kwargs: Any) -> None:
         """CLI entry point for structured OpenAI API calls."""
@@ -1573,7 +1577,8 @@ def create_cli() -> click.Command:
             logger.exception("Unexpected error")
             raise CLIError(str(e), context={"error_type": type(e).__name__})
 
-    return cli
+    # The decorated function is a Command, but mypy can't detect this
+    return cast(click.Command, cli)
 
 def main() -> None:
     """Main entry point for the CLI."""

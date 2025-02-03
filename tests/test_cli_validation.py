@@ -38,7 +38,7 @@ def test_validate_variable_mapping_basic() -> None:
     assert value == "bar"
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "mapping,is_json,error_type",
     [
         ("=value", False, VariableNameError),  # Empty name
@@ -83,7 +83,7 @@ def test_validate_path_mapping_dir(fs: FakeFilesystem) -> None:
     assert path == "test_dir"
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "mapping,is_dir,error_type",
     [
         (
@@ -171,7 +171,7 @@ def test_validate_task_template_both_provided(fs: FakeFilesystem) -> None:
     assert "Cannot specify both" in str(exc.value)
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "template,error_type",
     [
         ("Hello {{ name!", TaskTemplateSyntaxError),  # Invalid syntax
@@ -207,7 +207,7 @@ def test_validate_schema_file_basic(fs: FakeFilesystem) -> None:
     assert "age" in result["properties"]
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "content,error_type,error_parts",
     [
         # For JSON parsing errors, check for key error indicators
@@ -235,7 +235,7 @@ def test_validate_schema_file_errors(
         ), f"Expected '{part}' in error message: {error_msg}"
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "template,file_mappings,error_phrase",
     [
         (

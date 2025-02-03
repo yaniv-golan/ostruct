@@ -2,7 +2,7 @@ import tiktoken
 from typing import Dict, List
 import sys
 
-def test_encodings():
+def test_encodings() -> None:
     print("Python version:", sys.version)
     print("Tiktoken version:", tiktoken.__version__)
     print("Tiktoken path:", tiktoken.__file__)

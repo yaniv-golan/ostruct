@@ -19,14 +19,6 @@ from ostruct.cli.template_validation import (
 )
 
 
-@pytest.fixture  # type: ignore[misc]
-def security_manager() -> SecurityManager:
-    """Create a security manager for testing."""
-    manager = SecurityManager()
-    manager.add_allowed_directory(tempfile.gettempdir())
-    return manager
-
-
 class FileMapping(TypedDict, total=False):
     name: str
     dict: Dict[str, str]
@@ -38,7 +30,7 @@ class FileMapping(TypedDict, total=False):
     source_files: List[FileInfo]
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "template,available_vars",
     [
         ("{{ any_dict.any_key }}", {"any_dict"}),  # Basic undefined access
@@ -46,14 +38,14 @@ class FileMapping(TypedDict, total=False):
     ],
 )
 def test_safe_undefined(template: str, available_vars: Set[str]) -> None:
-    """Test SafeUndefined behavior for various access patterns."""
+    """Test safe undefined behavior."""
     env = Environment(undefined=SafeUndefined)
     temp = env.from_string(template)
     with pytest.raises(jinja2.UndefinedError):
         temp.render()
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "template,file_mappings,should_pass",
     [
         (
@@ -90,7 +82,7 @@ def test_validate_template_success(
     validate_template_placeholders(template, file_mappings)
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "template,file_mappings,error_phrase",
     [
         (
@@ -147,11 +139,11 @@ def test_validate_fileinfo_attributes(
 ) -> None:
     """Test validation of FileInfo attribute access."""
     # Create test file in fake filesystem
-    fs.create_file("/test_workspace/test_file.txt", contents="test content")
+    fs.create_file("/test_workspace/base/test_file.txt", contents="test content")
 
     template = "Content: {{ file.content }}, Path: {{ file.abs_path }}"
     file_info = FileInfo.from_path(
-        path="/test_workspace/test_file.txt", security_manager=security_manager
+        path="/test_workspace/base/test_file.txt", security_manager=security_manager
     )
     file_mappings: Dict[str, Any] = {"file": file_info}
     validate_template_placeholders(template, file_mappings)
@@ -161,12 +153,12 @@ def create_test_file(
     fs: FakeFilesystem, filename: str, security_manager: SecurityManager
 ) -> FileInfo:
     """Create a test file and return FileInfo instance."""
-    full_path = os.path.join("/test_workspace", filename)
+    full_path = os.path.join("/test_workspace/base", filename)
     fs.create_file(full_path, contents="test content")
     return FileInfo.from_path(path=full_path, security_manager=security_manager)
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "template,context_setup",
     [
         (
@@ -200,8 +192,8 @@ def test_validate_complex_template(
 ) -> None:
     """Test validation of complex template with multiple features."""
     # Set up fake filesystem
-    fs.create_file("/test_workspace/file1.txt", contents="content1")
-    fs.create_file("/test_workspace/file2.txt", contents="content2")
+    fs.create_file("/test_workspace/base/file1.txt", contents="content1")
+    fs.create_file("/test_workspace/base/file2.txt", contents="content2")
 
     template = """
     {% for file in source_files %}
@@ -220,10 +212,10 @@ def test_validate_complex_template(
     file_mappings: Dict[str, Any] = {
         "source_files": [
             FileInfo.from_path(
-                path="/test_workspace/file1.txt", security_manager=security_manager
+                path="/test_workspace/base/file1.txt", security_manager=security_manager
             ),
             FileInfo.from_path(
-                path="/test_workspace/file2.txt", security_manager=security_manager
+                path="/test_workspace/base/file2.txt", security_manager=security_manager
             ),
         ],
         "config": {

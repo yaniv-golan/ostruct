@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 try:
     import tomllib  # Python 3.11+
 except ModuleNotFoundError:
-    import tomli as tomllib  # Python <3.11
+    import tomli as tomllib  # type: ignore  # Python <3.11
 
 # Get the project root directory
 root_dir = Path(__file__).parent.parent.parent

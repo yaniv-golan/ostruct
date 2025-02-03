@@ -49,6 +49,7 @@
     pyfakefs = "^5.7.4"
     types-cachetools = "^5.5.0.20240820"
     types-click = "^7.1.8"
+    types-requests = "^2.32.0.20241016"
 
     [tool.poetry.group.docs]
     optional = true

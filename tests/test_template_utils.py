@@ -74,7 +74,7 @@ def test_validate_task_template_invalid_syntax() -> None:
     assert "Invalid task template syntax" in str(exc.value)
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def fs() -> Generator[FakeFilesystem, None, None]:
     """Fixture to set up fake filesystem."""
     with Patcher() as patcher:
@@ -85,7 +85,7 @@ def fs() -> Generator[FakeFilesystem, None, None]:
         yield fs
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def security_manager(fs: FakeFilesystem) -> SecurityManager:
     """Create a security manager for testing."""
     from tests.conftest import MockSecurityManager

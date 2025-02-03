@@ -30,7 +30,7 @@ from tests.conftest import MockSecurityManager
 logger = logging.getLogger(__name__)
 
 @pytest.fixture
-def setup_tiktoken(monkeypatch):
+def setup_tiktoken(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Mock tiktoken for testing."""
     import tiktoken
     from tiktoken.core import Encoding
@@ -66,7 +66,7 @@ def setup_tiktoken(monkeypatch):
     return mock_enc
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+@pytest.fixture(autouse=True)
 def mock_logging(fs: FakeFilesystem) -> StringIO:
     """Mock logging configuration to avoid file system issues and capture output."""
     # Create a mock log directory
@@ -107,8 +107,8 @@ class CliTestRunner:
 
     def __init__(self) -> None:
         """Initialize the test runner."""
-        self.log_capture = None
-        self.log_handler = None
+        self.log_capture: Optional[StringIO] = None
+        self.log_handler: Optional[logging.StreamHandler] = None
         self.loggers: List[logging.Logger] = []
 
     def invoke(self, *args: Any, **kwargs: Any) -> click.testing.Result:
@@ -123,8 +123,7 @@ class CliTestRunner:
         try:
             # Let Click catch exceptions but ensure we get the original exception
             kwargs['catch_exceptions'] = True
-            # Keep stderr separate for better error capture
-            runner = CliRunner(mix_stderr=False)
+            runner = click.testing.CliRunner(mix_stderr=False)
             result = runner.invoke(*args, **kwargs)
             
             # For Click usage errors (exit code 2), always create a UsageError
@@ -164,22 +163,26 @@ class CliTestRunner:
     def _setup_logging(self) -> None:
         """Set up logging capture."""
         self.log_capture = StringIO()
-        self.log_handler = logging.StreamHandler(self.log_capture)
-        self.log_handler.setFormatter(
-            logging.Formatter('%(levelname)s - %(message)s')
-        )
-        
-        # Capture all relevant loggers
-        loggers = ['root', 'ostruct.cli.cli', 'openai_structured']
-        logger.debug("Setting up loggers: %s", loggers)
-        self.loggers = [logging.getLogger(name) for name in loggers]
-        for log in self.loggers:
-            log.addHandler(self.log_handler)
+        if self.log_capture is not None:
+            self.log_handler = logging.StreamHandler(self.log_capture)
+            if self.log_handler is not None:
+                self.log_handler.setFormatter(
+                    logging.Formatter('%(levelname)s - %(message)s')
+                )
+                
+                # Capture all relevant loggers
+                loggers = ['root', 'ostruct.cli.cli', 'openai_structured']
+                logger.debug("Setting up loggers: %s", loggers)
+                self.loggers = [logging.getLogger(name) for name in loggers]
+                for log in self.loggers:
+                    if self.log_handler is not None:
+                        log.addHandler(self.log_handler)
 
     def _cleanup_logging(self) -> None:
         """Clean up logging handlers."""
         for log in self.loggers:
-            log.removeHandler(self.log_handler)
+            if self.log_handler is not None:
+                log.removeHandler(self.log_handler)
         self.log_handler = None
         self.log_capture = None
         self.loggers = []
@@ -274,7 +277,7 @@ class CliTestRunner:
             )
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def cli_runner() -> CliTestRunner:
     """Create a CLI test runner."""
     return CliTestRunner()
@@ -563,7 +566,7 @@ class TestCLIPreExecution:
     """Test CLI pre-execution functionality."""
 
     def test_basic_execution_setup(
-        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken: MagicMock
     ) -> None:
         """Test basic CLI execution setup without OpenAI."""
         # Create necessary files
@@ -590,7 +593,7 @@ class TestCLIPreExecution:
         assert result.exit_code == 0
 
     def test_directory_traversal(
-        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken: MagicMock
     ) -> None:
         """Test directory traversal without OpenAI."""
         # Create necessary files and directories
@@ -620,7 +623,7 @@ class TestCLIPreExecution:
         assert result.exit_code == 0
 
     def test_template_rendering_mixed(
-        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken: MagicMock
     ) -> None:
         """Test template rendering with mixed inputs."""
         # Create necessary files
@@ -656,7 +659,7 @@ class TestCLIExecution:
     """Test CLI execution functionality."""
 
     def test_basic_execution(
-        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken: MagicMock
     ) -> None:
         """Test basic CLI execution with OpenAI."""
         schema_content = {
@@ -681,9 +684,8 @@ class TestCLIExecution:
         ])
         assert result.exit_code == 0
 
-    @pytest.mark.live  # type: ignore[misc]
     def test_file_input(
-        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken: MagicMock
     ) -> None:
         """Test file input with OpenAI."""
         schema_content = {
@@ -704,9 +706,8 @@ class TestCLIExecution:
         ])
         assert result.exit_code == 0
 
-    @pytest.mark.live  # type: ignore[misc]
     def test_stdin_input(
-        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken: MagicMock
     ) -> None:
         """Test stdin input with OpenAI."""
         schema_content = {
@@ -725,9 +726,8 @@ class TestCLIExecution:
         ], input="test input")  # Provide input directly to invoke
         assert result.exit_code == 0
 
-    @pytest.mark.live  # type: ignore[misc]
     def test_directory_input(
-        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken
+        self, fs: FakeFilesystem, mock_logging: StringIO, cli_runner: CliTestRunner, setup_tiktoken: MagicMock
     ) -> None:
         """Test directory input with OpenAI."""
         schema_content = {
@@ -754,7 +754,7 @@ class TestCLIExecution:
 class TestTemplateContext:
     """Test template context creation."""
 
-    def test_template_context_single_file(self, fs: FakeFilesystem, security_manager: SecurityManager, setup_tiktoken) -> None:
+    def test_template_context_single_file(self, fs: FakeFilesystem, security_manager: SecurityManager, setup_tiktoken: MagicMock) -> None:
         """Test template context creation with a single file."""
         fs.create_file("/test_workspace/base/input.txt", contents="test content")
         file_info = FileInfoList(
@@ -771,7 +771,7 @@ class TestTemplateContext:
         assert context["input"].content == "test content"
         assert os.path.basename(context["input"].path) == "input.txt"
 
-    def test_template_context_multiple_files(self, fs: FakeFilesystem, security_manager: SecurityManager, setup_tiktoken) -> None:
+    def test_template_context_multiple_files(self, fs: FakeFilesystem, security_manager: SecurityManager, setup_tiktoken: MagicMock) -> None:
         """Test template context creation with multiple files."""
         fs.create_file("/test_workspace/base/file1.txt", contents="content 1")
         fs.create_file("/test_workspace/base/file2.txt", contents="content 2")
@@ -792,7 +792,7 @@ class TestTemplateContext:
         assert context["file1"].content == "content 1"
         assert context["file2"].content == "content 2"
 
-    def test_template_context_mixed_sources(self, fs: FakeFilesystem, security_manager: SecurityManager, setup_tiktoken) -> None:
+    def test_template_context_mixed_sources(self, fs: FakeFilesystem, security_manager: SecurityManager, setup_tiktoken: MagicMock) -> None:
         """Test template context creation with mixed sources."""
         fs.create_file("/test_workspace/base/input.txt", contents="file content")
         file_info = FileInfoList(
@@ -814,7 +814,7 @@ class TestTemplateContext:
 
 
 @pytest.fixture(autouse=True)
-def mock_model_support(monkeypatch) -> None:
+def mock_model_support(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mock model support check to allow any model in tests."""
     def mock_supports_structured_output(model: str) -> bool:
         return True

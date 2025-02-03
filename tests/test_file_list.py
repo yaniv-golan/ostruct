@@ -10,7 +10,7 @@ from ostruct.cli.file_list import FileInfoList
 from ostruct.cli.security import SecurityManager
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def security_manager() -> SecurityManager:
     """Create a SecurityManager instance for testing."""
     return SecurityManager(base_dir=os.getcwd())

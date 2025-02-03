@@ -37,8 +37,8 @@ import tempfile
 import hashlib
 import tiktoken
 import requests
-
 import pytest
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.cli import (
     estimate_tokens_for_chat,
@@ -56,7 +56,7 @@ class ChatMessage(TypedDict, total=False):
 class TestTokenEstimation:
     """Test token estimation functionality."""
 
-    def setup_tiktoken(self, fs) -> None:
+    def setup_tiktoken(self, fs: FakeFilesystem) -> None:
         """Set up tiktoken with proper filesystem access.
         
         This method handles the complex requirements of tiktoken in a test environment:
@@ -121,7 +121,7 @@ class TestTokenEstimation:
         except FileExistsError:
             pass
 
-    def test_estimate_tokens_basic(self, fs) -> None:
+    def test_estimate_tokens_basic(self, fs: FakeFilesystem) -> None:
         """Test basic token estimation for chat messages."""
         self.setup_tiktoken(fs)
         
@@ -139,7 +139,7 @@ class TestTokenEstimation:
         # We can assert it's within a reasonable range rather than exact number
         assert 10 <= tokens <= 30  # Reasonable range for these messages
 
-    def test_estimate_tokens_with_name(self, fs) -> None:
+    def test_estimate_tokens_with_name(self, fs: FakeFilesystem) -> None:
         """Test token estimation with name field."""
         self.setup_tiktoken(fs)
         
@@ -151,7 +151,7 @@ class TestTokenEstimation:
         tokens = estimate_tokens_for_chat(messages, "gpt-4o")
         assert 5 <= tokens <= 15  # Reasonable range for this message
 
-    def test_estimate_tokens_long_message(self, fs) -> None:
+    def test_estimate_tokens_long_message(self, fs: FakeFilesystem) -> None:
         """Test token estimation with longer content."""
         self.setup_tiktoken(fs)
         
@@ -206,7 +206,7 @@ class TestTokenLimits:
 class TestTokenEdgeCases:
     """Test edge cases in token handling."""
 
-    def setup_tiktoken(self, fs) -> None:
+    def setup_tiktoken(self, fs: FakeFilesystem) -> None:
         """Set up tiktoken with proper filesystem access."""
         # Allow access to tiktoken's files
         tiktoken_path = os.path.dirname(tiktoken.__file__)
@@ -243,7 +243,7 @@ class TestTokenEdgeCases:
         # Resume fake filesystem after downloads
         fs.resume()
 
-    def test_empty_messages(self, fs) -> None:
+    def test_empty_messages(self, fs: FakeFilesystem) -> None:
         """Test token estimation with empty messages."""
         self.setup_tiktoken(fs)
         
@@ -253,7 +253,7 @@ class TestTokenEdgeCases:
         tokens = estimate_tokens_for_chat(messages, "gpt-4o")
         assert tokens > 0  # Should still count message overhead
 
-    def test_special_characters(self, fs) -> None:
+    def test_special_characters(self, fs: FakeFilesystem) -> None:
         """Test token estimation with special characters."""
         self.setup_tiktoken(fs)
         
@@ -264,7 +264,7 @@ class TestTokenEdgeCases:
         tokens = estimate_tokens_for_chat(messages, "gpt-4o")
         assert tokens > 5  # Emojis typically take multiple tokens
 
-    def test_code_blocks(self, fs) -> None:
+    def test_code_blocks(self, fs: FakeFilesystem) -> None:
         """Test token estimation with code blocks."""
         self.setup_tiktoken(fs)
         

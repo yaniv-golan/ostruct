@@ -97,8 +97,8 @@ def read_file(
     if security_manager is None:
         from .security import SecurityManager
 
-        security_manager = SecurityManager()
-        logger.debug("Created default SecurityManager")
+        security_manager = SecurityManager(base_dir=os.getcwd())
+        logger.debug("Created default SecurityManager with base_dir=%s", os.getcwd())
 
     # Create progress context
     with ProgressContext(

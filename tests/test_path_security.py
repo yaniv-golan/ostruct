@@ -5,13 +5,14 @@ import sys
 from pathlib import Path
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
+from typing import Generator
 
 from ostruct.cli.errors import PathSecurityError
 from ostruct.cli.security import SecurityManager, normalize_path
 
 
 @pytest.fixture(autouse=True)
-def patch_filesystem_case(fs: FakeFilesystem):
+def patch_filesystem_case(fs: FakeFilesystem) -> Generator[None, None, None]:
     """Configure pyfakefs case sensitivity based on platform."""
     if sys.platform == 'darwin' or os.name == 'nt':
         fs.is_case_sensitive = False

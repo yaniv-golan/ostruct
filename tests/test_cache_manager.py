@@ -16,7 +16,7 @@ from ostruct.cli.cache_manager import CacheEntry, FileCache
 FSFixture: TypeAlias = Generator[FakeFilesystem, None, None]
 
 
-@pytest.fixture  # type: ignore[misc] # Decorator is typed in pytest's stub
+@pytest.fixture
 def fs() -> FSFixture:
     """Fixture to set up fake filesystem."""
     with Patcher() as patcher:

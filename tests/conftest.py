@@ -32,7 +32,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Any, Union, Set
+from typing import Dict, Generator, List, Optional, Any, Union, Set, IO
 import logging
 import errno
 import inspect
@@ -63,7 +63,7 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def requires_openai() -> None:
     """Skip tests that require OpenAI API access if no valid API key is found."""
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -71,7 +71,7 @@ def requires_openai() -> None:
         pytest.skip("OpenAI API key not found or is test key")
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+@pytest.fixture(autouse=True)
 def env_setup(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -87,7 +87,7 @@ def env_setup(
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def fs(fs: FakeFilesystem) -> Generator[FakeFilesystem, None, None]:
     """Create a fake filesystem for testing.
 
@@ -106,13 +106,13 @@ def fs(fs: FakeFilesystem) -> Generator[FakeFilesystem, None, None]:
     yield fs
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def mock_openai_client() -> OpenAI:
     """Create a mock OpenAI client for testing."""
     return OpenAI(api_key="test-key", base_url="http://localhost:8000")
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def test_files(fs: FakeFilesystem) -> Dict[str, str]:
     """Create test files for testing.
 
@@ -228,7 +228,7 @@ def setup_test_fs(fs: FakeFilesystem, monkeypatch: pytest.MonkeyPatch, request: 
 
 
 @pytest.fixture
-def mock_temp_dir(monkeypatch, fs: FakeFilesystem) -> str:
+def mock_temp_dir(monkeypatch: pytest.MonkeyPatch, fs: FakeFilesystem) -> str:
     """Mock the system temp directory."""
     test_temp_dir = "/tmp/test"
     if not fs.exists(test_temp_dir):
@@ -312,23 +312,19 @@ class SymlinkResolutionTracker:
 class MockSecurityManager(SecurityManager):
     """Mock security manager for testing.
     
-    This class provides a test-safe implementation of SecurityManager that:
-    - Uses /test_workspace as the base directory
-    - Creates standard test directories
-    - Validates paths against allowed directories
-    - Handles path resolution correctly for testing
+    This class provides a mock implementation of the SecurityManager
+    that works with the fake filesystem and enforces security checks
+    in a test environment.
     """
-
+    
     def __init__(self, base_dir: str = "/test_workspace") -> None:
         """Initialize mock security manager.
-
+        
         Args:
             base_dir: Base directory for path resolution
         """
-        super().__init__(base_dir=base_dir)
+        super().__init__(base_dir)
         self._symlink_tracker = SymlinkResolutionTracker()
-        
-        # Patch file operations
         self._patch_file_operations()
     
     def _patch_file_operations(self) -> None:
@@ -336,11 +332,25 @@ class MockSecurityManager(SecurityManager):
         import builtins
         import io
         from functools import wraps
-        
-        original_open = builtins.open
-        
+        from typing import Callable, TypeVar, overload, Union, Optional, cast
+
+        T = TypeVar('T', bound=IO[Any])
+        OpenFunc = Callable[..., T]
+        original_open: OpenFunc = builtins.open
+
         @wraps(original_open)
-        def secure_open(file, *args, **kwargs):
+        def secure_open(
+            file: Union[str, Path],
+            mode: str = 'r',
+            buffering: int = -1,
+            encoding: Optional[str] = None,
+            errors: Optional[str] = None,
+            newline: Optional[str] = None,
+            closefd: bool = True,
+            opener: Optional[Callable[[str, int], int]] = None,
+            *args: Any,
+            **kwargs: Any
+        ) -> IO[Any]:
             try:
                 # First resolve relative paths against cwd
                 p = Path(file)
@@ -349,7 +359,22 @@ class MockSecurityManager(SecurityManager):
                 
                 # Now resolve and validate path using our security checks
                 resolved = self.resolve_path(p)
-                return original_open(resolved, *args, **kwargs)
+                result = original_open(
+                    resolved,
+                    mode=mode,
+                    buffering=buffering,
+                    encoding=encoding,
+                    errors=errors,
+                    newline=newline,
+                    closefd=closefd,
+                    opener=opener,
+                    *args,
+                    **kwargs
+                )
+                # Check if result has required file interface methods instead of strict IO inheritance
+                if not hasattr(result, 'read') or not hasattr(result, 'close'):
+                    raise TypeError("Expected file-like object from open")
+                return cast(IO[Any], result)  # Cast the result to IO[Any] since we verified it has the required methods
             except PathSecurityError:
                 # Re-raise security errors as is
                 raise
@@ -371,18 +396,18 @@ class MockSecurityManager(SecurityManager):
                 # Other OS errors should be raised as is
                 raise
         
-        builtins.open = secure_open
+        builtins.open = secure_open  # type: ignore[assignment]
 
     def resolve_path(self, path: Union[str, Path], strict: bool = False) -> Path:
-        """Resolve a path relative to the base directory.
-        
+        """Resolve and validate a path.
+
         Args:
             path: Path to resolve
-            strict: Whether to use strict path resolution
-            
+            strict: Whether to require the path to exist
+
         Returns:
-            Path: Resolved path
-            
+            Resolved Path object
+
         Raises:
             PathSecurityError: If path is not allowed
         """
@@ -396,8 +421,8 @@ class MockSecurityManager(SecurityManager):
         # Normalize the path to handle .. components
         p = p.resolve()
         
-        # Now validate using base class implementation
-        return super().resolve_path(str(p))
+        # Now validate using base class implementation and convert result back to Path
+        return Path(super().resolve_path(str(p)))
 
     def _resolve_with_tracking(self, path: Path) -> Path:
         """Resolve a path with symlink loop detection."""
@@ -443,14 +468,14 @@ def security_manager(fs: FakeFilesystem) -> SecurityManager:
     base_dir = "/test_workspace/base"  # This is the actual base directory for tests
     allowed_dir = "/test_workspace/allowed"  # This is an explicitly allowed directory
     
-    # Create required directories, ignoring if they already exist
+    # Create required directories
     for d in [workspace, base_dir, allowed_dir]:
         try:
             fs.create_dir(d)
         except FileExistsError:
             pass
     
-    # Create a temp directory in the fake filesystem if it doesn't exist
+    # Create a temp directory
     temp_dir = "/tmp"
     try:
         fs.create_dir(temp_dir)
@@ -460,9 +485,9 @@ def security_manager(fs: FakeFilesystem) -> SecurityManager:
     # Use our test-specific security manager with the base directory
     manager = MockSecurityManager(base_dir=base_dir)
     
-    # Add only the allowed directory and temp directory to allowed list
-    manager.add_allowed_directory(allowed_dir)
-    manager.add_allowed_directory(temp_dir)
+    # Add allowed directories
+    manager.add_allowed_directory(allowed_dir)  # Only allow the explicitly allowed directory
+    manager.add_allowed_directory(temp_dir)  # And the temp directory
     
     # Change to the base directory by default
     os.chdir(base_dir)
@@ -471,10 +496,11 @@ def security_manager(fs: FakeFilesystem) -> SecurityManager:
 
 
 @pytest.fixture(autouse=True)
-def mock_model_support(monkeypatch) -> None:
-    """Mock the model support check to always return True."""
+def mock_model_support(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mock model support check to allow any model in tests."""
     def mock_supports_structured_output(model: str) -> bool:
         return True
+    
     monkeypatch.setattr(
         'openai_structured.client.supports_structured_output',
         mock_supports_structured_output
@@ -482,17 +508,21 @@ def mock_model_support(monkeypatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def mock_api_client(monkeypatch) -> None:
+def mock_api_client(monkeypatch: pytest.MonkeyPatch) -> None:
     """Mock OpenAI API client for tests."""
     class MockResponse:
-        def __iter__(self):
+        def __iter__(self) -> Generator[dict[str, Any], None, None]:
             yield {"choices": [{"delta": {"content": "test"}}]}
         
     class MockClient:
-        async def chat_completions_create(self, *args, **kwargs):
+        async def chat_completions_create(
+            self,
+            *args: Any,
+            **kwargs: Any
+        ) -> MockResponse:
             return MockResponse()
-        
-        async def close(self):
+
+        async def close(self) -> None:
             pass
     
     monkeypatch.setattr(
@@ -508,9 +538,13 @@ def patch_security_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     
     original_init = SecurityManager.__init__
     
-    def patched_init(self, base_dir: Optional[str] = None, *args: Any, **kwargs: Any) -> None:
-        """Override to use /test_workspace as default base directory."""
-        # Only override if no base_dir is provided explicitly
+    def patched_init(
+        self: SecurityManager,
+        base_dir: Optional[str] = None,
+        *args: Any,
+        **kwargs: Any
+    ) -> None:
+        """Patch the SecurityManager init to use a fixed base directory."""
         if base_dir is None:
             base_dir = "/test_workspace"
         original_init(self, base_dir, *args, **kwargs)
