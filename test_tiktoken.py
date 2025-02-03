@@ -14,4 +14,4 @@ try:
     print("Successfully got gpt-4 encoding")
     print("Encoding test:", encoding.encode("Hello, world!"))
 except Exception as e:
-    print("Error getting gpt-4 encoding:", e) 
+    print("Error getting gpt-4 encoding:", e)

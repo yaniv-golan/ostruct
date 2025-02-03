@@ -68,24 +68,32 @@ class FileInfo:
             logger.debug(
                 "Security-resolved path for %s: %s", path, resolved_path
             )
-            
+
             # Now check if the file exists and is accessible
             if not resolved_path.exists():
                 # Use the original path in the error message
-                raise FileNotFoundError(f"File not found: {os.path.basename(path)}")
-            
+                raise FileNotFoundError(
+                    f"File not found: {os.path.basename(path)}"
+                )
+
             if not resolved_path.is_file():
-                raise FileNotFoundError(f"Not a file: {os.path.basename(path)}")
-                
+                raise FileNotFoundError(
+                    f"Not a file: {os.path.basename(path)}"
+                )
+
         except PathSecurityError:
             # Re-raise security errors as is
             raise
         except FileNotFoundError:
             # Re-raise file not found errors with simplified message
-            raise FileNotFoundError(f"File not found: {os.path.basename(path)}")
-        except Exception as e:
+            raise FileNotFoundError(
+                f"File not found: {os.path.basename(path)}"
+            )
+        except Exception:  # Catch all other exceptions
             # Convert other errors to FileNotFoundError with simplified message
-            raise FileNotFoundError(f"File not found: {os.path.basename(path)}")
+            raise FileNotFoundError(
+                f"File not found: {os.path.basename(path)}"
+            )
 
         # If content/encoding weren't provided, read them now
         if self.__content is None or self.__encoding is None:
@@ -233,9 +241,9 @@ class FileInfo:
             bool: True if the file appears to be binary, False otherwise
         """
         try:
-            with open(self.abs_path, 'rb') as f:
+            with open(self.abs_path, "rb") as f:
                 chunk = f.read(1024)
-                return b'\0' in chunk
+                return b"\0" in chunk
         except (OSError, PathSecurityError):
             return False
 
@@ -356,13 +364,13 @@ class FileInfo:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert file info to a dictionary.
-        
+
         Returns:
             Dictionary containing file metadata and content
         """
         # Get file stats
         stats = os.stat(self.abs_path)
-        
+
         return {
             "path": self.path,
             "abs_path": str(self.abs_path),
@@ -372,6 +380,8 @@ class FileInfo:
             "encoding": self.encoding,
             "hash": self.hash,
             "mtime": self.mtime,
-            "mtime_ns": int(self.mtime * 1e9) if self.mtime is not None else None,
-            "mode": stats.st_mode
+            "mtime_ns": (
+                int(self.mtime * 1e9) if self.mtime is not None else None
+            ),
+            "mode": stats.st_mode,
         }

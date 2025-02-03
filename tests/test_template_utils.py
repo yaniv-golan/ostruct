@@ -89,6 +89,7 @@ def fs() -> Generator[FakeFilesystem, None, None]:
 def security_manager(fs: FakeFilesystem) -> SecurityManager:
     """Create a security manager for testing."""
     from tests.conftest import MockSecurityManager
+
     return MockSecurityManager(base_dir="/test_workspace")
 
 
@@ -171,10 +172,12 @@ def test_validate_complex_template(
         {
             "source_files": [
                 FileInfo.from_path(
-                    path="/test_workspace/file1.txt", security_manager=security_manager
+                    path="/test_workspace/file1.txt",
+                    security_manager=security_manager,
                 ),
                 FileInfo.from_path(
-                    path="/test_workspace/file2.txt", security_manager=security_manager
+                    path="/test_workspace/file2.txt",
+                    security_manager=security_manager,
                 ),
             ],
             "config": {
@@ -261,7 +264,9 @@ def test_validate_template_custom_functions(
     """Test validation allows custom template functions."""
     fs.makedirs("/test_workspace", exist_ok=True)
     fs.create_file("/test_workspace/file.txt", contents="Test file content")
-    fs.create_file("/test_workspace/data.json", contents='{"status": "active"}')
+    fs.create_file(
+        "/test_workspace/data.json", contents='{"status": "active"}'
+    )
 
     template = """
     {{ file.content|extract_field("status") }}
@@ -272,7 +277,8 @@ def test_validate_template_custom_functions(
         Dict[str, Any],
         {
             "file": FileInfo.from_path(
-                path="/test_workspace/file.txt", security_manager=security_manager
+                path="/test_workspace/file.txt",
+                security_manager=security_manager,
             ),
             "data": {"category": "test", "value": 1},
             "text": "print('hello')",

@@ -1,7 +1,6 @@
 """Test template validation functionality."""
 
 import os
-import tempfile
 from typing import Any, Dict, List, Set, TypedDict, Union, cast
 
 import jinja2
@@ -139,11 +138,14 @@ def test_validate_fileinfo_attributes(
 ) -> None:
     """Test validation of FileInfo attribute access."""
     # Create test file in fake filesystem
-    fs.create_file("/test_workspace/base/test_file.txt", contents="test content")
+    fs.create_file(
+        "/test_workspace/base/test_file.txt", contents="test content"
+    )
 
     template = "Content: {{ file.content }}, Path: {{ file.abs_path }}"
     file_info = FileInfo.from_path(
-        path="/test_workspace/base/test_file.txt", security_manager=security_manager
+        path="/test_workspace/base/test_file.txt",
+        security_manager=security_manager,
     )
     file_mappings: Dict[str, Any] = {"file": file_info}
     validate_template_placeholders(template, file_mappings)
@@ -155,7 +157,9 @@ def create_test_file(
     """Create a test file and return FileInfo instance."""
     full_path = os.path.join("/test_workspace/base", filename)
     fs.create_file(full_path, contents="test content")
-    return FileInfo.from_path(path=full_path, security_manager=security_manager)
+    return FileInfo.from_path(
+        path=full_path, security_manager=security_manager
+    )
 
 
 @pytest.mark.parametrize(
@@ -212,10 +216,12 @@ def test_validate_complex_template(
     file_mappings: Dict[str, Any] = {
         "source_files": [
             FileInfo.from_path(
-                path="/test_workspace/base/file1.txt", security_manager=security_manager
+                path="/test_workspace/base/file1.txt",
+                security_manager=security_manager,
             ),
             FileInfo.from_path(
-                path="/test_workspace/base/file2.txt", security_manager=security_manager
+                path="/test_workspace/base/file2.txt",
+                security_manager=security_manager,
             ),
         ],
         "config": {

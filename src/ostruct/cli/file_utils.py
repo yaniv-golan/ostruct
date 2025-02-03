@@ -416,7 +416,7 @@ def collect_files(
                 raise PathSecurityError(
                     "Directory mapping error: Access denied: "
                     f"{directory} is outside base directory and not in allowed directories",
-                    path=directory
+                    path=directory,
                 ) from e
             except DirectoryNotFoundError as e:
                 logger.debug("Directory not found: %s", str(e))

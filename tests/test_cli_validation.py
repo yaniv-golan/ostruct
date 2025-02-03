@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, Dict, List, Literal, Type, Union, cast, Optional
+from typing import Any, Dict, List, Literal, Optional, Type, Union, cast
 
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -175,7 +175,10 @@ def test_validate_task_template_both_provided(fs: FakeFilesystem) -> None:
     "template,error_type",
     [
         ("Hello {{ name!", TaskTemplateSyntaxError),  # Invalid syntax
-        (None, TaskTemplateVariableError),  # Non-existent file with task_file="nonexistent.txt"
+        (
+            None,
+            TaskTemplateVariableError,
+        ),  # Non-existent file with task_file="nonexistent.txt"
     ],
 )
 def test_validate_task_template_errors(

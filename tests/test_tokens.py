@@ -30,14 +30,13 @@ Tiktoken has a unique way of handling its encoding data files:
      d. Initializing tiktoken with a base encoding
 """
 
-from typing import Dict, List, Literal, TypedDict, cast
-import sys
 import os
 import tempfile
-import hashlib
-import tiktoken
-import requests
+import textwrap
+from typing import Dict, List, Literal, TypedDict, cast
+
 import pytest
+import tiktoken
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.cli import (
@@ -58,27 +57,27 @@ class TestTokenEstimation:
 
     def setup_tiktoken(self, fs: FakeFilesystem) -> None:
         """Set up tiktoken with proper filesystem access.
-        
+
         This method handles the complex requirements of tiktoken in a test environment:
-        
+
         1. File System Access:
            - Adds tiktoken's package directory to pyfakefs
            - Sets up and adds cache directory to pyfakefs
            - Adds temp directory for initial downloads
-        
+
         2. Cache Directory:
            - Uses TIKTOKEN_CACHE_DIR or DATA_GYM_CACHE_DIR if set
            - Falls back to <temp_dir>/data-gym-cache
            - Creates directory if it doesn't exist
-        
+
         3. Network Access:
            - Temporarily disables pyfakefs (fs.pause)
            - Allows tiktoken to download necessary files
            - Re-enables pyfakefs after initialization
-        
+
         Args:
             fs: The pyfakefs fixture
-        
+
         Note:
             This setup is required because tiktoken downloads its encoding files
             on first use and caches them locally. When running with pyfakefs,
@@ -88,34 +87,36 @@ class TestTokenEstimation:
         # Allow access to tiktoken's files
         tiktoken_path = os.path.dirname(tiktoken.__file__)
         fs.add_real_directory(tiktoken_path)
-        
+
         # Set up cache directory path
-        cache_dir = os.environ.get("TIKTOKEN_CACHE_DIR") or os.environ.get("DATA_GYM_CACHE_DIR")
+        cache_dir = os.environ.get("TIKTOKEN_CACHE_DIR") or os.environ.get(
+            "DATA_GYM_CACHE_DIR"
+        )
         if not cache_dir:
             cache_dir = os.path.join(tempfile.gettempdir(), "data-gym-cache")
-        
+
         # Temporarily disable pyfakefs to create real directories and download files
         fs.pause()
-        
+
         try:
             # Create real cache directory
             os.makedirs(cache_dir, exist_ok=True)
-            
+
             # Force tiktoken to initialize its registry and download files
             try:
-                encoding = tiktoken.get_encoding("cl100k_base")
+                tiktoken.get_encoding("cl100k_base")
             except Exception as e:
                 print("Error initializing cl100k_base:", str(e))
         finally:
             # Resume fake filesystem
             fs.resume()
-        
+
         # Now add the real directories to pyfakefs, ignoring existing files
         try:
             fs.add_real_directory(cache_dir)
         except FileExistsError:
             pass
-            
+
         try:
             fs.add_real_directory(tempfile.gettempdir())
         except FileExistsError:
@@ -124,7 +125,7 @@ class TestTokenEstimation:
     def test_estimate_tokens_basic(self, fs: FakeFilesystem) -> None:
         """Test basic token estimation for chat messages."""
         self.setup_tiktoken(fs)
-        
+
         messages: List[Dict[str, str]] = cast(
             List[Dict[str, str]],
             [
@@ -142,7 +143,7 @@ class TestTokenEstimation:
     def test_estimate_tokens_with_name(self, fs: FakeFilesystem) -> None:
         """Test token estimation with name field."""
         self.setup_tiktoken(fs)
-        
+
         messages: List[Dict[str, str]] = cast(
             List[Dict[str, str]],
             [{"role": "assistant", "name": "bot", "content": "Hello"}],
@@ -154,7 +155,7 @@ class TestTokenEstimation:
     def test_estimate_tokens_long_message(self, fs: FakeFilesystem) -> None:
         """Test token estimation with longer content."""
         self.setup_tiktoken(fs)
-        
+
         long_content = (
             "This is a longer message that should be more than twenty tokens. "
             "It includes various words and phrases to ensure we exceed the token threshold. "
@@ -211,42 +212,44 @@ class TestTokenEdgeCases:
         # Allow access to tiktoken's files
         tiktoken_path = os.path.dirname(tiktoken.__file__)
         fs.add_real_directory(tiktoken_path)
-        
+
         # Allow access to tiktoken's cache directory
-        cache_dir = os.environ.get("TIKTOKEN_CACHE_DIR") or os.environ.get("DATA_GYM_CACHE_DIR")
+        cache_dir = os.environ.get("TIKTOKEN_CACHE_DIR") or os.environ.get(
+            "DATA_GYM_CACHE_DIR"
+        )
         if not cache_dir:
             cache_dir = os.path.join(tempfile.gettempdir(), "data-gym-cache")
-        
+
         # Create cache directory if it doesn't exist
         os.makedirs(cache_dir, exist_ok=True)
-        
+
         # Add real directories, ignoring existing files
         try:
             fs.add_real_directory(cache_dir)
         except FileExistsError:
             pass
-            
+
         try:
             fs.add_real_directory(tempfile.gettempdir())
         except FileExistsError:
             pass
-            
+
         # Allow network access for downloading encoding files
         fs.pause()
-        
+
         # Force tiktoken to initialize its registry and download files
         try:
-            encoding = tiktoken.get_encoding("cl100k_base")
+            tiktoken.get_encoding("cl100k_base")
         except Exception as e:
             print("Error initializing cl100k_base:", str(e))
-            
+
         # Resume fake filesystem after downloads
         fs.resume()
 
     def test_empty_messages(self, fs: FakeFilesystem) -> None:
         """Test token estimation with empty messages."""
         self.setup_tiktoken(fs)
-        
+
         messages: List[Dict[str, str]] = cast(
             List[Dict[str, str]], [{"role": "user", "content": ""}]
         )
@@ -256,7 +259,7 @@ class TestTokenEdgeCases:
     def test_special_characters(self, fs: FakeFilesystem) -> None:
         """Test token estimation with special characters."""
         self.setup_tiktoken(fs)
-        
+
         messages: List[Dict[str, str]] = cast(
             List[Dict[str, str]],
             [{"role": "user", "content": "Hello 👋 World! 🌍"}],
@@ -265,14 +268,20 @@ class TestTokenEdgeCases:
         assert tokens > 5  # Emojis typically take multiple tokens
 
     def test_code_blocks(self, fs: FakeFilesystem) -> None:
-        """Test token estimation with code blocks."""
+        """Test token counting with code blocks."""
         self.setup_tiktoken(fs)
-        
-        code_message = """{"role": "user", "content": "```python\ndef hello():\n    print('world')\n```"}"""
-        messages: List[Dict[str, str]] = cast(
-            List[Dict[str, str]], [{"role": "user", "content": code_message}]
+
+        code_message = textwrap.dedent(
+            """
+            def hello_world():
+                print("Hello, world!")
+                return 42
+            """
         )
-        tokens = estimate_tokens_for_chat(messages, "gpt-4o")
+        tokens = estimate_tokens_for_chat(
+            [{"role": "user", "content": code_message}], "gpt-4o"
+        )
+        # Code typically uses more tokens than words, so this is a basic sanity check
         assert tokens > len(
             code_message.split()
         )  # Code typically uses more tokens than words

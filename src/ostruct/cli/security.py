@@ -7,35 +7,82 @@ This module provides security checks for file access, including:
 - Temporary directory handling
 """
 
+import errno
 import logging
 import os
+import posixpath
+import re
 import sys
 import tempfile
-import posixpath
-from pathlib import Path
 import unicodedata
-from typing import List, Optional, Set, Union, Generator
-import errno
 from contextlib import contextmanager
-from unicodedata import normalize, category
-import re
+from pathlib import Path
+from typing import Generator, List, Optional, Union
+from unicodedata import category  # noqa: F401 - Used in docstring
+from unicodedata import normalize  # noqa: F401 - Used in docstring
 
 from .errors import DirectoryNotFoundError, PathSecurityError
 from .security_types import SecurityManagerProtocol
 
 # Compute alternative separators (if any) that differ from "/"
-_os_alt_seps = list({sep for sep in [os.path.sep, os.path.altsep] if sep and sep != "/"})
+_os_alt_seps = list(
+    {sep for sep in [os.path.sep, os.path.altsep] if sep and sep != "/"}
+)
 
 # Add these constants
 _UNICODE_SAFETY_PATTERN = re.compile(
-    r'[\u0000-\u001F\u007F-\u009F\u2028-\u2029\u0085]'  # Control chars and line separators
-    r'|\.{2,}'  # Directory traversal attempts
-    r'|[\\/]{2,}'  # Multiple consecutive separators
-    r'|[\u2024\u2025\uFE52\u2024\u2025\u2026\uFE19\uFE30\uFE52\uFF0E\uFF61]'  # Alternative dots and separators
+    r"[\u0000-\u001F\u007F-\u009F\u2028-\u2029\u0085]"  # Control chars and line separators
+    r"|\.{2,}"  # Directory traversal attempts
+    r"|[\\/]{2,}"  # Multiple consecutive separators
+    r"|[\u2024\u2025\uFE52\u2024\u2025\u2026\uFE19\uFE30\uFE52\uFF0E\uFF61]"  # Alternative dots and separators
 )
+
+
+class CaseManager:
+    """Manages original case preservation for paths.
+
+    This class provides a thread-safe way to track original path cases
+    without modifying Path objects. This is particularly important on
+    case-insensitive systems (macOS, Windows) where we normalize paths
+    to lowercase but want to preserve the original case for display.
+    """
+
+    _case_mapping: dict[str, str] = {}
+
+    @classmethod
+    def set_original_case(
+        cls, normalized_path: Path, original_case: str
+    ) -> None:
+        """Store the original case for a normalized path.
+
+        Args:
+            normalized_path: The normalized (potentially lowercased) Path
+            original_case: The original case string to preserve
+        """
+        cls._case_mapping[str(normalized_path)] = original_case
+
+    @classmethod
+    def get_original_case(cls, normalized_path: Path) -> str:
+        """Retrieve the original case for a normalized path.
+
+        Args:
+            normalized_path: The normalized Path to look up
+
+        Returns:
+            The original case string if found, otherwise the normalized path string
+        """
+        path_str = str(normalized_path)
+        return cls._case_mapping.get(path_str, path_str)
+
+    @classmethod
+    def clear(cls) -> None:
+        """Clear all stored case mappings."""
+        cls._case_mapping.clear()
+
 
 class SecurityErrorReasons:
     """Constants for security error reasons to ensure consistency."""
+
     SYMLINK_LOOP = "symlink_loop"
     MAX_DEPTH_EXCEEDED = "max_depth_exceeded"
     BROKEN_SYMLINK = "broken_symlink"
@@ -52,10 +99,13 @@ class SecurityErrorReasons:
     OUTSIDE_ALLOWED_DIRS = "outside_allowed_dirs"
     CASE_MISMATCH = "case_mismatch"
 
-def normalize_path(path: Union[str, Path], check_traversal: bool = True) -> Path:
+
+def normalize_path(
+    path: Union[str, Path], check_traversal: bool = True
+) -> Path:
     """
     Normalize a path following secure path handling best practices.
-    
+
     Order of operations:
     1. Input normalization (Unicode NFKC)
     2. Security checks for dangerous Unicode
@@ -66,11 +116,11 @@ def normalize_path(path: Union[str, Path], check_traversal: bool = True) -> Path
     try:
         # Step 1: Input normalization
         path_str = str(path)
-        path_str = unicodedata.normalize('NFKC', path_str)
+        path_str = unicodedata.normalize("NFKC", path_str)
 
         # Normalize path separators
-        path_str = path_str.replace('\\', '/')
-        
+        path_str = path_str.replace("\\", "/")
+
         # Remove redundant separators and normalize dots
         path_str = os.path.normpath(path_str)
 
@@ -81,37 +131,39 @@ def normalize_path(path: Union[str, Path], check_traversal: bool = True) -> Path
                 path=str(path),
                 context={
                     "reason": SecurityErrorReasons.UNSAFE_UNICODE,
-                    "path": path_str
-                }
+                    "path": path_str,
+                },
             )
 
         # Step 3: Convert to Path object and make absolute
         path_obj = Path(path_str)
         if not path_obj.is_absolute():
             path_obj = Path.cwd() / path_obj
-            
+
         # Normalize path without resolving symlinks
         path_obj = path_obj.absolute()
 
         # Step 4: Handle case sensitivity based on platform
-        if sys.platform == 'darwin' or os.name == 'nt':
+        if sys.platform == "darwin" or os.name == "nt":
             try:
-                # Store original case for display/error messages
+                # Store original case before normalization
                 original_case = str(path_obj)
                 normalized_case = original_case.lower()
-                
+
                 # Create new path object with normalized case
                 path_obj = Path(normalized_case)
-                setattr(path_obj, '_original_case', original_case)
-                
+
+                # Store original case in CaseManager
+                CaseManager.set_original_case(path_obj, original_case)
+
             except (OSError, RuntimeError) as e:
                 raise PathSecurityError(
                     f"Error normalizing path case: {e}",
                     path=str(path),
                     context={
                         "reason": SecurityErrorReasons.CASE_MISMATCH,
-                        "error": str(e)
-                    }
+                        "error": str(e),
+                    },
                 )
 
         # Step 5: Final validation - check for path traversal
@@ -119,20 +171,20 @@ def normalize_path(path: Union[str, Path], check_traversal: bool = True) -> Path
             # Check for path traversal without resolving symlinks
             clean_parts: list[str] = []
             for part in path_obj.parts:
-                if part == '..':
+                if part == "..":
                     if not clean_parts:
                         raise PathSecurityError(
                             f"Path traversal attempt detected: {path}",
                             path=str(path),
                             context={
                                 "reason": SecurityErrorReasons.PATH_TRAVERSAL,
-                                "path": str(path_obj)
-                            }
+                                "path": str(path_obj),
+                            },
                         )
                     clean_parts.pop()
-                elif part not in ('', '.'):
+                elif part not in ("", "."):
                     clean_parts.append(part)
-                    
+
             # Reconstruct path from clean parts
             path_obj = Path(*clean_parts)
 
@@ -144,59 +196,65 @@ def normalize_path(path: Union[str, Path], check_traversal: bool = True) -> Path
             path=str(path),
             context={
                 "reason": SecurityErrorReasons.NORMALIZATION_ERROR,
-                "error": str(e)
-            }
+                "error": str(e),
+            },
         )
+
 
 def safe_join(directory: str, *pathnames: str) -> Optional[str]:
     """Safely join path components with a base directory.
-    
+
     This function:
     1. Normalizes each path component
     2. Rejects absolute paths and traversal attempts
     3. Handles alternative separators
     4. Normalizes Unicode and case (on case-insensitive systems)
-    
+
     Args:
         directory: Base directory to join with
         *pathnames: Path components to join
-        
+
     Returns:
         Optional[str]: Joined path if safe, None if unsafe
     """
     if not directory:
         directory = "."
-        
+
     # Normalize Unicode and case for base directory
-    directory = unicodedata.normalize('NFC', str(directory))
-    if os.name == 'nt' or (os.name == 'posix' and sys.platform == 'darwin'):
+    directory = unicodedata.normalize("NFC", str(directory))
+    if os.name == "nt" or (os.name == "posix" and sys.platform == "darwin"):
         directory = directory.lower()
-    
+
     parts = [directory]
-    
+
     for filename in pathnames:
         if not filename:
             continue
-            
+
         # Normalize Unicode and case
-        filename = unicodedata.normalize('NFC', str(filename))
-        if os.name == 'nt' or (os.name == 'posix' and sys.platform == 'darwin'):
+        filename = unicodedata.normalize("NFC", str(filename))
+        if os.name == "nt" or (
+            os.name == "posix" and sys.platform == "darwin"
+        ):
             filename = filename.lower()
-            
+
         # Normalize path separators and collapse dots
-        filename = posixpath.normpath(filename.replace('\\', '/'))
-        
+        filename = posixpath.normpath(filename.replace("\\", "/"))
+
         # Reject unsafe components
-        if (os.path.isabs(filename) or
-            filename == ".." or
-            filename.startswith("../") or
-            filename.startswith("/") or
-            any(sep in filename for sep in _os_alt_seps)):
+        if (
+            os.path.isabs(filename)
+            or filename == ".."
+            or filename.startswith("../")
+            or filename.startswith("/")
+            or any(sep in filename for sep in _os_alt_seps)
+        ):
             return None
-            
+
         parts.append(filename)
-        
+
     return posixpath.join(*parts)
+
 
 def is_temp_file(path: str) -> bool:
     """Check if a file is in a temporary directory.
@@ -215,7 +273,7 @@ def is_temp_file(path: str) -> bool:
         # Normalize paths for comparison
         abs_path = normalize_path(path)
         temp_dir = normalize_path(tempfile.gettempdir())
-        
+
         # Check if file is in the temp directory using is_relative_to
         return abs_path.is_relative_to(temp_dir)
     except (ValueError, OSError):
@@ -258,7 +316,7 @@ class SecurityManager(SecurityManagerProtocol):
         >>> sm = SecurityManager("/base/dir")
         >>> sm.is_path_allowed("/base/DIR/file.txt")  # True
         >>> sm.is_path_allowed("/BASE/dir/file.txt")  # True
-        
+
         >>> # On Linux (case-sensitive):
         >>> sm = SecurityManager("/base/dir")
         >>> sm.is_path_allowed("/base/DIR/file.txt")  # False
@@ -267,7 +325,13 @@ class SecurityManager(SecurityManagerProtocol):
     All paths are normalized using realpath() to handle symlinks consistently across platforms.
     """
 
-    def __init__(self, base_dir: str, allowed_dirs: Optional[List[str]] = None, allow_temp_paths: bool = False, max_symlink_depth: int = 16):
+    def __init__(
+        self,
+        base_dir: str,
+        allowed_dirs: Optional[List[str]] = None,
+        allow_temp_paths: bool = False,
+        max_symlink_depth: int = 16,
+    ):
         """Initialize the SecurityManager.
 
         Args:
@@ -286,9 +350,13 @@ class SecurityManager(SecurityManagerProtocol):
         try:
             self._base_dir = normalize_path(base_dir)
             if not self._base_dir.is_dir():
-                raise DirectoryNotFoundError(f"Base path is not a directory: {base_dir}")
+                raise DirectoryNotFoundError(
+                    f"Base path is not a directory: {base_dir}"
+                )
         except OSError as e:
-            raise DirectoryNotFoundError(f"Base directory does not exist: {base_dir}") from e
+            raise DirectoryNotFoundError(
+                f"Base directory does not exist: {base_dir}"
+            ) from e
 
         # Set up allowed directories, starting with base_dir
         self._allowed_dirs = [self._base_dir]
@@ -297,17 +365,21 @@ class SecurityManager(SecurityManagerProtocol):
                 try:
                     real_path = normalize_path(directory)
                     if not real_path.is_dir():
-                        raise DirectoryNotFoundError(f"Allowed path is not a directory: {directory}")
+                        raise DirectoryNotFoundError(
+                            f"Allowed path is not a directory: {directory}"
+                        )
                     if real_path not in self._allowed_dirs:
                         self._allowed_dirs.append(real_path)
                 except OSError as e:
-                    raise DirectoryNotFoundError(f"Allowed path does not exist: {directory}") from e
+                    raise DirectoryNotFoundError(
+                        f"Allowed path does not exist: {directory}"
+                    ) from e
 
         # Set up temp directory handling - resolve it to handle platform symlinks
         self.allow_temp_paths = allow_temp_paths
         self._temp_dir = Path(tempfile.gettempdir()).resolve()
         logger.debug("Resolved temp directory: %s", self._temp_dir)
-        
+
         # Set up symlink handling
         self.max_symlink_depth = max_symlink_depth
         self._symlink_cache: dict[str, str] = {}
@@ -352,7 +424,9 @@ class SecurityManager(SecurityManagerProtocol):
         """
         real_path = normalize_path(directory)
         if not real_path.is_dir():
-            raise DirectoryNotFoundError(f"Allowed path is not a directory: {directory}")
+            raise DirectoryNotFoundError(
+                f"Allowed path is not a directory: {directory}"
+            )
         if real_path not in self._allowed_dirs:
             self._allowed_dirs.append(real_path)
 
@@ -374,7 +448,7 @@ class SecurityManager(SecurityManagerProtocol):
         """
         if file_path is None:
             return  # Skip None paths silently
-            
+
         real_path = normalize_path(file_path)
         try:
             validated_path = self.validate_path(
@@ -436,7 +510,7 @@ class SecurityManager(SecurityManagerProtocol):
 
             # Normalize the path without resolving symlinks
             path_obj = normalize_path(path, check_traversal=True)
-            
+
             # Check unresolved path first
             for allowed_dir in self._allowed_dirs:
                 try:
@@ -444,7 +518,7 @@ class SecurityManager(SecurityManagerProtocol):
                         return True
                 except ValueError:
                     continue
-            
+
             # Only resolve if necessary and the path exists
             try:
                 if path_obj.exists():
@@ -463,7 +537,9 @@ class SecurityManager(SecurityManagerProtocol):
         except (OSError, PathSecurityError):
             return False
 
-    def validate_path(self, path: Union[str, Path], purpose: str = "access") -> Path:
+    def validate_path(
+        self, path: Union[str, Path], purpose: str = "access"
+    ) -> Path:
         """Validate and resolve a path.
 
         Args:
@@ -486,7 +562,7 @@ class SecurityManager(SecurityManagerProtocol):
         try:
             # First normalize the path without security checks
             path_obj = normalize_path(path, check_traversal=False)
-            
+
             # Check if it's a temp path first (this is always safe to check)
             if self.is_temp_path(path_obj):
                 if not self.allow_temp_paths:
@@ -494,8 +570,10 @@ class SecurityManager(SecurityManagerProtocol):
                     raise PathSecurityError(
                         "Access denied: Temporary paths are not allowed",
                         path=str(path),
-                        context={"reason": SecurityErrorReasons.TEMP_PATHS_NOT_ALLOWED},
-                        error_logged=True
+                        context={
+                            "reason": SecurityErrorReasons.TEMP_PATHS_NOT_ALLOWED
+                        },
+                        error_logged=True,
                     )
                 # For temp paths, we check existence after allowing them
                 if not path_obj.exists():
@@ -505,7 +583,7 @@ class SecurityManager(SecurityManagerProtocol):
             # For non-temp paths, check existence first
             if not path_obj.exists():
                 raise FileNotFoundError(f"File not found: {path}")
-            
+
             # Resolve symlinks using our security-aware resolver
             try:
                 if path_obj.is_symlink():
@@ -516,13 +594,13 @@ class SecurityManager(SecurityManagerProtocol):
                 raise  # Re-raise security errors
             except FileNotFoundError:
                 raise  # Re-raise file not found errors
-            
+
             # Final security check on resolved path
             if not self.is_path_allowed(resolved):
                 logger.error(
                     "Access denied: Attempted to %s path outside allowed directories: %s",
                     purpose,
-                    resolved
+                    resolved,
                 )
                 raise PathSecurityError(
                     f"Access denied: {path} is outside base directory and not in allowed directories",
@@ -531,9 +609,9 @@ class SecurityManager(SecurityManagerProtocol):
                         "reason": SecurityErrorReasons.OUTSIDE_ALLOWED_DIRS,
                         "base_dir": str(self._base_dir),
                         "allowed_dirs": [str(d) for d in self._allowed_dirs],
-                        "expanded_path": str(resolved)
+                        "expanded_path": str(resolved),
                     },
-                    error_logged=True
+                    error_logged=True,
                 )
 
             return resolved
@@ -541,16 +619,16 @@ class SecurityManager(SecurityManagerProtocol):
         except OSError as e:
             if e.errno == errno.ENOENT:
                 raise FileNotFoundError(f"File not found: {path}")
-            
+
             logger.error("Error validating path: %s", e)
             raise PathSecurityError(
                 f"Error validating path: {e}",
                 path=str(path),
                 context={
                     "reason": SecurityErrorReasons.VALIDATION_ERROR,
-                    "error": str(e)
+                    "error": str(e),
                 },
-                error_logged=True
+                error_logged=True,
             ) from e
 
     def is_allowed_file(self, path: str) -> bool:
@@ -584,23 +662,23 @@ class SecurityManager(SecurityManagerProtocol):
 
     def _normalize_input(self, path: Union[str, Path]) -> Path:
         """Normalize input path to absolute path.
-        
+
         Args:
             path: Input path to normalize
-            
+
         Returns:
             Path: Normalized absolute path
-            
+
         Raises:
             ValueError: If path is None
         """
         if path is None:
             raise ValueError("Path cannot be None")
-            
+
         p = normalize_path(path)
         if not p.is_absolute():
             p = normalize_path(str(p))
-        
+
         # Resolve the path to handle .. components
         try:
             return p.resolve()
@@ -613,16 +691,16 @@ class SecurityManager(SecurityManagerProtocol):
 
     def _check_security(self, path: Path, purpose: str) -> None:
         """Check if a path is allowed for a specific purpose.
-        
+
         Args:
             path: Path to check
             purpose: Description of the intended use
-            
+
         Raises:
             PathSecurityError: If path is not allowed
         """
         logger = logging.getLogger("ostruct")
-        
+
         # First check if it's a temp path
         if self.is_temp_path(path):
             if not self.allow_temp_paths:
@@ -631,7 +709,7 @@ class SecurityManager(SecurityManagerProtocol):
                     "Access denied: Temporary paths are not allowed",
                     path=str(path),
                     context={"reason": "temp_paths_not_allowed"},
-                    error_logged=True
+                    error_logged=True,
                 )
             return
 
@@ -640,7 +718,7 @@ class SecurityManager(SecurityManagerProtocol):
             logger.error(
                 "Access denied: Attempted to %s path outside allowed directories: %s",
                 purpose,
-                path
+                path,
             )
             raise PathSecurityError(
                 f"Access denied: {path} is outside base directory and not in allowed directories",
@@ -649,9 +727,9 @@ class SecurityManager(SecurityManagerProtocol):
                     "reason": "path_not_allowed",
                     "base_dir": str(self._base_dir),
                     "allowed_dirs": [str(d) for d in self._allowed_dirs],
-                    "expanded_path": str(path)
+                    "expanded_path": str(path),
                 },
-                error_logged=True
+                error_logged=True,
             )
 
     def resolve_path(self, path: str) -> Path:
@@ -680,7 +758,7 @@ class SecurityManager(SecurityManagerProtocol):
             if not self.is_path_allowed(normalized):
                 logger.error(
                     "Access denied: Path outside allowed directories: %s",
-                    normalized
+                    normalized,
                 )
                 raise PathSecurityError(
                     f"Access denied: {normalized} is outside base directory and not in allowed directories",
@@ -689,22 +767,24 @@ class SecurityManager(SecurityManagerProtocol):
                         "reason": SecurityErrorReasons.PATH_NOT_ALLOWED,
                         "base_dir": str(self._base_dir),
                         "allowed_dirs": [str(d) for d in self._allowed_dirs],
-                        "expanded_path": str(normalized)
+                        "expanded_path": str(normalized),
                     },
-                    error_logged=True
+                    error_logged=True,
                 )
 
             # Phase 4: Safe symlink resolution with security checks at each step
             if normalized.is_symlink():
                 resolved = self.resolve_symlink(normalized)
-                logger.debug("Resolved symlink: %s -> %s", normalized, resolved)
+                logger.debug(
+                    "Resolved symlink: %s -> %s", normalized, resolved
+                )
 
                 # Final security check on resolved path
                 if not self.is_path_allowed(resolved):
                     logger.error(
                         "Access denied: Symlink target outside allowed directories: %s -> %s",
                         normalized,
-                        resolved
+                        resolved,
                     )
                     raise PathSecurityError(
                         f"Access denied: Symlink target {resolved} is outside allowed directories",
@@ -712,9 +792,9 @@ class SecurityManager(SecurityManagerProtocol):
                         context={
                             "reason": SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED,
                             "target": str(resolved),
-                            "source": str(normalized)
+                            "source": str(normalized),
                         },
-                        error_logged=True
+                        error_logged=True,
                     )
 
                 return resolved
@@ -732,24 +812,24 @@ class SecurityManager(SecurityManagerProtocol):
                     f"Symlink loop detected at {path}",
                     path=str(path),
                     context={"reason": SecurityErrorReasons.SYMLINK_LOOP},
-                    error_logged=True
+                    error_logged=True,
                 )
             raise PathSecurityError(
                 f"Error resolving path {path}: {e}",
                 path=str(path),
                 context={"reason": SecurityErrorReasons.RESOLUTION_ERROR},
-                error_logged=True
+                error_logged=True,
             )
 
     def resolve_symlink(
-        self, 
+        self,
         path: Path,
         depth: int = 0,
-        resolution_chain: Optional[List[str]] = None
+        resolution_chain: Optional[List[str]] = None,
     ) -> Path:
         """
         Resolve a symlink with security checks at each step.
-        
+
         Order of checks:
         1. Loop detection (prevent infinite loops)
         2. Max depth check (prevent resource exhaustion)
@@ -758,12 +838,12 @@ class SecurityManager(SecurityManagerProtocol):
         """
         logger = logging.getLogger("ostruct")
         resolution_chain = resolution_chain or []
-        
+
         # Convert to absolute path manually without resolve()
         if not path.is_absolute():
             path = Path.cwd() / path
         path = path.absolute()
-        
+
         # Track current path before any operations
         current_path = str(path)
         new_chain = resolution_chain + [current_path]
@@ -780,8 +860,8 @@ class SecurityManager(SecurityManagerProtocol):
                 context={
                     "reason": SecurityErrorReasons.SYMLINK_LOOP,
                     "resolution_chain": resolution_chain,
-                    "loop_chain": loop_chain
-                }
+                    "loop_chain": loop_chain,
+                },
             )
 
         # 2. Check max depth
@@ -793,8 +873,8 @@ class SecurityManager(SecurityManagerProtocol):
                     "reason": SecurityErrorReasons.MAX_DEPTH_EXCEEDED,
                     "max_depth": self.max_symlink_depth,
                     "depth": depth,
-                    "resolution_chain": new_chain
-                }
+                    "resolution_chain": new_chain,
+                },
             )
 
         try:
@@ -803,12 +883,12 @@ class SecurityManager(SecurityManagerProtocol):
                 # Read target without resolving
                 target = path.readlink()
                 logger.debug("Found symlink: %s -> %s", path, target)
-                
+
                 # Convert relative target to absolute
                 if not target.is_absolute():
                     target = path.parent / target
                 target = target.absolute()
-                
+
                 # Check if target exists (using lstat to avoid resolving)
                 try:
                     target.lstat()
@@ -819,10 +899,10 @@ class SecurityManager(SecurityManagerProtocol):
                         context={
                             "reason": SecurityErrorReasons.BROKEN_SYMLINK,
                             "target": str(target),
-                            "resolution_chain": new_chain
-                        }
+                            "resolution_chain": new_chain,
+                        },
                     )
-                
+
                 # Check if target is allowed
                 if not self.is_path_allowed(target):
                     raise PathSecurityError(
@@ -831,13 +911,13 @@ class SecurityManager(SecurityManagerProtocol):
                         context={
                             "reason": SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED,
                             "target": str(target),
-                            "resolution_chain": new_chain
-                        }
+                            "resolution_chain": new_chain,
+                        },
                     )
-                
+
                 # Recurse to resolve target
                 return self.resolve_symlink(target, depth + 1, new_chain)
-            
+
             # 4. Final security check on non-symlink
             if not self.is_path_allowed(path):
                 raise PathSecurityError(
@@ -845,12 +925,12 @@ class SecurityManager(SecurityManagerProtocol):
                     path=current_path,
                     context={
                         "reason": SecurityErrorReasons.PATH_NOT_ALLOWED,
-                        "path": str(path)
-                    }
+                        "path": str(path),
+                    },
                 )
-            
+
             return path
-            
+
         except OSError as e:
             if e.errno == errno.ENOENT:
                 raise FileNotFoundError(f"File not found: {path}")
@@ -860,8 +940,8 @@ class SecurityManager(SecurityManagerProtocol):
                     path=current_path,
                     context={
                         "reason": SecurityErrorReasons.SYMLINK_LOOP,
-                        "resolution_chain": new_chain
-                    }
+                        "resolution_chain": new_chain,
+                    },
                 )
             raise PathSecurityError(
                 f"Error resolving symlink {path}: {e}",
@@ -869,8 +949,8 @@ class SecurityManager(SecurityManagerProtocol):
                 context={
                     "reason": SecurityErrorReasons.SYMLINK_ERROR,
                     "error": str(e),
-                    "resolution_chain": new_chain
-                }
+                    "resolution_chain": new_chain,
+                },
             )
 
     def is_raw_path_allowed(self, path: str) -> bool:

@@ -1,9 +1,10 @@
 """Custom error classes for CLI error handling."""
 
-import click
-from pathlib import Path
-from typing import List, Optional, Dict, Any, TextIO, cast
 import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, TextIO, cast
+
+import click
 
 
 class CLIError(click.ClickException):
@@ -27,14 +28,20 @@ class CLIError(click.ClickException):
     def show(self, file: Optional[TextIO] = None) -> None:
         """Show the error message with optional context."""
         if file is None:
-            file = cast(TextIO, click.get_text_stream('stderr'))
-        
+            file = cast(TextIO, click.get_text_stream("stderr"))
+
         # Format message with context if available
         if self.context:
-            context_str = '\n'.join(f"  {k}: {v}" for k, v in self.context.items())
-            click.secho(f"Error: {self.message}\nContext:\n{context_str}", fg='red', file=file)
+            context_str = "\n".join(
+                f"  {k}: {v}" for k, v in self.context.items()
+            )
+            click.secho(
+                f"Error: {self.message}\nContext:\n{context_str}",
+                fg="red",
+                file=file,
+            )
         else:
-            click.secho(f"Error: {self.message}", fg='red', file=file)
+            click.secho(f"Error: {self.message}", fg="red", file=file)
 
 
 class VariableError(CLIError):
@@ -58,19 +65,26 @@ class VariableValueError(VariableError):
 class InvalidJSONError(CLIError):
     """Raised when JSON parsing fails for a variable value."""
 
-    def __init__(self, message: str, source: Optional[str] = None, context: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
         context = context or {}
         if source:
-            context['source'] = source
+            context["source"] = source
         super().__init__(message, context)
 
 
 class PathError(CLIError):
     """Base class for path-related errors."""
 
-    def __init__(self, message: str, path: str, context: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, message: str, path: str, context: Optional[Dict[str, Any]] = None
+    ):
         context = context or {}
-        context['path'] = path
+        context["path"] = path
         super().__init__(message, context)
 
 
@@ -98,18 +112,26 @@ class PathSecurityError(PathError):
         wrapped: Whether this error has been wrapped by another error
     """
 
-    def __init__(self, message: str, path: Optional[str] = None, context: Optional[Dict[str, Any]] = None, error_logged: bool = False):
+    def __init__(
+        self,
+        message: str,
+        path: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+        error_logged: bool = False,
+    ):
         path = path or "unknown"  # Provide default path if none given
         context = context or {}
-        context['has_been_logged'] = error_logged  # Store in context to match parent behavior
-        context['wrapped'] = False  # Initialize wrapped state
+        context["has_been_logged"] = (
+            error_logged  # Store in context to match parent behavior
+        )
+        context["wrapped"] = False  # Initialize wrapped state
         super().__init__(message, path, context)
 
     def __str__(self) -> str:
         """Return string representation with allowed directories if present."""
         base = super().__str__()
-        if self.context and 'allowed_dirs' in self.context:
-            allowed = self.context['allowed_dirs']
+        if self.context and "allowed_dirs" in self.context:
+            allowed = self.context["allowed_dirs"]
             if allowed:  # Only add if there are actually allowed dirs
                 return f"{base} (allowed directories: {', '.join(allowed)})"
         return base
@@ -117,12 +139,12 @@ class PathSecurityError(PathError):
     @property
     def has_been_logged(self) -> bool:
         """Whether this error has been logged."""
-        return bool(self.context.get('has_been_logged', False))
+        return bool(self.context.get("has_been_logged", False))
 
     @has_been_logged.setter
     def has_been_logged(self, value: bool) -> None:
         """Set whether this error has been logged."""
-        self.context['has_been_logged'] = value
+        self.context["has_been_logged"] = value
 
     @property
     def error_logged(self) -> bool:
@@ -137,12 +159,12 @@ class PathSecurityError(PathError):
     @property
     def wrapped(self) -> bool:
         """Whether this error has been wrapped by another error."""
-        return bool(self.context.get('wrapped', False))
+        return bool(self.context.get("wrapped", False))
 
     @wrapped.setter
     def wrapped(self, value: bool) -> None:
         """Set whether this error has been wrapped."""
-        self.context['wrapped'] = value
+        self.context["wrapped"] = value
 
     @staticmethod
     def _format_allowed_dirs(allowed_dirs: List[str]) -> str:
@@ -150,7 +172,9 @@ class PathSecurityError(PathError):
         return f"[{', '.join(repr(d) for d in allowed_dirs)}]"
 
     @staticmethod
-    def _create_error_message(path: str, base_dir: Optional[str] = None) -> str:
+    def _create_error_message(
+        path: str, base_dir: Optional[str] = None
+    ) -> str:
         """Create a standardized error message."""
         if base_dir:
             rel_path = os.path.relpath(path, base_dir)
@@ -170,26 +194,35 @@ class PathSecurityError(PathError):
         message = f"Access denied: {original_path} is outside base directory and not in allowed directories"
         if expanded_path != original_path:
             message += f" (expanded to {expanded_path})"
-        
+
         context = {
-            'original_path': original_path,
-            'expanded_path': expanded_path,
-            'has_been_logged': error_logged
+            "original_path": original_path,
+            "expanded_path": expanded_path,
+            "has_been_logged": error_logged,
         }
         if base_dir:
-            context['base_dir'] = base_dir
+            context["base_dir"] = base_dir
         if allowed_dirs:
-            context['allowed_dirs'] = allowed_dirs
+            context["allowed_dirs"] = allowed_dirs
 
         # Format full message with all context
         parts = [message]
         if base_dir:
             parts.append(f"Base directory: {base_dir}")
         if allowed_dirs:
-            parts.append(f"Allowed directories: {cls._format_allowed_dirs(allowed_dirs)}")
-        parts.append("Use --allowed-dir to specify additional allowed directories")
-        
-        return cls("\n".join(parts), path=original_path, context=context, error_logged=error_logged)
+            parts.append(
+                f"Allowed directories: {cls._format_allowed_dirs(allowed_dirs)}"
+            )
+        parts.append(
+            "Use --allowed-dir to specify additional allowed directories"
+        )
+
+        return cls(
+            "\n".join(parts),
+            path=original_path,
+            context=context,
+            error_logged=error_logged,
+        )
 
     @classmethod
     def access_denied(
@@ -217,7 +250,9 @@ class PathSecurityError(PathError):
         context = {}
         if base_dir:
             context["base_directory"] = str(base_dir)
-        return cls(msg, path=str(path), context=context, error_logged=error_logged)
+        return cls(
+            msg, path=str(path), context=context, error_logged=error_logged
+        )
 
     @classmethod
     def traversal_attempt(
@@ -242,21 +277,27 @@ class PathSecurityError(PathError):
         if base_dir:
             parts.append(f"Base directory: {base_dir}")
         if allowed_dirs:
-            parts.append(f"Allowed directories: {self._format_allowed_dirs(allowed_dirs)}")
-        parts.append("Use --allowed-dir to specify additional allowed directories")
+            parts.append(
+                f"Allowed directories: {self._format_allowed_dirs(allowed_dirs)}"
+            )
+        parts.append(
+            "Use --allowed-dir to specify additional allowed directories"
+        )
         return "\n".join(parts)
 
     @classmethod
-    def wrap_error(cls, context: str, original: "PathSecurityError") -> "PathSecurityError":
+    def wrap_error(
+        cls, context: str, original: "PathSecurityError"
+    ) -> "PathSecurityError":
         """Wrap an error with additional context while preserving attributes."""
         message = f"{context}: {original.message}"
         new_context = original.context.copy()
-        new_context['wrapped'] = True  # Mark as wrapped
+        new_context["wrapped"] = True  # Mark as wrapped
         error = cls(
             message,
-            path=original.context.get('path', 'unknown'),
+            path=original.context.get("path", "unknown"),
             context=new_context,
-            error_logged=original.has_been_logged
+            error_logged=original.has_been_logged,
         )
         error.wrapped = True  # Ensure wrapped is set through the property
         return error
@@ -301,20 +342,30 @@ class SchemaError(CLIError):
 class SchemaFileError(CLIError):
     """Raised when a schema file is invalid or inaccessible."""
 
-    def __init__(self, message: str, schema_path: Optional[str] = None, context: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        message: str,
+        schema_path: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
         context = context or {}
         if schema_path:
-            context['schema_path'] = schema_path
+            context["schema_path"] = schema_path
         super().__init__(message, context)
 
 
 class SchemaValidationError(CLIError):
     """Raised when a schema fails validation."""
 
-    def __init__(self, message: str, schema_path: Optional[str] = None, context: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        message: str,
+        schema_path: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
         context = context or {}
         if schema_path:
-            context['schema_path'] = schema_path
+            context["schema_path"] = schema_path
         super().__init__(message, context)
 
 
