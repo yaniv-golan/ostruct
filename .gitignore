@@ -98,7 +98,7 @@ ehthumbs.db
 Thumbs.db
 
 # Cursor
-.cursorrules
+.cursor/
 
 # Local Poetry configuration
 poetry.toml 

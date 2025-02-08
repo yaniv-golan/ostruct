@@ -4,6 +4,7 @@ import hashlib
 import logging
 import os
 from typing import Any, Optional
+from pathlib import Path
 
 from .errors import FileNotFoundError, FileReadError, PathSecurityError
 from .security import SecurityManager
@@ -45,6 +46,7 @@ class FileInfo:
         Raises:
             FileNotFoundError: If the file does not exist
             PathSecurityError: If the path is not allowed
+            PermissionError: If access is denied
         """
         logger.debug("Creating FileInfo for path: %s", path)
 
@@ -53,66 +55,70 @@ class FileInfo:
             raise ValueError("Path cannot be empty")
 
         # Initialize private attributes
-        self.__path = os.path.expanduser(os.path.expandvars(path))
+        self.__path = str(path)
         self.__security_manager = security_manager
         self.__content = content
         self.__encoding = encoding
         self.__hash = hash_value
-        self.__size: Optional[int] = None
-        self.__mtime: Optional[float] = None
+        self.__size = None
+        self.__mtime = None
 
-        # First validate security and resolve path
         try:
             # This will raise PathSecurityError if path is not allowed
+            # And FileNotFoundError if the file doesn't exist
             resolved_path = self.__security_manager.resolve_path(self.__path)
             logger.debug(
                 "Security-resolved path for %s: %s", path, resolved_path
             )
 
-            # Now check if the file exists and is accessible
-            if not resolved_path.exists():
-                # Use the original path in the error message
-                raise FileNotFoundError(
-                    f"File not found: {os.path.basename(path)}"
-                )
-
+            # Check if it's a regular file (not a directory, device, etc.)
             if not resolved_path.is_file():
+                logger.debug(
+                    "Not a regular file: %s",
+                    resolved_path
+                )
                 raise FileNotFoundError(
-                    f"Not a file: {os.path.basename(path)}"
+                    f"Not a regular file: {os.path.basename(str(path))}"
                 )
 
-        except PathSecurityError:
-            # Re-raise security errors as is - they already have proper context
-            raise
-        except FileNotFoundError as e:
-            # Re-raise file not found errors with proper context
-            logger.debug("File not found error: %s", e)
-            raise FileNotFoundError(
-                f"File not found: {os.path.basename(path)}"
-            ) from e
-        except PermissionError as e:
-            # Handle permission errors specifically
-            logger.error("Permission denied: %s", e)
-            raise FileNotFoundError(
-                f"Permission denied for file: {os.path.basename(path)}"
-            ) from e
-        except OSError as e:
-            # Handle OS-level errors with context
-            logger.error("OS error accessing file: %s", e)
-            raise FileNotFoundError(
-                f"Cannot access file: {os.path.basename(path)} ({e.strerror})"
-            ) from e
-        except Exception as e:
-            # Last resort catch-all with full context
+        except PathSecurityError as e:
+            # Let security errors propagate directly with context
             logger.error(
-                "Unexpected error accessing file %s: %s (%s)",
+                "Security error accessing file %s: %s",
                 path,
                 str(e),
-                type(e).__name__,
-                exc_info=True,
+                extra={
+                    "path": path,
+                    "resolved_path": str(resolved_path) if 'resolved_path' in locals() else None,
+                    "base_dir": str(self.__security_manager.base_dir),
+                    "allowed_dirs": [str(d) for d in self.__security_manager.allowed_dirs],
+                }
+            )
+            raise
+
+        except FileNotFoundError as e:
+            # Re-raise with standardized message format
+            logger.debug(
+                "File not found error: %s",
+                e
             )
             raise FileNotFoundError(
-                f"Cannot access file {os.path.basename(path)}: {type(e).__name__} - {str(e)}"
+                f"File not found: {os.path.basename(str(path))}"
+            ) from e
+
+        except PermissionError as e:
+            # Handle permission errors with context
+            logger.error(
+                "Permission denied accessing file %s: %s",
+                path,
+                str(e),
+                extra={
+                    "path": path,
+                    "resolved_path": str(resolved_path) if 'resolved_path' in locals() else None,
+                }
+            )
+            raise PermissionError(
+                f"Permission denied: {os.path.basename(str(path))}"
             ) from e
 
     @property

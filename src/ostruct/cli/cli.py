@@ -1192,40 +1192,13 @@ def validate_security_manager(
     if base_dir is None:
         base_dir = os.getcwd()
 
-    # Default to empty list if allowed_dirs is None
-    if allowed_dirs is None:
-        allowed_dirs = []
-
-    # Add base directory if it exists
-    try:
-        base_dir_path = Path(base_dir).resolve()
-        if not base_dir_path.exists():
-            raise DirectoryNotFoundError(
-                f"Base directory not found: {base_dir}"
-            )
-        if not base_dir_path.is_dir():
-            raise DirectoryNotFoundError(
-                f"Base directory is not a directory: {base_dir}"
-            )
-        all_allowed_dirs = [str(base_dir_path)]
-    except OSError as e:
-        raise DirectoryNotFoundError(f"Invalid base directory: {e}")
+    # Create security manager with base directory
+    security_manager = SecurityManager(base_dir)
 
     # Add explicitly allowed directories
-    for dir_path in allowed_dirs:
-        try:
-            resolved_path = Path(dir_path).resolve()
-            if not resolved_path.exists():
-                raise DirectoryNotFoundError(
-                    f"Directory not found: {dir_path}"
-                )
-            if not resolved_path.is_dir():
-                raise DirectoryNotFoundError(
-                    f"Path is not a directory: {dir_path}"
-                )
-            all_allowed_dirs.append(str(resolved_path))
-        except OSError as e:
-            raise DirectoryNotFoundError(f"Invalid directory path: {e}")
+    if allowed_dirs:
+        for dir_path in allowed_dirs:
+            security_manager.add_allowed_directory(dir_path)
 
     # Add directories from file if specified
     if allowed_dir_file:
@@ -1234,28 +1207,13 @@ def validate_security_manager(
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith("#"):
-                        try:
-                            resolved_path = Path(line).resolve()
-                            if not resolved_path.exists():
-                                raise DirectoryNotFoundError(
-                                    f"Directory not found: {line}"
-                                )
-                            if not resolved_path.is_dir():
-                                raise DirectoryNotFoundError(
-                                    f"Path is not a directory: {line}"
-                                )
-                            all_allowed_dirs.append(str(resolved_path))
-                        except OSError as e:
-                            raise DirectoryNotFoundError(
-                                f"Invalid directory path in {allowed_dir_file}: {e}"
-                            )
+                        security_manager.add_allowed_directory(line)
         except OSError as e:
             raise DirectoryNotFoundError(
                 f"Failed to read allowed directories file: {e}"
             )
 
-    # Create security manager with all allowed directories
-    return SecurityManager(base_dir=base_dir, allowed_dirs=all_allowed_dirs)
+    return security_manager
 
 
 def parse_var(var_str: str) -> Tuple[str, str]:

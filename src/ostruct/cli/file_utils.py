@@ -58,7 +58,7 @@ from .errors import (
 from .file_info import FileInfo
 from .file_list import FileInfoList
 from .security import SecurityManager
-from .security_types import SecurityManagerProtocol
+from .security.types import SecurityManagerProtocol
 
 __all__ = [
     "FileInfo",  # Re-exported from file_info
@@ -153,21 +153,21 @@ def collect_files_from_directory(
     allowed_extensions: Optional[List[str]] = None,
     **kwargs: Any,
 ) -> List[FileInfo]:
-    """Collect files from directory.
+    """Collect files from a directory.
 
     Args:
         directory: Directory to collect files from
         security_manager: Security manager for path validation
-        recursive: Whether to collect files recursively
-        allowed_extensions: List of allowed file extensions without dots
+        recursive: Whether to process subdirectories
+        allowed_extensions: List of allowed file extensions (without dot)
         **kwargs: Additional arguments passed to FileInfo.from_path
 
     Returns:
-        List of FileInfo instances
+        List of FileInfo objects
 
     Raises:
         DirectoryNotFoundError: If directory does not exist
-        PathSecurityError: If directory is not allowed
+        PathSecurityError: If directory or any file path is not allowed
     """
     logger.debug(
         "Collecting files from directory: %s (recursive=%s, extensions=%s)",
@@ -176,86 +176,100 @@ def collect_files_from_directory(
         allowed_extensions,
     )
 
-    # Validate directory exists and is allowed
+    # First validate and resolve the directory path
     try:
         abs_dir = str(security_manager.resolve_path(directory))
-        logger.debug("Resolved absolute directory path: %s", abs_dir)
-        logger.debug(
-            "Security manager base_dir: %s", security_manager.base_dir
-        )
-        logger.debug(
-            "Security manager allowed_dirs: %s", security_manager.allowed_dirs
-        )
+        logger.debug("Resolved directory path: %s", abs_dir)
     except PathSecurityError as e:
-        logger.debug("PathSecurityError while resolving directory: %s", str(e))
-        # Let the original error propagate
+        logger.error("Security violation in directory path: %s (%s)", directory, str(e))
         raise
 
-    if not os.path.exists(abs_dir):
-        logger.debug("Directory not found: %s (abs: %s)", directory, abs_dir)
-        raise DirectoryNotFoundError(f"Directory not found: {directory}")
     if not os.path.isdir(abs_dir):
-        logger.debug(
-            "Path is not a directory: %s (abs: %s)", directory, abs_dir
-        )
+        logger.error("Path is not a directory: %s", abs_dir)
         raise DirectoryNotFoundError(f"Path is not a directory: {directory}")
 
-    # Collect files
     files: List[FileInfo] = []
-    for root, dirs, filenames in os.walk(abs_dir):
-        logger.debug("Walking directory: %s", root)
-        logger.debug("Found subdirectories: %s", dirs)
-        logger.debug("Found files: %s", filenames)
+    
+    try:
+        for root, dirs, filenames in os.walk(abs_dir):
+            logger.debug("Walking directory: %s", root)
+            logger.debug("Found subdirectories: %s", dirs)
+            logger.debug("Found files: %s", filenames)
 
-        if not recursive and root != abs_dir:
-            logger.debug(
-                "Skipping subdirectory (non-recursive mode): %s", root
-            )
-            continue
-
-        logger.debug("Scanning directory: %s", root)
-        logger.debug("Current files collected: %d", len(files))
-        for filename in filenames:
-            # Get relative path from base directory
-            abs_path = os.path.join(root, filename)
+            # Validate current directory
             try:
-                rel_path = os.path.relpath(abs_path, security_manager.base_dir)
-                logger.debug("Processing file: %s -> %s", abs_path, rel_path)
-            except ValueError as e:
-                # Skip files that can't be made relative
-                logger.debug(
-                    "Skipping file that can't be made relative: %s (error: %s)",
-                    abs_path,
-                    str(e),
-                )
+                security_manager.validate_path(root)
+            except PathSecurityError as e:
+                logger.error("Security violation in subdirectory: %s (%s)", root, str(e))
+                raise
+
+            if not recursive and root != abs_dir:
+                logger.debug("Skipping subdirectory (non-recursive mode): %s", root)
                 continue
 
-            # Check extension if filter is specified
-            if allowed_extensions is not None:
-                ext = os.path.splitext(filename)[1].lstrip(".")
-                if ext not in allowed_extensions:
-                    logger.debug(
-                        "Skipping file with non-matching extension: %s (ext=%s, allowed=%s)",
-                        filename,
-                        ext,
-                        allowed_extensions,
+            logger.debug("Scanning directory: %s", root)
+            logger.debug("Current files collected: %d", len(files))
+            
+            for filename in filenames:
+                # Get relative path from base directory
+                abs_path = os.path.join(root, filename)
+                try:
+                    rel_path = os.path.relpath(abs_path, security_manager.base_dir)
+                    logger.debug("Processing file: %s -> %s", abs_path, rel_path)
+                except ValueError as e:
+                    logger.warning(
+                        "Skipping file that can't be made relative: %s (error: %s)",
+                        abs_path,
+                        str(e),
                     )
                     continue
 
-            try:
-                file_info = FileInfo.from_path(
-                    rel_path, security_manager=security_manager, **kwargs
-                )
-                files.append(file_info)
-                logger.debug("Added file to list: %s", rel_path)
-            except (FileNotFoundError, PathSecurityError) as e:
-                # Skip files that can't be accessed
-                logger.debug(
-                    "Skipping inaccessible file: %s (error: %s)",
-                    rel_path,
-                    str(e),
-                )
-                continue
+                # Check extension if filter is specified
+                if allowed_extensions is not None:
+                    ext = os.path.splitext(filename)[1].lstrip(".")
+                    if ext not in allowed_extensions:
+                        logger.debug(
+                            "Skipping file with disallowed extension: %s", filename
+                        )
+                        continue
+
+                # Validate file path before creating FileInfo
+                try:
+                    security_manager.validate_path(abs_path)
+                except PathSecurityError as e:
+                    logger.error("Security violation for file: %s (%s)", abs_path, str(e))
+                    raise
+
+                try:
+                    file_info = FileInfo.from_path(
+                        rel_path, 
+                        security_manager=security_manager, 
+                        **kwargs
+                    )
+                    files.append(file_info)
+                    logger.debug("Added file to list: %s", rel_path)
+                except PathSecurityError as e:
+                    # Log and re-raise security errors immediately
+                    logger.error(
+                        "Security violation processing file: %s (%s)", 
+                        rel_path, 
+                        str(e)
+                    )
+                    raise
+                except (FileNotFoundError, PermissionError) as e:
+                    # Skip legitimate file access errors
+                    logger.warning(
+                        "Skipping inaccessible file: %s (error: %s)",
+                        rel_path,
+                        str(e),
+                    )
+
+    except PathSecurityError:
+        # Re-raise security errors without wrapping
+        raise
+    except Exception as e:
+        logger.error("Error collecting files: %s", str(e))
+        raise
 
     logger.debug("Collected %d files from directory %s", len(files), directory)
     return files

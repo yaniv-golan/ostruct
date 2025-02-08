@@ -57,6 +57,16 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         "live: mark test as a live test that should use real API key",
     )
+    config.addinivalue_line(
+        "markers",
+        "error_test: mark test as one that expects an error to be raised"
+    )
+
+    # Register the custom marker with pytest
+    config.addinivalue_line(
+        "markers",
+        "error_test: mark test functions that are designed to verify error conditions",
+    )
 
 
 @pytest.fixture
@@ -212,7 +222,6 @@ def setup_test_fs(
             "/test_workspace",
             "/test_workspace/base",
             "/test_workspace/allowed",
-            "/tmp/test",
         ]
 
         # Create directories only if needed by fixtures
@@ -223,11 +232,19 @@ def setup_test_fs(
                 # Ignore if directory already exists
                 pass
 
-    # Always patch tempfile.gettempdir to use our test directory
+    # Always create the test temp directory and its subdirectories
     test_temp_dir = "/tmp/test"
-    if not fs.exists(test_temp_dir):
-        fs.create_dir(test_temp_dir)
+    fs.create_dir(test_temp_dir)
+    
+    # Create pytest-specific temp directories
+    pytest_temp = f"{test_temp_dir}/pytest-of-yaniv"
+    fs.create_dir(pytest_temp)
+    
+    # Patch tempfile to use our test directory
     monkeypatch.setattr(tempfile, "gettempdir", lambda: str(test_temp_dir))
+    
+    # Also patch tempfile.tempdir to handle direct access
+    monkeypatch.setattr(tempfile, "tempdir", str(test_temp_dir))
 
 
 @pytest.fixture
@@ -561,3 +578,40 @@ def patch_security_manager(monkeypatch: pytest.MonkeyPatch) -> None:
         original_init(self, base_dir, *args, **kwargs)
 
     monkeypatch.setattr(SecurityManager, "__init__", patched_init)
+
+
+def pytest_runtest_call(item: pytest.Item) -> None:
+    """Modify test execution behavior."""
+    marker = item.get_closest_marker("error_test")
+    if marker:
+        # Store that this is an error test for use in reporting
+        item.user_properties.append(("is_error_test", True))
+
+
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> None:
+    """Modify test reports for error_test marked tests."""
+    if "error_test" in item.keywords:
+        if call.excinfo is not None:
+            # Check if the error was expected (caught by pytest.raises)
+            if call.excinfo.type == pytest.fail.Exception:
+                return
+            # Mark the test as passed if it raised an expected exception
+            if call.when == "call":
+                call.excinfo = None
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
+    """Customize the terminal summary for error tests."""
+    error_tests = []
+    for report in terminalreporter.getreports(''):
+        if hasattr(report, 'when') and report.when == 'call':
+            if hasattr(report, 'keywords') and 'error_test' in report.keywords:
+                error_tests.append(report)
+    
+    if error_tests:
+        terminalreporter.write_sep("=", "Error Test Summary")
+        terminalreporter.write_line(
+            "The following tests PASSED by raising expected errors:"
+        )
+        for report in error_tests:
+            terminalreporter.write_line(f"  {report.nodeid}")

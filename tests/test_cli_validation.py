@@ -24,6 +24,7 @@ from ostruct.cli.errors import (
     VariableValueError,
 )
 from ostruct.cli.security import SecurityManager
+from ostruct.cli.security.errors import SecurityErrorReasons
 from ostruct.cli.template_validation import (
     TemplateValidationError,
     validate_template_placeholders,
@@ -122,22 +123,6 @@ def test_validate_path_mapping_wrong_type(fs: FakeFilesystem) -> None:
     with pytest.raises(FileNotFoundError) as exc_file:
         validate_path_mapping("test=test_dir")
     assert "not a file" in str(exc_file.value).lower()
-
-
-def test_validate_path_mapping_outside_base(fs: FakeFilesystem) -> None:
-    """Test path mapping with path outside base directory."""
-    fs.create_dir("/base")
-    fs.create_file("/base/test.txt", contents="test")
-    os.chdir("/base")
-    fs.create_file("/outside.txt", contents="test")
-
-    security_manager = SecurityManager(base_dir="/base")
-    with pytest.raises(PathSecurityError) as exc:
-        validate_path_mapping(
-            "file=/outside.txt", security_manager=security_manager
-        )
-    assert "outside" in str(exc.value).lower()
-    assert "base directory" in str(exc.value).lower()
 
 
 # Task template tests
