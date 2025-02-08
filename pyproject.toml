@@ -52,7 +52,6 @@
     types-click = "^7.1.8"
     types-requests = "^2.32.0.20241016"
     pre-commit = "^4.1.0"
-    types-openai = "^1.0.0"
 
     [tool.poetry.group.docs]
     optional = true
