@@ -24,18 +24,12 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install --no-interaction --with docs
-    - name: Lint with Black
+    - name: Install pre-commit
       run: |
-        poetry run black . --check
-    - name: Lint with isort
+        pip install pre-commit
+    - name: Run pre-commit
       run: |
-        poetry run isort . --check
-    - name: Lint with Flake8
-      run: |
-        poetry run flake8 src/ tests/
-    - name: Type check with mypy
-      run: |
-        poetry run mypy --follow-imports=skip src/ tests/
+        pre-commit run --all-files
     - name: Run tests with pytest
       run: |
         # Run all tests except live tests, with verbose output and logging
