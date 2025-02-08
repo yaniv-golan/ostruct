@@ -49,6 +49,7 @@ Review this code: {{ code.content }}
 - `--dir-ext EXTENSIONS`: Comma-separated list of file extensions to include in directory processing
 - `--allowed-dir PATH`: Additional allowed directory
 - `--allowed-dir-file PATH`: File containing list of allowed directories
+- `--base-dir PATH`: Base directory for resolving relative paths
 
 ### Variable Options
 
@@ -57,12 +58,16 @@ Review this code: {{ code.content }}
 
 ### Model Options
 
-- `--model MODEL`: OpenAI model to use (default: gpt-4o-2024-08-06)
+- `--model MODEL`: OpenAI model to use (default: gpt-4o)
+  - Supports both streaming and non-streaming models
+  - Automatically detects model capabilities and adjusts behavior
+  - Provides optimal handling for each model type
 - `--temperature float`: Temperature for sampling (default: 0.0)
 - `--max-tokens int`: Maximum tokens to generate
 - `--top-p float`: Top-p sampling parameter (default: 1.0)
 - `--frequency-penalty float`: Frequency penalty parameter (default: 0.0)
 - `--presence-penalty float`: Presence penalty parameter (default: 0.0)
+- `--timeout float`: API timeout in seconds (default: 60.0)
 
 ### Token Limits and Large Files
 
@@ -110,9 +115,10 @@ Additional options:
 
 - `--show-model-schema`: Display the generated Pydantic model schema
 - `--debug-validation`: Show detailed schema validation debugging
-- `--verbose-schema`: Enable verbose schema debugging output
 - `--debug-openai-stream`: Enable low-level debug output for OpenAI streaming (very verbose)
+- `--verbose`: Enable verbose output and detailed logging
 - `--progress-level {none,basic,detailed}`: Set progress reporting level (default: basic)
+- `--no-progress`: Disable progress indicators
 
 ## Examples
 
@@ -158,7 +164,7 @@ ostruct \
   --task-file review.j2 \
   --schema-file review_schema.json \
   --file input=article.txt \
-  --model gpt-4o-2024-08-06
+  --model gpt-4o
 ```
 
 ### Directory Processing Example
@@ -172,7 +178,7 @@ ostruct \
   --dir src=./src \
   --dir-recursive \
   --dir-ext py \
-  --model gpt-4o-2024-08-06
+  --model gpt-4o
 ```
 
 ### Code Review Example with System Prompt File
@@ -229,7 +235,7 @@ ostruct \
   --schema-file code_review_schema.json \
   --system-prompt-file system_prompt.txt \
   --file code=app.py \
-  --model gpt-4o-2024-08-06
+  --model gpt-4o
 ```
 
 ### Handling Large Files
@@ -371,7 +377,7 @@ ostruct \
   --schema compare_schema.json \
   --file file_a=version1.py \
   --file file_b=version2.py \
-  --model gpt-4o-2024-08-06 \
+  --model gpt-4o \
   --output-file differences.json
 ```
 
@@ -405,3 +411,21 @@ By default, the CLI only allows access to files within the current working direc
 1. Use `--allowed-dir` to specify additional allowed directories
 2. Use `@file` syntax to load allowed directories from a file
 3. Always use absolute paths to prevent ambiguity
+
+### File Handling and Security
+
+The CLI provides robust file handling with several security features:
+
+- Cross-platform path handling (Windows, macOS, Linux)
+- Thread-safe file operations for concurrent processing
+- Secure path resolution and validation
+- Permission checking and error handling
+- Protection against directory traversal
+- Explicit directory allowlisting
+
+When working with files:
+
+1. Use absolute paths with `--allowed-dir` for clarity
+2. Keep sensitive files outside project directories
+3. Use `--dir-recursive` carefully with proper extension filtering
+4. Consider thread safety when processing multiple files

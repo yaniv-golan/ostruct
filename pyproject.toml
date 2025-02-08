@@ -4,7 +4,7 @@
 
     [tool.poetry]
     name = "ostruct-cli"
-    version = "0.3.0"
+    version = "0.4.0"
     description = "CLI for OpenAI Structured Output"
     authors = ["Yaniv Golan <yaniv@golan.name>"]
     readme = "README.md"

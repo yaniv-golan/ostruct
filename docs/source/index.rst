@@ -8,10 +8,12 @@ Key Features
 
 - **Schema-First Approach**: Define your output structure using JSON Schema (validation is always performed automatically)
 - **Template-Based Input**: Use Jinja2 templates with support for YAML frontmatter and system prompts
-- **File Processing**: Handle single files, multiple files, or entire directories
-- **Security-Focused**: Safe file access with explicit directory permissions
+- **File Processing**: Handle single files, multiple files, or entire directories with thread-safe operations
+- **Cross-Platform**: Robust support for Windows, macOS, and Linux with consistent path handling
+- **Security-Focused**: Safe file access with explicit directory permissions and enhanced error handling
 - **Structured Output**: Guaranteed valid JSON output matching your schema
 - **Token Management**: Automatic token limit validation and handling
+- **Model Support**: Optimized handling for both streaming and non-streaming models
 
 Quick Start
 ----------
@@ -61,7 +63,7 @@ Quick Start
         --task-file task.j2 \
         --schema-file schema.json \
         --file content=input.txt \
-        --model gpt-4o-2024-08-06
+        --model gpt-4o
 
 Documentation
 ------------
