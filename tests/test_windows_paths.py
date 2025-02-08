@@ -1,7 +1,6 @@
-"""Tests for Windows-specific path handling."""
+"""Tests for Windows path handling."""
 
 import os
-from pathlib import Path
 
 import pytest
 
@@ -14,13 +13,21 @@ from ostruct.cli.security.windows_paths import (
 
 def test_is_windows_path():
     """Test detection of Windows-specific paths."""
-    # Device paths
-    assert is_windows_path(r"\\?\C:\file.txt")
-    assert is_windows_path(r"\\.\C:\file.txt")
+    # Device paths with different formats
+    assert is_windows_path(r"\\?\C:\file.txt")  # Windows backslash format
+    assert is_windows_path(r"//?/C:/file.txt")  # Forward slash format
+    assert is_windows_path(r"\\.\PHYSICALDRIVE0")  # Physical device
+    assert is_windows_path(
+        r"//./PhysicalDrive0"
+    )  # Physical device forward slash
 
-    # Drive-relative paths
-    assert is_windows_path(r"C:file.txt")
+    # Case variations for device paths
+    assert is_windows_path(r"\\?\c:\file.txt")  # Lowercase drive
+    assert is_windows_path(r"//?/c:/file.txt")  # Lowercase with forward slash
+
+    # Normal paths should not be detected as Windows-specific
     assert not is_windows_path(r"C:\file.txt")  # Normal absolute path
+    assert not is_windows_path(r"C:/file.txt")  # Normal with forward slash
 
     # Reserved names
     assert is_windows_path("CON")
@@ -40,20 +47,33 @@ def test_is_windows_path():
 
 def test_validate_windows_path():
     """Test validation of Windows paths."""
-    # Device paths should be rejected
+    # Device paths should be rejected consistently
     assert (
         validate_windows_path(r"\\?\C:\file.txt") == "Device paths not allowed"
     )
     assert (
-        validate_windows_path(r"\\.\C:\file.txt") == "Device paths not allowed"
+        validate_windows_path(r"//?/C:/file.txt") == "Device paths not allowed"
+    )
+    assert (
+        validate_windows_path(r"\\.\PHYSICALDRIVE0")
+        == "Device paths not allowed"
+    )
+    assert (
+        validate_windows_path(r"//./PhysicalDrive0")
+        == "Device paths not allowed"
     )
 
-    # Drive-relative paths without slash should be rejected
+    # Case variations should also be rejected
     assert (
-        validate_windows_path(r"C:file.txt")
-        == "Drive-relative paths must include separator"
+        validate_windows_path(r"\\?\c:\file.txt") == "Device paths not allowed"
     )
-    assert validate_windows_path(r"C:\file.txt") is None  # Valid path
+    assert (
+        validate_windows_path(r"//?/c:/file.txt") == "Device paths not allowed"
+    )
+
+    # Normal paths should be allowed
+    assert validate_windows_path(r"C:\file.txt") is None
+    assert validate_windows_path(r"C:/file.txt") is None
 
     # Reserved names should be rejected
     assert validate_windows_path("CON") == "Windows reserved names not allowed"

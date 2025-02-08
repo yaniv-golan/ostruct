@@ -773,7 +773,7 @@ def _validate_path_mapping_internal(
         if security_manager:
             try:
                 security_manager.validate_path(str(resolved_path))
-            except PathSecurityError as e:
+            except PathSecurityError:
                 raise PathSecurityError.from_expanded_paths(
                     original_path=str(path),
                     expanded_path=str(resolved_path),

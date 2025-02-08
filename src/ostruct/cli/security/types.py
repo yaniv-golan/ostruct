@@ -2,7 +2,7 @@
 
 from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import Generator, List, Protocol, Union
+from typing import List, Protocol, Union
 
 
 class SecurityManagerProtocol(Protocol):

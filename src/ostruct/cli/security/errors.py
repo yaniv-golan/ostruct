@@ -45,7 +45,11 @@ class PathSecurityError(Exception):
                 "original_path" in self.context
                 and "expanded_path" in self.context
             ):
-                msg = f"{msg}\nOriginal path: {self.context['original_path']}\nExpanded path: {self.context['expanded_path']}"
+                msg = (
+                    f"{msg}\n"
+                    f"Original path: {self.context['original_path']}\n"
+                    f"Expanded path: {self.context['expanded_path']}"
+                )
             if "base_dir" in self.context:
                 msg = f"{msg}\nBase directory: {self.context['base_dir']}"
             if "allowed_dirs" in self.context:

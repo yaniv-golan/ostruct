@@ -6,7 +6,7 @@ of file paths on case-insensitive systems.
 
 from pathlib import Path
 from threading import Lock
-from typing import Dict, Optional
+from typing import Dict
 
 
 class CaseManager:

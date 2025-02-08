@@ -32,8 +32,8 @@ Security Design Choices:
 
 Known Limitations:
 1. Windows-Specific:
-   - UNC paths (\\server\share) break when normalized
-   - Device paths (\\?\, \\.) become invalid
+   - UNC paths (r"\\\\server\\share") break when normalized
+   - Device paths (r"\\\\?\\", r"\\\\.") become invalid
    - Drive-relative paths may resolve incorrectly
    - Reserved names (CON, NUL, etc.) not handled
    - ADS (:stream) not detected

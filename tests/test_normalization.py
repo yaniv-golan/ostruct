@@ -1,7 +1,6 @@
 """Tests for path normalization functionality."""
 
 import os
-import unicodedata
 from pathlib import Path
 
 import pytest

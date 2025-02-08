@@ -6,11 +6,7 @@ import os
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.errors import (
-    FileNotFoundError,
-    FileReadError,
-    PathSecurityError,
-)
+from ostruct.cli.errors import FileNotFoundError, PathSecurityError
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
 from ostruct.cli.file_utils import (
@@ -532,7 +528,7 @@ def test_security_error_expanded_paths(
     assert "/home/user/test.txt" in error_msg
     assert "Base directory: /test_workspace" in error_msg
     assert "Allowed directories: ['/allowed']" in error_msg
-    assert error._has_been_logged is True
+    assert error.has_been_logged is True
 
 
 def test_security_error_format_with_context() -> None:

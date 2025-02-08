@@ -1,9 +1,6 @@
 """Custom error classes for CLI error handling."""
 
 import logging
-import os
-from enum import Enum, auto
-from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO, cast
 
 import click

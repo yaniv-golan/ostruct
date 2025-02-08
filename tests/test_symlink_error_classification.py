@@ -7,7 +7,6 @@ scenarios are correctly classified with the appropriate error types:
 - Proper error precedence when multiple conditions exist
 """
 
-import os
 from pathlib import Path
 
 import pytest

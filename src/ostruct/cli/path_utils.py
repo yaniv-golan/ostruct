@@ -1,6 +1,5 @@
 """Path validation utilities for the CLI."""
 
-import os
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -71,17 +70,12 @@ def validate_path_mapping(
     # Validate path with security manager if provided
     if security_manager:
         try:
-            print("\nDebug: About to call security_manager.validate_path")
             path = security_manager.validate_path(path)
         except PathSecurityError as e:
-            print(f"\nDebug: Caught PathSecurityError")
-            print(f"Debug: Original error: {str(e)!r}")
-            print(f"Debug: Error context: {e.context}")
             if (
                 e.context.get("reason")
                 == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
             ):
-                print(f"Debug: Wrapping error for PATH_OUTSIDE_ALLOWED")
                 raise PathSecurityError(
                     f"Path '{path}' is outside the base directory and not in allowed directories",
                     path=str(path),

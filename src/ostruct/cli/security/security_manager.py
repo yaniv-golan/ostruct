@@ -13,7 +13,7 @@ import os
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, List, Optional, Set, Union
+from typing import Generator, List, Optional, Union
 
 from .allowed_checker import is_path_in_allowed_dirs
 from .case_manager import CaseManager
@@ -23,7 +23,6 @@ from .errors import (
     SecurityErrorReasons,
 )
 from .normalization import normalize_path
-from .safe_joiner import safe_join
 from .symlink_resolver import _resolve_symlink
 
 logger = logging.getLogger(__name__)
@@ -232,7 +231,10 @@ class SecurityManager:
                 path,
             )
             raise PathSecurityError(
-                f"Access denied: {os.path.basename(str(path))} is outside base directory and not in allowed directories",
+                (
+                    f"Access denied: {os.path.basename(str(path))} is outside "
+                    "base directory and not in allowed directories"
+                ),
                 path=str(path),
                 context={
                     "reason": SecurityErrorReasons.PATH_OUTSIDE_ALLOWED,

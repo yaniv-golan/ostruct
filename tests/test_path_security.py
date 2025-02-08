@@ -1,18 +1,9 @@
 """Tests for path security functionality."""
 
-import os
-import sys
-from pathlib import Path
-
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.security import (
-    PathSecurityError,
-    SecurityErrorReasons,
-    SecurityManager,
-    normalize_path,
-)
+from ostruct.cli.security import PathSecurityError, SecurityManager
 
 
 def test_security_manager_base_dir_validation(fs: FakeFilesystem) -> None:

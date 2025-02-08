@@ -1,91 +1,39 @@
-"""Symlink resolver module.
+"""Symlink resolution module.
 
-This module provides functionality to securely resolve symlinks with:
+This module provides secure symlink resolution with:
 - Maximum depth enforcement
 - Loop detection
-- Allowed-directory checks at each resolution step
+- Security validation
+- Windows path handling
 
-Security Design Choices:
-1. Path Normalization:
-   - All paths are normalized before loop detection and recursion
-   - Consistent NFKC Unicode normalization
-   - Handles path separator differences
+Design Choices:
+1. Security First:
+   - Validate before resolving
+   - Check each step in chain
+   - Fail closed on errors
 
-2. Loop Detection Strategy:
-   - Loop detection is purely path-based, using a seen set
-   - Loops are detected before any existence checks
-   - Three-phase detection:
-     a) Check if current path is in seen set (catches A->B->A)
-     b) Check if target would create loop (catches A->A)
-     c) Follow entire chain to detect complex loops (catches C->B->A->A)
-   - A path is added to seen immediately when encountered
-   - This ensures accurate loop detection regardless of filesystem behavior
+2. Loop Detection:
+   - Track visited paths
+   - Check before traversal
+   - Handle all loop types
 
-3. Security Checks Order:
-   1. Maximum depth check (prevent infinite recursion)
-   2. Path normalization (consistent comparison)
-   3. Current path loop check (detect revisiting paths)
-   4. Add current path to seen set
-   5. Allowed directory check
-   6. Symlink check
-   7. Target resolution and normalization
-   8. Target loop check
-   9. Chain loop check
-   10. Target existence check (only after confirming no loops)
-   11. Target allowed directory check
-   12. Recursion with target
-
-4. Error Precedence:
-   - SYMLINK_LOOP takes precedence over SYMLINK_BROKEN
-   - Loop detection happens before existence checks
-   - This ensures correct classification regardless of how the filesystem
-     reports existence for looped symlinks
-
-5. pyfakefs Behavior:
-   - pyfakefs simulates filesystem behavior but has some differences:
-     a) Symlink loops are not detected by the OS layer (no ELOOP)
-     b) exists() returns False for all symlinks in a loop
-     c) is_symlink() works correctly even in loops
-     d) readlink() works correctly even in loops
-   - Our loop detection is filesystem-agnostic and works with:
-     a) Real filesystems (that raise ELOOP)
-     b) pyfakefs (that silently allows loops)
-     c) Other filesystem implementations
-
-Known Limitations:
-1. Windows Support:
-   - Limited handling of Windows-specific paths
-   - UNC paths may not resolve correctly
-   - Reparse points not fully supported
-
-2. Race Conditions:
-   - TOCTOU races possible between checks
-   - Symlinks can change between resolution steps
-   - No atomic path resolution guarantee
-
-3. Filesystem Differences:
-   - Different filesystems handle symlink loops differently
-   - Some raise ELOOP immediately
-   - Others allow following until a depth limit
+3. Windows Support:
+   - Handle Windows-specific paths
+   - Support both APIs
    - Our approach works with both behaviors
 """
 
-import errno
 import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Set, Union
+from typing import List, Optional, Set
 
 from .allowed_checker import is_path_in_allowed_dirs
 from .errors import PathSecurityError, SecurityErrorReasons
 from .normalization import normalize_path
-from .windows_paths import (
-    is_windows_path,
-    resolve_windows_symlink,
-    validate_windows_path,
-)
+from .windows_paths import is_windows_path, validate_windows_path
 
 logger = logging.getLogger(__name__)
 
@@ -269,18 +217,68 @@ def _resolve_symlink(
     3. Allowed directory checks at each resolution step
     4. Security validation BEFORE existence checks
 
-    Loop Detection Strategy:
-    - A path is only added to the seen set when we actually traverse it
-    - We check for loops in three phases:
-      1. When we visit a path (catches revisiting same path)
-      2. When we read a target (catches self-reference)
-      3. When we follow the chain (catches complex loops)
-    - This ensures we detect all forms of loops without false positives
+    Security Design Choices:
+    1. Path Normalization:
+       - All paths are normalized before loop detection and recursion
+       - Consistent NFKC Unicode normalization
+       - Handles path separator differences
 
-    Error Precedence:
-    1. MAX_DEPTH (highest) - Prevent infinite recursion
-    2. SYMLINK_LOOP - Detect cycles before existence
-    3. SYMLINK_BROKEN (lowest) - Only after confirming no loops
+    2. Loop Detection Strategy:
+       - Loop detection is purely path-based, using a seen set
+       - Loops are detected before any existence checks
+       - Three-phase detection:
+         a) Check if current path is in seen set (catches A->B->A)
+         b) Check if target would create loop (catches A->A)
+         c) Follow entire chain to detect complex loops (catches C->B->A->A)
+       - A path is added to seen immediately when encountered
+       - This ensures accurate loop detection regardless of filesystem behavior
+
+    3. Security Checks Order:
+       1. Maximum depth check (prevent infinite recursion)
+       2. Path normalization (consistent comparison)
+       3. Current path loop check (detect revisiting paths)
+       4. Add current path to seen set
+       5. Allowed directory check
+       6. Symlink check
+       7. Target resolution and normalization
+       8. Target loop check
+       9. Chain loop check
+       10. Target existence check (only after confirming no loops)
+       11. Target allowed directory check
+       12. Recursion with target
+
+    4. Error Precedence:
+       - SYMLINK_LOOP takes precedence over SYMLINK_BROKEN
+       - Loop detection happens before existence checks
+       - This ensures correct classification regardless of how the filesystem
+         reports existence for looped symlinks
+
+    5. pyfakefs Behavior:
+       - pyfakefs simulates filesystem behavior but has some differences:
+         a) Symlink loops are not detected by the OS layer (no ELOOP)
+         b) exists() returns False for all symlinks in a loop
+         c) is_symlink() works correctly even in loops
+         d) readlink() works correctly even in loops
+       - Our loop detection is filesystem-agnostic and works with:
+         a) Real filesystems (that raise ELOOP)
+         b) pyfakefs (that silently allows loops)
+         c) Other filesystem implementations
+
+    Known Limitations:
+    1. Windows Support:
+       - Limited handling of Windows-specific paths
+       - UNC paths may not resolve correctly
+       - Reparse points not fully supported
+
+    2. Race Conditions:
+       - TOCTOU races possible between checks
+       - Symlinks can change between resolution steps
+       - No atomic path resolution guarantee
+
+    3. Filesystem Differences:
+       - Different filesystems handle symlink loops differently
+       - Some raise ELOOP immediately
+       - Others allow following until a depth limit
 
     Args:
         path: The starting Path object.

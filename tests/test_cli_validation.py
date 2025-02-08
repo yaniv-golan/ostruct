@@ -1,7 +1,6 @@
 """Tests for CLI argument validation functions."""
 
 import json
-import os
 from typing import Any, Dict, List, Literal, Optional, Type, Union, cast
 
 import pytest
@@ -17,14 +16,11 @@ from ostruct.cli.errors import (
     DirectoryNotFoundError,
     FileNotFoundError,
     InvalidJSONError,
-    PathSecurityError,
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
     VariableNameError,
     VariableValueError,
 )
-from ostruct.cli.security import SecurityManager
-from ostruct.cli.security.errors import SecurityErrorReasons
 from ostruct.cli.template_validation import (
     TemplateValidationError,
     validate_template_placeholders,

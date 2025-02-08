@@ -32,8 +32,8 @@ Security Design Choices:
 
 Known Limitations:
 1. Windows-Specific:
-   - UNC paths (\\server\share) are handled but must be complete
-   - Device paths (\\?\, \\.) are rejected for security
+   - UNC paths (r"\\\\server\\share") are handled but must be complete
+   - Device paths (r"\\\\?\\", r"\\\\.") are rejected for security
    - Drive-relative paths (C:folder) must be absolute
    - Reserved names (CON, NUL, etc.) are rejected
    - Alternate Data Streams (:stream) are rejected
@@ -83,7 +83,7 @@ def safe_join(directory: str, *pathnames: str) -> Optional[str]:
     - Normalizes path separators to forward slashes
     - Performs final containment check against base directory
     - Handles Windows-specific security concerns:
-        * Rejects device paths (\\?\, \\.)
+        * Rejects device paths (r"\\\\?\\", r"\\\\.")
         * Rejects relative drive paths (C:folder)
         * Rejects reserved names (CON, PRN, etc.)
         * Rejects Alternate Data Streams

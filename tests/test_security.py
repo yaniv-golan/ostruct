@@ -1,7 +1,5 @@
 """Tests for security functionality."""
 
-import logging
-import os
 import tempfile
 from pathlib import Path
 

@@ -35,7 +35,6 @@ we now understand the behavior they document.
 import os
 from pathlib import Path
 
-import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 
@@ -100,7 +99,9 @@ def test_nested_symlink_chain(fs: FakeFilesystem) -> None:
     print(f"link1_path.exists(): {link1_path.exists()}")
     print(f"real_path.exists(): {real_path.exists()}")
     print(
-        f"os.readlink chain: {os.readlink(str(link3_path))} -> {os.readlink(str(link2_path))} -> {os.readlink(str(link1_path))}"
+        f"os.readlink chain: {os.readlink(str(link3_path))} -> "
+        f"{os.readlink(str(link2_path))} -> "
+        f"{os.readlink(str(link1_path))}"
     )
 
     # Valid chain behavior assertions

@@ -1,10 +1,10 @@
 """Windows path handling and validation.
 
 This module provides functions for handling Windows-specific path features:
-- Device paths (\\?\, \\.)
+- Device paths (r"\\\\?\\", r"\\\\.")
 - Drive-relative paths (C:folder)
 - Reserved names (CON, PRN, etc.)
-- UNC paths (\\server\share)
+- UNC paths (r"\\\\server\\share")
 - Alternate Data Streams (file.txt:stream)
 
 Security Design Choices:
@@ -66,8 +66,8 @@ EXTENDED_MAX_PATH = 32767
 
 # Regex patterns for Windows path features
 _WINDOWS_DEVICE_PATH = re.compile(
-    r"^\\\\[?.]\\(?!UNC\\)|"  # \\?\ or \\.\ but not \\?\UNC\ or \\.\UNC\
-    r"^//[?.]/"  # //?./ variants
+    r"^(?:\\\\|//)[?.](?:\\|/)(?!UNC(?:\\|/))",  # Match device paths but exclude UNC
+    flags=re.IGNORECASE,
 )
 
 _WINDOWS_DRIVE_RELATIVE = re.compile(
@@ -107,27 +107,26 @@ _WINDOWS_TRAILING = re.compile(r"[. ]+$")  # Trailing dots/spaces
 
 
 def is_windows_path(path: Union[str, Path]) -> bool:
-    """Check if a path uses Windows-specific features.
+    """Check if path uses Windows-specific features.
 
-    This function detects:
-    - Device paths (\\?\, \\.)
-    - Drive-relative paths (C:folder)
-    - UNC paths (\\server\share)
-    - Alternate Data Streams (file.txt:stream)
-    - Reserved names (CON, PRN, etc.)
-
-    Note: Normal absolute Windows paths (C:\folder) are not considered Windows-specific.
+    Security Note:
+    - Detects device paths (r"\\?\\" and r"\\.\\") in both slash formats
+    - Case insensitive to handle drive letters
     """
     path_str = str(path)
-    basename = os.path.basename(path_str)
 
-    # Check for device paths first - these should not be considered UNC paths
-    is_device = bool(_WINDOWS_DEVICE_PATH.search(path_str))
-    if is_device:
-        logger.debug("Device path detected: %r", path_str)
+    # Normalize slashes for consistent matching
+    normalized_path = path_str.replace("\\", "/")
+
+    # Check for device paths first before any processing
+    if _WINDOWS_DEVICE_PATH.match(path_str) or _WINDOWS_DEVICE_PATH.match(
+        normalized_path
+    ):
+        logger.debug("Windows device path detected: %r", path_str)
         return True
 
-    # Then check other Windows-specific features
+    # Rest of the function remains unchanged
+    basename = os.path.basename(path_str)
     is_drive_relative = bool(_WINDOWS_DRIVE_RELATIVE.search(path_str))
     is_unc = bool(_WINDOWS_UNC.search(path_str))
     is_ads = bool(_WINDOWS_ADS.search(path_str))
@@ -229,11 +228,16 @@ def normalize_windows_path(path: Union[str, Path]) -> Path:
 def validate_windows_path(path: Union[str, Path]) -> Optional[str]:
     """Validate a path for Windows-specific security issues.
 
+    Performs checks in order:
+    1. Device paths (blocked)
+    2. Path normalization
+    3. Other Windows-specific checks
+
     Returns an error message if the path:
-    - Uses device paths (\\?\, \\.)
+    - Uses device paths (r"\\\\?\\", r"\\\\.")
     - Uses drive-relative paths (C:folder)
     - Contains reserved names (CON, PRN, etc.)
-    - Uses UNC paths (\\server\share)
+    - Uses UNC paths (r"\\\\server\\share")
     - Contains Alternate Data Streams (file.txt:stream)
     - Exceeds maximum path length
     - Contains invalid characters
@@ -246,8 +250,13 @@ def validate_windows_path(path: Union[str, Path]) -> Optional[str]:
     # Initial checks on raw path string
     path_str = str(path)
 
-    # Check for device paths in original path
-    if _WINDOWS_DEVICE_PATH.search(path_str):
+    # Normalize slashes for consistent matching
+    normalized_path = path_str.replace("\\", "/")
+
+    # Check for device paths before any processing
+    if _WINDOWS_DEVICE_PATH.match(path_str) or _WINDOWS_DEVICE_PATH.match(
+        normalized_path
+    ):
         logger.debug("Device path detected in original path: %r", path_str)
         return "Device paths not allowed"
 
@@ -262,7 +271,7 @@ def validate_windows_path(path: Union[str, Path]) -> Optional[str]:
         logger.debug("Normalized path: %r", normalized_str)
 
         # Check for device paths again after normalization
-        if _WINDOWS_DEVICE_PATH.search(normalized_str):
+        if _WINDOWS_DEVICE_PATH.match(normalized_str):
             logger.debug(
                 "Device path detected after normalization: %r", normalized_str
             )

@@ -5,7 +5,6 @@ part of the public API. They focus on security error classification and
 internal error handling.
 """
 
-import os
 from pathlib import Path
 
 import pytest

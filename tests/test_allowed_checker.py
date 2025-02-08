@@ -5,11 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from ostruct.cli.security import (
-    PathSecurityError,
-    SecurityErrorReasons,
-    is_path_in_allowed_dirs,
-)
+from ostruct.cli.security import is_path_in_allowed_dirs
 
 
 def test_is_path_in_allowed_dirs_basic():
