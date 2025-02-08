@@ -124,8 +124,8 @@ def normalize_path(path: Union[str, Path]) -> Path:
             path=path_str,
             context={
                 "reason": SecurityErrorReasons.UNSAFE_UNICODE,
-                "error": str(e)
-            }
+                "error": str(e),
+            },
         ) from e
 
     # Check for unsafe characters and directory traversal
@@ -137,8 +137,8 @@ def normalize_path(path: Union[str, Path]) -> Path:
                 path=path_str,
                 context={
                     "reason": SecurityErrorReasons.PATH_TRAVERSAL,
-                    "matched": matched_text
-                }
+                    "matched": matched_text,
+                },
             )
         else:
             raise PathSecurityError(
@@ -146,8 +146,8 @@ def normalize_path(path: Union[str, Path]) -> Path:
                 path=path_str,
                 context={
                     "reason": SecurityErrorReasons.UNSAFE_UNICODE,
-                    "matched": matched_text
-                }
+                    "matched": matched_text,
+                },
             )
 
     # Normalize path separators
@@ -158,4 +158,4 @@ def normalize_path(path: Union[str, Path]) -> Path:
     if not os.path.isabs(normalized):
         normalized = os.path.abspath(normalized)
 
-    return Path(normalized) 
+    return Path(normalized)

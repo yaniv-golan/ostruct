@@ -11,7 +11,6 @@ from ostruct.cli.errors import (
     FileReadError,
     PathSecurityError,
 )
-from ostruct.cli.security.errors import SecurityErrorReasons
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
 from ostruct.cli.file_utils import (
@@ -19,6 +18,7 @@ from ostruct.cli.file_utils import (
     collect_files_from_directory,
     collect_files_from_pattern,
 )
+from ostruct.cli.security.errors import SecurityErrorReasons
 from tests.conftest import MockSecurityManager
 
 
@@ -103,8 +103,8 @@ def test_file_info_directory_traversal(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that security check correctly blocks directory traversal attempts.
-    
-    EXPECTED ERROR: This test verifies that attempting to access files outside 
+
+    EXPECTED ERROR: This test verifies that attempting to access files outside
     the base directory raises PathSecurityError.
     """
     os.chdir("/test_workspace/base")
@@ -113,9 +113,13 @@ def test_file_info_directory_traversal(
     caplog.set_level(logging.ERROR)
 
     # Test directory traversal - should raise PathSecurityError
-    with pytest.raises(PathSecurityError, match="Access denied:.*outside base directory") as exc_info:
-        FileInfo.from_path("../outside/test.txt", security_manager=security_manager)
-    
+    with pytest.raises(
+        PathSecurityError, match="Access denied:.*outside base directory"
+    ) as exc_info:
+        FileInfo.from_path(
+            "../outside/test.txt", security_manager=security_manager
+        )
+
     # Verify error details
     error = exc_info.value
     assert error.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
@@ -123,7 +127,9 @@ def test_file_info_directory_traversal(
     assert "outside base directory" in str(error)  # Verify reason is in error
 
     # Verify appropriate error was logged
-    assert any("Security violation" in record.message for record in caplog.records)
+    assert any(
+        "Security violation" in record.message for record in caplog.records
+    )
 
 
 @pytest.mark.error_test
@@ -133,7 +139,7 @@ def test_file_info_missing_file(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that accessing a non-existent file raises appropriate error.
-    
+
     EXPECTED ERROR: This test verifies that attempting to access a file that doesn't exist
     raises FileNotFoundError.
     """
@@ -141,11 +147,15 @@ def test_file_info_missing_file(
 
     # Suppress debug logs about missing files
     caplog.set_level(logging.INFO)
-    
+
     # Attempt to access non-existent file - should raise FileNotFoundError
-    with pytest.raises(FileNotFoundError, match="File not found: nonexistent.txt") as exc_info:
-        FileInfo.from_path("nonexistent.txt", security_manager=security_manager)
-    
+    with pytest.raises(
+        FileNotFoundError, match="File not found: nonexistent.txt"
+    ) as exc_info:
+        FileInfo.from_path(
+            "nonexistent.txt", security_manager=security_manager
+        )
+
     # Verify error message contains useful details
     error_msg = str(exc_info.value)
     assert "nonexistent.txt" in error_msg  # Verify filename is included
@@ -283,7 +293,7 @@ def test_collect_files_errors(
     security_manager: MockSecurityManager,
 ) -> None:
     """Test error handling in file collection.
-    
+
     EXPECTED ERROR: This test verifies that invalid file mappings and missing files
     raise appropriate errors with clear messages.
     """
@@ -315,7 +325,10 @@ def test_collect_files_errors(
         )
     assert "Access denied" in str(exc_info.value)
     assert "is outside base directory" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )
 
 
 def test_file_info_stats_loading(
@@ -343,7 +356,7 @@ def test_file_info_stats_security(
     security_manager: MockSecurityManager,
 ) -> None:
     """Test security checks when loading file stats.
-    
+
     EXPECTED ERROR: This test verifies that attempting to access files outside
     the base directory raises PathSecurityError.
     """
@@ -355,12 +368,17 @@ def test_file_info_stats_security(
 
     # Test accessing file outside base directory
     with pytest.raises(PathSecurityError) as exc_info:
-        FileInfo.from_path("../outside/test.txt", security_manager=security_manager)
-    
+        FileInfo.from_path(
+            "../outside/test.txt", security_manager=security_manager
+        )
+
     assert "Access denied:" in str(exc_info.value)
     assert "test.txt" in str(exc_info.value)
     assert "outside base directory" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )
 
 
 @pytest.mark.error_test
@@ -369,7 +387,7 @@ def test_file_info_missing_file_stats(
     security_manager: MockSecurityManager,
 ) -> None:
     """Test error handling for missing file stats.
-    
+
     EXPECTED ERROR: This test verifies that attempting to access a non-existent file
     raises FileNotFoundError.
     """
@@ -377,8 +395,10 @@ def test_file_info_missing_file_stats(
 
     # Test missing file
     with pytest.raises(FileNotFoundError) as exc_info:
-        FileInfo.from_path("nonexistent.txt", security_manager=security_manager)
-    
+        FileInfo.from_path(
+            "nonexistent.txt", security_manager=security_manager
+        )
+
     assert "File not found:" in str(exc_info.value)
     assert "nonexistent.txt" in str(exc_info.value)
 
@@ -389,7 +409,7 @@ def test_file_info_content_errors(
     security_manager: MockSecurityManager,
 ) -> None:
     """Test error handling in content loading.
-    
+
     EXPECTED ERROR: This test verifies that attempting to access non-existent files
     and files outside allowed directories raises appropriate errors.
     """
@@ -397,8 +417,10 @@ def test_file_info_content_errors(
 
     # Test 1: Missing file at initialization
     with pytest.raises(FileNotFoundError) as exc_info:
-        FileInfo.from_path("nonexistent.txt", security_manager=security_manager)
-    
+        FileInfo.from_path(
+            "nonexistent.txt", security_manager=security_manager
+        )
+
     assert "File not found:" in str(exc_info.value)
     assert "nonexistent.txt" in str(exc_info.value)
 
@@ -406,11 +428,16 @@ def test_file_info_content_errors(
     fs.create_dir("/test_workspace/outside")
     fs.create_file("/test_workspace/outside/test.txt", contents="test")
     with pytest.raises(PathSecurityError) as exc_info:
-        FileInfo.from_path("../outside/test.txt", security_manager=security_manager)
-    
+        FileInfo.from_path(
+            "../outside/test.txt", security_manager=security_manager
+        )
+
     assert "Access denied" in str(exc_info.value)
     assert "is outside base directory" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )
 
 
 @pytest.mark.error_test
@@ -420,7 +447,7 @@ def test_security_error_single_message(
     security_manager: MockSecurityManager,
 ) -> None:
     """Test that security errors are logged only once with complete information.
-    
+
     EXPECTED ERROR: This test verifies that attempting to access files outside
     the base directory raises PathSecurityError with proper logging.
     """
@@ -436,12 +463,17 @@ def test_security_error_single_message(
 
     # Attempt to access file outside allowed directory
     with pytest.raises(PathSecurityError) as exc_info:
-        FileInfo.from_path("../outside/test.txt", security_manager=security_manager)
-    
+        FileInfo.from_path(
+            "../outside/test.txt", security_manager=security_manager
+        )
+
     assert "Access denied:" in str(exc_info.value)
     assert "test.txt" in str(exc_info.value)
     assert "outside base directory" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )
 
 
 @pytest.mark.error_test
@@ -451,7 +483,7 @@ def test_security_error_with_allowed_dirs(
     security_manager: MockSecurityManager,
 ) -> None:
     """Test that security error message includes allowed directories.
-    
+
     EXPECTED ERROR: This test verifies that security errors include information
     about allowed directories in their error messages.
     """
@@ -468,12 +500,17 @@ def test_security_error_with_allowed_dirs(
 
     # Attempt to access file with allowed directories specified
     with pytest.raises(PathSecurityError) as exc_info:
-        FileInfo.from_path("../outside/test.txt", security_manager=security_manager)
-    
+        FileInfo.from_path(
+            "../outside/test.txt", security_manager=security_manager
+        )
+
     assert "Access denied:" in str(exc_info.value)
     assert "test.txt" in str(exc_info.value)
     assert "outside base directory" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )
 
 
 def test_security_error_expanded_paths(
@@ -495,7 +532,7 @@ def test_security_error_expanded_paths(
     assert "/home/user/test.txt" in error_msg
     assert "Base directory: /test_workspace" in error_msg
     assert "Allowed directories: ['/allowed']" in error_msg
-    assert error.error_logged is True
+    assert error._has_been_logged is True
 
 
 def test_security_error_format_with_context() -> None:
@@ -573,10 +610,13 @@ def test_collect_files_security_error_propagates(
     # Test should now pass with the fixed error propagation
     with pytest.raises(PathSecurityError) as exc_info:
         collect_files_from_directory(".", security_manager=security_manager)
-    
+
     assert "Symlink security violation:" in str(exc_info.value)
     assert "target not allowed" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
 
 
 @pytest.mark.error_test
@@ -585,7 +625,7 @@ def test_collect_files_security_violations(
     security_manager: MockSecurityManager,
 ) -> None:
     """Test various security violation scenarios in file collection.
-    
+
     EXPECTED ERROR: This test verifies that symlink-based security violations
     raise appropriate PathSecurityError with detailed context.
     """
@@ -596,26 +636,39 @@ def test_collect_files_security_violations(
     os.chdir("/test_workspace/base")
 
     # Test 1: Symlink to non-existent file outside allowed dirs
-    fs.create_symlink("/test_workspace/base/bad_link1", "../outside/nonexistent.txt")
+    fs.create_symlink(
+        "/test_workspace/base/bad_link1", "../outside/nonexistent.txt"
+    )
     with pytest.raises(PathSecurityError) as exc_info:
         collect_files_from_directory(".", security_manager=security_manager)
-    
+
     assert "Symlink security violation:" in str(exc_info.value)
     assert "target not allowed" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
 
     # Test 2: Symlink to existing file outside allowed dirs
-    fs.create_symlink("/test_workspace/base/bad_link2", "../outside/target.txt")
+    fs.create_symlink(
+        "/test_workspace/base/bad_link2", "../outside/target.txt"
+    )
     with pytest.raises(PathSecurityError) as exc_info:
         collect_files_from_directory(".", security_manager=security_manager)
-    
+
     assert "Symlink security violation:" in str(exc_info.value)
     assert "target not allowed" in str(exc_info.value)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
 
     # Test 3: Directory traversal attempt
     fs.create_symlink("/test_workspace/base/bad_link3", "../../etc/passwd")
     with pytest.raises(PathSecurityError) as exc_info:
         collect_files_from_directory(".", security_manager=security_manager)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
     assert "Symlink security violation" in str(exc_info.value)

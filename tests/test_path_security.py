@@ -40,8 +40,7 @@ def test_security_manager_allowed_dirs(fs: FakeFilesystem) -> None:
     fs.create_dir("/test_workspace/outside")
 
     manager = SecurityManager(
-        "/test_workspace/base",
-        ["/test_workspace/allowed"]
+        "/test_workspace/base", ["/test_workspace/allowed"]
     )
 
     # Test paths in allowed directories

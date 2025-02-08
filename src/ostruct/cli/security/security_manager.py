@@ -17,7 +17,11 @@ from typing import Generator, List, Optional, Set, Union
 
 from .allowed_checker import is_path_in_allowed_dirs
 from .case_manager import CaseManager
-from .errors import DirectoryNotFoundError, PathSecurityError, SecurityErrorReasons
+from .errors import (
+    DirectoryNotFoundError,
+    PathSecurityError,
+    SecurityErrorReasons,
+)
 from .normalization import normalize_path
 from .safe_joiner import safe_join
 from .symlink_resolver import _resolve_symlink
@@ -81,8 +85,10 @@ class SecurityManager:
 
         self._allow_temp_paths = allow_temp_paths
         self._max_symlink_depth = max_symlink_depth
-        self._temp_dir = normalize_path(tempfile.gettempdir()) if allow_temp_paths else None
-        
+        self._temp_dir = (
+            normalize_path(tempfile.gettempdir()) if allow_temp_paths else None
+        )
+
         logger.debug(
             "\n=== Initialized SecurityManager ===\n"
             "Base dir: %s\n"
@@ -94,7 +100,7 @@ class SecurityManager:
             self._allowed_dirs,
             self._allow_temp_paths,
             self._temp_dir,
-            self._max_symlink_depth
+            self._max_symlink_depth,
         )
 
     @property
@@ -139,7 +145,7 @@ class SecurityManager:
         """
         if not self._allow_temp_paths or not self._temp_dir:
             return False
-            
+
         try:
             # Use string-based comparison instead of resolving
             norm_path = normalize_path(path)
@@ -223,7 +229,7 @@ class SecurityManager:
         if not self.is_path_allowed(norm_path):
             logger.error(
                 "Security violation: Path %s is outside allowed directories",
-                path
+                path,
             )
             raise PathSecurityError(
                 f"Access denied: {os.path.basename(str(path))} is outside base directory and not in allowed directories",
@@ -237,10 +243,7 @@ class SecurityManager:
 
         # Only check existence after security validation passes
         if not norm_path.exists():
-            logger.debug(
-                "Path allowed but not found: %s",
-                norm_path
-            )
+            logger.debug("Path allowed but not found: %s", norm_path)
             raise FileNotFoundError(
                 f"File not found: {os.path.basename(str(path))}"
             )
@@ -249,37 +252,35 @@ class SecurityManager:
 
     def resolve_path(self, path: Union[str, Path]) -> Path:
         """Resolve a path with security checks.
-        
+
         This method maintains backward compatibility by translating
         internal security errors to standard filesystem errors where appropriate.
-        
+
         Args:
             path: Path to resolve
-            
+
         Returns:
             Resolved Path object
-            
+
         Raises:
             FileNotFoundError: If path doesn't exist or is a broken symlink
             PathSecurityError: For other security violations
         """
         try:
             norm_path = normalize_path(path)
-            
+
             # Early return for allowed temp paths
             if self._allow_temp_paths and self.is_temp_path(norm_path):
                 logger.debug("Allowing temp path: %s", norm_path)
                 if not norm_path.exists():
                     raise FileNotFoundError(f"File not found: {path}")
                 return norm_path
-            
+
             # Handle symlinks with security checks
             if norm_path.is_symlink():
                 try:
                     return _resolve_symlink(
-                        norm_path,
-                        self._max_symlink_depth,
-                        self._allowed_dirs
+                        norm_path, self._max_symlink_depth, self._allowed_dirs
                     )
                 except PathSecurityError as e:
                     reason = e.context.get("reason")
@@ -296,12 +297,12 @@ class SecurityManager:
                         raise FileNotFoundError(msg) from e
                     # Any other security errors propagate unchanged
                     raise
-            
+
             # For non-symlinks, check if the normalized path is allowed
             if not self.is_path_allowed(norm_path):
                 logger.error(
                     "Security violation: Path %s is outside allowed directories",
-                    path
+                    path,
                 )
                 raise PathSecurityError(
                     f"Access denied: {os.path.basename(str(path))} is outside base directory",
@@ -312,13 +313,13 @@ class SecurityManager:
                         "allowed_dirs": [str(d) for d in self._allowed_dirs],
                     },
                 )
-            
+
             # Only check existence after security validation
             if not norm_path.exists():
                 raise FileNotFoundError(f"File not found: {path}")
-                
+
             return norm_path
-            
+
         except OSError as e:
             if isinstance(e, FileNotFoundError):
                 raise
@@ -347,4 +348,4 @@ class SecurityManager:
             yield
         finally:
             # Clean up any case mappings that were created during symlink resolution
-            CaseManager.clear() 
+            CaseManager.clear()

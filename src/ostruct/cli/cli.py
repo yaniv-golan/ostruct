@@ -771,7 +771,9 @@ def _validate_path_mapping_internal(
             raise
 
         if security_manager:
-            if not security_manager.is_allowed_file(str(resolved_path)):
+            try:
+                security_manager.validate_path(str(resolved_path))
+            except PathSecurityError as e:
                 raise PathSecurityError.from_expanded_paths(
                     original_path=str(path),
                     expanded_path=str(resolved_path),

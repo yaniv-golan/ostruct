@@ -26,7 +26,9 @@ def test_security_manager_init(fs: FakeFilesystem) -> None:
 
     manager = SecurityManager(str(base_dir), [str(allowed_dir)])
     assert str(manager.base_dir) == str(base_dir.resolve())
-    assert any(str(d) == str(allowed_dir.resolve()) for d in manager.allowed_dirs)
+    assert any(
+        str(d) == str(allowed_dir.resolve()) for d in manager.allowed_dirs
+    )
 
 
 def test_security_manager_init_nonexistent_base(fs: FakeFilesystem) -> None:
@@ -63,7 +65,10 @@ def test_security_manager_validate_path(fs: FakeFilesystem) -> None:
     # Test invalid paths
     with pytest.raises(PathSecurityError) as exc_info:
         manager.validate_path("/etc/passwd")
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )
 
 
 def test_security_manager_temp_paths(fs: FakeFilesystem) -> None:
@@ -83,4 +88,7 @@ def test_security_manager_temp_paths(fs: FakeFilesystem) -> None:
     manager = SecurityManager(str(base_dir), allow_temp_paths=False)
     with pytest.raises(PathSecurityError) as exc_info:
         manager.validate_path(temp_file)
-    assert exc_info.value.context["reason"] == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )

@@ -3,8 +3,8 @@
 import hashlib
 import logging
 import os
-from typing import Any, Optional
 from pathlib import Path
+from typing import Any, Optional
 
 from .errors import FileNotFoundError, FileReadError, PathSecurityError
 from .security import SecurityManager
@@ -60,8 +60,8 @@ class FileInfo:
         self.__content = content
         self.__encoding = encoding
         self.__hash = hash_value
-        self.__size = None
-        self.__mtime = None
+        self.__size: Optional[int] = None
+        self.__mtime: Optional[float] = None
 
         try:
             # This will raise PathSecurityError if path is not allowed
@@ -73,10 +73,7 @@ class FileInfo:
 
             # Check if it's a regular file (not a directory, device, etc.)
             if not resolved_path.is_file():
-                logger.debug(
-                    "Not a regular file: %s",
-                    resolved_path
-                )
+                logger.debug("Not a regular file: %s", resolved_path)
                 raise FileNotFoundError(
                     f"Not a regular file: {os.path.basename(str(path))}"
                 )
@@ -89,19 +86,22 @@ class FileInfo:
                 str(e),
                 extra={
                     "path": path,
-                    "resolved_path": str(resolved_path) if 'resolved_path' in locals() else None,
+                    "resolved_path": (
+                        str(resolved_path)
+                        if "resolved_path" in locals()
+                        else None
+                    ),
                     "base_dir": str(self.__security_manager.base_dir),
-                    "allowed_dirs": [str(d) for d in self.__security_manager.allowed_dirs],
-                }
+                    "allowed_dirs": [
+                        str(d) for d in self.__security_manager.allowed_dirs
+                    ],
+                },
             )
             raise
 
         except FileNotFoundError as e:
             # Re-raise with standardized message format
-            logger.debug(
-                "File not found error: %s",
-                e
-            )
+            logger.debug("File not found error: %s", e)
             raise FileNotFoundError(
                 f"File not found: {os.path.basename(str(path))}"
             ) from e
@@ -114,8 +114,12 @@ class FileInfo:
                 str(e),
                 extra={
                     "path": path,
-                    "resolved_path": str(resolved_path) if 'resolved_path' in locals() else None,
-                }
+                    "resolved_path": (
+                        str(resolved_path)
+                        if "resolved_path" in locals()
+                        else None
+                    ),
+                },
             )
             raise PermissionError(
                 f"Permission denied: {os.path.basename(str(path))}"
@@ -175,7 +179,8 @@ class FileInfo:
         """Get file size in bytes."""
         if self.__size is None:
             try:
-                self.__size = os.path.getsize(self.abs_path)
+                size = os.path.getsize(self.abs_path)
+                self.__size = size
             except OSError:
                 logger.warning("Could not get size for %s", self.__path)
                 return None
@@ -191,7 +196,8 @@ class FileInfo:
         """Get file modification time as Unix timestamp."""
         if self.__mtime is None:
             try:
-                self.__mtime = os.path.getmtime(self.abs_path)
+                mtime = os.path.getmtime(self.abs_path)
+                self.__mtime = mtime
             except OSError:
                 logger.warning("Could not get mtime for %s", self.__path)
                 return None

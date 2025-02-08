@@ -5,8 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from ostruct.cli.security import is_path_in_allowed_dirs
-from ostruct.cli.security import PathSecurityError, SecurityErrorReasons
+from ostruct.cli.security import (
+    PathSecurityError,
+    SecurityErrorReasons,
+    is_path_in_allowed_dirs,
+)
 
 
 def test_is_path_in_allowed_dirs_basic():
@@ -44,12 +47,12 @@ def test_is_path_in_allowed_dirs_symlinks(fs):
     test_file.write_text("test")
     symlink = allowed_dir / "link.txt"
     os.symlink(str(test_file), str(symlink))
-    
+
     allowed_dirs = [allowed_dir]
-    
+
     # Test symlink in allowed directory
     assert is_path_in_allowed_dirs(str(symlink), allowed_dirs)
-    
+
     # Test symlink target outside allowed directories
     assert not is_path_in_allowed_dirs(str(test_file), allowed_dirs)
 
@@ -91,4 +94,4 @@ def test_is_path_in_allowed_dirs_edge_cases():
         is_path_in_allowed_dirs(None, allowed_dirs)
 
     # Test empty allowed_dirs
-    assert not is_path_in_allowed_dirs("/base/file.txt", []) 
+    assert not is_path_in_allowed_dirs("/base/file.txt", [])

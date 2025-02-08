@@ -27,7 +27,9 @@ class CaseManager:
     _lock = Lock()
 
     @classmethod
-    def set_original_case(cls, normalized_path: Path, original_case: str) -> None:
+    def set_original_case(
+        cls, normalized_path: Path, original_case: str
+    ) -> None:
         """Store the original case for a normalized path.
 
         Args:
@@ -62,10 +64,12 @@ class CaseManager:
             raise TypeError("normalized_path cannot be None")
 
         with cls._lock:
-            return cls._case_mapping.get(str(normalized_path), str(normalized_path))
+            return cls._case_mapping.get(
+                str(normalized_path), str(normalized_path)
+            )
 
     @classmethod
     def clear(cls) -> None:
         """Clear all stored case mappings."""
         with cls._lock:
-            cls._case_mapping.clear() 
+            cls._case_mapping.clear()

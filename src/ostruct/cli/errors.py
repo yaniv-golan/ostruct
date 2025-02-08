@@ -1,12 +1,12 @@
 """Custom error classes for CLI error handling."""
 
+import logging
 import os
+from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO, cast
-from enum import Enum, auto
 
 import click
-import logging
 
 from .security.errors import PathSecurityError as SecurityPathSecurityError
 
@@ -125,7 +125,7 @@ class DirectoryNotFoundError(PathError):
 
 class PathSecurityError(CLIError, SecurityPathSecurityError):
     """CLI wrapper for security package's PathSecurityError.
-    
+
     This class bridges the security package's error handling with the CLI's
     error handling system, providing both sets of functionality.
     """
@@ -151,7 +151,7 @@ class PathSecurityError(CLIError, SecurityPathSecurityError):
             message,
             path=path or "",
             context=context,
-            error_logged=error_logged
+            error_logged=error_logged,
         )
         # Initialize CLI error with the same context
         CLIError.__init__(self, message, context=self.context)
@@ -159,7 +159,10 @@ class PathSecurityError(CLIError, SecurityPathSecurityError):
         self._has_been_logged = error_logged
         logger.debug(
             "Created CLI PathSecurityError with message=%r, path=%r, context=%r, error_logged=%r",
-            message, path, self.context, error_logged
+            message,
+            path,
+            self.context,
+            error_logged,
         )
 
     def show(self, file: Optional[TextIO] = None) -> None:
@@ -170,13 +173,13 @@ class PathSecurityError(CLIError, SecurityPathSecurityError):
     @property
     def has_been_logged(self) -> bool:
         """Whether this error has been logged."""
-        return self._has_been_logged or SecurityPathSecurityError.has_been_logged.fget(self)
+        return self._has_been_logged or super().has_been_logged
 
     @has_been_logged.setter
     def has_been_logged(self, value: bool) -> None:
         """Set whether this error has been logged."""
         self._has_been_logged = value
-        SecurityPathSecurityError.has_been_logged.fset(self, value)
+        super().has_been_logged = value  # type: ignore[misc]
 
     @property
     def error_logged(self) -> bool:

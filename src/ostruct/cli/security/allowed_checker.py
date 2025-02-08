@@ -10,7 +10,9 @@ from typing import List, Union
 from .normalization import normalize_path
 
 
-def is_path_in_allowed_dirs(path: Union[str, Path], allowed_dirs: List[Path]) -> bool:
+def is_path_in_allowed_dirs(
+    path: Union[str, Path], allowed_dirs: List[Path]
+) -> bool:
     """Check if a given path is inside any of the allowed directories.
 
     This function normalizes both the input path and allowed directories
@@ -42,4 +44,4 @@ def is_path_in_allowed_dirs(path: Union[str, Path], allowed_dirs: List[Path]) ->
         except ValueError:
             continue
 
-    return False 
+    return False

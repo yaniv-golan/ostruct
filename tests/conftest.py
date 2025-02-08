@@ -36,6 +36,8 @@ from pathlib import Path
 from typing import IO, Any, Dict, Generator, List, Optional, Set, Union
 
 import pytest
+from _pytest.config import Config
+from _pytest.terminal import TerminalReporter
 from dotenv import load_dotenv
 from openai import OpenAI
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -59,7 +61,7 @@ def pytest_configure(config: pytest.Config) -> None:
     )
     config.addinivalue_line(
         "markers",
-        "error_test: mark test as one that expects an error to be raised"
+        "error_test: mark test as one that expects an error to be raised",
     )
 
     # Register the custom marker with pytest
@@ -235,14 +237,14 @@ def setup_test_fs(
     # Always create the test temp directory and its subdirectories
     test_temp_dir = "/tmp/test"
     fs.create_dir(test_temp_dir)
-    
+
     # Create pytest-specific temp directories
     pytest_temp = f"{test_temp_dir}/pytest-of-yaniv"
     fs.create_dir(pytest_temp)
-    
+
     # Patch tempfile to use our test directory
     monkeypatch.setattr(tempfile, "gettempdir", lambda: str(test_temp_dir))
-    
+
     # Also patch tempfile.tempdir to handle direct access
     monkeypatch.setattr(tempfile, "tempdir", str(test_temp_dir))
 
@@ -588,7 +590,9 @@ def pytest_runtest_call(item: pytest.Item) -> None:
         item.user_properties.append(("is_error_test", True))
 
 
-def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> None:
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo
+) -> None:
     """Modify test reports for error_test marked tests."""
     if "error_test" in item.keywords:
         if call.excinfo is not None:
@@ -600,14 +604,16 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> None:
                 call.excinfo = None
 
 
-def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
+def pytest_terminal_summary(
+    terminalreporter: TerminalReporter, exitstatus: int, config: Config
+) -> None:
     """Customize the terminal summary for error tests."""
     error_tests = []
-    for report in terminalreporter.getreports(''):
-        if hasattr(report, 'when') and report.when == 'call':
-            if hasattr(report, 'keywords') and 'error_test' in report.keywords:
+    for report in terminalreporter.getreports(""):
+        if hasattr(report, "when") and report.when == "call":
+            if hasattr(report, "keywords") and "error_test" in report.keywords:
                 error_tests.append(report)
-    
+
     if error_tests:
         terminalreporter.write_sep("=", "Error Test Summary")
         terminalreporter.write_line(

@@ -84,7 +84,7 @@ def test_safe_join_windows_device_paths():
     """Test handling of Windows device paths."""
     if os.name != "nt":
         pytest.skip("Windows-specific test")
-    
+
     # Device paths should be rejected
     assert safe_join(r"\\?\C:\base", "file.txt") is None
     assert safe_join(r"\\.\C:\base", "file.txt") is None
@@ -96,11 +96,11 @@ def test_safe_join_windows_drive_relative():
     """Test handling of Windows drive-relative paths."""
     if os.name != "nt":
         pytest.skip("Windows-specific test")
-    
+
     # Drive-relative paths without slash should be rejected
     assert safe_join("C:base", "file.txt") is None
     assert safe_join("/base", "C:file.txt") is None
-    
+
     # Drive paths with slash should work
     assert safe_join("C:/base", "file.txt") == "C:/base/file.txt"
     assert safe_join("C:\\base", "file.txt") == "C:/base/file.txt"
@@ -110,7 +110,7 @@ def test_safe_join_windows_reserved_names():
     """Test handling of Windows reserved device names."""
     if os.name != "nt":
         pytest.skip("Windows-specific test")
-    
+
     # Reserved names should be rejected
     assert safe_join("/base", "CON") is None
     assert safe_join("/base", "PRN") is None
@@ -118,11 +118,11 @@ def test_safe_join_windows_reserved_names():
     assert safe_join("/base", "NUL") is None
     assert safe_join("/base", "COM1") is None
     assert safe_join("/base", "LPT1") is None
-    
+
     # Reserved names with extensions should be rejected
     assert safe_join("/base", "CON.txt") is None
     assert safe_join("/base", "PRN.doc") is None
-    
+
     # Case variations should be rejected
     assert safe_join("/base", "con") is None
     assert safe_join("/base", "Con.txt") is None
@@ -132,12 +132,12 @@ def test_safe_join_windows_ads():
     """Test handling of Windows Alternate Data Streams."""
     if os.name != "nt":
         pytest.skip("Windows-specific test")
-    
+
     # ADS should be rejected
     assert safe_join("/base", "file.txt:stream") is None
     assert safe_join("/base", "file.txt:Zone.Identifier") is None
     assert safe_join("/base", "file.txt:$DATA") is None
-    
+
     # ADS in base directory should be rejected
     assert safe_join("/base/file.txt:stream", "other.txt") is None
 
@@ -146,14 +146,17 @@ def test_safe_join_windows_unc():
     """Test handling of Windows UNC paths."""
     if os.name != "nt":
         pytest.skip("Windows-specific test")
-    
+
     # Valid UNC paths should work
-    assert safe_join("\\\\server\\share\\base", "file.txt") == "//server/share/base/file.txt"
-    
+    assert (
+        safe_join("\\\\server\\share\\base", "file.txt")
+        == "//server/share/base/file.txt"
+    )
+
     # Incomplete UNC paths should be rejected
     assert safe_join("\\\\server", "file.txt") is None
     assert safe_join("\\\\server\\", "file.txt") is None
-    
+
     # UNC in components should be rejected
     assert safe_join("/base", "\\\\server\\share\\file.txt") is None
 
@@ -163,9 +166,11 @@ def test_safe_join_mixed_slashes():
     # Mixed slashes should be normalized
     assert safe_join("/base", "sub\\dir/file.txt") == "/base/sub/dir/file.txt"
     assert safe_join("\\base", "sub/dir\\file.txt") == "/base/sub/dir/file.txt"
-    
+
     # Multiple slashes should be collapsed
-    assert safe_join("/base", "sub//dir\\\\file.txt") == "/base/sub/dir/file.txt"
+    assert (
+        safe_join("/base", "sub//dir\\\\file.txt") == "/base/sub/dir/file.txt"
+    )
 
 
 def test_safe_join_empty_components():
@@ -173,7 +178,7 @@ def test_safe_join_empty_components():
     # Empty components should be ignored
     assert safe_join("/base", "", "file.txt") == "/base/file.txt"
     assert safe_join("/base", "dir", "", "file.txt") == "/base/dir/file.txt"
-    
+
     # Multiple empty components should be handled
     assert safe_join("/base", "", "", "file.txt") == "/base/file.txt"
 
@@ -183,6 +188,6 @@ def test_safe_join_dot_components():
     # Single dots should be normalized away
     assert safe_join("/base", ".", "file.txt") == "/base/file.txt"
     assert safe_join("/base", "dir", ".", "file.txt") == "/base/dir/file.txt"
-    
+
     # Multiple dots should be normalized
-    assert safe_join("/base", ".", ".", "file.txt") == "/base/file.txt" 
+    assert safe_join("/base", ".", ".", "file.txt") == "/base/file.txt"

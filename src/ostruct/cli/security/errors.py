@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 class PathSecurityError(Exception):
     """Base exception for security-related errors.
-    
+
     This class provides rich error information for security-related issues,
     including context and error wrapping capabilities.
     """
@@ -38,16 +38,19 @@ class PathSecurityError(Exception):
     def __str__(self) -> str:
         """Format the error message with context if available."""
         msg = super().__str__()
-        
+
         # Add expanded path information if available
         if self.context:
-            if "original_path" in self.context and "expanded_path" in self.context:
+            if (
+                "original_path" in self.context
+                and "expanded_path" in self.context
+            ):
                 msg = f"{msg}\nOriginal path: {self.context['original_path']}\nExpanded path: {self.context['expanded_path']}"
             if "base_dir" in self.context:
                 msg = f"{msg}\nBase directory: {self.context['base_dir']}"
             if "allowed_dirs" in self.context:
                 msg = f"{msg}\nAllowed directories: {self.context['allowed_dirs']!r}"
-        
+
         return msg
 
     @property
@@ -89,12 +92,14 @@ class PathSecurityError(Exception):
             f"Expanded path: {expanded_path}",
             f"Base directory: {base_dir}",
             f"Allowed directories: {allowed_dirs}",
-            "Use --allowed-dir to add more allowed directories"
+            "Use --allowed-dir to add more allowed directories",
         ]
         return "\n".join(lines)
 
     @classmethod
-    def wrap_error(cls, message: str, original: 'PathSecurityError') -> 'PathSecurityError':
+    def wrap_error(
+        cls, message: str, original: "PathSecurityError"
+    ) -> "PathSecurityError":
         """Wrap an existing error with additional context.
 
         Args:
@@ -108,7 +113,7 @@ class PathSecurityError(Exception):
             f"{message}: {str(original)}",
             path=original.path,
             context=original.context,
-            error_logged=original.has_been_logged
+            error_logged=original.has_been_logged,
         )
         wrapped._wrapped = True
         return wrapped
@@ -121,7 +126,7 @@ class PathSecurityError(Exception):
         base_dir: str,
         allowed_dirs: List[str],
         error_logged: bool = False,
-    ) -> 'PathSecurityError':
+    ) -> "PathSecurityError":
         """Create an error instance with expanded path information.
 
         Args:
@@ -141,7 +146,12 @@ class PathSecurityError(Exception):
             "base_dir": base_dir,
             "allowed_dirs": allowed_dirs,
         }
-        return cls(message, path=original_path, context=context, error_logged=error_logged)
+        return cls(
+            message,
+            path=original_path,
+            context=context,
+            error_logged=error_logged,
+        )
 
 
 class DirectoryNotFoundError(PathSecurityError):
@@ -167,4 +177,4 @@ class SecurityErrorReasons:
     # Directory access errors
     PATH_NOT_IN_BASE = "path_not_in_base"
     PATH_OUTSIDE_ALLOWED = "path_outside_allowed"
-    TEMP_PATHS_NOT_ALLOWED = "temp_paths_not_allowed" 
+    TEMP_PATHS_NOT_ALLOWED = "temp_paths_not_allowed"

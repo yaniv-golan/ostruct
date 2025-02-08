@@ -77,7 +77,10 @@ def validate_path_mapping(
             print(f"\nDebug: Caught PathSecurityError")
             print(f"Debug: Original error: {str(e)!r}")
             print(f"Debug: Error context: {e.context}")
-            if e.context.get("reason") == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED:
+            if (
+                e.context.get("reason")
+                == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+            ):
                 print(f"Debug: Wrapping error for PATH_OUTSIDE_ALLOWED")
                 raise PathSecurityError(
                     f"Path '{path}' is outside the base directory and not in allowed directories",
@@ -98,7 +101,9 @@ def validate_path_mapping(
 
     # Check path type
     if is_dir and not path.is_dir():
-        raise DirectoryNotFoundError(f"Path exists but is not a directory: {path}")
+        raise DirectoryNotFoundError(
+            f"Path exists but is not a directory: {path}"
+        )
     elif not is_dir and not path.is_file():
         raise FileNotFoundError(f"Path exists but is not a file: {path}")
 

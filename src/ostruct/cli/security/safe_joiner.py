@@ -60,13 +60,15 @@ _os_alt_seps = list(
 
 # Windows-specific patterns
 _WINDOWS_DEVICE_PATH = re.compile(r"^\\\\[?.]\\")  # \\?\ and \\.\ paths
-_WINDOWS_DRIVE_RELATIVE = re.compile(r"^[A-Za-z]:(?![/\\])")  # C:folder (no slash)
+_WINDOWS_DRIVE_RELATIVE = re.compile(
+    r"^[A-Za-z]:(?![/\\])"
+)  # C:folder (no slash)
 _WINDOWS_RESERVED_NAMES = re.compile(
-    r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)",
-    re.IGNORECASE
+    r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", re.IGNORECASE
 )
 _WINDOWS_UNC = re.compile(r"^\\\\[^?./\\]")  # UNC but not device paths
 _WINDOWS_ADS = re.compile(r":.+$")  # Alternate Data Streams
+
 
 def safe_join(directory: str, *pathnames: str) -> Optional[str]:
     """Safely join zero or more untrusted path components to a trusted base directory.
@@ -170,11 +172,13 @@ def safe_join(directory: str, *pathnames: str) -> Optional[str]:
                 return None
 
         # Reject absolute paths and parent directory traversal
-        if (filename.startswith("/") or
-            filename == ".." or
-            filename.startswith("../") or
-            filename.endswith("/..") or
-            "/../" in filename):
+        if (
+            filename.startswith("/")
+            or filename == ".."
+            or filename.startswith("../")
+            or filename.endswith("/..")
+            or "/../" in filename
+        ):
             return None
 
         # Normalize the component
@@ -204,4 +208,4 @@ def safe_join(directory: str, *pathnames: str) -> Optional[str]:
         if any(_WINDOWS_RESERVED_NAMES.search(part) for part in path_parts):
             return None
 
-    return normalized_result 
+    return normalized_result

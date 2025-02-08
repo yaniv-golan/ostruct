@@ -181,7 +181,9 @@ def collect_files_from_directory(
         abs_dir = str(security_manager.resolve_path(directory))
         logger.debug("Resolved directory path: %s", abs_dir)
     except PathSecurityError as e:
-        logger.error("Security violation in directory path: %s (%s)", directory, str(e))
+        logger.error(
+            "Security violation in directory path: %s (%s)", directory, str(e)
+        )
         raise
 
     if not os.path.isdir(abs_dir):
@@ -189,7 +191,7 @@ def collect_files_from_directory(
         raise DirectoryNotFoundError(f"Path is not a directory: {directory}")
 
     files: List[FileInfo] = []
-    
+
     try:
         for root, dirs, filenames in os.walk(abs_dir):
             logger.debug("Walking directory: %s", root)
@@ -200,22 +202,30 @@ def collect_files_from_directory(
             try:
                 security_manager.validate_path(root)
             except PathSecurityError as e:
-                logger.error("Security violation in subdirectory: %s (%s)", root, str(e))
+                logger.error(
+                    "Security violation in subdirectory: %s (%s)", root, str(e)
+                )
                 raise
 
             if not recursive and root != abs_dir:
-                logger.debug("Skipping subdirectory (non-recursive mode): %s", root)
+                logger.debug(
+                    "Skipping subdirectory (non-recursive mode): %s", root
+                )
                 continue
 
             logger.debug("Scanning directory: %s", root)
             logger.debug("Current files collected: %d", len(files))
-            
+
             for filename in filenames:
                 # Get relative path from base directory
                 abs_path = os.path.join(root, filename)
                 try:
-                    rel_path = os.path.relpath(abs_path, security_manager.base_dir)
-                    logger.debug("Processing file: %s -> %s", abs_path, rel_path)
+                    rel_path = os.path.relpath(
+                        abs_path, security_manager.base_dir
+                    )
+                    logger.debug(
+                        "Processing file: %s -> %s", abs_path, rel_path
+                    )
                 except ValueError as e:
                     logger.warning(
                         "Skipping file that can't be made relative: %s (error: %s)",
@@ -229,7 +239,8 @@ def collect_files_from_directory(
                     ext = os.path.splitext(filename)[1].lstrip(".")
                     if ext not in allowed_extensions:
                         logger.debug(
-                            "Skipping file with disallowed extension: %s", filename
+                            "Skipping file with disallowed extension: %s",
+                            filename,
                         )
                         continue
 
@@ -237,23 +248,25 @@ def collect_files_from_directory(
                 try:
                     security_manager.validate_path(abs_path)
                 except PathSecurityError as e:
-                    logger.error("Security violation for file: %s (%s)", abs_path, str(e))
+                    logger.error(
+                        "Security violation for file: %s (%s)",
+                        abs_path,
+                        str(e),
+                    )
                     raise
 
                 try:
                     file_info = FileInfo.from_path(
-                        rel_path, 
-                        security_manager=security_manager, 
-                        **kwargs
+                        rel_path, security_manager=security_manager, **kwargs
                     )
                     files.append(file_info)
                     logger.debug("Added file to list: %s", rel_path)
                 except PathSecurityError as e:
                     # Log and re-raise security errors immediately
                     logger.error(
-                        "Security violation processing file: %s (%s)", 
-                        rel_path, 
-                        str(e)
+                        "Security violation processing file: %s (%s)",
+                        rel_path,
+                        str(e),
                     )
                     raise
                 except (FileNotFoundError, PermissionError) as e:

@@ -70,20 +70,25 @@ Known Limitations:
    - Our approach works with both behaviors
 """
 
+import errno
 import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Set, Union
-import errno
 
 from .allowed_checker import is_path_in_allowed_dirs
 from .errors import PathSecurityError, SecurityErrorReasons
 from .normalization import normalize_path
-from .windows_paths import is_windows_path, validate_windows_path, resolve_windows_symlink
+from .windows_paths import (
+    is_windows_path,
+    resolve_windows_symlink,
+    validate_windows_path,
+)
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SymlinkInfo:
@@ -108,44 +113,46 @@ def _debug_seen_set(seen: Set[Path], prefix: str = "") -> None:
     logger.debug("%sSeen set contents:\n  %s", prefix, paths)
 
 
-def _follow_symlink_chain(path: Path, seen: Set[Path], max_depth: int = 16) -> Optional[List[Path]]:
+def _follow_symlink_chain(
+    path: Path, seen: Set[Path], max_depth: int = 16
+) -> Optional[List[Path]]:
     """Follow a symlink chain to detect loops, without checking existence.
-    
+
     This function follows a chain of symlinks, looking only at the targets
     (via readlink) without checking existence. This allows us to detect
     loops even when the filesystem reports loop members as non-existent.
-    
+
     Implementation Details:
     1. Chain Following:
        - Starts at the given path
        - Uses readlink() to get each target
        - Normalizes paths for consistent comparison
        - Continues until a non-symlink or error is encountered
-    
+
     2. Loop Detection:
        - Maintains a chain of followed links
        - Uses a separate seen set for chain following
        - Checks if each new target is in the chain seen set
        - If found in chain seen set -> loop detected
        - If max depth reached -> returns None
-    
+
     3. Error Handling:
        - OSError from readlink -> chain ends (no loop)
        - Max depth exceeded -> returns None
        - Target in chain seen set -> loop detected
-    
+
     Filesystem Behavior:
     1. Real Filesystem:
        - May raise ELOOP for symlink loops
        - exists() behavior varies by OS
        - readlink() works on loop members
-    
+
     2. pyfakefs:
        - No ELOOP errors are raised
        - exists() returns False for all symlinks in a loop
        - is_symlink() works correctly even in loops
        - readlink() works correctly on loop members
-    
+
     3. Our Approach:
        - Filesystem-agnostic loop detection
        - Works with both real and fake filesystems
@@ -161,12 +168,12 @@ def _follow_symlink_chain(path: Path, seen: Set[Path], max_depth: int = 16) -> O
     and usage. A malicious actor could potentially modify symlinks or
     their targets between checks. Use appropriate filesystem permissions
     to mitigate TOCTOU risks.
-    
+
     Args:
         path: The path to start following from
         seen: Set of already seen paths from main resolution
         max_depth: Maximum depth to follow
-        
+
     Returns:
         List of paths in the chain if a loop is found, None otherwise
     """
@@ -174,13 +181,14 @@ def _follow_symlink_chain(path: Path, seen: Set[Path], max_depth: int = 16) -> O
         "\n=== Following symlink chain ===\n"
         "Starting path: %s\n"
         "Resolution seen: %s",
-        path, sorted(list(seen))
+        path,
+        sorted(list(seen)),
     )
-    
-    chain = []
-    chain_seen = set()  # Separate seen set for chain following
+
+    chain: list[Path] = []
+    chain_seen: set[Path] = set()  # Separate seen set for chain following
     current = normalize_path(path)
-    
+
     for depth in range(max_depth):
         try:
             # Check for loop using chain seen set
@@ -191,19 +199,26 @@ def _follow_symlink_chain(path: Path, seen: Set[Path], max_depth: int = 16) -> O
                     "Chain: %s\n"
                     "Chain seen: %s\n"
                     "Resolution seen: %s",
-                    current, chain, sorted(list(chain_seen)), sorted(list(seen))
+                    current,
+                    chain,
+                    sorted(list(chain_seen)),
+                    sorted(list(seen)),
                 )
-                return chain + [current]  # Return complete chain including loop point
-            
+                return chain + [
+                    current
+                ]  # Return complete chain including loop point
+
             # Add to chain and chain seen set before reading link
             chain.append(current)
             chain_seen.add(current)
-            
+
             # Use readlink to follow link without existence check
             target_str = os.readlink(str(current))
             if not os.path.isabs(target_str):
-                target_str = os.path.normpath(os.path.join(str(current.parent), target_str))
-            
+                target_str = os.path.normpath(
+                    os.path.join(str(current.parent), target_str)
+                )
+
             # Normalize the target path
             current = normalize_path(Path(target_str))
             logger.debug(
@@ -213,14 +228,26 @@ def _follow_symlink_chain(path: Path, seen: Set[Path], max_depth: int = 16) -> O
                 "  Chain so far: %s\n"
                 "  Chain seen: %s\n"
                 "  Resolution seen: %s",
-                depth, chain[-1], current, chain, sorted(list(chain_seen)), sorted(list(seen))
+                depth,
+                chain[-1],
+                current,
+                chain,
+                sorted(list(chain_seen)),
+                sorted(list(seen)),
             )
-            
+
         except OSError as e:
-            logger.debug("Failed to read symlink at depth %d: %s - %s", depth, current, e)
+            logger.debug(
+                "Failed to read symlink at depth %d: %s - %s",
+                depth,
+                current,
+                e,
+            )
             return None
-            
-    logger.debug("Chain exceeded max depth (%d) without finding loop", max_depth)
+
+    logger.debug(
+        "Chain exceeded max depth (%d) without finding loop", max_depth
+    )
     return None
 
 
@@ -232,10 +259,10 @@ def _resolve_symlink(
     current_depth: int = 0,
 ) -> Path:
     """Internal security primitive for symlink resolution.
-    
+
     INTERNAL API: This function is not part of the public interface.
     Use SecurityManager.resolve_path() for general path resolution.
-    
+
     This function resolves symlinks with the following security measures:
     1. Maximum depth enforcement to prevent infinite recursion
     2. Loop detection to prevent symlink cycles
@@ -276,7 +303,9 @@ def _resolve_symlink(
         "Path: %s\n"
         "Depth: %d\n"
         "Seen paths: %s",
-        path, current_depth, sorted(list(seen or set()))
+        path,
+        current_depth,
+        sorted(list(seen or set())),
     )
 
     # 1. Check maximum recursion depth first (highest precedence)
@@ -287,7 +316,10 @@ def _resolve_symlink(
             "Current depth: %d\n"
             "Max depth: %d\n"
             "Chain: %s",
-            path, current_depth, max_depth, sorted(list(seen or set()))
+            path,
+            current_depth,
+            max_depth,
+            sorted(list(seen or set())),
         )
         raise PathSecurityError(
             "Symlink security violation: maximum depth exceeded",
@@ -312,18 +344,24 @@ def _resolve_symlink(
     # 4. Check if it's a symlink first
     try:
         if not norm_path.is_symlink():
-            logger.debug("Not a symlink, returning normalized path: %s", norm_path)
+            logger.debug(
+                "Not a symlink, returning normalized path: %s", norm_path
+            )
             return norm_path
 
         # 5. Check for loops using chain following (second highest precedence)
-        chain = _follow_symlink_chain(norm_path, seen, max_depth - current_depth)
+        chain = _follow_symlink_chain(
+            norm_path, seen, max_depth - current_depth
+        )
         if chain:
             logger.warning(
                 "\n=== Loop detected in symlink chain! ===\n"
                 "Starting path: %s\n"
                 "Chain: %s\n"
                 "Seen paths: %s",
-                norm_path, chain, sorted(list(seen))
+                norm_path,
+                chain,
+                sorted(list(seen)),
             )
             raise PathSecurityError(
                 "Symlink security violation: loop detected",
@@ -341,7 +379,9 @@ def _resolve_symlink(
 
         # Convert to absolute path if needed
         if not os.path.isabs(target_str):
-            target_str = os.path.normpath(os.path.join(str(path.parent), target_str))
+            target_str = os.path.normpath(
+                os.path.join(str(path.parent), target_str)
+            )
         logger.debug("Absolute target path: %s", target_str)
 
         # Normalize the target path
@@ -352,7 +392,10 @@ def _resolve_symlink(
             "Target string: %s\n"
             "Normalized target: %s\n"
             "Current seen set: %s",
-            path, target_str, normalized_target, sorted(list(seen))
+            path,
+            target_str,
+            normalized_target,
+            sorted(list(seen)),
         )
 
         # 7. Validate Windows-specific path features
@@ -360,7 +403,11 @@ def _resolve_symlink(
             if is_windows_path(path):
                 error_msg = validate_windows_path(path)
                 if error_msg:
-                    logger.warning("Windows path validation failed: %s - %s", path, error_msg)
+                    logger.warning(
+                        "Windows path validation failed: %s - %s",
+                        path,
+                        error_msg,
+                    )
                     raise PathSecurityError(
                         f"Symlink security violation: {error_msg}",
                         path=str(path),
@@ -378,7 +425,9 @@ def _resolve_symlink(
                 "Path: %s\n"
                 "Target: %s\n"
                 "Chain: %s",
-                path, normalized_target, sorted(list(seen))
+                path,
+                normalized_target,
+                sorted(list(seen)),
             )
             raise PathSecurityError(
                 f"Symlink security violation: broken symlink target '{normalized_target}' does not exist",
@@ -393,7 +442,9 @@ def _resolve_symlink(
 
         # 9. Validate target is allowed
         if not is_path_in_allowed_dirs(normalized_target, allowed_dirs):
-            logger.warning("Symlink target not allowed: %s -> %s", path, normalized_target)
+            logger.warning(
+                "Symlink target not allowed: %s -> %s", path, normalized_target
+            )
             raise PathSecurityError(
                 "Symlink security violation: target not allowed",
                 path=str(path),
@@ -412,9 +463,14 @@ def _resolve_symlink(
             "To target: %s\n"
             "Current depth: %d\n"
             "Chain so far: %s",
-            path, normalized_target, current_depth + 1, sorted(list(seen))
+            path,
+            normalized_target,
+            current_depth + 1,
+            sorted(list(seen)),
         )
-        return _resolve_symlink(normalized_target, max_depth, allowed_dirs, seen, current_depth + 1)
+        return _resolve_symlink(
+            normalized_target, max_depth, allowed_dirs, seen, current_depth + 1
+        )
 
     except OSError as e:
         logger.debug("OSError during symlink resolution: %s - %s", path, e)
@@ -426,4 +482,4 @@ def _resolve_symlink(
                 "error": str(e),
                 "chain": [str(p) for p in (seen or set())],
             },
-        ) from e 
+        ) from e
