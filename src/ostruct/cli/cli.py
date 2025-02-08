@@ -43,6 +43,8 @@ from openai import (
 )
 from openai_structured.client import (
     async_openai_structured_stream,
+    get_context_window_limit,
+    get_default_token_limit,
     supports_structured_output,
 )
 from openai_structured.errors import (
@@ -439,48 +441,6 @@ def estimate_tokens_for_chat(
             for value in message.values():
                 num_tokens += len(encoder.encode(str(value)))
         return num_tokens
-
-
-def get_default_token_limit(model: str) -> int:
-    """Get the default token limit for a given model.
-
-    Note: These limits are based on current OpenAI model specifications as of 2024 and may
-    need to be updated if OpenAI changes the models' capabilities.
-
-    Args:
-        model: The model name (e.g., 'gpt-4o', 'o1-mini', 'o3-mini')
-
-    Returns:
-        The default token limit for the model
-    """
-    if "o1-" in model:
-        return 100_000  # o1-mini supports up to 100K output tokens
-    elif "gpt-4o" in model:
-        return 16_384  # gpt-4o supports up to 16K output tokens
-    elif "o3-" in model:
-        return 16_384  # o3-mini supports up to 16K output tokens
-    else:
-        return 4_096  # default fallback
-
-
-def get_context_window_limit(model: str) -> int:
-    """Get the total context window limit for a given model.
-
-    Note: These limits are based on current OpenAI model specifications as of 2024 and may
-    need to be updated if OpenAI changes the models' capabilities.
-
-    Args:
-        model: The model name (e.g., 'gpt-4o', 'o1-mini', 'o3-mini')
-
-    Returns:
-        The context window limit for the model
-    """
-    if "o1-" in model:
-        return 200_000  # o1-mini supports 200K total context window
-    elif "gpt-4o" in model or "o3-" in model:
-        return 128_000  # gpt-4o and o3-mini support 128K context window
-    else:
-        return 8_192  # default fallback
 
 
 def validate_token_limits(
@@ -1376,29 +1336,78 @@ async def stream_structured_output(
     It handles the core streaming logic and resource cleanup.
     """
     try:
-        async for chunk in async_openai_structured_stream(
-            client=client,
-            model=model,
-            output_schema=output_schema,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            **kwargs,
-        ):
-            if not chunk:
-                continue
+        # Base models that don't support streaming
+        non_streaming_models = {"o1", "o3"}
 
-            # Process and output the chunk
-            dumped = chunk.model_dump(mode="json")
-            json_str = json.dumps(dumped, indent=2)
+        # Check if model supports streaming
+        # o3-mini and o3-mini-high support streaming, base o3 does not
+        use_streaming = model not in non_streaming_models and (
+            not model.startswith("o3") or model.startswith("o3-mini")
+        )
 
-            if output_file:
-                with open(output_file, "a", encoding="utf-8") as f:
-                    f.write(json_str)
-                    f.write("\n")
-                    f.flush()  # Ensure immediate flush to file
+        # All o1 and o3 models (base and variants) have fixed settings
+        stream_kwargs = {}
+        if not (model.startswith("o1") or model.startswith("o3")):
+            stream_kwargs = kwargs
+
+        if use_streaming:
+            async for chunk in async_openai_structured_stream(
+                client=client,
+                model=model,
+                output_schema=output_schema,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                **stream_kwargs,
+            ):
+                if not chunk:
+                    continue
+
+                # Process and output the chunk
+                dumped = chunk.model_dump(mode="json")
+                json_str = json.dumps(dumped, indent=2)
+
+                if output_file:
+                    with open(output_file, "a", encoding="utf-8") as f:
+                        f.write(json_str)
+                        f.write("\n")
+                        f.flush()  # Ensure immediate flush to file
+                else:
+                    # Print directly to stdout with immediate flush
+                    print(json_str, flush=True)
+        else:
+            # For non-streaming models, use regular completion
+            response = await client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                stream=False,
+                **stream_kwargs,
+            )
+
+            # Process the single response
+            content = response.choices[0].message.content
+            if content:
+                try:
+                    # Parse and validate against schema
+                    result = output_schema.model_validate_json(content)
+                    json_str = json.dumps(
+                        result.model_dump(mode="json"), indent=2
+                    )
+
+                    if output_file:
+                        with open(output_file, "w", encoding="utf-8") as f:
+                            f.write(json_str)
+                            f.write("\n")
+                    else:
+                        print(json_str, flush=True)
+                except ValidationError as e:
+                    raise InvalidResponseFormatError(
+                        f"Response validation failed: {e}"
+                    )
             else:
-                # Print directly to stdout with immediate flush
-                print(json_str, flush=True)
+                raise EmptyResponseError("Model returned empty response")
 
     except (
         StreamInterruptedError,
@@ -1572,7 +1581,7 @@ def create_cli() -> click.Command:
         click.Command: The CLI command object
     """
 
-    @create_click_command()
+    @create_click_command()  # type: ignore[misc]
     def cli(**kwargs: Any) -> None:
         """CLI entry point for structured OpenAI API calls."""
         try:
@@ -1631,8 +1640,6 @@ def main() -> None:
 __all__ = [
     "ExitCode",
     "estimate_tokens_for_chat",
-    "get_context_window_limit",
-    "get_default_token_limit",
     "parse_json_var",
     "create_dynamic_model",
     "validate_path_mapping",

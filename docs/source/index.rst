@@ -114,4 +114,4 @@ Support
 -------
 
 - GitHub Issues: https://github.com/yaniv-golan/ostruct/issues
-- Documentation: https://ostruct-cli.readthedocs.io/ 
+- Documentation: https://ostruct-cli.readthedocs.io/

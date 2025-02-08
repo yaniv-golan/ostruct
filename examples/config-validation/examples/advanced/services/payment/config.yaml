@@ -8,12 +8,12 @@ service:
   name: payment-service
   version: 2.5.0
   description: Payment Processing Service
-  
+
 server:
   host: 0.0.0.0
   port: ${PORT:-8010}
   grpc_port: ${GRPC_PORT:-8011}
-  
+
 payment:
   providers:
     stripe:
@@ -28,13 +28,13 @@ payment:
       client_id: ${PAYPAL_CLIENT_ID}
       client_secret: ${PAYPAL_CLIENT_SECRET}
       sandbox: ${PAYPAL_SANDBOX:-false}
-      
+
   processing:
     retry_attempts: 3
     timeout: 30s
     idempotency_key_ttl: 24h
     async_capture: true
-    
+
   fraud_detection:
     enabled: true
     provider: ${FRAUD_PROVIDER:-internal}
@@ -49,19 +49,19 @@ payment:
       - type: frequency
         window: 1h
         max_attempts: 10
-        
+
 storage:
   transactions:
     type: postgresql
     connection_string: ${TRANSACTION_DB_URL}
     max_connections: 20
-    
+
   audit_log:
     type: mongodb
     url: ${AUDIT_MONGO_URL}
     database: payment_audit
     collection: transactions
-    
+
 events:
   consumer:
     type: kafka
@@ -70,7 +70,7 @@ events:
     topics:
       - order.created
       - refund.requested
-      
+
   publisher:
     type: kafka
     brokers: ${KAFKA_BROKERS}
@@ -79,18 +79,18 @@ events:
       - payment.succeeded
       - payment.failed
       - refund.processed
-      
+
 security:
   encryption:
     provider: vault
     path: secret/payment
     key_rotation_interval: 30d
-    
+
   pci_compliance:
     enabled: true
     log_redaction: true
     data_retention_days: 90
-    
+
 monitoring:
   health_check:
     enabled: true
@@ -104,4 +104,4 @@ monitoring:
   alerts:
     error_rate_threshold: 0.01
     latency_threshold_ms: 1000
-    decline_rate_threshold: 0.1 
+    decline_rate_threshold: 0.1

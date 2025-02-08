@@ -47,4 +47,4 @@ Remember:
 - Security findings should always be highlighted
 - Some differences between environments may be intentional
 - Consider the full context before flagging inconsistencies
-- Provide constructive, specific feedback 
+- Provide constructive, specific feedback

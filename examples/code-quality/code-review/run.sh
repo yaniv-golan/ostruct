@@ -91,4 +91,4 @@ exit_code=$?
 if [ $exit_code -ne 0 ]; then
     echo "Error: Code review failed with exit code $exit_code"
     exit $exit_code
-fi 
+fi

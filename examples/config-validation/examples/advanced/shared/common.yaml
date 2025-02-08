@@ -34,7 +34,7 @@ security:
     min_version: TLS1.2
     cert_path: /etc/certs/${SERVICE_NAME}/tls.crt
     key_path: /etc/certs/${SERVICE_NAME}/tls.key
-  
+
   authentication:
     jwt:
       issuer: auth-service
@@ -54,15 +54,15 @@ circuit_breaker:
     interval: 10s
     timeout: 3s
     error_threshold_percentage: 50
-    
+
 retry:
   default:
     max_attempts: 3
     initial_interval: 100ms
     max_interval: 1s
     multiplier: 2
-    
+
 rate_limit:
   default:
     requests_per_second: 100
-    burst: 50 
+    burst: 50

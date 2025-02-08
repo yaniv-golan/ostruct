@@ -192,7 +192,7 @@ If you have existing tests using real file operations:
    # Before:
    with tempfile.NamedTemporaryFile() as f:
        f.write(b"content")
-       
+
    # After:
    test_file = "/test_workspace/test.txt"
    fs.create_file(test_file, contents="content")
@@ -203,7 +203,7 @@ If you have existing tests using real file operations:
    ```python
    # Before:
    file_info = read_file("test.txt")
-   
+
    # After:
    file_info = read_file("test.txt", security_manager=security_manager)
    ```

@@ -151,4 +151,4 @@ if [[ $EXIT_CODE -eq 0 ]]; then
 else
     echo "Validation failed with exit code $EXIT_CODE"
     exit $EXIT_CODE
-fi 
+fi

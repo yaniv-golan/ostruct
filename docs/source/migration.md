@@ -115,7 +115,7 @@ The default model is now `gpt-4o-2024-08-06`, which is optimized for structured 
 
      ```
      Review this code for security issues:
-     
+
      <code>
      {{ code.content }}
      </code>

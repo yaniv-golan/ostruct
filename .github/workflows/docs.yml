@@ -14,17 +14,17 @@ jobs:
         python-version: ['3.9', '3.10']
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          
+
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           poetry config virtualenvs.create false
-          
+
       - name: Debug Environment
         run: |
           echo "Current PATH: $PATH"
@@ -36,7 +36,7 @@ jobs:
           ls -la $HOME/.local/bin || true
           echo "Site packages location:"
           python -c "import site; print(site.getsitepackages())"
-          
+
       - name: Install dependencies
         run: |
           poetry install --with dev,docs
@@ -49,7 +49,7 @@ jobs:
           pip show sphinx | grep "Entry-points" || true
           which sphinx-build || true
           python -m sphinx --version || true
-          
+
       - name: Build documentation
         working-directory: docs
         run: |
@@ -57,4 +57,4 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Python sys.path:"
           python -c "import sys; print('\n'.join(sys.path))"
-          python -m sphinx -b html source build/html 
+          python -m sphinx -b html source build/html

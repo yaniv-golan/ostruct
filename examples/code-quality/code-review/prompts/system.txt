@@ -50,4 +50,4 @@ For each file, provide metrics:
 - Maintainability rating (high, medium, low)
 - Documentation quality (good, needs_improvement, poor)
 
-Be thorough but practical in your recommendations. Focus on significant issues that impact code quality, security, or performance. Avoid nitpicking minor stylistic preferences unless they significantly impact readability. 
+Be thorough but practical in your recommendations. Focus on significant issues that impact code quality, security, or performance. Avoid nitpicking minor stylistic preferences unless they significantly impact readability.

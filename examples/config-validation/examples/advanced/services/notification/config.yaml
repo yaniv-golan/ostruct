@@ -8,12 +8,12 @@ service:
   name: notification-service
   version: 1.8.0
   description: Multi-channel Notification Service
-  
+
 server:
   host: 0.0.0.0
   port: ${PORT:-8020}
   grpc_port: ${GRPC_PORT:-8021}
-  
+
 providers:
   email:
     primary:
@@ -26,7 +26,7 @@ providers:
       region: ${AWS_REGION:-us-west-2}
       access_key_id: ${AWS_ACCESS_KEY_ID}
       secret_access_key: ${AWS_SECRET_ACCESS_KEY}
-      
+
   sms:
     primary:
       type: twilio
@@ -36,7 +36,7 @@ providers:
     fallback:
       type: aws-sns
       region: ${AWS_REGION:-us-west-2}
-      
+
   push:
     providers:
       - type: firebase
@@ -46,17 +46,17 @@ providers:
         key_id: ${APNS_KEY_ID}
         team_id: ${APNS_TEAM_ID}
         private_key_path: /etc/credentials/apns.p8
-        
+
 templates:
   storage:
     type: postgresql
     connection_string: ${TEMPLATE_DB_URL}
-    
+
   cache:
     type: redis
     url: ${TEMPLATE_REDIS_URL}
     ttl: 1h
-    
+
 queues:
   processor:
     type: redis
@@ -65,12 +65,12 @@ queues:
     rate_limit:
       enabled: true
       per_second: 100
-      
+
   dead_letter:
     enabled: true
     max_retries: 3
     ttl: 72h
-    
+
 rate_limits:
   email:
     per_user:
@@ -79,7 +79,7 @@ rate_limits:
     global:
       window: 1m
       max_sends: 1000
-      
+
   sms:
     per_user:
       window: 24h
@@ -87,7 +87,7 @@ rate_limits:
     global:
       window: 1m
       max_sends: 100
-      
+
   push:
     per_user:
       window: 1h
@@ -95,7 +95,7 @@ rate_limits:
     global:
       window: 1m
       max_sends: 5000
-      
+
 events:
   consumer:
     type: kafka
@@ -106,7 +106,7 @@ events:
       - order.status_changed
       - payment.succeeded
       - payment.failed
-      
+
 monitoring:
   health_check:
     enabled: true
@@ -119,4 +119,4 @@ monitoring:
       component: messaging
   alerts:
     error_rate_threshold: 0.05
-    delivery_delay_threshold: 30s 
+    delivery_delay_threshold: 30s

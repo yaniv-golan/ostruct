@@ -179,7 +179,7 @@ class TestTokenLimits:
         # Test gpt-4o model
         assert get_context_window_limit("gpt-4o") == 128_000
         assert get_context_window_limit("o1-mini") == 200_000
-        assert get_context_window_limit("o3-mini") == 128_000
+        assert get_context_window_limit("o3-mini") == 200_000
 
     def test_validate_token_limits_success(self) -> None:
         """Test successful token limit validation."""

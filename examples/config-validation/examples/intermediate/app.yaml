@@ -5,7 +5,7 @@ app:
   name: user-management-service
   version: 2.1.0
   environment: ${APP_ENV:-production}
-  
+
 server:
   host: 0.0.0.0
   port: ${PORT:-8080}
@@ -17,7 +17,7 @@ server:
   compression:
     enabled: true
     level: 6
-    
+
 logging:
   level: ${LOG_LEVEL:-INFO}
   format: json
@@ -27,14 +27,14 @@ logging:
       max_size: 100MB
       max_backups: 5
     - type: stdout
-      
+
 metrics:
   enabled: true
   endpoint: /metrics
   labels:
     service: user-management
     team: auth-team
-    
+
 features:
   mfa:
     enabled: ${ENABLE_MFA:-true}
@@ -55,4 +55,4 @@ dependencies:
   database:
     config_file: db.yaml  # Reference to db.yaml
   cache:
-    config_file: cache.yaml  # Reference to cache.yaml 
+    config_file: cache.yaml  # Reference to cache.yaml

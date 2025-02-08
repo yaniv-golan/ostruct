@@ -16,4 +16,4 @@ max-line-length = 88
 # Ignore certain errors/warnings:
 # E203: Whitespace before ':' (conflicts with black)
 # W503: Line break before binary operator (conflicts with black)
-extend-ignore = E203, W503 
+extend-ignore = E203, W503

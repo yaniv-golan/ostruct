@@ -36,8 +36,8 @@ security:
     expiry: 24h
   cors:
     allowed_origins: ["*"]  # Security: Too permissive for production
-    
+
 monitoring:
   enabled: true
   metrics_port: 9090
-  health_check: /health 
+  health_check: /health

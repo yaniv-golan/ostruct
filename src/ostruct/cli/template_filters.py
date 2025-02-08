@@ -544,9 +544,9 @@ def format_code(
     """Format code with syntax highlighting.
 
     Args:
-        text (str): The code text to format
-        output_format (str): The output format ('terminal', 'html', or 'plain')
-        language (str): The programming language for syntax highlighting
+        text: The code text to format
+        output_format: The output format ('terminal', 'html', or 'plain')
+        language: The programming language for syntax highlighting
 
     Returns:
         str: Formatted code string
@@ -580,10 +580,13 @@ def format_code(
         else:  # plain
             formatter = NullFormatter[str]()
 
-        return highlight(text, lexer, formatter)
+        result = highlight(text, lexer, formatter)
+        if isinstance(result, bytes):
+            return result.decode("utf-8")
+        return str(result)
     except Exception as e:
         logger.error(f"Error formatting code: {e}")
-        return text
+        return str(text)
 
 
 def register_template_filters(env: Environment) -> None:

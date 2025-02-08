@@ -101,4 +101,4 @@ Thumbs.db
 .cursor/
 
 # Local Poetry configuration
-poetry.toml 
+poetry.toml

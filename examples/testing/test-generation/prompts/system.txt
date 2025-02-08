@@ -38,4 +38,4 @@ Focus on creating tests that are:
 - Clear and maintainable
 - Framework-appropriate (pytest, unittest)
 - Well-documented
-- Easy to debug when they fail 
+- Easy to debug when they fail

@@ -16,4 +16,4 @@ clean:
 html:
 	$(SPHINXBUILD) -b html "$(SOURCEDIR)" "$(BUILDDIR)/html" $(SPHINXOPTS) $(O)
 
-.DEFAULT_GOAL := html 
+.DEFAULT_GOAL := html

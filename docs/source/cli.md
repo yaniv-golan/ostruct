@@ -249,7 +249,7 @@ When working with large files, proper prompt structure is crucial for effective 
    - Time complexity
    - Memory usage
    - Database query efficiency
-   
+
    <python_code>
    {{ code.content }}
    </python_code>

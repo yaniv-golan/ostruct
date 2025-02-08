@@ -43,4 +43,4 @@ jobs:
     - name: Build documentation
       run: |
         cd docs
-        poetry run make html 
+        poetry run make html
