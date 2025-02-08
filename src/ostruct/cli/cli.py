@@ -1581,7 +1581,7 @@ def create_cli() -> click.Command:
         click.Command: The CLI command object
     """
 
-    @create_click_command()  # type: ignore[misc]
+    @create_click_command()
     def cli(**kwargs: Any) -> None:
         """CLI entry point for structured OpenAI API calls."""
         try:
@@ -1626,8 +1626,7 @@ def create_cli() -> click.Command:
             logger.exception("Unexpected error")
             raise CLIError(str(e), context={"error_type": type(e).__name__})
 
-    # The decorated function is a Command, but mypy can't detect this
-    return cast(click.Command, cli)
+    return cli
 
 
 def main() -> None:

@@ -1,23 +1,23 @@
 """Click command and options for the CLI.
 
 This module contains all Click-related code separated from the main CLI logic.
-We isolate this code here and disable mypy type checking for the entire module
-because Click's decorator-based API is not easily type-checkable, leading to
-many type: ignore comments in the main code.
+We isolate this code here and provide proper type annotations for Click's
+decorator-based API.
 """
 
-# mypy: ignore-errors
-# ^ This tells mypy to ignore type checking for this entire file
-
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar, Union, cast
 
 import click
+from click import Command
 
 from ostruct import __version__
 from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
     SystemPromptError,
     TaskTemplateVariableError,
 )
+
+F = TypeVar("F", bound=Callable[..., Any])
+DecoratedCommand = Union[Command, Callable[..., Any]]
 
 
 def validate_task_params(
@@ -162,87 +162,96 @@ def model_options(f: Callable) -> Callable:
     return f
 
 
-def create_click_command() -> Callable:
-    """Create the Click command with all options."""
+def create_click_command() -> Callable[[F], Command]:
+    """Create the Click command with all options.
 
-    def decorator(f: Callable) -> Callable:
-        f = click.command(help="Make structured OpenAI API calls.")(f)
-        f = click.option(
+    Returns:
+        A decorator function that adds all CLI options to the command.
+    """
+
+    def decorator(f: F) -> Command:
+        # Start with the base command
+        cmd: DecoratedCommand = click.command(
+            help="Make structured OpenAI API calls."
+        )(f)
+
+        # Add all options
+        cmd = click.option(
             "--task",
             help="Task template string",
             type=str,
             callback=validate_task_params,
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--task-file",
             help="Task template file path",
             type=str,
             callback=validate_task_params,
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--system-prompt",
             help="System prompt string",
             type=str,
             callback=validate_system_prompt_params,
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--system-prompt-file",
             help="System prompt file path",
             type=str,
             callback=validate_system_prompt_params,
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--schema-file",
             required=True,
             help="JSON schema file for response validation",
             type=str,
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--ignore-task-sysprompt",
             is_flag=True,
             help="Ignore system prompt from task template YAML frontmatter",
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--timeout",
             type=float,
             default=60.0,
             help="API timeout in seconds",
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--output-file", help="Write JSON output to file", type=str
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--dry-run",
             is_flag=True,
             help="Simulate API call without making request",
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--no-progress", is_flag=True, help="Disable progress indicators"
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--progress-level",
             type=click.Choice(["none", "basic", "detailed"]),
             default="basic",
             help="Progress reporting level",
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--api-key", help="OpenAI API key (overrides env var)", type=str
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--verbose",
             is_flag=True,
             help="Enable verbose output and detailed logging",
-        )(f)
-        f = click.option(
+        )(cmd)
+        cmd = click.option(
             "--debug-openai-stream",
             is_flag=True,
             help="Enable low-level debug output for OpenAI streaming",
-        )(f)
-        f = debug_options(f)
-        f = file_options(f)
-        f = variable_options(f)
-        f = model_options(f)
-        f = click.version_option(version=__version__)(f)
-        return f
+        )(cmd)
+        cmd = debug_options(cmd)
+        cmd = file_options(cmd)
+        cmd = variable_options(cmd)
+        cmd = model_options(cmd)
+        cmd = click.version_option(version=__version__)(cmd)
+        return cast(Command, cmd)
 
     return decorator
