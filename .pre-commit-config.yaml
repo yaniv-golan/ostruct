@@ -32,18 +32,15 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
         exclude: ^examples/
 
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.9.0
+-   repo: local
     hooks:
     -   id: mypy
-        exclude: ^examples/
-        additional_dependencies:
-        - pydantic
-        - types-jsonschema
-        - types-pyyaml
-        - types-chardet
-        - types-cachetools
-        - types-click
-        - pytest
-        - pytest-asyncio
-        - pytest-mock
+        name: mypy
+        entry: poetry run mypy --no-incremental --config-file pyproject.toml
+        language: system
+        types: [python]
+        exclude: ^(docs/|examples/)
+        require_serial: true
+        # This ensures mypy reads config from pyproject.toml
+        pass_filenames: false
+        args: ["src/ostruct", "tests"]

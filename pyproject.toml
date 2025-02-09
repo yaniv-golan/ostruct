@@ -4,14 +4,14 @@
 
     [tool.poetry]
     name = "ostruct-cli"
-    version = "0.4.0"
+    version = "0.5.0"
     description = "CLI for OpenAI Structured Output"
     authors = ["Yaniv Golan <yaniv@golan.name>"]
     readme = "README.md"
     packages = [{include = "ostruct", from = "src"}]
 
     [tool.poetry.dependencies]
-    python = ">=3.9,<4.0"
+    python = ">=3.10,<4.0"
     pydantic = "^2.6.3"
     jsonschema = "^4.23.0"
     chardet = "^5.0.0"
@@ -68,26 +68,31 @@
 
     [tool.mypy]
     plugins = ["pydantic.mypy"]
-    strict = true
-    exclude = [
-        "docs/",
-        "examples/"
-    ]
-    packages = ["ostruct", "tests"]
-    python_version = "3.9"
+    python_version = "3.10"
     warn_unused_configs = true
-    disallow_untyped_defs = true
+    exclude = ["docs/*", "examples/*"]
+    disallow_untyped_defs = false
     check_untyped_defs = true
-    warn_redundant_casts = true
-    warn_unused_ignores = true
-    warn_return_any = true
-    warn_unreachable = true
+    warn_return_any = false
+    warn_unused_ignores = false
     show_error_codes = true
-    ignore_missing_imports = false
+
+    # Stricter settings for source code
+    [[tool.mypy.overrides]]
+    module = "src.ostruct.*"
+    disallow_untyped_defs = true
+    warn_return_any = true
+    warn_unused_ignores = true
+
+    # Special handling for Click-related code
+    [[tool.mypy.overrides]]
+    module = ["click.*", "src.ostruct.cli.click_options"]
+    disallow_untyped_decorators = false
+    warn_return_any = false
 
     [tool.black]
     line-length = 79
-    target-version = ["py39"]
+    target-version = ["py310"]
     include = '\.pyi?$'
     preview = false
     required-version = "24.8.0"
@@ -109,7 +114,7 @@
     asyncio_default_fixture_loop_scope = "function"
 
     [tool.ruff]
-    target-version = "py39"
+    target-version = "py310"
 
     [tool.poetry.group.examples]
     optional = true

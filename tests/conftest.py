@@ -48,6 +48,24 @@ from ostruct.cli.security import SecurityManager
 pytest_plugins = ["pytest_asyncio"]
 
 
+@pytest.fixture(autouse=True)
+def mock_model_support(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mock model support check to allow any model in tests."""
+
+    def mock_supports_structured_output(model: str) -> bool:
+        return True
+
+    # Patch both direct import and through openai_structured.client
+    monkeypatch.setattr(
+        "openai_structured.client.supports_structured_output",
+        mock_supports_structured_output,
+    )
+    monkeypatch.setattr(
+        "ostruct.cli.cli.supports_structured_output",
+        mock_supports_structured_output,
+    )
+
+
 def pytest_configure(config: pytest.Config) -> None:
     """Configure pytest."""
     config.addinivalue_line("markers", "asyncio: mark test as async")
@@ -526,19 +544,6 @@ def security_manager(fs: FakeFilesystem) -> SecurityManager:
     os.chdir(base_dir)
 
     return manager
-
-
-@pytest.fixture(autouse=True)
-def mock_model_support(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Mock model support check to allow any model in tests."""
-
-    def mock_supports_structured_output(model: str) -> bool:
-        return True
-
-    monkeypatch.setattr(
-        "openai_structured.client.supports_structured_output",
-        mock_supports_structured_output,
-    )
 
 
 @pytest.fixture(autouse=True)

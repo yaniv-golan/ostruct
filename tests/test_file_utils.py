@@ -144,18 +144,29 @@ def test_file_info_missing_file(
     # Suppress debug logs about missing files
     caplog.set_level(logging.INFO)
 
-    # Attempt to access non-existent file - should raise FileNotFoundError
-    with pytest.raises(
-        FileNotFoundError, match="File not found: nonexistent.txt"
-    ) as exc_info:
+    # Test 1: File not found
+    with pytest.raises(FileNotFoundError) as file_not_found_exc:
         FileInfo.from_path(
-            "nonexistent.txt", security_manager=security_manager
+            str("nonexistent.txt"), security_manager=security_manager
         )
 
-    # Verify error message contains useful details
-    error_msg = str(exc_info.value)
-    assert "nonexistent.txt" in error_msg  # Verify filename is included
-    assert "File not found:" in error_msg  # Verify error is clear
+    assert "File not found:" in str(file_not_found_exc.value)
+    assert "nonexistent.txt" in str(file_not_found_exc.value)
+
+    # Test 2: File outside allowed directories
+    fs.create_dir("/test_workspace/outside")
+    fs.create_file("/test_workspace/outside/test.txt", contents="test")
+    with pytest.raises(PathSecurityError) as security_exc:
+        FileInfo.from_path(
+            str("../outside/test.txt"), security_manager=security_manager
+        )
+
+    assert "Access denied" in str(security_exc.value)
+    assert "is outside base directory" in str(security_exc.value)
+    assert (
+        security_exc.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )
 
 
 def test_collect_files_from_pattern(
@@ -296,33 +307,33 @@ def test_collect_files_errors(
     os.chdir("/test_workspace/base")  # Change to base directory
 
     # Test invalid file mapping
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError) as value_error_exc2:
         collect_files(
             file_mappings=["test"], security_manager=security_manager
         )
-    assert "Invalid file mapping format" in str(exc_info.value)
-    assert "missing '=' separator" in str(exc_info.value)
+    assert "Invalid file mapping format" in str(value_error_exc2.value)
+    assert "missing '=' separator" in str(value_error_exc2.value)
 
     # Test missing file
-    with pytest.raises(FileNotFoundError) as exc_info:
+    with pytest.raises(FileNotFoundError) as file_not_found_exc2:
         collect_files(
             file_mappings=["test=nonexistent.txt"],
             security_manager=security_manager,
         )
-    assert "File not found:" in str(exc_info.value)
-    assert "nonexistent.txt" in str(exc_info.value)
+    assert "File not found:" in str(file_not_found_exc2.value)
+    assert "nonexistent.txt" in str(file_not_found_exc2.value)
 
     # Test security violation
     fs.create_file("/test_workspace/outside/test.txt", contents="test")
-    with pytest.raises(PathSecurityError) as exc_info:
+    with pytest.raises(PathSecurityError) as security_exc4:
         collect_files(
             file_mappings=["test=../outside/test.txt"],
             security_manager=security_manager,
         )
-    assert "Access denied" in str(exc_info.value)
-    assert "is outside base directory" in str(exc_info.value)
+    assert "Access denied" in str(security_exc4.value)
+    assert "is outside base directory" in str(security_exc4.value)
     assert (
-        exc_info.value.context["reason"]
+        security_exc4.value.context["reason"]
         == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
     )
 
@@ -336,7 +347,7 @@ def test_file_info_stats_loading(
 
     # Create FileInfo instance
     file_info = FileInfo.from_path(
-        "test.txt", security_manager=security_manager
+        str("test.txt"), security_manager=security_manager
     )
 
     # Check that stats are loaded
@@ -365,7 +376,7 @@ def test_file_info_stats_security(
     # Test accessing file outside base directory
     with pytest.raises(PathSecurityError) as exc_info:
         FileInfo.from_path(
-            "../outside/test.txt", security_manager=security_manager
+            str("../outside/test.txt"), security_manager=security_manager
         )
 
     assert "Access denied:" in str(exc_info.value)
@@ -392,7 +403,7 @@ def test_file_info_missing_file_stats(
     # Test missing file
     with pytest.raises(FileNotFoundError) as exc_info:
         FileInfo.from_path(
-            "nonexistent.txt", security_manager=security_manager
+            str("nonexistent.txt"), security_manager=security_manager
         )
 
     assert "File not found:" in str(exc_info.value)
@@ -412,26 +423,26 @@ def test_file_info_content_errors(
     os.chdir("/test_workspace/base")
 
     # Test 1: Missing file at initialization
-    with pytest.raises(FileNotFoundError) as exc_info:
+    with pytest.raises(FileNotFoundError) as file_not_found_exc:
         FileInfo.from_path(
-            "nonexistent.txt", security_manager=security_manager
+            str("nonexistent.txt"), security_manager=security_manager
         )
 
-    assert "File not found:" in str(exc_info.value)
-    assert "nonexistent.txt" in str(exc_info.value)
+    assert "File not found:" in str(file_not_found_exc.value)
+    assert "nonexistent.txt" in str(file_not_found_exc.value)
 
     # Test 2: File outside allowed directories
     fs.create_dir("/test_workspace/outside")
     fs.create_file("/test_workspace/outside/test.txt", contents="test")
-    with pytest.raises(PathSecurityError) as exc_info:
+    with pytest.raises(PathSecurityError) as security_exc:
         FileInfo.from_path(
-            "../outside/test.txt", security_manager=security_manager
+            str("../outside/test.txt"), security_manager=security_manager
         )
 
-    assert "Access denied" in str(exc_info.value)
-    assert "is outside base directory" in str(exc_info.value)
+    assert "Access denied" in str(security_exc.value)
+    assert "is outside base directory" in str(security_exc.value)
     assert (
-        exc_info.value.context["reason"]
+        security_exc.value.context["reason"]
         == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
     )
 

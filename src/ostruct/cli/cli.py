@@ -52,7 +52,6 @@ from openai_structured.errors import (
     EmptyResponseError,
     InvalidResponseFormatError,
     ModelNotSupportedError,
-    ModelVersionError,
     OpenAIClientError,
     SchemaFileError,
     SchemaValidationError,
@@ -101,6 +100,30 @@ from .template_utils import SystemPromptError, render_template
 
 # Constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+# Models with fixed parameters that reject any parameter overrides
+FIXED_PARAM_MODELS = {
+    "o1",
+    "o1-*",  # Base model and variants
+    "o3",
+    "o3-*",  # Base model and variants
+}
+
+
+def is_fixed_param_model(model: str) -> bool:
+    """Check if model requires fixed parameters.
+
+    Args:
+        model: The model name to check
+
+    Returns:
+        bool: True if the model has fixed parameters
+    """
+    model = model.lower()
+    return any(
+        model == base or (base.endswith("*") and model.startswith(base[:-1]))
+        for base in FIXED_PARAM_MODELS
+    )
 
 
 @dataclass
@@ -1336,6 +1359,13 @@ async def stream_structured_output(
     It handles the core streaming logic and resource cleanup.
     """
     try:
+        # Check if model supports structured output using openai_structured's function
+        if not supports_structured_output(model):
+            raise ValueError(
+                f"Model {model} does not support structured output with json_schema response format. "
+                "Please use a model that supports structured output."
+            )
+
         # Base models that don't support streaming
         non_streaming_models = {"o1", "o3"}
 
@@ -1345,10 +1375,29 @@ async def stream_structured_output(
             not model.startswith("o3") or model.startswith("o3-mini")
         )
 
-        # All o1 and o3 models (base and variants) have fixed settings
+        # Handle model-specific parameters
         stream_kwargs = {}
-        if not (model.startswith("o1") or model.startswith("o3")):
+        if not is_fixed_param_model(model):
+            # Only include parameters for models that support them
             stream_kwargs = kwargs
+        else:
+            # For fixed parameter models, validate no parameters are set
+            forbidden_params = {
+                "temperature": 0.0,
+                "top_p": 1.0,
+                "frequency_penalty": 0.0,
+                "presence_penalty": 0.0,
+            }
+            violations = []
+            for param, fixed_value in forbidden_params.items():
+                if param in kwargs and kwargs[param] != fixed_value:
+                    violations.append(f"{param} (must be {fixed_value})")
+
+            if violations:
+                raise ValueError(
+                    f"Model {model} requires fixed parameters. "
+                    f"Cannot override: {', '.join(violations)}"
+                )
 
         if use_streaming:
             async for chunk in async_openai_structured_stream(
@@ -1424,6 +1473,50 @@ async def stream_structured_output(
         await client.close()
 
 
+@create_click_command()
+def cli(**kwargs: Any) -> None:
+    """CLI entry point for structured OpenAI API calls."""
+    try:
+        args = Namespace(**kwargs)
+
+        # Validate required arguments first
+        if not args.task and not args.task_file:
+            raise click.UsageError("Must specify either --task or --task-file")
+        if not args.schema_file:
+            raise click.UsageError("Missing option '--schema-file'")
+        if args.task and args.task_file:
+            raise click.UsageError(
+                "Cannot specify both --task and --task-file"
+            )
+        if args.system_prompt and args.system_prompt_file:
+            raise click.UsageError(
+                "Cannot specify both --system-prompt and --system-prompt-file"
+            )
+
+        # Run the async function synchronously
+        exit_code = asyncio.run(run_cli_async(args))
+
+        if exit_code != ExitCode.SUCCESS:
+            error_msg = f"Command failed with exit code {exit_code}"
+            if hasattr(ExitCode, exit_code.name):
+                error_msg = f"{error_msg} ({exit_code.name})"
+            raise CLIError(error_msg, context={"exit_code": exit_code})
+
+    except click.UsageError:
+        # Let Click handle usage errors directly
+        raise
+    except InvalidJSONError:
+        # Let InvalidJSONError propagate directly
+        raise
+    except CLIError:
+        # Let our custom errors propagate with their context
+        raise
+    except Exception as e:
+        # Convert other exceptions to CLIError
+        logger.exception("Unexpected error")
+        raise CLIError(str(e), context={"error_type": type(e).__name__})
+
+
 async def run_cli_async(args: Namespace) -> ExitCode:
     """Async wrapper for CLI operations.
 
@@ -1482,11 +1575,10 @@ async def run_cli_async(args: Namespace) -> ExitCode:
             raise  # Let the error propagate with its context
 
         # Validate model support and token usage
-        try:
-            supports_structured_output(args.model)
-        except (ModelNotSupportedError, ModelVersionError) as e:
-            logger.error("Model validation error: %s", str(e))
-            raise  # Let the error propagate with its context
+        if not supports_structured_output(args.model):
+            msg = f"Model {args.model} does not support structured output"
+            logger.error(msg)
+            raise ModelNotSupportedError(msg)
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -1580,53 +1672,7 @@ def create_cli() -> click.Command:
     Returns:
         click.Command: The CLI command object
     """
-
-    @create_click_command()
-    def cli(**kwargs: Any) -> None:
-        """CLI entry point for structured OpenAI API calls."""
-        try:
-            args = Namespace(**kwargs)
-
-            # Validate required arguments first
-            if not args.task and not args.task_file:
-                raise click.UsageError(
-                    "Must specify either --task or --task-file"
-                )
-            if not args.schema_file:
-                raise click.UsageError("Missing option '--schema-file'")
-            if args.task and args.task_file:
-                raise click.UsageError(
-                    "Cannot specify both --task and --task-file"
-                )
-            if args.system_prompt and args.system_prompt_file:
-                raise click.UsageError(
-                    "Cannot specify both --system-prompt and --system-prompt-file"
-                )
-
-            # Run the async function synchronously
-            exit_code = asyncio.run(run_cli_async(args))
-
-            if exit_code != ExitCode.SUCCESS:
-                error_msg = f"Command failed with exit code {exit_code}"
-                if hasattr(ExitCode, exit_code.name):
-                    error_msg = f"{error_msg} ({exit_code.name})"
-                raise CLIError(error_msg, context={"exit_code": exit_code})
-
-        except click.UsageError:
-            # Let Click handle usage errors directly
-            raise
-        except InvalidJSONError:
-            # Let InvalidJSONError propagate directly
-            raise
-        except CLIError:
-            # Let our custom errors propagate with their context
-            raise
-        except Exception as e:
-            # Convert other exceptions to CLIError
-            logger.exception("Unexpected error")
-            raise CLIError(str(e), context={"error_type": type(e).__name__})
-
-    return cli
+    return cli  # The decorator already returns a Command
 
 
 def main() -> None:
@@ -1804,20 +1850,21 @@ def create_dynamic_model(
                 raise ModelValidationError(base_name, [str(e)])
 
         # Create the model with the fields
-        model = create_model(
-            base_name,
-            __config__=config,
-            **{
-                name: (
-                    (
-                        cast(Type[Any], field_type)
-                        if is_container_type(field_type)
-                        else field_type
-                    ),
-                    field,
-                )
-                for name, (field_type, field) in field_definitions.items()
-            },
+        field_defs: dict[str, tuple[type[Any], FieldInfoType]] = {
+            name: (field_type, field)
+            for name, (field_type, field) in field_definitions.items()
+        }
+
+        # Create model with explicit type casting
+        model: Type[BaseModel] = cast(
+            Type[BaseModel],
+            create_model(  # type: ignore[call-overload]
+                base_name,
+                __base__=BaseModel,
+                model_config=config,
+                __module__=__name__,
+                **field_defs,
+            ),
         )
 
         if debug_validation:
@@ -1847,7 +1894,7 @@ def create_dynamic_model(
             )
             raise ModelValidationError(base_name, validation_errors)
 
-        return cast(Type[BaseModel], model)
+        return model
 
     except Exception as e:
         if debug_validation:

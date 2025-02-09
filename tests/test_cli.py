@@ -1108,14 +1108,112 @@ class TestTemplateContext:
         assert context["stdin"] == "stdin content"
 
 
-@pytest.fixture(autouse=True)
-def mock_model_support(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Mock model support check to allow any model in tests."""
-
-    def mock_supports_structured_output(model: str) -> bool:
-        return True
-
-    monkeypatch.setattr(
-        "openai_structured.client.supports_structured_output",
-        mock_supports_structured_output,
+@pytest.mark.live
+def test_fixed_param_model_validation(
+    fs: FakeFilesystem,
+    mock_logging: StringIO,
+    cli_runner: CliTestRunner,
+    setup_tiktoken: MagicMock,
+) -> None:
+    """Test validation of parameters for fixed parameter models."""
+    # Create necessary files
+    schema_content = {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "sentiment": {
+                    "type": "string",
+                    "enum": ["positive", "negative", "neutral"],
+                },
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            },
+            "required": ["sentiment", "confidence"],
+        }
+    }
+    fs.create_file("schema.json", contents=json.dumps(schema_content))
+    fs.create_file(
+        "system_prompt.txt",
+        contents=(
+            "You are a sentiment analysis assistant. "
+            "You must respond with a JSON object containing a 'sentiment' field "
+            "(one of: 'positive', 'negative', 'neutral') and a 'confidence' field "
+            "(a number between 0 and 1)."
+        ),
     )
+
+    # Test o1 model with default parameters (should pass)
+    result = cli_runner.invoke(
+        create_cli(),
+        [
+            "--task",
+            "Analyze the sentiment of this text: 'I love this product!'",
+            "--schema-file",
+            "schema.json",
+            "--system-prompt-file",
+            "system_prompt.txt",
+            "--model",
+            "o1",
+            "--temperature",
+            "0.0",
+            "--top-p",
+            "1.0",
+            "--frequency-penalty",
+            "0.0",
+            "--presence-penalty",
+            "0.0",
+        ],
+    )
+    assert result.exit_code == 0
+
+    # Test o3 model with modified parameters (should fail)
+    result = cli_runner.invoke(
+        create_cli(),
+        [
+            "--task",
+            "Analyze the sentiment of this text: 'I love this product!'",
+            "--schema-file",
+            "schema.json",
+            "--system-prompt-file",
+            "system_prompt.txt",
+            "--model",
+            "o3",
+            "--temperature",
+            "0.7",  # Non-default value
+        ],
+    )
+    assert result.exit_code != 0
+    cli_runner.check_error_message(
+        result, "Model o3 requires fixed parameters"
+    )
+    cli_runner.check_error_message(result, "temperature (must be 0.0)")
+
+    # Test o1-mini model with multiple modified parameters (should fail)
+    result = cli_runner.invoke(
+        create_cli(),
+        [
+            "--task",
+            "Analyze the sentiment of this text: 'I love this product!'",
+            "--schema-file",
+            "schema.json",
+            "--system-prompt-file",
+            "system_prompt.txt",
+            "--model",
+            "o1-mini",
+            "--temperature",
+            "0.7",
+            "--top-p",
+            "0.9",
+            "--frequency-penalty",
+            "0.5",
+        ],
+    )
+    assert result.exit_code != 0
+    cli_runner.check_error_message(
+        result, "Model o1-mini requires fixed parameters"
+    )
+    for msg in [
+        "temperature (must be 0.0)",
+        "top_p (must be 1.0)",
+        "frequency_penalty (must be 0.0)",
+    ]:
+        cli_runner.check_error_message(result, msg)

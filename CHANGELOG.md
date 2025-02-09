@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2024-03-26
+
+### Added
+
+- Added support for fixed parameter models (o1, o3, and their variants)
+- Added validation to prevent parameter modification for models with fixed parameters
+- Added more comprehensive test coverage for model validation and type safety
+- Added explicit type casting for Click commands with improved type hints
+
+### Changed
+
+- Enhanced parameter validation to ensure compliance with model-specific requirements
+- Changed default model from gpt-4-turbo-preview to gpt-4o
+- Changed default temperature from 0.0 to 0.7
+- Upgraded minimum Python version requirement from 3.9 to 3.10
+- Updated MyPy configuration with more specific settings for different modules
+- Improved type safety throughout the codebase with ParamSpec and better type hints
+- Moved CLI command definition outside the create_cli function for better organization
+
+### Fixed
+
+- Removed duplicate system prompt option from model_options to prevent conflicts
+- Fixed duplicate mock_model_support fixture in tests
+- Improved type checking and error messages in security-related tests
+- Enhanced Path object handling and type hints in test utilities
+
 ## [0.4.0] - 2024-02-08
 
 ### Added

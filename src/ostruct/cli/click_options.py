@@ -5,7 +5,7 @@ We isolate this code here and provide proper type annotations for Click's
 decorator-based API.
 """
 
-from typing import Any, Callable, TypeVar, Union, cast
+from typing import Any, Callable, ParamSpec, TypeVar, Union, cast
 
 import click
 from click import Command
@@ -16,7 +16,10 @@ from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
     TaskTemplateVariableError,
 )
 
+P = ParamSpec("P")
+R = TypeVar("R")
 F = TypeVar("F", bound=Callable[..., Any])
+CommandDecorator = Callable[[F], Command]
 DecoratedCommand = Union[Command, Callable[..., Any]]
 
 
@@ -72,97 +75,176 @@ def validate_system_prompt_params(
     return value
 
 
-def debug_options(f: Callable) -> Callable:
+def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add debug-related CLI options."""
-    f = click.option(
-        "--show-model-schema",
-        is_flag=True,
-        help="Show generated Pydantic model schema",
-    )(f)
-    f = click.option(
-        "--debug-validation",
-        is_flag=True,
-        help="Show detailed validation errors",
-    )(f)
-    return f
+    cmd = f if isinstance(f, Command) else cast(Command, f)
+
+    cmd = cast(
+        Command,
+        click.option(
+            "--show-model-schema",
+            is_flag=True,
+            help="Show generated Pydantic model schema",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--debug-validation",
+            is_flag=True,
+            help="Show detailed validation errors",
+        )(cmd),
+    )
+    return cmd
 
 
-def file_options(f: Callable) -> Callable:
+def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add file-related CLI options."""
-    f = click.option(
-        "--file", "-f", multiple=True, help="File mapping (name=path)"
-    )(f)
-    f = click.option(
-        "--files",
-        multiple=True,
-        help="Multiple file mappings from a directory",
-    )(f)
-    f = click.option(
-        "--dir", "-d", multiple=True, help="Directory mapping (name=path)"
-    )(f)
-    f = click.option(
-        "--allowed-dir",
-        multiple=True,
-        help="Additional allowed directory paths",
-    )(f)
-    f = click.option(
-        "--base-dir", type=str, help="Base directory for relative paths"
-    )(f)
-    f = click.option(
-        "--allowed-dir-file",
-        type=str,
-        help="File containing allowed directory paths",
-    )(f)
-    f = click.option(
-        "--dir-recursive", is_flag=True, help="Recursively process directories"
-    )(f)
-    f = click.option(
-        "--dir-ext", type=str, help="Filter directory files by extension"
-    )(f)
-    return f
+    cmd = f if isinstance(f, Command) else cast(Command, f)
+
+    cmd = cast(
+        Command,
+        click.option(
+            "--file", "-f", multiple=True, help="File mapping (name=path)"
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--files",
+            multiple=True,
+            help="Multiple file mappings from a directory",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--dir", "-d", multiple=True, help="Directory mapping (name=path)"
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--allowed-dir",
+            multiple=True,
+            help="Additional allowed directory paths",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--base-dir", type=str, help="Base directory for relative paths"
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--allowed-dir-file",
+            type=str,
+            help="File containing allowed directory paths",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--dir-recursive",
+            is_flag=True,
+            help="Recursively process directories",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--dir-ext", type=str, help="Filter directory files by extension"
+        )(cmd),
+    )
+    return cmd
 
 
-def variable_options(f: Callable) -> Callable:
+def variable_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add variable-related CLI options."""
-    f = click.option(
-        "--var", "-v", multiple=True, help="Variable mapping (name=value)"
-    )(f)
-    f = click.option(
-        "--json-var",
-        "-j",
-        multiple=True,
-        help="JSON variable mapping (name=json_value)",
-    )(f)
-    return f
+    cmd = f if isinstance(f, Command) else cast(Command, f)
+
+    cmd = cast(
+        Command,
+        click.option(
+            "--var", "-v", multiple=True, help="Variable mapping (name=value)"
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--json-var",
+            "-j",
+            multiple=True,
+            help="JSON variable mapping (name=json_value)",
+        )(cmd),
+    )
+    return cmd
 
 
-def model_options(f: Callable) -> Callable:
+def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add model-related CLI options."""
-    f = click.option(
-        "--model", type=str, default="gpt-4o", help="OpenAI model to use"
-    )(f)
-    f = click.option(
-        "--temperature", type=float, default=0.0, help="Sampling temperature"
-    )(f)
-    f = click.option(
-        "--max-tokens", type=int, help="Maximum tokens in response"
-    )(f)
-    f = click.option(
-        "--top-p", type=float, default=1.0, help="Nucleus sampling threshold"
-    )(f)
-    f = click.option(
-        "--frequency-penalty",
-        type=float,
-        default=0.0,
-        help="Frequency penalty",
-    )(f)
-    f = click.option(
-        "--presence-penalty", type=float, default=0.0, help="Presence penalty"
-    )(f)
-    return f
+    cmd = f if isinstance(f, Command) else cast(Command, f)
+
+    cmd = cast(
+        Command,
+        click.option(
+            "--model",
+            type=str,
+            default="gpt-4o",
+            help="The model to use",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--temperature",
+            type=float,
+            default=0.7,
+            help="The temperature to use",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--max-tokens",
+            type=int,
+            default=None,
+            help="The maximum number of tokens to generate",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--top-p",
+            type=float,
+            default=1.0,
+            help="Nucleus sampling threshold",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--frequency-penalty",
+            type=float,
+            default=0.0,
+            help="Frequency penalty",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--presence-penalty",
+            type=float,
+            default=0.0,
+            help="Presence penalty",
+        )(cmd),
+    )
+    return cmd
 
 
-def create_click_command() -> Callable[[F], Command]:
+def create_click_command() -> CommandDecorator:
     """Create the Click command with all options.
 
     Returns:
@@ -170,88 +252,142 @@ def create_click_command() -> Callable[[F], Command]:
     """
 
     def decorator(f: F) -> Command:
-        # Start with the base command
-        cmd: DecoratedCommand = click.command(
-            help="Make structured OpenAI API calls."
-        )(f)
+        # Cast the initial command to ensure type safety
+        cmd = cast(Command, click.command()(f))
 
-        # Add all options
-        cmd = click.option(
-            "--task",
-            help="Task template string",
-            type=str,
-            callback=validate_task_params,
+        # Add all core options with explicit casting
+        cmd = cast(
+            Command,
+            click.option(
+                "--task",
+                help="Task template string",
+                type=str,
+                callback=validate_task_params,
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--task-file",
+                help="Task template file path",
+                type=str,
+                callback=validate_task_params,
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--system-prompt",
+                help="System prompt string",
+                type=str,
+                callback=validate_system_prompt_params,
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--system-prompt-file",
+                help="System prompt file path",
+                type=str,
+                callback=validate_system_prompt_params,
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--schema-file",
+                required=True,
+                help="JSON schema file for response validation",
+                type=str,
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--ignore-task-sysprompt",
+                is_flag=True,
+                help="Ignore system prompt from task template YAML frontmatter",
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--timeout",
+                type=float,
+                default=60.0,
+                help="API timeout in seconds",
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--output-file", help="Write JSON output to file", type=str
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--dry-run",
+                is_flag=True,
+                help="Simulate API call without making request",
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--no-progress",
+                is_flag=True,
+                help="Disable progress indicators",
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--progress-level",
+                type=click.Choice(["none", "basic", "detailed"]),
+                default="basic",
+                help="Progress reporting level",
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--api-key",
+                help="OpenAI API key (overrides env var)",
+                type=str,
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--verbose",
+                is_flag=True,
+                help="Enable verbose output and detailed logging",
+            )(cmd),
+        )
+        cmd = cast(
+            Command,
+            click.option(
+                "--debug-openai-stream",
+                is_flag=True,
+                help="Enable low-level debug output for OpenAI streaming",
+            )(cmd),
+        )
+
+        # Add version option
+        cmd = click.version_option(
+            __version__,
+            "--version",
+            "-V",
+            message="%(prog)s CLI version %(version)s",
         )(cmd)
-        cmd = click.option(
-            "--task-file",
-            help="Task template file path",
-            type=str,
-            callback=validate_task_params,
-        )(cmd)
-        cmd = click.option(
-            "--system-prompt",
-            help="System prompt string",
-            type=str,
-            callback=validate_system_prompt_params,
-        )(cmd)
-        cmd = click.option(
-            "--system-prompt-file",
-            help="System prompt file path",
-            type=str,
-            callback=validate_system_prompt_params,
-        )(cmd)
-        cmd = click.option(
-            "--schema-file",
-            required=True,
-            help="JSON schema file for response validation",
-            type=str,
-        )(cmd)
-        cmd = click.option(
-            "--ignore-task-sysprompt",
-            is_flag=True,
-            help="Ignore system prompt from task template YAML frontmatter",
-        )(cmd)
-        cmd = click.option(
-            "--timeout",
-            type=float,
-            default=60.0,
-            help="API timeout in seconds",
-        )(cmd)
-        cmd = click.option(
-            "--output-file", help="Write JSON output to file", type=str
-        )(cmd)
-        cmd = click.option(
-            "--dry-run",
-            is_flag=True,
-            help="Simulate API call without making request",
-        )(cmd)
-        cmd = click.option(
-            "--no-progress", is_flag=True, help="Disable progress indicators"
-        )(cmd)
-        cmd = click.option(
-            "--progress-level",
-            type=click.Choice(["none", "basic", "detailed"]),
-            default="basic",
-            help="Progress reporting level",
-        )(cmd)
-        cmd = click.option(
-            "--api-key", help="OpenAI API key (overrides env var)", type=str
-        )(cmd)
-        cmd = click.option(
-            "--verbose",
-            is_flag=True,
-            help="Enable verbose output and detailed logging",
-        )(cmd)
-        cmd = click.option(
-            "--debug-openai-stream",
-            is_flag=True,
-            help="Enable low-level debug output for OpenAI streaming",
-        )(cmd)
+
+        # Add all option groups
         cmd = debug_options(cmd)
         cmd = file_options(cmd)
         cmd = variable_options(cmd)
         cmd = model_options(cmd)
-        cmd = click.version_option(version=__version__)(cmd)
-        return cast(Command, cmd)
+
+        return cmd
 
     return decorator

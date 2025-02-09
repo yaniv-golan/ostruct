@@ -25,6 +25,9 @@ def is_path_in_allowed_dirs(
     Returns:
         True if path is within one of the allowed directories; False otherwise.
 
+    Raises:
+        TypeError: If path is None or not a string/Path object.
+
     Example:
         >>> allowed = [Path("/base"), Path("/tmp")]
         >>> is_path_in_allowed_dirs("/base/file.txt", allowed)
@@ -32,6 +35,11 @@ def is_path_in_allowed_dirs(
         >>> is_path_in_allowed_dirs("/etc/passwd", allowed)
         False
     """
+    if path is None:
+        raise TypeError("path must be a string or Path object")
+    if not isinstance(path, (str, Path)):
+        raise TypeError("path must be a string or Path object")
+
     norm_path = normalize_path(path)
     norm_allowed = [normalize_path(d) for d in allowed_dirs]
 

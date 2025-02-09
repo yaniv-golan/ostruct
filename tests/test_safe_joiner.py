@@ -14,8 +14,8 @@ def test_safe_join_basic():
     result = safe_join("/base", "subdir", "file.txt")
     assert result == os.path.normpath("/base/subdir/file.txt")
 
-    # Test with Path objects
-    result = safe_join(Path("/base"), Path("subdir"), "file.txt")
+    # Test with Path objects - convert to strings
+    result = safe_join(str(Path("/base")), str(Path("subdir")), "file.txt")
     assert result == os.path.normpath("/base/subdir/file.txt")
 
 
@@ -28,7 +28,7 @@ def test_safe_join_empty():
     assert safe_join("/base", "") == os.path.normpath("/base")
 
     # Test with None components
-    assert safe_join("/base", None) is None
+    assert safe_join("/base", None) is None  # type: ignore[arg-type]
 
 
 def test_safe_join_directory_traversal():

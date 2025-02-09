@@ -42,6 +42,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from ostruct.cli.cli import (
     estimate_tokens_for_chat,
     get_context_window_limit,
+    is_fixed_param_model,
     validate_token_limits,
 )
 
@@ -285,3 +286,27 @@ class TestTokenEdgeCases:
         assert tokens > len(
             code_message.split()
         )  # Code typically uses more tokens than words
+
+
+class TestFixedParamModels:
+    """Test fixed parameter model detection and validation."""
+
+    def test_fixed_param_model_detection(self) -> None:
+        """Test detection of models with fixed parameters."""
+        # Base models
+        assert is_fixed_param_model("o1")
+        assert is_fixed_param_model("o3")
+
+        # Model variants
+        assert is_fixed_param_model("o1-mini")
+        assert is_fixed_param_model("o3-mini")
+        assert is_fixed_param_model("o3-mini-high")
+
+        # Case insensitive
+        assert is_fixed_param_model("O1")
+        assert is_fixed_param_model("O3-MINI")
+
+        # Non-fixed parameter models
+        assert not is_fixed_param_model("gpt-4")
+        assert not is_fixed_param_model("gpt-3.5-turbo")
+        assert not is_fixed_param_model("other-model")

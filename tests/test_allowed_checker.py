@@ -85,9 +85,17 @@ def test_is_path_in_allowed_dirs_edge_cases():
     # Test empty path
     assert not is_path_in_allowed_dirs("", allowed_dirs)
 
-    # Test None path
-    with pytest.raises(TypeError):
-        is_path_in_allowed_dirs(None, allowed_dirs)
+    # Test None path - should raise TypeError
+    with pytest.raises(
+        TypeError, match="path must be a string or Path object"
+    ):
+        is_path_in_allowed_dirs(None, allowed_dirs)  # type: ignore[arg-type]
 
     # Test empty allowed_dirs
     assert not is_path_in_allowed_dirs("/base/file.txt", [])
+
+    # Test that passing None raises TypeError
+    with pytest.raises(
+        TypeError, match="path must be a string or Path object"
+    ):
+        is_path_in_allowed_dirs(None, [Path("/allowed")])  # type: ignore[arg-type]
