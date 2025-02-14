@@ -33,37 +33,19 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import IO, Any, Dict, Generator, List, Optional, Set, Union
+from typing import Any, Dict, Generator, List, Optional, Set, Union
 
 import pytest
+import tiktoken
 from _pytest.config import Config
 from _pytest.terminal import TerminalReporter
 from dotenv import load_dotenv
-from openai import OpenAI
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.errors import PathSecurityError
 from ostruct.cli.security import SecurityManager
 
 pytest_plugins = ["pytest_asyncio"]
-
-
-@pytest.fixture(autouse=True)
-def mock_model_support(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Mock model support check to allow any model in tests."""
-
-    def mock_supports_structured_output(model: str) -> bool:
-        return True
-
-    # Patch both direct import and through openai_structured.client
-    monkeypatch.setattr(
-        "openai_structured.client.supports_structured_output",
-        mock_supports_structured_output,
-    )
-    monkeypatch.setattr(
-        "ostruct.cli.cli.supports_structured_output",
-        mock_supports_structured_output,
-    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -80,6 +62,14 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "error_test: mark test as one that expects an error to be raised",
+    )
+    config.addinivalue_line(
+        "markers",
+        "no_fs: mark test to not use pyfakefs",
+    )
+    config.addinivalue_line(
+        "markers",
+        "mock_openai: mark test to use mock OpenAI client",
     )
 
     # Register the custom marker with pytest
@@ -105,6 +95,10 @@ def env_setup(
     # Load .env file for live tests
     if "live" in request.keywords:
         load_dotenv()
+        # Verify we have a real API key for live tests
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key or api_key == "test-key":
+            pytest.skip("No valid OpenAI API key found for live test")
     # For tests that require OpenAI, ensure no test key is set
     elif "requires_openai" in request.keywords:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -114,7 +108,9 @@ def env_setup(
 
 
 @pytest.fixture
-def fs(fs: FakeFilesystem) -> Generator[FakeFilesystem, None, None]:
+def fs(
+    fs: FakeFilesystem, request: pytest.FixtureRequest
+) -> Generator[FakeFilesystem, None, None]:
     """Create a fake filesystem for testing.
 
     This fixture is automatically used by tests that have an fs parameter.
@@ -123,19 +119,19 @@ def fs(fs: FakeFilesystem) -> Generator[FakeFilesystem, None, None]:
 
     Args:
         fs: The pyfakefs fixture
+        request: The pytest request object
 
     Returns:
         The pyfakefs FakeFilesystem object
     """
+    # Skip if test is marked with no_fs
+    marker = request.node.get_closest_marker("no_fs")
+    if marker is not None:
+        pytest.skip("Test marked with no_fs")
+
     # pyfakefs already sets up common system paths
     # We can add any additional setup here if needed in the future
     yield fs
-
-
-@pytest.fixture
-def mock_openai_client() -> OpenAI:
-    """Create a mock OpenAI client for testing."""
-    return OpenAI(api_key="test-key", base_url="http://localhost:8000")
 
 
 @pytest.fixture
@@ -151,7 +147,7 @@ def test_files(fs: FakeFilesystem) -> Dict[str, str]:
     Returns:
         A dictionary mapping file names to their paths
     """
-    base_dir = "/Users/yaniv/Documents/code/openai-structured/tests/test_files"
+    base_dir = "/test_workspace/test_files"
     fs.create_dir(base_dir)
 
     # Create test files
@@ -230,7 +226,19 @@ def setup_test_fs(
 
     Tests that need to test directory creation/missing directories
     should NOT use the security_manager fixture.
+
+    Note on tiktoken:
+    ---------------
+    We previously attempted to add tiktoken's directory to the fake filesystem,
+    but this didn't work because tiktoken uses C/Rust bindings that bypass
+    pyfakefs's file system mocking. Instead, we now pause pyfakefs during
+    tiktoken operations. See tests/test_tokens.py for more details.
     """
+    # Skip if test is marked with no_fs
+    marker = request.node.get_closest_marker("no_fs")
+    if marker is not None:
+        return
+
     # Only create directories if the test uses fixtures that need them
     needs_dirs = any(
         name in request.fixturenames
@@ -376,10 +384,11 @@ class MockSecurityManager(SecurityManager):
         """Patch file operations to enforce security checks."""
         import builtins
         from functools import wraps
-        from typing import Callable, Optional, TypeVar, Union, cast
+        from typing import IO, Any, Callable, Optional, TypeVar, Union, cast
 
         T = TypeVar("T", bound=IO[Any])
-        OpenFunc = Callable[..., T]
+        # Use type alias syntax that works with mypy
+        OpenFunc = Callable[..., T]  # type: ignore
         original_open: OpenFunc = builtins.open
 
         @wraps(original_open)
@@ -507,68 +516,24 @@ class MockSecurityManager(SecurityManager):
 
 @pytest.fixture
 def security_manager(fs: FakeFilesystem) -> SecurityManager:
-    """Create a security manager for testing."""
-    # Create test workspace structure if it doesn't exist
-    workspace = "/test_workspace"
-    base_dir = (
-        "/test_workspace/base"  # This is the actual base directory for tests
-    )
-    allowed_dir = (
-        "/test_workspace/allowed"  # This is an explicitly allowed directory
-    )
+    """Create a security manager for testing.
 
-    # Create required directories
-    for d in [workspace, base_dir, allowed_dir]:
-        try:
-            fs.create_dir(d)
-        except FileExistsError:
-            pass
+    Args:
+        fs: The pyfakefs fixture
 
-    # Create a temp directory
-    temp_dir = "/tmp"
-    try:
-        fs.create_dir(temp_dir)
-    except FileExistsError:
-        pass
-
-    # Use our test-specific security manager with the base directory
-    manager = MockSecurityManager(base_dir=base_dir)
-
-    # Add allowed directories
-    manager.add_allowed_directory(
-        allowed_dir
-    )  # Only allow the explicitly allowed directory
-    manager.add_allowed_directory(temp_dir)  # And the temp directory
-
-    # Change to the base directory by default
-    os.chdir(base_dir)
-
-    return manager
-
-
-@pytest.fixture(autouse=True)
-def mock_api_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Mock OpenAI API client for tests."""
-
-    class MockResponse:
-        def __iter__(self) -> Generator[dict[str, Any], None, None]:
-            yield {"choices": [{"delta": {"content": "test"}}]}
-
-    class MockClient:
-        async def chat_completions_create(
-            self, *args: Any, **kwargs: Any
-        ) -> MockResponse:
-            return MockResponse()
-
-        async def close(self) -> None:
-            pass
-
-    monkeypatch.setattr("openai.AsyncOpenAI", lambda **kwargs: MockClient())
+    Returns:
+        A SecurityManager instance configured for testing
+    """
+    return MockSecurityManager()
 
 
 @pytest.fixture(autouse=True)
 def patch_security_manager(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Patch SecurityManager to use /test_workspace as default base directory in tests."""
+    """Patch the SecurityManager class to use the mock version.
+
+    Args:
+        monkeypatch: The pytest monkeypatch fixture
+    """
     from ostruct.cli.security import SecurityManager
 
     original_init = SecurityManager.__init__
@@ -626,3 +591,50 @@ def pytest_terminal_summary(
         )
         for report in error_tests:
             terminalreporter.write_line(f"  {report.nodeid}")
+
+
+class MockClient:
+    def __init__(self, api_key: Optional[str] = None, **kwargs):
+        # Accept any API key for testing
+        self.api_key = api_key or "test-key"
+
+    async def chat_completions_create(self, **kwargs):
+        """Simple mock that returns a basic response."""
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"result": "Mock response"}',
+                        "role": "assistant",
+                    }
+                }
+            ]
+        }
+
+    async def close(self) -> None:
+        """Close the client."""
+        pass
+
+
+@pytest.fixture(autouse=True)
+def mock_model_support(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mock OpenAI API client for testing."""
+    monkeypatch.setattr("openai.AsyncOpenAI", MockClient)
+    monkeypatch.setattr("openai.OpenAI", MockClient)
+
+
+class DummyEncoder:
+    def encode(self, text: str) -> list[int]:
+        # Simple approximation: each character is a token
+        # This is not accurate but sufficient for testing
+        return [1] * len(str(text))
+
+
+@pytest.fixture(autouse=True)
+def mock_tiktoken(monkeypatch):
+    """Mock tiktoken to avoid filesystem/network access."""
+
+    def mock_get_encoding(name: str):
+        return DummyEncoder()
+
+    monkeypatch.setattr(tiktoken, "get_encoding", mock_get_encoding)

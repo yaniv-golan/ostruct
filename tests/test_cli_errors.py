@@ -172,14 +172,20 @@ def test_file_not_found_error_str() -> None:
     """Test FileNotFoundError string representation."""
     error_msg = "test error"
     error = FileNotFoundError(error_msg)
-    assert str(error) == error_msg
+    error_str = str(error)
+    assert error_str.startswith(error_msg)
+    assert "Context:" in error_str
+    assert f"path: {error_msg}" in error_str
 
 
 def test_directory_not_found_error_str() -> None:
     """Test DirectoryNotFoundError string representation."""
     error_msg = "test error"
     error = DirectoryNotFoundError(error_msg)
-    assert str(error) == error_msg
+    error_str = str(error)
+    assert error_str.startswith(error_msg)
+    assert "Context:" in error_str
+    assert f"path: {error_msg}" in error_str
 
 
 def test_path_security_error() -> None:
