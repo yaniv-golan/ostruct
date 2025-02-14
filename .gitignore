@@ -102,3 +102,8 @@ Thumbs.db
 
 # Local Poetry configuration
 poetry.toml
+
+# Cursor rules
+.cursor/rules/development-setup.mdc
+.cursor/rules/pytest-capsys-caplog.mdc
+.cursor/rules/cursor-rules.mdc
