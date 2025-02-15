@@ -167,6 +167,7 @@ class OstructFileNotFoundError(CLIError):
         context.update(
             {
                 "details": "The specified file does not exist or cannot be accessed",
+                "path": path,
                 "troubleshooting": [
                     "Check if the file exists",
                     "Verify the path spelling is correct",
