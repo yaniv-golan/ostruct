@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum, IntEnum
 from typing import (
     Any,
+    AsyncGenerator,
     Dict,
     List,
     Literal,
@@ -31,20 +32,10 @@ from pathlib import Path
 
 import click
 import jinja2
-import tiktoken
 import yaml
-from openai import (
-    APIConnectionError,
-    AsyncOpenAI,
-    AuthenticationError,
-    BadRequestError,
-    InternalServerError,
-    RateLimitError,
-)
+from openai import AsyncOpenAI
 from openai_structured.client import (
     async_openai_structured_stream,
-    get_context_window_limit,
-    get_default_token_limit,
     supports_structured_output,
 )
 from openai_structured.errors import (
@@ -52,6 +43,7 @@ from openai_structured.errors import (
     EmptyResponseError,
     InvalidResponseFormatError,
     ModelNotSupportedError,
+    ModelVersionError,
     OpenAIClientError,
     SchemaFileError,
     SchemaValidationError,
@@ -59,6 +51,7 @@ from openai_structured.errors import (
     StreamInterruptedError,
     StreamParseError,
 )
+from openai_structured.model_registry import ModelRegistry
 from pydantic import (
     AnyUrl,
     BaseModel,
@@ -74,8 +67,10 @@ from pydantic.types import constr
 from typing_extensions import TypeAlias
 
 from ostruct.cli.click_options import create_click_command
+from ostruct.cli.exit_codes import ExitCode
 
 from .. import __version__  # noqa: F401 - Used in package metadata
+from . import errors
 from .errors import (
     CLIError,
     DirectoryNotFoundError,
@@ -95,41 +90,20 @@ from .errors import (
 from .file_utils import FileInfoList, TemplateValue, collect_files
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
+from .serialization import LogSerializer
 from .template_env import create_jinja_env
 from .template_utils import SystemPromptError, render_template
+from .token_utils import estimate_tokens_with_encoding
 
 # Constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
-
-# Models with fixed parameters that reject any parameter overrides
-FIXED_PARAM_MODELS = {
-    "o1",
-    "o1-*",  # Base model and variants
-    "o3",
-    "o3-*",  # Base model and variants
-}
-
-
-def is_fixed_param_model(model: str) -> bool:
-    """Check if model requires fixed parameters.
-
-    Args:
-        model: The model name to check
-
-    Returns:
-        bool: True if the model has fixed parameters
-    """
-    model = model.lower()
-    return any(
-        model == base or (base.endswith("*") and model.startswith(base[:-1]))
-        for base in FIXED_PARAM_MODELS
-    )
 
 
 @dataclass
 class Namespace:
     """Compatibility class to mimic argparse.Namespace for existing code."""
 
+    # Required fields without defaults
     task: Optional[str]
     task_file: Optional[str]
     file: List[str]
@@ -147,11 +121,6 @@ class Namespace:
     ignore_task_sysprompt: bool
     schema_file: str
     model: str
-    temperature: float
-    max_tokens: Optional[int]
-    top_p: float
-    frequency_penalty: float
-    presence_penalty: float
     timeout: float
     output_file: Optional[str]
     dry_run: bool
@@ -161,7 +130,15 @@ class Namespace:
     debug_openai_stream: bool
     show_model_schema: bool
     debug_validation: bool
-    progress_level: str = "basic"  # Default to 'basic' if not specified
+    # Model parameters - all optional since support varies by model
+    temperature: Optional[float] = None
+    max_output_tokens: Optional[int] = None
+    top_p: Optional[float] = None
+    frequency_penalty: Optional[float] = None
+    presence_penalty: Optional[float] = None
+    reasoning_effort: Optional[str] = None
+    # Other fields with defaults
+    progress_level: str = "basic"
 
 
 # Set up logging
@@ -197,45 +174,6 @@ ostruct_file_handler.setFormatter(
     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 )
 logger.addHandler(ostruct_file_handler)
-
-
-class ExitCode(IntEnum):
-    """Exit codes for the CLI following standard Unix conventions.
-
-    Categories:
-    - Success (0-1)
-    - User Interruption (2-3)
-    - Input/Validation (64-69)
-    - I/O and File Access (70-79)
-    - API and External Services (80-89)
-    - Internal Errors (90-99)
-    """
-
-    # Success codes
-    SUCCESS = 0
-
-    # User interruption
-    INTERRUPTED = 2
-
-    # Input/Validation errors (64-69)
-    USAGE_ERROR = 64
-    DATA_ERROR = 65
-    SCHEMA_ERROR = 66
-    VALIDATION_ERROR = 67
-
-    # I/O and File Access errors (70-79)
-    IO_ERROR = 70
-    FILE_NOT_FOUND = 71
-    PERMISSION_ERROR = 72
-    SECURITY_ERROR = 73
-
-    # API and External Service errors (80-89)
-    API_ERROR = 80
-    API_TIMEOUT = 81
-
-    # Internal errors (90-99)
-    INTERNAL_ERROR = 90
-    UNKNOWN_ERROR = 91
 
 
 # Type aliases
@@ -426,64 +364,17 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-def estimate_tokens_for_chat(
-    messages: List[Dict[str, str]],
-    model: str,
-    encoder: Any = None,
-) -> int:
-    """Estimate the number of tokens in a chat completion.
-
-    Args:
-        messages: List of chat messages
-        model: Model name
-        encoder: Optional tiktoken encoder for testing. If provided, only uses encoder.encode() results.
-    """
-    if encoder is None:
-        try:
-            # Try to get the encoding for the specific model
-            encoder = tiktoken.get_encoding("o200k_base")
-        except KeyError:
-            # Fall back to cl100k_base for unknown models
-            encoder = tiktoken.get_encoding("cl100k_base")
-
-        # Use standard token counting logic for real tiktoken encoders
-        num_tokens = 0
-        for message in messages:
-            # Add message overhead
-            num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
-            for key, value in message.items():
-                num_tokens += len(encoder.encode(str(value)))
-                if key == "name":  # if there's a name, the role is omitted
-                    num_tokens -= 1  # role is omitted
-        num_tokens += 2  # every reply is primed with <im_start>assistant
-        return num_tokens
-    else:
-        # For mock encoders in tests, just return the length of encoded content
-        num_tokens = 0
-        for message in messages:
-            for value in message.values():
-                num_tokens += len(encoder.encode(str(value)))
-        return num_tokens
-
-
 def validate_token_limits(
     model: str, total_tokens: int, max_token_limit: Optional[int] = None
 ) -> None:
-    """Validate token counts against model limits.
-
-    Args:
-        model: The model name
-        total_tokens: Total number of tokens in the prompt
-        max_token_limit: Optional user-specified token limit
-
-    Raises:
-        ValueError: If token limits are exceeded
-    """
-    context_limit = get_context_window_limit(model)
+    """Validate token counts against model limits."""
+    registry = ModelRegistry()
+    capabilities = registry.get_capabilities(model)
+    context_limit = capabilities.context_window
     output_limit = (
         max_token_limit
         if max_token_limit is not None
-        else get_default_token_limit(model)
+        else capabilities.max_output_tokens
     )
 
     # Check if total tokens exceed context window
@@ -832,10 +723,10 @@ def validate_schema_file(
     path: str,
     verbose: bool = False,
 ) -> Dict[str, Any]:
-    """Validate a JSON schema file.
+    """Validate and load a JSON schema file.
 
     Args:
-        path: Path to the schema file
+        path: Path to schema file
         verbose: Whether to enable verbose logging
 
     Returns:
@@ -850,14 +741,37 @@ def validate_schema_file(
         logger.info("Validating schema file: %s", path)
 
     try:
+        logger.debug("Opening schema file: %s", path)
         with open(path) as f:
-            schema = json.load(f)
+            logger.debug("Loading JSON from schema file")
+            try:
+                schema = json.load(f)
+                logger.debug(
+                    "Successfully loaded JSON: %s",
+                    json.dumps(schema, indent=2),
+                )
+            except json.JSONDecodeError as e:
+                logger.error("JSON decode error in %s: %s", path, str(e))
+                logger.debug(
+                    "Error details - line: %d, col: %d, msg: %s",
+                    e.lineno,
+                    e.colno,
+                    e.msg,
+                )
+                raise InvalidJSONError(
+                    f"Invalid JSON in schema file {path}: {e}", source=path
+                )
     except FileNotFoundError:
-        raise SchemaFileError(f"Schema file not found: {path}")
-    except json.JSONDecodeError as e:
-        raise InvalidJSONError(f"Invalid JSON in schema file: {e}")
+        msg = f"Schema file not found: {path}"
+        logger.error(msg)
+        raise SchemaFileError(msg)
     except Exception as e:
-        raise SchemaFileError(f"Failed to read schema file: {e}")
+        if isinstance(e, InvalidJSONError):
+            raise
+        msg = f"Failed to read schema file {path}: {e}"
+        logger.error(msg)
+        logger.debug("Unexpected error details: %s", str(e))
+        raise SchemaFileError(msg)
 
     # Pre-validation structure checks
     if verbose:
@@ -865,11 +779,9 @@ def validate_schema_file(
         logger.debug("Loaded schema: %s", json.dumps(schema, indent=2))
 
     if not isinstance(schema, dict):
-        if verbose:
-            logger.error(
-                "Schema is not a dictionary: %s", type(schema).__name__
-            )
-        raise SchemaValidationError("Schema must be a JSON object")
+        msg = f"Schema in {path} must be a JSON object"
+        logger.error(msg)
+        raise SchemaValidationError(msg)
 
     # Validate schema structure
     if "schema" in schema:
@@ -877,17 +789,24 @@ def validate_schema_file(
             logger.debug("Found schema wrapper, validating inner schema")
         inner_schema = schema["schema"]
         if not isinstance(inner_schema, dict):
-            if verbose:
-                logger.error(
-                    "Inner schema is not a dictionary: %s",
-                    type(inner_schema).__name__,
-                )
-            raise SchemaValidationError("Inner schema must be a JSON object")
+            msg = f"Inner schema in {path} must be a JSON object"
+            logger.error(msg)
+            raise SchemaValidationError(msg)
         if verbose:
             logger.debug("Inner schema validated successfully")
+            logger.debug(
+                "Inner schema: %s", json.dumps(inner_schema, indent=2)
+            )
     else:
         if verbose:
             logger.debug("No schema wrapper found, using schema as-is")
+            logger.debug("Schema: %s", json.dumps(schema, indent=2))
+
+    # Additional schema validation
+    if "type" not in schema.get("schema", schema):
+        msg = f"Schema in {path} must specify a type"
+        logger.error(msg)
+        raise SchemaValidationError(msg)
 
     # Return the full schema including wrapper
     return schema
@@ -1129,13 +1048,18 @@ def create_template_context_from_args(
             # Skip stdin if it can't be read
             pass
 
-        return create_template_context(
+        context = create_template_context(
             files=files,
             variables=variables,
             json_variables=json_variables,
             security_manager=security_manager,
             stdin_content=stdin_content,
         )
+
+        # Add current model to context
+        context["current_model"] = args.model
+
+        return context
 
     except PathSecurityError:
         # Let PathSecurityError propagate without wrapping
@@ -1307,41 +1231,74 @@ def _create_enum_type(values: List[Any], field_name: str) -> Type[Enum]:
 
 
 def handle_error(e: Exception) -> None:
-    """Handle errors by printing appropriate message and exiting with status code."""
-    if isinstance(e, click.UsageError):
-        # For UsageError, preserve the original message format
-        if hasattr(e, "param") and e.param:
-            # Missing parameter error
-            msg = f"Missing option '--{e.param.name}'"
-            click.echo(msg, err=True)
-        else:
-            # Other usage errors (like conflicting options)
-            click.echo(str(e), err=True)
-        sys.exit(ExitCode.USAGE_ERROR)
-    elif isinstance(e, InvalidJSONError):
-        # Use the original error message if available
-        msg = str(e) if str(e) != "None" else "Invalid JSON"
-        click.secho(msg, fg="red", err=True)
-        sys.exit(ExitCode.DATA_ERROR)
-    elif isinstance(e, FileNotFoundError):
-        # Use the original error message if available
-        msg = str(e) if str(e) != "None" else "File not found"
+    """Handle CLI errors and display appropriate messages."""
+    if isinstance(e, (SchemaFileError, errors.SchemaFileError)):
+        msg = f"Schema error: {str(e)}"
+        logger.error(msg)
         click.secho(msg, fg="red", err=True)
         sys.exit(ExitCode.SCHEMA_ERROR)
-    elif isinstance(e, TaskTemplateSyntaxError):
-        # Use the original error message if available
-        msg = str(e) if str(e) != "None" else "Template syntax error"
+    elif isinstance(e, click.UsageError):
+        msg = f"Usage error: {str(e)}"
+        logger.error(msg)
+        click.secho(msg, fg="red", err=True)
+        sys.exit(ExitCode.USAGE_ERROR)
+    elif isinstance(e, (errors.InvalidJSONError, json.JSONDecodeError)):
+        msg = f"Schema validation error: {str(e)}"
+        logger.error(msg)
+        click.secho(msg, fg="red", err=True)
+        sys.exit(ExitCode.DATA_ERROR)
+    elif isinstance(e, (SchemaValidationError, errors.SchemaValidationError)):
+        msg = f"Schema validation error: {str(e)}"
+        logger.error(msg)
+        click.secho(msg, fg="red", err=True)
+        sys.exit(ExitCode.VALIDATION_ERROR)
+    elif isinstance(e, errors.CLIError):
+        msg = str(e)
+        logger.error(msg)
+        click.secho(msg, fg="red", err=True)
+        sys.exit(e.exit_code)
+    else:
+        msg = f"Unexpected error: {str(e)}"
+        logger.error(msg, exc_info=True)
         click.secho(msg, fg="red", err=True)
         sys.exit(ExitCode.INTERNAL_ERROR)
-    elif isinstance(e, CLIError):
-        # Use the show method for CLIError and its subclasses
-        e.show()
-        sys.exit(
-            e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
+
+
+def validate_model_parameters(model: str, params: Dict[str, Any]) -> None:
+    """Validate model parameters against model capabilities.
+
+    Args:
+        model: The model name to validate parameters for
+        params: Dictionary of parameter names and values to validate
+
+    Raises:
+        CLIError: If any parameters are not supported by the model
+    """
+    try:
+        capabilities = ModelRegistry().get_capabilities(model)
+        for param_name, value in params.items():
+            try:
+                capabilities.validate_parameter(param_name, value)
+            except OpenAIClientError as e:
+                logger.error(
+                    "Validation failed for model %s: %s", model, str(e)
+                )
+                raise CLIError(
+                    str(e),
+                    exit_code=ExitCode.VALIDATION_ERROR,
+                    context={
+                        "model": model,
+                        "param": param_name,
+                        "value": value,
+                    },
+                )
+    except (ModelNotSupportedError, ModelVersionError) as e:
+        logger.error("Model validation failed: %s", str(e))
+        raise CLIError(
+            str(e),
+            exit_code=ExitCode.VALIDATION_ERROR,
+            context={"model": model},
         )
-    else:
-        click.secho(f"Unexpected error: {str(e)}", fg="red", err=True)
-        sys.exit(ExitCode.INTERNAL_ERROR)
 
 
 async def stream_structured_output(
@@ -1352,11 +1309,28 @@ async def stream_structured_output(
     output_schema: Type[BaseModel],
     output_file: Optional[str] = None,
     **kwargs: Any,
-) -> None:
+) -> AsyncGenerator[BaseModel, None]:
     """Stream structured output from OpenAI API.
 
     This function follows the guide's recommendation for a focused async streaming function.
     It handles the core streaming logic and resource cleanup.
+
+    Args:
+        client: The OpenAI client to use
+        model: The model to use
+        system_prompt: The system prompt to use
+        user_prompt: The user prompt to use
+        output_schema: The Pydantic model to validate responses against
+        output_file: Optional file to write output to
+        **kwargs: Additional parameters to pass to the API
+
+    Returns:
+        An async generator yielding validated model instances
+
+    Raises:
+        ValueError: If the model does not support structured output or parameters are invalid
+        StreamInterruptedError: If the stream is interrupted
+        APIResponseError: If there is an API error
     """
     try:
         # Check if model supports structured output using openai_structured's function
@@ -1366,97 +1340,44 @@ async def stream_structured_output(
                 "Please use a model that supports structured output."
             )
 
-        # Base models that don't support streaming
-        non_streaming_models = {"o1", "o3"}
-
-        # Check if model supports streaming
-        # o3-mini and o3-mini-high support streaming, base o3 does not
-        use_streaming = model not in non_streaming_models and (
-            not model.startswith("o3") or model.startswith("o3-mini")
-        )
+        # Extract non-model parameters
+        on_log = kwargs.pop("on_log", None)
 
         # Handle model-specific parameters
         stream_kwargs = {}
-        if not is_fixed_param_model(model):
-            # Only include parameters for models that support them
-            stream_kwargs = kwargs
-        else:
-            # For fixed parameter models, validate no parameters are set
-            forbidden_params = {
-                "temperature": 0.0,
-                "top_p": 1.0,
-                "frequency_penalty": 0.0,
-                "presence_penalty": 0.0,
-            }
-            violations = []
-            for param, fixed_value in forbidden_params.items():
-                if param in kwargs and kwargs[param] != fixed_value:
-                    violations.append(f"{param} (must be {fixed_value})")
+        registry = ModelRegistry()
+        capabilities = registry.get_capabilities(model)
 
-            if violations:
-                raise ValueError(
-                    f"Model {model} requires fixed parameters. "
-                    f"Cannot override: {', '.join(violations)}"
+        # Validate and include supported parameters
+        for param_name, value in kwargs.items():
+            if param_name in capabilities.supported_parameters:
+                # Validate the parameter value
+                capabilities.validate_parameter(param_name, value)
+                stream_kwargs[param_name] = value
+            else:
+                logger.warning(
+                    f"Parameter {param_name} is not supported by model {model} and will be ignored"
                 )
 
-        if use_streaming:
-            async for chunk in async_openai_structured_stream(
-                client=client,
-                model=model,
-                output_schema=output_schema,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                **stream_kwargs,
-            ):
-                if not chunk:
-                    continue
+        # Log the API request details
+        logger.debug("Making OpenAI API request with:")
+        logger.debug("Model: %s", model)
+        logger.debug("System prompt: %s", system_prompt)
+        logger.debug("User prompt: %s", user_prompt)
+        logger.debug("Parameters: %s", json.dumps(stream_kwargs, indent=2))
+        logger.debug("Schema: %s", output_schema.model_json_schema())
 
-                # Process and output the chunk
-                dumped = chunk.model_dump(mode="json")
-                json_str = json.dumps(dumped, indent=2)
-
-                if output_file:
-                    with open(output_file, "a", encoding="utf-8") as f:
-                        f.write(json_str)
-                        f.write("\n")
-                        f.flush()  # Ensure immediate flush to file
-                else:
-                    # Print directly to stdout with immediate flush
-                    print(json_str, flush=True)
-        else:
-            # For non-streaming models, use regular completion
-            response = await client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                stream=False,
-                **stream_kwargs,
-            )
-
-            # Process the single response
-            content = response.choices[0].message.content
-            if content:
-                try:
-                    # Parse and validate against schema
-                    result = output_schema.model_validate_json(content)
-                    json_str = json.dumps(
-                        result.model_dump(mode="json"), indent=2
-                    )
-
-                    if output_file:
-                        with open(output_file, "w", encoding="utf-8") as f:
-                            f.write(json_str)
-                            f.write("\n")
-                    else:
-                        print(json_str, flush=True)
-                except ValidationError as e:
-                    raise InvalidResponseFormatError(
-                        f"Response validation failed: {e}"
-                    )
-            else:
-                raise EmptyResponseError("Model returned empty response")
+        # Use the async generator from openai_structured directly
+        async for chunk in async_openai_structured_stream(
+            client=client,
+            model=model,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            output_schema=output_schema,
+            on_log=on_log,  # Pass non-model parameters directly to the function
+            **stream_kwargs,  # Pass only validated model parameters
+        ):
+            yield chunk
 
     except (
         StreamInterruptedError,
@@ -1475,7 +1396,7 @@ async def stream_structured_output(
 
 @create_click_command()
 def cli(**kwargs: Any) -> None:
-    """CLI entry point for structured OpenAI API calls."""
+    """Command-line interface for making structured OpenAI API calls."""
     try:
         args = Namespace(**kwargs)
 
@@ -1493,38 +1414,122 @@ def cli(**kwargs: Any) -> None:
                 "Cannot specify both --system-prompt and --system-prompt-file"
             )
 
+        # Early validation of model parameters
+        registry = ModelRegistry()
+        capabilities = registry.get_capabilities(args.model)
+
+        # Check which parameters were explicitly provided
+        ctx = click.get_current_context()
+        for param_name in [
+            "temperature",
+            "max_output_tokens",
+            "top_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "reasoning_effort",
+        ]:
+            if param_name in ctx.params and ctx.params[param_name] is not None:
+                if param_name not in capabilities.supported_parameters:
+                    msg = f"Model {args.model} does not support parameter: {param_name}"
+                    logger.error(
+                        "Validation failed for model %s: %s", args.model, msg
+                    )
+                    raise CLIError(
+                        msg,
+                        exit_code=ExitCode.VALIDATION_ERROR,
+                        context={"model": args.model, "param": param_name},
+                    )
+                try:
+                    capabilities.validate_parameter(
+                        param_name, ctx.params[param_name]
+                    )
+                except ValueError as e:
+                    msg = f"Invalid value for parameter {param_name}: {str(e)}"
+                    logger.error(
+                        "Validation failed for model %s: %s", args.model, msg
+                    )
+                    raise CLIError(
+                        msg,
+                        exit_code=ExitCode.VALIDATION_ERROR,
+                        context={
+                            "model": args.model,
+                            "param": param_name,
+                            "value": ctx.params[param_name],
+                        },
+                    )
+
+        # Validate JSON variables
+        if args.json_var:
+            try:
+                for mapping in args.json_var:
+                    name, value = mapping.split("=", 1)
+                    if not name:
+                        raise VariableNameError(
+                            "Empty name in JSON variable mapping"
+                        )
+                    try:
+                        json.loads(value)
+                    except json.JSONDecodeError as e:
+                        logger.error("Invalid JSON: %s", str(e))
+                        raise InvalidJSONError(
+                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}"
+                        )
+            except ValueError:
+                raise VariableNameError(
+                    f"Invalid JSON variable mapping format: {mapping}. Expected name=json"
+                )
+
         # Run the async function synchronously
-        exit_code = asyncio.run(run_cli_async(args))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            exit_code = loop.run_until_complete(run_cli_async(args))
+        finally:
+            loop.close()
+        sys.exit(exit_code)
 
-        if exit_code != ExitCode.SUCCESS:
-            error_msg = f"Command failed with exit code {exit_code}"
-            if hasattr(ExitCode, exit_code.name):
-                error_msg = f"{error_msg} ({exit_code.name})"
-            raise CLIError(error_msg, context={"exit_code": exit_code})
-
+    except (CLIError, InvalidJSONError, VariableError) as e:
+        logger.error("%s: %s", type(e).__name__, str(e))
+        if isinstance(e, CLIError):
+            sys.exit(e.exit_code)
+        elif isinstance(e, InvalidJSONError):
+            sys.exit(ExitCode.DATA_ERROR)
+        elif isinstance(e, VariableError):
+            sys.exit(ExitCode.VALIDATION_ERROR)
     except click.UsageError:
-        # Let Click handle usage errors directly
-        raise
-    except InvalidJSONError:
-        # Let InvalidJSONError propagate directly
-        raise
-    except CLIError:
-        # Let our custom errors propagate with their context
-        raise
-    except Exception as e:
-        # Convert other exceptions to CLIError
+        raise  # Let Click handle usage errors
+    except Exception:
         logger.exception("Unexpected error")
-        raise CLIError(str(e), context={"error_type": type(e).__name__})
+        sys.exit(ExitCode.INTERNAL_ERROR)
 
 
-async def run_cli_async(args: Namespace) -> ExitCode:
+async def run_cli_async(args: Namespace) -> int:
     """Async wrapper for CLI operations.
 
-    This function prepares everything needed for streaming and then calls
-    the focused streaming function.
+    Returns:
+        Exit code to return from the CLI
+
+    Raises:
+        CLIError: For various error conditions
+        KeyboardInterrupt: When operation is cancelled by user
     """
     try:
-        # Validate and prepare all inputs
+        # 0. Model Parameter Validation
+        logger.debug("=== Model Parameter Validation ===")
+        params = {
+            "temperature": args.temperature,
+            "max_output_tokens": args.max_output_tokens,
+            "top_p": args.top_p,
+            "frequency_penalty": args.frequency_penalty,
+            "presence_penalty": args.presence_penalty,
+            "reasoning_effort": args.reasoning_effort,
+        }
+        # Remove None values
+        params = {k: v for k, v in params.items() if v is not None}
+        validate_model_parameters(args.model, params)
+
+        # 1. Input Validation Phase
+        logger.debug("=== Input Validation Phase ===")
         security_manager = validate_security_manager(
             base_dir=args.base_dir,
             allowed_dirs=args.allowed_dir,
@@ -1539,7 +1544,8 @@ async def run_cli_async(args: Namespace) -> ExitCode:
         )
         env = create_jinja_env()
 
-        # Process system prompt and render task
+        # 2. Template Processing Phase
+        logger.debug("=== Template Processing Phase ===")
         system_prompt = process_system_prompt(
             task_template,
             args.system_prompt,
@@ -1548,19 +1554,13 @@ async def run_cli_async(args: Namespace) -> ExitCode:
             env,
             args.ignore_task_sysprompt,
         )
-        rendered_task = render_template(task_template, template_context, env)
-        logger.info("Rendered task template: %s", rendered_task)
+        user_prompt = render_template(task_template, template_context, env)
 
-        if args.dry_run:
-            logger.info("DRY RUN MODE")
-            return ExitCode.SUCCESS
-
-        # Create output model
-        logger.debug("Creating output model")
+        # 3. Model & Schema Validation Phase
+        logger.debug("=== Model & Schema Validation Phase ===")
         try:
             output_model = create_dynamic_model(
                 schema,
-                base_name="OutputModel",
                 show_schema=args.show_model_schema,
                 debug_validation=args.debug_validation,
             )
@@ -1574,7 +1574,6 @@ async def run_cli_async(args: Namespace) -> ExitCode:
             logger.error("Schema error: %s", str(e))
             raise  # Let the error propagate with its context
 
-        # Validate model support and token usage
         if not supports_structured_output(args.model):
             msg = f"Model {args.model} does not support structured output"
             logger.error(msg)
@@ -1582,10 +1581,14 @@ async def run_cli_async(args: Namespace) -> ExitCode:
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": rendered_task},
+            {"role": "user", "content": user_prompt},
         ]
-        total_tokens = estimate_tokens_for_chat(messages, args.model)
-        context_limit = get_context_window_limit(args.model)
+
+        total_tokens = estimate_tokens_with_encoding(messages, args.model)
+        registry = ModelRegistry()
+        capabilities = registry.get_capabilities(args.model)
+        context_limit = capabilities.context_window
+
         if total_tokens > context_limit:
             msg = f"Total tokens ({total_tokens}) exceeds model context limit ({context_limit})"
             logger.error(msg)
@@ -1597,12 +1600,31 @@ async def run_cli_async(args: Namespace) -> ExitCode:
                 },
             )
 
-        # Get API key and create client
+        # 4. Dry Run Output Phase
+        if args.dry_run:
+            logger.info("\n=== Dry Run Summary ===")
+            logger.info("✓ Template rendered successfully")
+            logger.info("✓ Schema validation passed")
+            logger.info("✓ Model compatibility validated")
+            logger.info(f"✓ Token count: {total_tokens}/{context_limit}")
+
+            if args.verbose:
+                logger.info("\nSystem Prompt:")
+                logger.info("-" * 40)
+                logger.info(system_prompt)
+                logger.info("\nRendered Template:")
+                logger.info("-" * 40)
+                logger.info(user_prompt)
+
+            return ExitCode.SUCCESS
+
+        # 5. Execution Phase
+        logger.debug("=== Execution Phase ===")
         api_key = args.api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
-            msg = "No OpenAI API key provided (--api-key or OPENAI_API_KEY env var)"
+            msg = "No API key provided. Set OPENAI_API_KEY environment variable or use --api-key"
             logger.error(msg)
-            raise CLIError(msg)
+            raise CLIError(msg, exit_code=ExitCode.API_ERROR)
 
         client = AsyncOpenAI(api_key=api_key, timeout=args.timeout)
 
@@ -1612,28 +1634,38 @@ async def run_cli_async(args: Namespace) -> ExitCode:
         ) -> None:
             if args.debug_openai_stream:
                 if extra:
-                    extra_str = json.dumps(extra, indent=2)
-                    message = f"{message}\nDetails:\n{extra_str}"
-                logger.log(level, message, extra=extra)
+                    extra_str = LogSerializer.serialize_log_extra(extra)
+                    if extra_str:
+                        logger.debug("%s\nExtra:\n%s", message, extra_str)
+                    else:
+                        logger.debug("%s\nExtra: Failed to serialize", message)
+                else:
+                    logger.debug(message)
 
-        # Stream the output
         try:
-            await stream_structured_output(
+            # Create output buffer
+            output_buffer = []
+
+            # Stream the response
+            async for response in stream_structured_output(
                 client=client,
                 model=args.model,
                 system_prompt=system_prompt,
-                user_prompt=rendered_task,
+                user_prompt=user_prompt,
                 output_schema=output_model,
                 output_file=args.output_file,
-                temperature=args.temperature,
-                max_tokens=args.max_tokens,
-                top_p=args.top_p,
-                frequency_penalty=args.frequency_penalty,
-                presence_penalty=args.presence_penalty,
-                timeout=args.timeout,
-                on_log=log_callback,
-            )
+                **params,  # Only pass validated model parameters
+                on_log=log_callback,  # Pass logging callback separately
+            ):
+                output_buffer.append(response)
+
+            # Handle final output
+            if args.output_file:
+                with open(args.output_file, "w") as f:
+                    json.dump(output_buffer, f)
+
             return ExitCode.SUCCESS
+
         except (
             StreamInterruptedError,
             StreamBufferError,
@@ -1643,22 +1675,14 @@ async def run_cli_async(args: Namespace) -> ExitCode:
             InvalidResponseFormatError,
         ) as e:
             logger.error("Stream error: %s", str(e))
-            raise  # Let stream errors propagate
-        except (APIConnectionError, InternalServerError) as e:
-            logger.error("API connection error: %s", str(e))
-            raise APIResponseError(str(e))  # Convert to our error type
-        except RateLimitError as e:
-            logger.error("Rate limit exceeded: %s", str(e))
-            raise APIResponseError(str(e))  # Convert to our error type
-        except (BadRequestError, AuthenticationError, OpenAIClientError) as e:
-            logger.error("API client error: %s", str(e))
-            raise APIResponseError(str(e))  # Convert to our error type
-        finally:
-            await client.close()
+            raise CLIError(str(e), exit_code=ExitCode.API_ERROR)
+        except Exception as e:
+            logger.exception("Unexpected error during streaming")
+            raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
 
     except KeyboardInterrupt:
         logger.info("Operation cancelled by user")
-        return ExitCode.INTERRUPTED
+        raise
     except Exception as e:
         if isinstance(e, CLIError):
             raise  # Let our custom errors propagate
@@ -1677,14 +1701,18 @@ def create_cli() -> click.Command:
 
 def main() -> None:
     """Main entry point for the CLI."""
-    cli = create_cli()
-    cli(standalone_mode=False)
+    try:
+        cli = create_cli()
+        cli(standalone_mode=False)
+    except Exception as e:
+        handle_error(e)
+        sys.exit(1)
 
 
 # Export public API
 __all__ = [
     "ExitCode",
-    "estimate_tokens_for_chat",
+    "estimate_tokens_with_encoding",
     "parse_json_var",
     "create_dynamic_model",
     "validate_path_mapping",
@@ -1883,10 +1911,6 @@ def create_dynamic_model(
                 logger.error("Schema validation failed:")
                 logger.error("  Error type: %s", type(e).__name__)
                 logger.error("  Error message: %s", str(e))
-                if hasattr(e, "errors"):
-                    logger.error("  Validation errors:")
-                    for error in e.errors():
-                        logger.error("    - %s", error)
             validation_errors = (
                 [str(err) for err in e.errors()]
                 if hasattr(e, "errors")
