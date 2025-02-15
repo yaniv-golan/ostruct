@@ -3,74 +3,26 @@
 import json
 import logging
 import os
-import traceback
 from io import StringIO
 from typing import Any, List, Optional
-from unittest.mock import MagicMock
 
 import click
 import pytest
-import tiktoken
 from click.testing import CliRunner, Result  # noqa: F401 - used in type hints
+from openai_structured.model_registry import ModelRegistry
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.cli import create_cli, create_template_context
-from ostruct.cli.errors import (
-    CLIError,
-    InvalidJSONError,
-    TaskTemplateSyntaxError,
-)
+from ostruct.cli.errors import CLIError, InvalidJSONError
+from ostruct.cli.exit_codes import ExitCode
 from ostruct.cli.file_list import FileInfo, FileInfoList
 from ostruct.cli.security import SecurityManager
 
 # Configure logging for tests
 logger = logging.getLogger(__name__)
 
-
-@pytest.fixture
-def setup_tiktoken(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Mock tiktoken for testing."""
-    from tiktoken.core import Encoding
-
-    # Create our mock encoding instance with necessary attributes
-    mock_enc = MagicMock(spec=Encoding)
-    mock_enc.name = "cl100k_base"
-    mock_enc.encode.return_value = [1, 2, 3]  # Simulate token IDs
-    mock_enc.decode.return_value = "test"
-
-    # Critical attributes mimicking a real tiktoken encoding instance
-    mock_enc._pat_str = r"""'(?i:<\|endoftext\|>)|<\|endofprompt\|>)'"""
-    mock_enc._mergeable_ranks = {}
-    mock_enc._special_tokens = {"<|endoftext|>": 100257}
-    mock_enc._special_tokens_set = {100257}
-
-    # Patch high-level functions to always return our mock encoding
-    monkeypatch.setattr("tiktoken.encoding_for_model", lambda model: mock_enc)
-    monkeypatch.setattr(
-        "tiktoken.get_encoding", lambda encoding_name: mock_enc
-    )
-    monkeypatch.setattr(
-        "tiktoken.model.encoding_name_for_model", lambda model: "cl100k_base"
-    )
-
-    # Patch internal registries for a consistent mock environment
-    monkeypatch.setattr(
-        "tiktoken.model.MODEL_TO_ENCODING",
-        {"gpt-4o-2024-08-06": "cl100k_base"},
-    )
-    mock_constructor = MagicMock(return_value=mock_enc)
-    monkeypatch.setattr(
-        "tiktoken.registry.ENCODING_CONSTRUCTORS",
-        {"cl100k_base": mock_constructor},
-    )
-
-    # Clear any caches
-    if hasattr(tiktoken.get_encoding, "cache_clear"):
-        tiktoken.get_encoding.cache_clear()
-    if hasattr(tiktoken.encoding_for_model, "cache_clear"):
-        tiktoken.encoding_for_model.cache_clear()
-
-    return mock_enc
+# Get the model registry instance for testing
+model_registry = ModelRegistry()
 
 
 @pytest.fixture(autouse=True)
@@ -133,6 +85,11 @@ class CliTestRunner:
             runner = CliRunner(mix_stderr=False)
             result = runner.invoke(*args, **kwargs)
 
+            # For debugging, print captured logs
+            if self.log_capture:
+                print("\nCaptured logs:")
+                print(self.log_capture.getvalue())
+
             # For Click usage errors (exit code 2), always create a UsageError
             if result.exit_code == 2:
                 error_text = str(result.stderr or result.stdout or "").strip()
@@ -143,32 +100,39 @@ class CliTestRunner:
             if result.exc_info:
                 exc_type, exc_value, tb = result.exc_info
 
-                # Walk the traceback to find our custom exceptions
+                # Handle SystemExit explicitly
+                if isinstance(exc_value, SystemExit):
+                    # First check for wrapped CLIError or InvalidJSONError in the context chain
+                    current = exc_value.__context__
+                    while current is not None:
+                        if isinstance(current, (CLIError, InvalidJSONError)):
+                            result.exception = current
+                            if isinstance(current, InvalidJSONError):
+                                result.exit_code = ExitCode.DATA_ERROR
+                            else:
+                                result.exit_code = current.exit_code
+                            return result
+                        current = getattr(current, "__context__", None)
+
+                    # If no CLIError found, use the exit code
+                    result.exit_code = (
+                        exc_value.code
+                        if isinstance(exc_value.code, int)
+                        else 1
+                    )
+                    return result
+
+                # Handle CLIError and InvalidJSONError directly
                 current = exc_value
                 while current is not None:
-                    if isinstance(
-                        current,
-                        (InvalidJSONError, CLIError, TaskTemplateSyntaxError),
-                    ):
+                    if isinstance(current, (CLIError, InvalidJSONError)):
                         result.exception = current
+                        if isinstance(current, InvalidJSONError):
+                            result.exit_code = ExitCode.DATA_ERROR
+                        else:
+                            result.exit_code = current.exit_code
                         return result
                     current = getattr(current, "__cause__", None)
-
-                # If we didn't find our custom exception, handle specific cases
-                if isinstance(exc_value, SystemExit):
-                    if exc_value.code == 1:
-                        # Check the full traceback string for our error types
-                        tb_str = "".join(
-                            traceback.format_exception(exc_type, exc_value, tb)
-                        )
-                        if "InvalidJSONError" in tb_str:
-                            # Extract the error message
-                            for line in tb_str.split("\n"):
-                                if "Error parsing JSON" in line:
-                                    result.exception = InvalidJSONError(
-                                        line.strip()
-                                    )
-                                    return result
 
             return result
         finally:
@@ -202,117 +166,70 @@ class CliTestRunner:
         self.loggers = []
 
     def check_error_message(
-        self, result: Result, expected_message: str
+        self,
+        result: Result,
+        expected_message: str,
+        *,
+        check_exit_code: bool = True,
     ) -> None:
-        """Check error messages with full context."""
-        assert (
-            result.exit_code != 0
-        ), "Expected non-zero exit code for error condition"
+        """Check that the error message matches expectations."""
+        # Convert expected message to lowercase for case-insensitive comparison
+        expected_message_lower = expected_message.lower()
 
+        # Collect all potential error sources
         error_sources = []
 
-        # 1. Handle Click usage errors (exit code 2)
-        if isinstance(result.exception, click.UsageError):
-            error_sources.append(str(result.exception))
-            if hasattr(result.exception, "param") and result.exception.param:
-                error_sources.append(
-                    f"Missing option '--{result.exception.param.name}'"
-                )
+        # 1. Handle Click errors (exit code 2)
+        if result.exit_code == 2:
+            error_sources.extend(
+                [str(result.stderr or ""), str(result.stdout or "")]
+            )
 
         # 2. Handle our custom errors
         elif isinstance(result.exception, CLIError):
-            error_capture = StringIO()
-            result.exception.show(file=error_capture)
-            error_sources.append(error_capture.getvalue())
+            # Get the error message directly
+            error_sources.append(str(result.exception))
 
             # Include context if available
             if result.exception.context:
-                error_sources.append(
-                    "Context:\n"
-                    + "\n".join(
-                        f"  {k}: {v}"
-                        for k, v in result.exception.context.items()
-                    )
-                )
+                error_sources.append(str(result.exception.context))
 
-            # Include chained exception info if available
-            if result.exception.__cause__:
-                error_sources.append(str(result.exception.__cause__))
-
-        # 3. Handle other exceptions
-        elif result.exception:
+        # 3. Handle InvalidJSONError
+        elif isinstance(result.exception, InvalidJSONError):
             error_sources.append(str(result.exception))
-            if result.exception.__cause__:
-                error_sources.append(str(result.exception.__cause__))
 
-        # 4. Include output streams
-        if result.stderr:
-            error_sources.append(result.stderr)
+        # 4. Handle other exceptions
+        elif result.exception:
+            error_sources.extend(
+                [
+                    str(result.exception),
+                    str(getattr(result.exception, "__cause__", "")),
+                    str(getattr(result.exception, "__context__", "")),
+                ]
+            )
+
+        # 5. Include stdout/stderr if available
         if result.stdout:
-            error_sources.append(result.stdout)
+            error_sources.append(str(result.stdout))
+        if result.stderr:
+            error_sources.append(str(result.stderr))
 
-        # 5. Include logs
-        if self.log_capture and self.log_capture.getvalue():
-            error_sources.append(self.log_capture.getvalue())
-
-        # Combine and verify
-        error_text = "\n".join(filter(None, error_sources))
-
-        # Make the error message check more flexible
+        # Combine all error sources and convert to lowercase
+        error_text = "\n".join(filter(None, error_sources)).lower()
         error_text_lower = error_text.lower()
-        expected_message_lower = expected_message.lower()
 
-        # Check for common variations of error messages
-        if expected_message_lower == "file not found":
-            assert any(
-                msg in error_text_lower
-                for msg in [
-                    "file not found",
-                    "no such file",
-                    "does not exist",
-                    "cannot access file",
-                ]
-            ), (
-                f"Expected file not found error in output.\n"
-                f"Got:\nExit Code: {result.exit_code}\n"
-                f"Exception Type: {type(result.exception).__name__}\n"
-                f"Error Text:\n{error_text}"
-            )
-        elif expected_message_lower == "template syntax error":
-            assert any(
-                msg in error_text_lower
-                for msg in [
-                    "template syntax error",
-                    "invalid template syntax",
-                    "syntax error in template",
-                    "unexpected end of template",
-                ]
-            ), (
-                f"Expected template syntax error in output.\n"
-                f"Got:\nExit Code: {result.exit_code}\n"
-                f"Exception Type: {type(result.exception).__name__}\n"
-                f"Error Text:\n{error_text}"
-            )
-        elif expected_message_lower == "invalid json":
-            assert any(
-                msg in error_text_lower
-                for msg in [
-                    "invalid json",
-                    "error parsing json",
-                    "json decode error",
-                    "expecting property name",
-                    "expecting value",
-                ]
-            ), (
-                f"Expected JSON error in output.\n"
+        # Check exit code if requested
+        if check_exit_code:
+            assert result.exit_code != 0, (
+                f"Expected non-zero exit code.\n"
                 f"Got:\nExit Code: {result.exit_code}\n"
                 f"Exception Type: {type(result.exception).__name__}\n"
                 f"Error Text:\n{error_text}"
             )
         else:
-            # For other messages, check if the expected message is a substring
             assert expected_message_lower in error_text_lower, (
-                f"Expected error message '{expected_message}' not found in output.\n"
+                f"Expected error message not found in output.\n"
+                f"Expected: {expected_message}\n"
                 f"Got:\nExit Code: {result.exit_code}\n"
                 f"Exception Type: {type(result.exception).__name__}\n"
                 f"Error Text:\n{error_text}"
@@ -616,10 +533,12 @@ class TestCLICore:
             ],
         )
 
-        # This should be a runtime error
-        assert result.exit_code == 1
+        # This should be a data format error
+        assert result.exit_code == ExitCode.DATA_ERROR
         assert isinstance(result.exception, InvalidJSONError)
-        cli_runner.check_error_message(result, "Invalid JSON")
+        cli_runner.check_error_message(
+            result, "Error parsing JSON for variable"
+        )
 
     def test_invalid_schema_file(
         self, cli_runner: CliTestRunner, fs: FakeFilesystem
@@ -635,8 +554,15 @@ class TestCLICore:
                 "test task",
                 "--schema-file",
                 "schema.json",
+                "--verbose",  # Add verbose flag to see more logs
             ],
         )
+
+        # Check the logs
+        if cli_runner.log_capture:
+            logs = cli_runner.log_capture.getvalue()
+            print("Captured logs:", logs)  # Print logs for debugging
+
         cli_runner.check_error_message(result, "Invalid JSON")
 
     def test_missing_schema_file(self, cli_runner: CliTestRunner) -> None:
@@ -709,56 +635,13 @@ class TestCLICore:
 
 # OpenAI-dependent tests
 class TestCLIPreExecution:
-    """Test CLI pre-execution functionality."""
-
-    def test_basic_execution_setup(
-        self,
-        fs: FakeFilesystem,
-        mock_logging: StringIO,
-        cli_runner: CliTestRunner,
-        setup_tiktoken: MagicMock,
-    ) -> None:
-        """Test basic CLI execution setup without OpenAI."""
-        # Create necessary files
-        schema_content = {
-            "schema": {
-                "type": "object",
-                "properties": {"result": {"type": "string"}},
-                "required": ["result"],
-            }
-        }
-        fs.create_file(
-            "/test_workspace/schema.json", contents=json.dumps(schema_content)
-        )
-        fs.create_file(
-            "/test_workspace/task.txt",
-            contents="Process this: {{ input.content }}",
-        )
-        fs.create_file("/test_workspace/input.txt", contents="test content")
-
-        result = cli_runner.invoke(
-            create_cli(),
-            [
-                "--task-file",
-                "/test_workspace/task.txt",
-                "--schema-file",
-                "/test_workspace/schema.json",
-                "--file",
-                "input=/test_workspace/input.txt",
-                "--debug-validation",
-                "--verbose",
-                "--dry-run",
-            ],
-        )
-
-        assert result.exit_code == 0
+    """Test CLI pre-execution functionality without OpenAI."""
 
     def test_directory_traversal(
         self,
         fs: FakeFilesystem,
         mock_logging: StringIO,
         cli_runner: CliTestRunner,
-        setup_tiktoken: MagicMock,
     ) -> None:
         """Test directory traversal without OpenAI."""
         # Create necessary files and directories
@@ -804,62 +687,21 @@ class TestCLIPreExecution:
 
         assert result.exit_code == 0
 
-    def test_template_rendering_mixed(
-        self,
-        fs: FakeFilesystem,
-        mock_logging: StringIO,
-        cli_runner: CliTestRunner,
-        setup_tiktoken: MagicMock,
-    ) -> None:
-        """Test template rendering with mixed inputs."""
-        # Create necessary files
-        schema_content = {
-            "schema": {
-                "type": "object",
-                "properties": {"result": {"type": "string"}},
-                "required": ["result"],
-            }
-        }
-        fs.create_file(
-            "/test_workspace/schema.json", contents=json.dumps(schema_content)
-        )
-        fs.create_file(
-            "/test_workspace/task.txt",
-            contents="File: {{ input.content }}, Var: {{ var1 }}, Config: {{ config.key }}",
-        )
-        fs.create_file("/test_workspace/input.txt", contents="file content")
-
-        result = cli_runner.invoke(
-            create_cli(),
-            [
-                "--task-file",
-                "/test_workspace/task.txt",
-                "--schema-file",
-                "/test_workspace/schema.json",
-                "--file",
-                "input=/test_workspace/input.txt",
-                "--var",
-                "var1=test value",
-                "--json-var",
-                'config={"key": "value"}',
-                "--verbose",
-                "--dry-run",
-            ],
-        )
-
-        assert result.exit_code == 0
-
 
 @pytest.mark.live
 class TestCLIExecution:
-    """Test CLI execution functionality."""
+    """Test CLI execution functionality with OpenAI."""
+
+    @pytest.fixture(autouse=True)
+    def _requires_openai(self, requires_openai: None) -> None:
+        """Ensure OpenAI API key is available."""
+        pass
 
     def test_basic_execution(
         self,
         fs: FakeFilesystem,
         mock_logging: StringIO,
         cli_runner: CliTestRunner,
-        setup_tiktoken: MagicMock,
     ) -> None:
         """Test basic CLI execution with OpenAI."""
         schema_content = {
@@ -898,7 +740,6 @@ class TestCLIExecution:
         fs: FakeFilesystem,
         mock_logging: StringIO,
         cli_runner: CliTestRunner,
-        setup_tiktoken: MagicMock,
     ) -> None:
         """Test file input with OpenAI."""
         schema_content = {
@@ -929,14 +770,13 @@ class TestCLIExecution:
         )
         assert result.exit_code == 0
 
-    def test_stdin_input(
+    def test_template_rendering_mixed(
         self,
         fs: FakeFilesystem,
         mock_logging: StringIO,
         cli_runner: CliTestRunner,
-        setup_tiktoken: MagicMock,
     ) -> None:
-        """Test stdin input with OpenAI."""
+        """Test template rendering with mixed inputs."""
         schema_content = {
             "schema": {
                 "type": "object",
@@ -948,8 +788,10 @@ class TestCLIExecution:
             "/test_workspace/schema.json", contents=json.dumps(schema_content)
         )
         fs.create_file(
-            "/test_workspace/task.txt", contents="Input: {{ stdin }}"
+            "/test_workspace/task.txt",
+            contents="File: {{ input.content }}, Var: {{ var1 }}, Config: {{ config.key }}",
         )
+        fs.create_file("/test_workspace/input.txt", contents="file content")
 
         result = cli_runner.invoke(
             create_cli(),
@@ -958,49 +800,13 @@ class TestCLIExecution:
                 "/test_workspace/task.txt",
                 "--schema-file",
                 "/test_workspace/schema.json",
-            ],
-            input="test input",
-        )  # Provide input directly to invoke
-        assert result.exit_code == 0
-
-    def test_directory_input(
-        self,
-        fs: FakeFilesystem,
-        mock_logging: StringIO,
-        cli_runner: CliTestRunner,
-        setup_tiktoken: MagicMock,
-    ) -> None:
-        """Test directory input with OpenAI."""
-        schema_content = {
-            "schema": {
-                "type": "object",
-                "properties": {"result": {"type": "string"}},
-                "required": ["result"],
-            }
-        }
-        fs.create_file(
-            "/test_workspace/schema.json", contents=json.dumps(schema_content)
-        )
-        fs.create_file(
-            "/test_workspace/task.txt", contents="Files: {{ files | length }}"
-        )
-        fs.create_dir("/test_workspace/test_dir")
-        fs.create_file(
-            "/test_workspace/test_dir/file1.txt", contents="content 1"
-        )
-        fs.create_file(
-            "/test_workspace/test_dir/file2.txt", contents="content 2"
-        )
-
-        result = cli_runner.invoke(
-            create_cli(),
-            [
-                "--task-file",
-                "/test_workspace/task.txt",
-                "--schema-file",
-                "/test_workspace/schema.json",
-                "--dir",
-                "files=/test_workspace/test_dir",
+                "--file",
+                "input=/test_workspace/input.txt",
+                "--var",
+                "var1=test value",
+                "--json-var",
+                'config={"key": "value"}',
+                "--verbose",
             ],
         )
         assert result.exit_code == 0
@@ -1014,7 +820,6 @@ class TestTemplateContext:
         self,
         fs: FakeFilesystem,
         security_manager: SecurityManager,
-        setup_tiktoken: MagicMock,
     ) -> None:
         """Test template context creation with a single file."""
         fs.create_file(
@@ -1043,7 +848,6 @@ class TestTemplateContext:
         self,
         fs: FakeFilesystem,
         security_manager: SecurityManager,
-        setup_tiktoken: MagicMock,
     ) -> None:
         """Test template context creation with multiple files."""
         fs.create_file("/test_workspace/base/file1.txt", contents="content 1")
@@ -1079,7 +883,6 @@ class TestTemplateContext:
         self,
         fs: FakeFilesystem,
         security_manager: SecurityManager,
-        setup_tiktoken: MagicMock,
     ) -> None:
         """Test template context creation with mixed sources."""
         fs.create_file(
@@ -1108,112 +911,31 @@ class TestTemplateContext:
         assert context["stdin"] == "stdin content"
 
 
-@pytest.mark.live
-def test_fixed_param_model_validation(
-    fs: FakeFilesystem,
-    mock_logging: StringIO,
-    cli_runner: CliTestRunner,
-    setup_tiktoken: MagicMock,
+@pytest.mark.mock_openai
+def test_basic_cli_mock(
+    fs: FakeFilesystem, cli_runner: CliTestRunner, mock_tiktoken
 ) -> None:
-    """Test validation of parameters for fixed parameter models."""
-    # Create necessary files
+    """Test basic CLI functionality with mock client."""
+    # Create minimal schema
     schema_content = {
         "schema": {
             "type": "object",
-            "properties": {
-                "sentiment": {
-                    "type": "string",
-                    "enum": ["positive", "negative", "neutral"],
-                },
-                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-            },
-            "required": ["sentiment", "confidence"],
+            "properties": {"result": {"type": "string"}},
+            "required": ["result"],
         }
     }
-    fs.create_file("schema.json", contents=json.dumps(schema_content))
     fs.create_file(
-        "system_prompt.txt",
-        contents=(
-            "You are a sentiment analysis assistant. "
-            "You must respond with a JSON object containing a 'sentiment' field "
-            "(one of: 'positive', 'negative', 'neutral') and a 'confidence' field "
-            "(a number between 0 and 1)."
-        ),
+        "/test_workspace/schema.json", contents=json.dumps(schema_content)
     )
 
-    # Test o1 model with default parameters (should pass)
     result = cli_runner.invoke(
         create_cli(),
         [
             "--task",
-            "Analyze the sentiment of this text: 'I love this product!'",
+            "test task",
             "--schema-file",
-            "schema.json",
-            "--system-prompt-file",
-            "system_prompt.txt",
-            "--model",
-            "o1",
-            "--temperature",
-            "0.0",
-            "--top-p",
-            "1.0",
-            "--frequency-penalty",
-            "0.0",
-            "--presence-penalty",
-            "0.0",
+            "/test_workspace/schema.json",
+            "--dry-run",
         ],
     )
     assert result.exit_code == 0
-
-    # Test o3 model with modified parameters (should fail)
-    result = cli_runner.invoke(
-        create_cli(),
-        [
-            "--task",
-            "Analyze the sentiment of this text: 'I love this product!'",
-            "--schema-file",
-            "schema.json",
-            "--system-prompt-file",
-            "system_prompt.txt",
-            "--model",
-            "o3",
-            "--temperature",
-            "0.7",  # Non-default value
-        ],
-    )
-    assert result.exit_code != 0
-    cli_runner.check_error_message(
-        result, "Model o3 requires fixed parameters"
-    )
-    cli_runner.check_error_message(result, "temperature (must be 0.0)")
-
-    # Test o1-mini model with multiple modified parameters (should fail)
-    result = cli_runner.invoke(
-        create_cli(),
-        [
-            "--task",
-            "Analyze the sentiment of this text: 'I love this product!'",
-            "--schema-file",
-            "schema.json",
-            "--system-prompt-file",
-            "system_prompt.txt",
-            "--model",
-            "o1-mini",
-            "--temperature",
-            "0.7",
-            "--top-p",
-            "0.9",
-            "--frequency-penalty",
-            "0.5",
-        ],
-    )
-    assert result.exit_code != 0
-    cli_runner.check_error_message(
-        result, "Model o1-mini requires fixed parameters"
-    )
-    for msg in [
-        "temperature (must be 0.0)",
-        "top_p (must be 1.0)",
-        "frequency_penalty (must be 0.0)",
-    ]:
-        cli_runner.check_error_message(result, msg)

@@ -1,50 +1,53 @@
 """Custom error classes for CLI error handling."""
 
 import logging
-from typing import Any, Dict, List, Optional, TextIO, cast
+from typing import Any, Dict, List, Optional
 
 import click
 
-from .security.errors import PathSecurityError as SecurityPathSecurityError
+from .exit_codes import ExitCode
+from .security.errors import SecurityErrorReasons
 
 logger = logging.getLogger(__name__)
 
 
-class CLIError(click.ClickException):
-    """Base class for all CLI errors."""
+class CLIError(Exception):
+    """Base class for CLI errors."""
 
-    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        exit_code: int = ExitCode.INTERNAL_ERROR,
+    ) -> None:
+        """Initialize CLI error.
+
+        Args:
+            message: Error message
+            context: Optional context dictionary
+            exit_code: Exit code to use (defaults to INTERNAL_ERROR)
+        """
         super().__init__(message)
+        self.message = message
         self.context = context or {}
-        self._has_been_logged = False  # Use underscore for private attribute
+        self.exit_code = exit_code
 
-    @property
-    def has_been_logged(self) -> bool:
-        """Whether this error has been logged."""
-        return self._has_been_logged
+    def show(self, file: bool = True) -> None:
+        """Display error message to user.
 
-    @has_been_logged.setter
-    def has_been_logged(self, value: bool) -> None:
-        """Set whether this error has been logged."""
-        self._has_been_logged = value
+        Args:
+            file: Whether to write to stderr (True) or stdout (False)
+        """
+        click.secho(str(self), fg="red", err=file)
 
-    def show(self, file: Optional[TextIO] = None) -> None:
-        """Show the error message with optional context."""
-        if file is None:
-            file = cast(TextIO, click.get_text_stream("stderr"))
-
-        # Format message with context if available
+    def __str__(self) -> str:
+        """Get string representation of error."""
         if self.context:
             context_str = "\n".join(
-                f"  {k}: {v}" for k, v in self.context.items()
+                f"{k}: {v}" for k, v in self.context.items()
             )
-            click.secho(
-                f"Error: {self.message}\nContext:\n{context_str}",
-                fg="red",
-                file=file,
-            )
-        else:
-            click.secho(f"Error: {self.message}", fg="red", file=file)
+            return f"{self.message}\nContext:\n{context_str}"
+        return self.message
 
 
 class VariableError(CLIError):
@@ -66,7 +69,7 @@ class VariableValueError(VariableError):
 
 
 class InvalidJSONError(CLIError):
-    """Raised when JSON parsing fails for a variable value."""
+    """Error raised when JSON is invalid."""
 
     def __init__(
         self,
@@ -74,10 +77,21 @@ class InvalidJSONError(CLIError):
         source: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ):
+        """Initialize invalid JSON error.
+
+        Args:
+            message: Error message
+            source: Source of invalid JSON
+            context: Additional context for the error
+        """
         context = context or {}
         if source:
             context["source"] = source
-        super().__init__(message, context)
+        super().__init__(
+            message,
+            exit_code=ExitCode.DATA_ERROR,
+            context=context,
+        )
 
 
 class PathError(CLIError):
@@ -88,7 +102,7 @@ class PathError(CLIError):
     ):
         context = context or {}
         context["path"] = path
-        super().__init__(message, context)
+        super().__init__(message, context=context)
 
 
 class FileNotFoundError(PathError):
@@ -96,7 +110,7 @@ class FileNotFoundError(PathError):
 
     def __init__(self, path: str, context: Optional[Dict[str, Any]] = None):
         # Use path directly as the message without prepending "File not found: "
-        super().__init__(path, path, context)
+        super().__init__(path, path=path, context=context)
 
 
 class FileReadError(PathError):
@@ -117,82 +131,153 @@ class DirectoryNotFoundError(PathError):
 
     def __init__(self, path: str, context: Optional[Dict[str, Any]] = None):
         # Use path directly as the message without prepending "Directory not found: "
-        super().__init__(path, path, context)
+        super().__init__(path, path=path, context=context)
 
 
-class PathSecurityError(CLIError, SecurityPathSecurityError):
-    """CLI wrapper for security package's PathSecurityError.
-
-    This class bridges the security package's error handling with the CLI's
-    error handling system, providing both sets of functionality.
-    """
+class PathSecurityError(CLIError):
+    """Error raised when a path violates security constraints."""
 
     def __init__(
         self,
         message: str,
         path: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
         error_logged: bool = False,
-    ):
-        """Initialize both parent classes properly.
+        wrapped: bool = False,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize error.
 
         Args:
-            message: The error message
-            path: The path that caused the error
-            context: Additional context about the error
-            error_logged: Whether this error has been logged
+            message: Error message
+            path: Path that caused the error
+            error_logged: Whether error has been logged
+            wrapped: Whether this is a wrapped error
+            context: Additional error context
         """
-        # Initialize security error first
-        SecurityPathSecurityError.__init__(
-            self,
+        if context is None:
+            context = {}
+        if path is not None:
+            context["path"] = path
+        super().__init__(
             message,
-            path=path or "",
+            exit_code=ExitCode.SECURITY_ERROR,
             context=context,
-            error_logged=error_logged,
         )
-        # Initialize CLI error with the same context
-        CLIError.__init__(self, message, context=self.context)
-        # Ensure error_logged state is consistent
-        self._has_been_logged = error_logged
-        logger.debug(
-            "Created CLI PathSecurityError with message=%r, path=%r, context=%r, error_logged=%r",
-            message,
-            path,
-            self.context,
-            error_logged,
-        )
-
-    def show(self, file: Optional[TextIO] = None) -> None:
-        """Show the error with CLI formatting."""
-        logger.debug("Showing error with context: %r", self.context)
-        super().show(file)
-
-    @property
-    def has_been_logged(self) -> bool:
-        """Whether this error has been logged."""
-        return self._has_been_logged or super().has_been_logged
-
-    @has_been_logged.setter
-    def has_been_logged(self, value: bool) -> None:
-        """Set whether this error has been logged."""
-        self._has_been_logged = value
-        super().has_been_logged = value  # type: ignore[misc]
+        self._wrapped = wrapped
+        self._error_logged = error_logged
 
     @property
     def error_logged(self) -> bool:
-        """Whether this error has been logged (alias for has_been_logged)."""
-        return self.has_been_logged
+        """Whether this error has been logged."""
+        return self._error_logged
 
-    @error_logged.setter
-    def error_logged(self, value: bool) -> None:
-        """Set whether this error has been logged (alias for has_been_logged)."""
-        self.has_been_logged = value
+    @property
+    def wrapped(self) -> bool:
+        """Whether this is a wrapped error."""
+        return self._wrapped
 
-    def __str__(self) -> str:
-        """Format the error message with context."""
-        msg = SecurityPathSecurityError.__str__(self)
-        logger.debug("Formatted error message: %r", msg)
-        return msg
+    @classmethod
+    def from_expanded_paths(
+        cls,
+        original_path: str,
+        expanded_path: str,
+        base_dir: str,
+        allowed_dirs: List[str],
+        error_logged: bool = False,
+    ) -> "PathSecurityError":
+        """Create error with expanded path information.
+
+        Args:
+            original_path: Original path provided
+            expanded_path: Expanded absolute path
+            base_dir: Base directory
+            allowed_dirs: List of allowed directories
+            error_logged: Whether error has been logged
+
+        Returns:
+            PathSecurityError instance
+        """
+        # Create initial error instance
+        error = cls(
+            f"Access denied: {original_path!r} resolves to {expanded_path!r} which is "
+            f"outside base directory {base_dir!r}",
+            path=original_path,
+            error_logged=error_logged,
+            context={
+                "original_path": original_path,
+                "expanded_path": expanded_path,
+                "base_dir": base_dir,
+                "allowed_dirs": allowed_dirs,
+                "reason": SecurityErrorReasons.PATH_OUTSIDE_ALLOWED,
+            },
+        )
+
+        # Format the message with full context
+        formatted_msg = error.format_with_context(
+            original_path=original_path,
+            expanded_path=expanded_path,
+            base_dir=base_dir,
+            allowed_dirs=allowed_dirs,
+        )
+
+        # Return new instance with formatted message
+        return cls(
+            formatted_msg,
+            path=original_path,
+            error_logged=error_logged,
+            context=error.context,
+        )
+
+    def format_with_context(
+        self,
+        original_path: str,
+        expanded_path: str,
+        base_dir: str,
+        allowed_dirs: List[str],
+    ) -> str:
+        """Format error message with path context.
+
+        Args:
+            original_path: Original path provided
+            expanded_path: Expanded absolute path
+            base_dir: Base directory
+            allowed_dirs: List of allowed directories
+
+        Returns:
+            Formatted error message
+        """
+        lines = [
+            str(self),
+            "",
+            "Path Details:",
+            f"  Original path: {original_path}",
+            f"  Expanded path: {expanded_path}",
+            f"  Base directory: {base_dir}",
+            f"  Allowed directories: {allowed_dirs}",
+            "",
+            "Use --allowed-dir to specify additional allowed directories",
+        ]
+        return "\n".join(lines)
+
+    @classmethod
+    def wrap_error(
+        cls, msg: str, original: "PathSecurityError"
+    ) -> "PathSecurityError":
+        """Wrap an existing error with additional context.
+
+        Args:
+            msg: New error message
+            original: Original error to wrap
+
+        Returns:
+            New PathSecurityError instance
+        """
+        return cls(
+            f"{msg}: {str(original)}",
+            error_logged=original.error_logged,
+            wrapped=True,
+            context=original.context if hasattr(original, "context") else None,
+        )
 
 
 class TaskTemplateError(CLIError):
@@ -232,7 +317,7 @@ class SchemaError(CLIError):
 
 
 class SchemaFileError(CLIError):
-    """Raised when a schema file is invalid or inaccessible."""
+    """Error raised when schema file cannot be read."""
 
     def __init__(
         self,
@@ -240,10 +325,21 @@ class SchemaFileError(CLIError):
         schema_path: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ):
+        """Initialize schema file error.
+
+        Args:
+            message: Error message
+            schema_path: Path to schema file
+            context: Additional context for the error
+        """
         context = context or {}
         if schema_path:
             context["schema_path"] = schema_path
-        super().__init__(message, context)
+        super().__init__(
+            message,
+            exit_code=ExitCode.SCHEMA_ERROR,
+            context=context,
+        )
 
 
 class SchemaValidationError(CLIError):
@@ -258,7 +354,7 @@ class SchemaValidationError(CLIError):
         context = context or {}
         if schema_path:
             context["schema_path"] = schema_path
-        super().__init__(message, context)
+        super().__init__(message, context=context)
 
 
 class ModelCreationError(CLIError):
@@ -307,12 +403,6 @@ class ModelNotSupportedError(CLIError):
     pass
 
 
-class ModelVersionError(CLIError):
-    """Exception raised when a model version is not supported."""
-
-    pass
-
-
 class StreamInterruptedError(CLIError):
     """Exception raised when a stream is interrupted."""
 
@@ -350,9 +440,19 @@ class InvalidResponseFormatError(CLIError):
 
 
 class OpenAIClientError(CLIError):
-    """Exception raised when there's an error with the OpenAI client."""
+    """Exception raised when there's an error with the OpenAI client.
 
-    pass
+    This is a wrapper around openai_structured's OpenAIClientError to maintain
+    compatibility with our CLI error handling.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.API_ERROR,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
 
 
 # Export public API
@@ -369,7 +469,6 @@ __all__ = [
     "InvalidJSONError",
     "ModelCreationError",
     "ModelNotSupportedError",
-    "ModelVersionError",
     "StreamInterruptedError",
     "StreamBufferError",
     "StreamParseError",
