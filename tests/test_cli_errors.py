@@ -1,6 +1,7 @@
 """Test error handling functionality."""
 
 import logging
+import os
 
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -24,7 +25,10 @@ from ostruct.cli.errors import (
     VariableValueError,
 )
 from ostruct.cli.exit_codes import ExitCode
+from ostruct.cli.file_info import FileInfo
+from ostruct.cli.file_utils import collect_files_from_directory
 from ostruct.cli.security.errors import SecurityErrorReasons
+from tests.conftest import MockSecurityManager
 
 
 def test_variable_name_error() -> None:
@@ -507,3 +511,173 @@ def test_cli_error_context():
     assert "[INTERNAL_ERROR] Test error" in error_str
     assert "Details: Detailed explanation" in error_str
     assert "Custom Field: value" in error_str
+
+
+def test_security_error_expanded_paths(
+    fs: FakeFilesystem, security_manager: MockSecurityManager
+) -> None:
+    """Test security error with expanded paths in error message."""
+    # Create error with expanded paths
+    error = PathSecurityError.from_expanded_paths(
+        original_path="~/test.txt",
+        expanded_path="/home/user/test.txt",
+        base_dir="/test_workspace",
+        allowed_dirs=["/allowed"],
+        error_logged=True,
+    )
+
+    error_str = str(error)
+    # Check basic message format
+    assert error_str.startswith("[SECURITY_ERROR] Access denied")
+    # Check path information
+    assert "Original Path: ~/test.txt" in error_str
+    assert "Expanded Path: /home/user/test.txt" in error_str
+    assert "Base Directory: /test_workspace" in error_str
+    assert "Allowed Directories: ['/allowed']" in error_str
+
+
+def test_security_error_format_with_context() -> None:
+    """Test formatting security error with additional context."""
+    # Create error with context
+    error = PathSecurityError(
+        "Access denied",
+        path="/test.txt",
+        context={
+            "original_path": "~/test.txt",
+            "expanded_path": "/test.txt",
+            "base_dir": "/base",
+            "allowed_dirs": ["/allowed"],
+        },
+        error_logged=True,
+    )
+
+    error_str = str(error)
+    # Check basic message format
+    assert error_str.startswith("[SECURITY_ERROR] Access denied")
+    # Check context information
+    assert "Original Path: ~/test.txt" in error_str
+    assert "Expanded Path: /test.txt" in error_str
+    assert "Base Directory: /base" in error_str
+    assert "Allowed Directories: ['/allowed']" in error_str
+
+
+def test_security_error_attributes() -> None:
+    """Test PathSecurityError attributes and properties."""
+    error = PathSecurityError(
+        "Access denied", path="/test/path", error_logged=True
+    )
+    assert error.error_logged
+    assert not error.wrapped
+    error_str = str(error)
+    assert error_str.startswith("[SECURITY_ERROR] Access denied")
+    assert "Path: /test/path" in error_str
+    assert "Category: security" in error_str
+
+
+def test_security_error_wrapping() -> None:
+    """Test error wrapping with context preservation."""
+    original = PathSecurityError("Access denied", error_logged=True)
+    wrapped = PathSecurityError.wrap_error("File collection failed", original)
+    assert wrapped.error_logged  # Should preserve logged state
+    assert wrapped.wrapped  # Should be marked as wrapped
+
+
+def test_file_info_immutability(
+    fs: FakeFilesystem, security_manager: MockSecurityManager
+) -> None:
+    """Test that FileInfo attributes are immutable."""
+    # Create test file
+    fs.create_file("/test_workspace/base/test.txt", contents="test")
+    os.chdir("/test_workspace/base")  # Change to base directory
+
+    # Create FileInfo instance
+    file_info = FileInfo.from_path(
+        "test.txt", security_manager=security_manager
+    )
+
+    # Attempt to modify private fields should raise AttributeError
+    with pytest.raises(AttributeError):
+        file_info.__path = "modified.txt"
+
+    with pytest.raises(AttributeError):
+        file_info.__content = "modified content"
+
+    with pytest.raises(AttributeError):
+        file_info.__security_manager = security_manager
+
+
+@pytest.mark.error_test
+def test_collect_files_security_error_propagates(
+    fs: FakeFilesystem,
+    security_manager: MockSecurityManager,
+) -> None:
+    """Test security errors propagate from directory collection."""
+    fs.create_file("/test_workspace/base/valid.txt")
+    fs.create_symlink("/test_workspace/base/malicious", "../outside.txt")
+    os.chdir("/test_workspace/base")
+
+    # Test should now pass with the fixed error propagation
+    with pytest.raises(PathSecurityError) as exc_info:
+        collect_files_from_directory(".", security_manager=security_manager)
+
+    assert "Symlink security violation:" in str(exc_info.value)
+    assert "target not allowed" in str(exc_info.value)
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
+
+
+@pytest.mark.error_test
+def test_collect_files_security_violations(
+    fs: FakeFilesystem,
+    security_manager: MockSecurityManager,
+) -> None:
+    """Test various security violation scenarios in file collection.
+
+    EXPECTED ERROR: This test verifies that symlink-based security violations
+    raise appropriate PathSecurityError with detailed context.
+    """
+    # Setup
+    fs.create_file("/test_workspace/base/valid.txt")
+    fs.create_dir("/test_workspace/outside")
+    fs.create_file("/test_workspace/outside/target.txt")
+    os.chdir("/test_workspace/base")
+
+    # Test 1: Symlink to non-existent file outside allowed dirs
+    fs.create_symlink(
+        "/test_workspace/base/bad_link1", "../outside/nonexistent.txt"
+    )
+    with pytest.raises(PathSecurityError) as exc_info:
+        collect_files_from_directory(".", security_manager=security_manager)
+
+    assert "Symlink security violation:" in str(exc_info.value)
+    assert "target not allowed" in str(exc_info.value)
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
+
+    # Test 2: Symlink to existing file outside allowed dirs
+    fs.create_symlink(
+        "/test_workspace/base/bad_link2", "../outside/target.txt"
+    )
+    with pytest.raises(PathSecurityError) as exc_info:
+        collect_files_from_directory(".", security_manager=security_manager)
+
+    assert "Symlink security violation:" in str(exc_info.value)
+    assert "target not allowed" in str(exc_info.value)
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
+
+    # Test 3: Directory traversal attempt
+    fs.create_symlink("/test_workspace/base/bad_link3", "../../etc/passwd")
+    with pytest.raises(PathSecurityError) as exc_info:
+        collect_files_from_directory(".", security_manager=security_manager)
+    assert (
+        exc_info.value.context["reason"]
+        == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
+    )
+    assert "Symlink security violation" in str(exc_info.value)

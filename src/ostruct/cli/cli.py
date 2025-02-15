@@ -45,11 +45,7 @@ from openai_structured.errors import (
     ModelNotSupportedError,
     ModelVersionError,
     OpenAIClientError,
-    SchemaFileError,
-    SchemaValidationError,
     StreamBufferError,
-    StreamInterruptedError,
-    StreamParseError,
 )
 from openai_structured.model_registry import ModelRegistry
 from pydantic import (
@@ -70,7 +66,6 @@ from ostruct.cli.click_options import create_click_command
 from ostruct.cli.exit_codes import ExitCode
 
 from .. import __version__  # noqa: F401 - Used in package metadata
-from . import errors
 from .errors import (
     CLIError,
     DirectoryNotFoundError,
@@ -81,6 +76,10 @@ from .errors import (
     ModelValidationError,
     NestedModelError,
     PathSecurityError,
+    SchemaFileError,
+    SchemaValidationError,
+    StreamInterruptedError,
+    StreamParseError,
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
     VariableError,
@@ -505,7 +504,8 @@ def validate_variable_mapping(
                 value = json.loads(value)
             except json.JSONDecodeError as e:
                 raise InvalidJSONError(
-                    f"Invalid JSON value for variable {name!r}: {value!r}"
+                    f"Invalid JSON value for variable {name!r}: {value!r}",
+                    context={"variable_name": name},
                 ) from e
 
         return name, value
@@ -759,19 +759,24 @@ def validate_schema_file(
                     e.msg,
                 )
                 raise InvalidJSONError(
-                    f"Invalid JSON in schema file {path}: {e}", source=path
-                )
+                    f"Invalid JSON in schema file {path}: {e}",
+                    context={"schema_path": path},
+                ) from e
     except FileNotFoundError:
         msg = f"Schema file not found: {path}"
         logger.error(msg)
-        raise SchemaFileError(msg)
+        raise SchemaFileError(msg, schema_path=path)
+    except PermissionError:
+        msg = f"Permission denied reading schema file: {path}"
+        logger.error(msg)
+        raise SchemaFileError(msg, schema_path=path)
     except Exception as e:
         if isinstance(e, InvalidJSONError):
             raise
         msg = f"Failed to read schema file {path}: {e}"
         logger.error(msg)
         logger.debug("Unexpected error details: %s", str(e))
-        raise SchemaFileError(msg)
+        raise SchemaFileError(msg, schema_path=path) from e
 
     # Pre-validation structure checks
     if verbose:
@@ -781,7 +786,7 @@ def validate_schema_file(
     if not isinstance(schema, dict):
         msg = f"Schema in {path} must be a JSON object"
         logger.error(msg)
-        raise SchemaValidationError(msg)
+        raise SchemaValidationError(msg, schema_path=path)
 
     # Validate schema structure
     if "schema" in schema:
@@ -791,7 +796,7 @@ def validate_schema_file(
         if not isinstance(inner_schema, dict):
             msg = f"Inner schema in {path} must be a JSON object"
             logger.error(msg)
-            raise SchemaValidationError(msg)
+            raise SchemaValidationError(msg, schema_path=path)
         if verbose:
             logger.debug("Inner schema validated successfully")
             logger.debug(
@@ -806,7 +811,7 @@ def validate_schema_file(
     if "type" not in schema.get("schema", schema):
         msg = f"Schema in {path} must specify a type"
         logger.error(msg)
-        raise SchemaValidationError(msg)
+        raise SchemaValidationError(msg, schema_path=path)
 
     # Return the full schema including wrapper
     return schema
@@ -919,7 +924,8 @@ def collect_json_variables(args: Namespace) -> Dict[str, Any]:
                     all_names.add(name)
                 except json.JSONDecodeError as e:
                     raise InvalidJSONError(
-                        f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}"
+                        f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}",
+                        context={"variable_name": name},
                     )
             except ValueError:
                 raise VariableNameError(
@@ -1027,7 +1033,8 @@ def create_template_context_from_args(
                         json_value = json.loads(value)
                     except json.JSONDecodeError as e:
                         raise InvalidJSONError(
-                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}"
+                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}",
+                            context={"variable_name": name},
                         )
                     if name in json_variables:
                         raise VariableNameError(
@@ -1182,7 +1189,8 @@ def parse_json_var(var_str: str) -> Tuple[str, Any]:
             value = json.loads(json_str)
         except json.JSONDecodeError as e:
             raise InvalidJSONError(
-                f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}"
+                f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}",
+                context={"variable_name": name},
             )
 
         return name, value
@@ -1231,37 +1239,59 @@ def _create_enum_type(values: List[Any], field_name: str) -> Type[Enum]:
 
 
 def handle_error(e: Exception) -> None:
-    """Handle CLI errors and display appropriate messages."""
-    if isinstance(e, (SchemaFileError, errors.SchemaFileError)):
-        msg = f"Schema error: {str(e)}"
-        logger.error(msg)
-        click.secho(msg, fg="red", err=True)
-        sys.exit(ExitCode.SCHEMA_ERROR)
-    elif isinstance(e, click.UsageError):
+    """Handle CLI errors and display appropriate messages.
+
+    Maintains specific error type handling while reducing duplication.
+    Provides enhanced debug logging for CLI errors.
+    """
+    # 1. Determine error type and message
+    if isinstance(e, click.UsageError):
         msg = f"Usage error: {str(e)}"
-        logger.error(msg)
-        click.secho(msg, fg="red", err=True)
-        sys.exit(ExitCode.USAGE_ERROR)
-    elif isinstance(e, (errors.InvalidJSONError, json.JSONDecodeError)):
+        exit_code = ExitCode.USAGE_ERROR
+    elif isinstance(e, SchemaFileError):
+        # Preserve specific schema error handling
+        msg = str(e)  # Use existing __str__ formatting
+        exit_code = ExitCode.SCHEMA_ERROR
+    elif isinstance(e, (InvalidJSONError, json.JSONDecodeError)):
+        msg = f"Invalid JSON error: {str(e)}"
+        exit_code = ExitCode.DATA_ERROR
+    elif isinstance(e, SchemaValidationError):
         msg = f"Schema validation error: {str(e)}"
-        logger.error(msg)
-        click.secho(msg, fg="red", err=True)
-        sys.exit(ExitCode.DATA_ERROR)
-    elif isinstance(e, (SchemaValidationError, errors.SchemaValidationError)):
-        msg = f"Schema validation error: {str(e)}"
-        logger.error(msg)
-        click.secho(msg, fg="red", err=True)
-        sys.exit(ExitCode.VALIDATION_ERROR)
-    elif isinstance(e, errors.CLIError):
-        msg = str(e)
-        logger.error(msg)
-        click.secho(msg, fg="red", err=True)
-        sys.exit(e.exit_code)
+        exit_code = ExitCode.VALIDATION_ERROR
+    elif isinstance(e, CLIError):
+        msg = str(e)  # Use existing __str__ formatting
+        exit_code = ExitCode(e.exit_code)  # Convert int to ExitCode
     else:
         msg = f"Unexpected error: {str(e)}"
+        exit_code = ExitCode.INTERNAL_ERROR
+
+    # 2. Debug logging
+    if isinstance(e, CLIError) and logger.isEnabledFor(logging.DEBUG):
+        # Format context fields with lowercase keys and simple values
+        context_str = ""
+        if hasattr(e, "context"):
+            for key, value in sorted(e.context.items()):
+                if key not in {
+                    "timestamp",
+                    "host",
+                    "version",
+                    "python_version",
+                }:
+                    context_str += f"{key.lower()}: {value}\n"
+
+        logger.debug(
+            "Error details:\n"
+            f"Type: {type(e).__name__}\n"
+            f"{context_str.rstrip()}"
+        )
+    elif not isinstance(e, click.UsageError):
         logger.error(msg, exc_info=True)
-        click.secho(msg, fg="red", err=True)
-        sys.exit(ExitCode.INTERNAL_ERROR)
+    else:
+        logger.error(msg)
+
+    # 3. User output
+    click.secho(msg, fg="red", err=True)
+    sys.exit(exit_code)
 
 
 def validate_model_parameters(model: str, params: Dict[str, Any]) -> None:
@@ -1472,7 +1502,8 @@ def cli(**kwargs: Any) -> None:
                     except json.JSONDecodeError as e:
                         logger.error("Invalid JSON: %s", str(e))
                         raise InvalidJSONError(
-                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}"
+                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}",
+                            context={"variable_name": name},
                         )
             except ValueError:
                 raise VariableNameError(
@@ -1484,26 +1515,29 @@ def cli(**kwargs: Any) -> None:
         asyncio.set_event_loop(loop)
         try:
             exit_code = loop.run_until_complete(run_cli_async(args))
+            sys.exit(int(exit_code))  # Convert ExitCode to int
         finally:
             loop.close()
-        sys.exit(exit_code)
 
-    except (CLIError, InvalidJSONError, VariableError) as e:
-        logger.error("%s: %s", type(e).__name__, str(e))
-        if isinstance(e, CLIError):
-            sys.exit(e.exit_code)
-        elif isinstance(e, InvalidJSONError):
-            sys.exit(ExitCode.DATA_ERROR)
-        elif isinstance(e, VariableError):
-            sys.exit(ExitCode.VALIDATION_ERROR)
-    except click.UsageError:
-        raise  # Let Click handle usage errors
-    except Exception:
-        logger.exception("Unexpected error")
+    except (
+        CLIError,
+        InvalidJSONError,
+        SchemaFileError,
+        SchemaValidationError,
+    ) as e:
+        handle_error(e)
+        sys.exit(
+            e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
+        )
+    except click.UsageError as e:
+        handle_error(e)
+        sys.exit(ExitCode.USAGE_ERROR)
+    except Exception as e:
+        handle_error(e)
         sys.exit(ExitCode.INTERNAL_ERROR)
 
 
-async def run_cli_async(args: Namespace) -> int:
+async def run_cli_async(args: Namespace) -> ExitCode:
     """Async wrapper for CLI operations.
 
     Returns:
@@ -1662,7 +1696,20 @@ async def run_cli_async(args: Namespace) -> int:
             # Handle final output
             if args.output_file:
                 with open(args.output_file, "w") as f:
-                    json.dump(output_buffer, f)
+                    if len(output_buffer) == 1:
+                        f.write(output_buffer[0].model_dump_json(indent=2))
+                    else:
+                        f.write("[")
+                        for i, response in enumerate(output_buffer):
+                            if i > 0:
+                                f.write(",")
+                            f.write("\n  ")
+                            f.write(
+                                response.model_dump_json(indent=2).replace(
+                                    "\n", "\n  "
+                                )
+                            )
+                        f.write("\n]")
 
             return ExitCode.SUCCESS
 
@@ -1704,9 +1751,22 @@ def main() -> None:
     try:
         cli = create_cli()
         cli(standalone_mode=False)
+    except (
+        CLIError,
+        InvalidJSONError,
+        SchemaFileError,
+        SchemaValidationError,
+    ) as e:
+        handle_error(e)
+        sys.exit(
+            e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
+        )
+    except click.UsageError as e:
+        handle_error(e)
+        sys.exit(ExitCode.USAGE_ERROR)
     except Exception as e:
         handle_error(e)
-        sys.exit(1)
+        sys.exit(ExitCode.INTERNAL_ERROR)
 
 
 # Export public API
