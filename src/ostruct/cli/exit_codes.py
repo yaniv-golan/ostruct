@@ -15,3 +15,4 @@ class ExitCode(IntEnum):
     SCHEMA_ERROR = 6
     UNKNOWN_ERROR = 7
     SECURITY_ERROR = 8
+    FILE_ERROR = 9

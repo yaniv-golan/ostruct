@@ -553,59 +553,60 @@ def test_security_error_expanded_paths(
 ) -> None:
     """Test security error with expanded paths in error message."""
     # Create error with expanded paths
-    error = PathSecurityError(
-        "Access denied",
-        error_logged=True,
-        context={
-            "path": "/home/user/test.txt",
-            "base_dir": "/test_workspace",
-            "allowed_dirs": ["/allowed"],
-            "reason": SecurityErrorReasons.PATH_OUTSIDE_ALLOWED,
-        },
-    )
-
-    # Format error message
-    error_msg = error.format_with_context(
+    error = PathSecurityError.from_expanded_paths(
         original_path="~/test.txt",
         expanded_path="/home/user/test.txt",
         base_dir="/test_workspace",
         allowed_dirs=["/allowed"],
+        error_logged=True,
     )
 
-    # Check message contents
-    assert "Access denied" in error_msg
-    assert "/home/user/test.txt" in error_msg
-    assert "Base directory: /test_workspace" in error_msg
-    assert "Allowed directories: ['/allowed']" in error_msg
-    assert error.error_logged is True
+    error_str = str(error)
+    # Check basic message format
+    assert error_str.startswith("[SECURITY_ERROR] Access denied")
+    # Check path information
+    assert "Original Path: ~/test.txt" in error_str
+    assert "Expanded Path: /home/user/test.txt" in error_str
+    assert "Base Directory: /test_workspace" in error_str
+    assert "Allowed Directories: ['/allowed']" in error_str
 
 
 def test_security_error_format_with_context() -> None:
     """Test formatting security error with additional context."""
-    # Create basic error
-    error = PathSecurityError("Access denied", error_logged=True)
-
-    # Format with context
-    formatted = error.format_with_context(
-        original_path="~/test.txt",
-        expanded_path="/test.txt",
-        base_dir="/base",
-        allowed_dirs=["/allowed"],
+    # Create error with context
+    error = PathSecurityError(
+        "Access denied",
+        path="/test.txt",
+        context={
+            "original_path": "~/test.txt",
+            "expanded_path": "/test.txt",
+            "base_dir": "/base",
+            "allowed_dirs": ["/allowed"],
+        },
+        error_logged=True,
     )
 
-    # Check message contents
-    assert "Access denied" in formatted
-    assert "/test.txt" in formatted
-    assert "Base directory: /base" in formatted
-    assert "Allowed directories: ['/allowed']" in formatted
+    error_str = str(error)
+    # Check basic message format
+    assert error_str.startswith("[SECURITY_ERROR] Access denied")
+    # Check context information
+    assert "Original Path: ~/test.txt" in error_str
+    assert "Expanded Path: /test.txt" in error_str
+    assert "Base Directory: /base" in error_str
+    assert "Allowed Directories: ['/allowed']" in error_str
 
 
 def test_security_error_attributes() -> None:
     """Test PathSecurityError attributes and properties."""
-    error = PathSecurityError("Access denied", error_logged=True)
+    error = PathSecurityError(
+        "Access denied", path="/test/path", error_logged=True
+    )
     assert error.error_logged
     assert not error.wrapped
-    assert str(error) == "Access denied"
+    error_str = str(error)
+    assert error_str.startswith("[SECURITY_ERROR] Access denied")
+    assert "Path: /test/path" in error_str
+    assert "Category: security" in error_str
 
 
 def test_security_error_wrapping() -> None:
