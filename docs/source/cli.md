@@ -62,19 +62,36 @@ Review this code: {{ code.content }}
   - Supports both streaming and non-streaming models
   - Automatically detects model capabilities and adjusts behavior
   - Provides optimal handling for each model type
-- `--temperature float`: Temperature for sampling (default: 0.0)
-- `--max-tokens int`: Maximum tokens to generate
-- `--top-p float`: Top-p sampling parameter (default: 1.0)
-- `--frequency-penalty float`: Frequency penalty parameter (default: 0.0)
-- `--presence-penalty float`: Presence penalty parameter (default: 0.0)
+
+Model parameters (refer to openai-structured's models.yaml for exact details):
+
+- `--max-output-tokens int`: Maximum tokens to generate (supported by all models)
+- Model-specific parameters (check models.yaml for support):
+  - `--temperature float`: Temperature for sampling
+  - `--top-p float`: Top-p sampling parameter
+  - `--frequency-penalty float`: Frequency penalty parameter
+  - `--presence-penalty float`: Presence penalty parameter
+  - `--reasoning-effort {low,medium,high}`: Reasoning effort level
+
+Note: Parameter support varies by model. When using unsupported parameters:
+
+- An error will be raised with details about which parameters are not supported
+- The command will fail with a validation error
+- You must only use parameters that are supported by your chosen model
+
+### Other Options
+
 - `--timeout float`: API timeout in seconds (default: 60.0)
 
 ### Token Limits and Large Files
 
-The CLI automatically handles token limits based on the model you're using. Here's what you need to know:
+The CLI uses the `openai-structured` library's token estimation functionality to accurately handle token limits based on the model you're using:
 
 - Each model has a maximum context window (total tokens including both input and output)
-- The CLI estimates token usage before making API calls
+- Token estimation accounts for:
+  - Message formatting overhead
+  - Model-specific encodings
+  - Special tokens and markers
 - For large files that might exceed token limits:
   1. Structure your prompts with instructions first, then file content last. For example:
 
@@ -92,7 +109,7 @@ The CLI automatically handles token limits based on the model you're using. Here
 
   2. Use the `--dry-run` flag to preview token usage before processing
   3. Consider breaking large files into smaller chunks
-  4. Use the `--max-tokens` option to control output length
+  4. Use the `--max-output-tokens` option to control output length
 
 The CLI will automatically validate token limits and fail early if:
 

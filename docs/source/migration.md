@@ -71,11 +71,30 @@ pip install --upgrade openai-structured
 
 ## Model Changes
 
-The default model is now `gpt-4o-2024-08-06`, which is optimized for structured output. This model:
+The default model is now `gpt-4o`, which is optimized for structured output. This model:
 
 - Understands and follows JSON schemas more reliably
 - Provides better validation of structured responses
 - Has improved context handling for large inputs
+- Supports a context window of 128,000 tokens
+
+Model parameter support varies by model - refer to openai-structured's models.yaml for the exact list of supported parameters for each model, with the following exceptions:
+
+- `max_output_tokens` is supported by all models and controls the maximum length of the generated response
+- Other parameters like `temperature`, `top_p`, etc. need to be checked in models.yaml for support
+
+When using unsupported parameters:
+
+- An error will be raised with details about which parameters are not supported
+- The command will fail with a validation error
+- You must only use parameters that are supported by your chosen model
+
+The CLI includes built-in token estimation functionality that:
+
+- Uses model-specific encodings (o200k_base for GPT-4o/O1/O3, cl100k_base for others)
+- Accounts for message formatting overhead
+- Provides consistent token estimates across all operations
+- Falls back gracefully if token estimation fails
 
 ## Environment Variables
 
@@ -88,7 +107,7 @@ The default model is now `gpt-4o-2024-08-06`, which is optimized for structured 
    - The command is now `ostruct` instead of `openai-structured`
 
 2. **Default Model:**
-   - Now uses `gpt-4o-2024-08-06` by default
+   - Now uses `gpt-4o` by default
    - Previous default models may not support structured output
 
 3. **File Access:**

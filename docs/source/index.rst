@@ -74,6 +74,7 @@ Documentation
 
    cli
    migration
+   template_filters
 
 Why Structured Output?
 -------------------
