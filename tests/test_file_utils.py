@@ -6,7 +6,7 @@ import os
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.errors import FileNotFoundError, PathSecurityError
+from ostruct.cli.errors import OstructFileNotFoundError, PathSecurityError
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
 from ostruct.cli.file_utils import (
@@ -152,7 +152,7 @@ def test_file_info_missing_file(
     caplog.set_level(logging.INFO)
 
     # Test 1: File not found
-    with pytest.raises(FileNotFoundError) as file_not_found_exc:
+    with pytest.raises(OstructFileNotFoundError) as file_not_found_exc:
         FileInfo.from_path(
             str("nonexistent.txt"), security_manager=security_manager
         )
@@ -341,7 +341,7 @@ def test_collect_files_errors(
     assert "missing '=' separator" in str(value_error_exc2.value)
 
     # Test missing file
-    with pytest.raises(FileNotFoundError) as file_not_found_exc2:
+    with pytest.raises(OstructFileNotFoundError) as file_not_found_exc2:
         collect_files(
             file_mappings=["test=nonexistent.txt"],
             security_manager=security_manager,
@@ -427,7 +427,7 @@ def test_file_info_missing_file_stats(
     os.chdir("/test_workspace/base")
 
     # Test missing file
-    with pytest.raises(FileNotFoundError) as exc_info:
+    with pytest.raises(OstructFileNotFoundError) as exc_info:
         FileInfo.from_path(
             str("nonexistent.txt"), security_manager=security_manager
         )
@@ -449,7 +449,7 @@ def test_file_info_content_errors(
     os.chdir("/test_workspace/base")
 
     # Test 1: Missing file at initialization
-    with pytest.raises(FileNotFoundError) as file_not_found_exc:
+    with pytest.raises(OstructFileNotFoundError) as file_not_found_exc:
         FileInfo.from_path(
             str("nonexistent.txt"), security_manager=security_manager
         )

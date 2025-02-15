@@ -70,11 +70,11 @@ from .errors import (
     CLIError,
     DirectoryNotFoundError,
     FieldDefinitionError,
-    FileNotFoundError,
     InvalidJSONError,
     ModelCreationError,
     ModelValidationError,
     NestedModelError,
+    OstructFileNotFoundError,
     PathSecurityError,
     SchemaFileError,
     SchemaValidationError,
@@ -435,8 +435,12 @@ def process_system_prompt(
             )
             with open(path, "r", encoding="utf-8") as f:
                 system_prompt = f.read().strip()
-        except (FileNotFoundError, PathSecurityError) as e:
-            raise SystemPromptError(f"Invalid system prompt file: {e}")
+        except OstructFileNotFoundError as e:
+            raise SystemPromptError(
+                f"Failed to load system prompt file: {e}"
+            ) from e
+        except PathSecurityError as e:
+            raise SystemPromptError(f"Invalid system prompt file: {e}") from e
 
     if system_prompt is not None:
         # Render system prompt with template context
@@ -704,7 +708,7 @@ def validate_task_template(
             name, path = validate_path_mapping(f"task={task_file}")
             with open(path, "r", encoding="utf-8") as f:
                 template_content = f.read()
-        except (FileNotFoundError, PathSecurityError) as e:
+        except (OstructFileNotFoundError, PathSecurityError) as e:
             raise TaskTemplateVariableError(str(e))
     else:
         template_content = task  # type: ignore  # We know task is str here due to the checks above

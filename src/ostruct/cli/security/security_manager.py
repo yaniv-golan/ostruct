@@ -15,6 +15,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, List, Optional, Union
 
+from ostruct.cli.errors import OstructFileNotFoundError
+
 from .allowed_checker import is_path_in_allowed_dirs
 from .case_manager import CaseManager
 from .errors import (
@@ -200,24 +202,32 @@ class SecurityManager:
             PathSecurityError: If the path fails security validation
             FileNotFoundError: If the file doesn't exist (only checked after security validation)
         """
+        logger.debug("Validating path: %s", path)
+
         # First normalize the path
         norm_path = normalize_path(path)
+        logger.debug("Normalized path: %s", norm_path)
 
         # Handle symlinks first - delegate to symlink_resolver
         if norm_path.is_symlink():
+            logger.debug("Path is a symlink, resolving: %s", norm_path)
             try:
-                return _resolve_symlink(
+                resolved = _resolve_symlink(
                     norm_path,
                     self._max_symlink_depth,
                     self._allowed_dirs,
                 )
+                logger.debug("Resolved symlink to: %s", resolved)
+                return resolved
             except RuntimeError as e:
                 if "Symlink loop" in str(e):
+                    logger.error("Symlink loop detected: %s", path)
                     raise PathSecurityError(
                         "Symlink security violation: loop detected",
                         path=str(path),
                         context={"reason": SecurityErrorReasons.SYMLINK_LOOP},
                     ) from e
+                logger.error("Failed to resolve symlink: %s - %s", path, e)
                 raise PathSecurityError(
                     f"Symlink security violation: failed to resolve symlink - {e}",
                     path=str(path),
@@ -225,10 +235,13 @@ class SecurityManager:
                 ) from e
 
         # For non-symlinks, just check if the normalized path is allowed
+        logger.debug("Checking if path is allowed: %s", norm_path)
         if not self.is_path_allowed(norm_path):
             logger.error(
-                "Security violation: Path %s is outside allowed directories",
+                "Security violation: Path %s is outside allowed directories (base_dir=%s, allowed_dirs=%s)",
                 path,
+                self._base_dir,
+                self._allowed_dirs,
             )
             raise PathSecurityError(
                 (
@@ -244,12 +257,12 @@ class SecurityManager:
             )
 
         # Only check existence after security validation passes
+        logger.debug("Checking if path exists: %s", norm_path)
         if not norm_path.exists():
             logger.debug("Path allowed but not found: %s", norm_path)
-            raise FileNotFoundError(
-                f"File not found: {os.path.basename(str(path))}"
-            )
+            raise OstructFileNotFoundError(str(path))
 
+        logger.debug("Path validation successful: %s", norm_path)
         return norm_path
 
     def resolve_path(self, path: Union[str, Path]) -> Path:
@@ -275,7 +288,7 @@ class SecurityManager:
             if self._allow_temp_paths and self.is_temp_path(norm_path):
                 logger.debug("Allowing temp path: %s", norm_path)
                 if not norm_path.exists():
-                    raise FileNotFoundError(f"File not found: {path}")
+                    raise OstructFileNotFoundError(f"File not found: {path}")
                 return norm_path
 
             # Handle symlinks with security checks
@@ -296,7 +309,7 @@ class SecurityManager:
                     elif reason == SecurityErrorReasons.SYMLINK_BROKEN:
                         msg = f"Broken symlink: {e.context['source']} -> {e.context['target']}"
                         logger.debug(msg)
-                        raise FileNotFoundError(msg) from e
+                        raise OstructFileNotFoundError(msg) from e
                     # Any other security errors propagate unchanged
                     raise
 
@@ -318,12 +331,12 @@ class SecurityManager:
 
             # Only check existence after security validation
             if not norm_path.exists():
-                raise FileNotFoundError(f"File not found: {path}")
+                raise OstructFileNotFoundError(f"File not found: {path}")
 
             return norm_path
 
         except OSError as e:
-            if isinstance(e, FileNotFoundError):
+            if isinstance(e, OstructFileNotFoundError):
                 raise
             logger.error("Error resolving path: %s - %s", path, e)
             raise PathSecurityError(

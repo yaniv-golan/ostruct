@@ -14,8 +14,8 @@ from ostruct.cli import (
 )
 from ostruct.cli.errors import (
     DirectoryNotFoundError,
-    FileNotFoundError,
     InvalidJSONError,
+    OstructFileNotFoundError,
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
     VariableNameError,
@@ -86,7 +86,7 @@ def test_validate_path_mapping_dir(fs: FakeFilesystem) -> None:
         (
             "test=nonexistent.txt",
             False,
-            FileNotFoundError,
+            OstructFileNotFoundError,
         ),  # Non-existent file
         (
             "test=nonexistent",
@@ -116,7 +116,7 @@ def test_validate_path_mapping_wrong_type(fs: FakeFilesystem) -> None:
         validate_path_mapping("test=test.txt", is_dir=True)
     assert "not a directory" in str(exc.value).lower()
 
-    with pytest.raises(FileNotFoundError) as exc_file:
+    with pytest.raises(OstructFileNotFoundError) as exc_file:
         validate_path_mapping("test=test_dir")
     assert "not a file" in str(exc_file.value).lower()
 

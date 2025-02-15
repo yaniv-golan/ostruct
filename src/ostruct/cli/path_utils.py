@@ -1,16 +1,20 @@
 """Path validation utilities for the CLI."""
 
+import logging
 from pathlib import Path
 from typing import Optional, Tuple
 
 from ostruct.cli.errors import (
     DirectoryNotFoundError,
-    FileNotFoundError,
+    OstructFileNotFoundError,
+    PathSecurityError,
     VariableNameError,
     VariableValueError,
 )
-from ostruct.cli.security.errors import PathSecurityError, SecurityErrorReasons
+from ostruct.cli.security.errors import SecurityErrorReasons
 from ostruct.cli.security.security_manager import SecurityManager
+
+logger = logging.getLogger(__name__)
 
 
 def validate_path_mapping(
@@ -44,34 +48,52 @@ def validate_path_mapping(
         >>> validate_path_mapping("data=config/", is_dir=True)  # Validates directory
         ('data', 'config/')
     """
+    logger.debug(
+        "Validating path mapping: %s (is_dir=%s, base_dir=%s)",
+        mapping,
+        is_dir,
+        base_dir,
+    )
+
     # Split into name and path parts
     try:
         name, path_str = mapping.split("=", 1)
     except ValueError:
+        logger.error("Invalid mapping format (missing '='): %s", mapping)
         raise ValueError(f"Invalid mapping format (missing '='): {mapping}")
 
     # Validate name
     name = name.strip()
     if not name:
+        logger.error("Variable name cannot be empty: %s", mapping)
         raise VariableNameError("Variable name cannot be empty")
     if not name.isidentifier():
+        logger.error("Invalid variable name: %s", name)
         raise VariableNameError(f"Invalid variable name: {name}")
 
     # Normalize path
     path_str = path_str.strip()
     if not path_str:
+        logger.error("Path cannot be empty: %s", mapping)
         raise VariableValueError("Path cannot be empty")
 
+    logger.debug("Creating Path object for: %s", path_str)
     # Create a Path object
     path = Path(path_str)
     if not path.is_absolute() and base_dir:
+        logger.debug(
+            "Converting relative path to absolute using base_dir: %s", base_dir
+        )
         path = Path(base_dir) / path
 
     # Validate path with security manager if provided
     if security_manager:
+        logger.debug("Validating path with security manager: %s", path)
         try:
             path = security_manager.validate_path(path)
+            logger.debug("Security validation passed: %s", path)
         except PathSecurityError as e:
+            logger.error("Security validation failed: %s - %s", path, e)
             if (
                 e.context.get("reason")
                 == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
@@ -89,16 +111,22 @@ def validate_path_mapping(
 
     # Check path existence and type
     if not path.exists():
+        logger.error("Path does not exist: %s", path)
         if is_dir:
             raise DirectoryNotFoundError(f"Directory not found: {path}")
-        raise FileNotFoundError(f"File not found: {path}")
+        raise OstructFileNotFoundError(f"File not found: {path}")
 
     # Check path type
     if is_dir and not path.is_dir():
+        logger.error("Path exists but is not a directory: %s", path)
         raise DirectoryNotFoundError(
             f"Path exists but is not a directory: {path}"
         )
     elif not is_dir and not path.is_file():
-        raise FileNotFoundError(f"Path exists but is not a file: {path}")
+        logger.error("Path exists but is not a file: %s", path)
+        raise OstructFileNotFoundError(
+            f"Path exists but is not a file: {path}"
+        )
 
+    logger.debug("Path validation successful: %s -> %s", name, path)
     return name, str(path)

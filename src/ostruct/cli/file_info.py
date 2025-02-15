@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Any, Optional
 
-from .errors import FileNotFoundError, FileReadError, PathSecurityError
+from .errors import FileReadError, OstructFileNotFoundError, PathSecurityError
 from .security import SecurityManager
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class FileInfo:
             # Check if it's a regular file (not a directory, device, etc.)
             if not resolved_path.is_file():
                 logger.debug("Not a regular file: %s", resolved_path)
-                raise FileNotFoundError(
+                raise OstructFileNotFoundError(
                     f"Not a regular file: {os.path.basename(str(path))}"
                 )
 
@@ -98,10 +98,10 @@ class FileInfo:
             )
             raise
 
-        except FileNotFoundError as e:
+        except OstructFileNotFoundError as e:
             # Re-raise with standardized message format
             logger.debug("File not found error: %s", e)
-            raise FileNotFoundError(
+            raise OstructFileNotFoundError(
                 f"File not found: {os.path.basename(str(path))}"
             ) from e
 

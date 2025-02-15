@@ -52,7 +52,7 @@ import chardet
 
 from .errors import (
     DirectoryNotFoundError,
-    FileNotFoundError,
+    OstructFileNotFoundError,
     PathSecurityError,
 )
 from .file_info import FileInfo
@@ -269,7 +269,7 @@ def collect_files_from_directory(
                         str(e),
                     )
                     raise
-                except (FileNotFoundError, PermissionError) as e:
+                except (OstructFileNotFoundError, PermissionError) as e:
                     # Skip legitimate file access errors
                     logger.warning(
                         "Skipping inaccessible file: %s (error: %s)",
@@ -609,14 +609,14 @@ def read_allowed_dirs_from_file(filepath: str) -> List[str]:
         A list of allowed directories as absolute paths.
 
     Raises:
-        FileNotFoundError: If the file does not exist.
+        OstructFileNotFoundError: If the file does not exist.
         ValueError: If the file contains invalid data.
     """
     try:
         with open(filepath, "r") as f:
             lines = f.readlines()
     except OSError as e:
-        raise FileNotFoundError(
+        raise OstructFileNotFoundError(
             f"Error reading allowed directories from file: {filepath}: {e}"
         )
 

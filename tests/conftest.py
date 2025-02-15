@@ -42,6 +42,7 @@ from _pytest.terminal import TerminalReporter
 from dotenv import load_dotenv
 from pyfakefs.fake_filesystem import FakeFilesystem
 
+from ostruct.cli.base_errors import OstructFileNotFoundError
 from ostruct.cli.errors import PathSecurityError
 from ostruct.cli.security import SecurityManager
 
@@ -443,10 +444,8 @@ class MockSecurityManager(SecurityManager):
                         error_logged=True,
                     )
                 elif e.errno == errno.ENOENT:
-                    # File not found should use simplified message
-                    raise FileNotFoundError(
-                        f"File not found: {os.path.basename(str(file))}"
-                    )
+                    # File not found should use OstructFileNotFoundError
+                    raise OstructFileNotFoundError(str(file))
                 # Other OS errors should be raised as is
                 raise
 

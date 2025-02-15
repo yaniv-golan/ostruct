@@ -145,7 +145,7 @@ Test task"""
     def test_invalid_system_prompt_file(self, fs: Any) -> None:
         """Test error handling for invalid system prompt file."""
         env = create_jinja_env()
-        with pytest.raises(SystemPromptError):
+        with pytest.raises(SystemPromptError) as exc_info:
             process_system_prompt(
                 task_template="Test task",
                 system_prompt=None,
@@ -153,6 +153,7 @@ Test task"""
                 template_context={},
                 env=env,
             )
+        assert "Failed to load system prompt file" in str(exc_info.value)
 
     def test_invalid_template_frontmatter(self, fs: Any) -> None:
         """Test error handling for invalid template frontmatter."""

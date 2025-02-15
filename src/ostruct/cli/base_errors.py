@@ -152,3 +152,31 @@ class CLIError(Exception):
                 lines.append(f"  1. {tips}")
 
         return "\n".join(lines)
+
+
+class OstructFileNotFoundError(CLIError):
+    """Raised when a file is not found.
+
+    This is Ostruct's custom error for file not found scenarios, distinct from Python's built-in
+    FileNotFoundError. It provides additional context and troubleshooting information specific to
+    the CLI context.
+    """
+
+    def __init__(self, path: str, context: Optional[Dict[str, Any]] = None):
+        context = context or {}
+        context.update(
+            {
+                "details": "The specified file does not exist or cannot be accessed",
+                "troubleshooting": [
+                    "Check if the file exists",
+                    "Verify the path spelling is correct",
+                    "Check file permissions",
+                    "Ensure parent directories exist",
+                ],
+            }
+        )
+        super().__init__(
+            f"File not found: {path}",
+            exit_code=ExitCode.FILE_ERROR,
+            context=context,
+        )

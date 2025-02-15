@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from .base_errors import CLIError
+from .base_errors import CLIError, OstructFileNotFoundError
 from .exit_codes import ExitCode
 from .security.base import SecurityErrorBase
 from .security.errors import SecurityErrorReasons
@@ -68,25 +68,6 @@ class PathError(CLIError):
         context = context or {}
         context["path"] = path
         super().__init__(message, context=context, exit_code=exit_code)
-
-
-class FileNotFoundError(PathError):
-    """Raised when a specified file does not exist."""
-
-    def __init__(self, path: str, context: Optional[Dict[str, Any]] = None):
-        context = context or {}
-        context.update(
-            {
-                "details": "The specified file does not exist or cannot be accessed",
-                "troubleshooting": [
-                    "Check if the file exists",
-                    "Verify the path spelling is correct",
-                    "Check file permissions",
-                    "Ensure parent directories exist",
-                ],
-            }
-        )
-        super().__init__(f"File not found: {path}", path=path, context=context)
 
 
 class FileReadError(PathError):
@@ -460,7 +441,7 @@ __all__ = [
     "VariableError",
     "PathError",
     "PathSecurityError",
-    "FileNotFoundError",
+    "OstructFileNotFoundError",
     "FileReadError",
     "DirectoryNotFoundError",
     "SchemaValidationError",

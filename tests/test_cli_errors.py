@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import List, Type, TypedDict
+from typing import Type, TypedDict
 
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -11,8 +11,8 @@ from ostruct.cli.cli import handle_error
 from ostruct.cli.errors import (
     CLIError,
     DirectoryNotFoundError,
-    FileNotFoundError,
     InvalidJSONError,
+    OstructFileNotFoundError,
     SchemaError,
     SchemaFileError,
     SchemaValidationError,
@@ -68,10 +68,10 @@ def test_path_name_error() -> None:
 
 
 def test_file_not_found_error() -> None:
-    """Test FileNotFoundError."""
+    """Test OstructFileNotFoundError."""
     error_msg = "test error"
-    with pytest.raises(FileNotFoundError, match=error_msg):
-        raise FileNotFoundError(error_msg)
+    with pytest.raises(OstructFileNotFoundError, match=error_msg):
+        raise OstructFileNotFoundError(error_msg)
 
 
 def test_directory_not_found_error() -> None:
@@ -180,9 +180,9 @@ def test_invalid_json_error() -> None:
 
 
 def test_file_not_found_error_str() -> None:
-    """Test FileNotFoundError string representation."""
+    """Test OstructFileNotFoundError string representation."""
     path = "/test/file.txt"
-    error = FileNotFoundError(path)
+    error = OstructFileNotFoundError(path)
     error_str = str(error)
     assert error_str.startswith(f"[FILE_ERROR] File not found: {path}")
     assert "Details: " in error_str
@@ -330,8 +330,8 @@ def test_error_formatting():
 
 
 def test_file_not_found_error_formatting():
-    """Test FileNotFoundError formatting."""
-    error = FileNotFoundError("/test/file.txt")
+    """Test OstructFileNotFoundError formatting."""
+    error = OstructFileNotFoundError("/test/file.txt")
     error_str = str(error)
 
     # Check basic message
@@ -442,7 +442,7 @@ def test_security_error_formatting():
 def test_error_wrapping():
     """Test error wrapping functionality."""
     # Create original error
-    original = FileNotFoundError("/missing.txt")
+    original = OstructFileNotFoundError("/missing.txt")
 
     # Wrap the error
     wrapped = PathSecurityError.wrap_error("Security check failed", original)
@@ -454,8 +454,8 @@ def test_error_wrapping():
         "Original Message: [FILE_ERROR] File not found: /missing.txt"
         in error_str
     )
-    assert "Wrapped Error: FileNotFoundError" in error_str
-    assert wrapped.context["wrapped_error"] == "FileNotFoundError"
+    assert "Wrapped Error: OstructFileNotFoundError" in error_str
+    assert wrapped.context["wrapped_error"] == "OstructFileNotFoundError"
     assert wrapped.wrapped is True
 
 
@@ -691,53 +691,49 @@ class TestCase(TypedDict):
     expected_msg: str
 
 
+@pytest.mark.error_test
 def test_template_path_errors(
     fs: FakeFilesystem, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Test that template path errors surface proper error messages."""
-    # Setup test workspace - ensure clean state
-    try:
-        fs.create_dir("/test_workspace")
-    except FileExistsError:
-        pass
-    try:
-        fs.create_dir("/test_workspace/base")
-    except FileExistsError:
-        pass
-
+    # Setup test workspace
+    fs.create_dir("/test_workspace")
+    fs.create_dir("/test_workspace/base")
     fs.create_file("/test_workspace/base/valid.txt", contents="test")
     os.chdir("/test_workspace/base")
 
     # Create security manager with base directory
     security_manager = MockSecurityManager(base_dir="/test_workspace/base")
 
-    test_cases: List[TestCase] = [
-        {
-            "name": "non_existent_template",
-            "task_file": "missing.txt",
-            "expected_error": FileNotFoundError,
-            "expected_msg": "File not found: missing.txt",
-        },
-        {
-            "name": "outside_allowed_dir",
-            "task_file": "/etc/passwd",
-            "expected_error": PathSecurityError,
-            "expected_msg": "is outside the base directory and not in allowed directories",
-        },
-    ]
+    # Test case 1: Non-existent file
+    with pytest.raises(OstructFileNotFoundError) as exc_info:
+        validate_path_mapping(
+            "template=missing.txt", security_manager=security_manager
+        )
+    error_str = str(exc_info.value)
+    assert "[FILE_ERROR] File not found: missing.txt" in error_str
+    assert "Details: The specified file does not exist" in error_str
+    assert "Troubleshooting:" in error_str
+    assert "1. Check if the file exists" in error_str
+    assert "2. Verify the path spelling is correct" in error_str
+    assert "3. Check file permissions" in error_str
+    assert "4. Ensure parent directories exist" in error_str
 
-    for case in test_cases:
-        with pytest.raises(case["expected_error"]) as exc_info:
-            validate_path_mapping(
-                f"task={case['task_file']}", security_manager=security_manager
-            )
-
-        error_str = str(exc_info.value)
-        assert (
-            case["expected_msg"] in error_str
-        ), f"Missing error details for {case['name']}: {error_str}"
-
-        # Verify error context for security errors
-        if isinstance(exc_info.value, PathSecurityError):
-            assert "Base Directory:" in error_str
-            assert "Allowed Directories:" in error_str
+    # Test case 2: File outside allowed directories
+    with pytest.raises(PathSecurityError) as security_exc_info:
+        validate_path_mapping(
+            "template=/etc/passwd", security_manager=security_manager
+        )
+    error_str = str(security_exc_info.value)
+    assert (
+        "[SECURITY_ERROR] Access denied: passwd is outside base directory and not in allowed directories"
+        in error_str
+    )
+    assert "Base Directory:" in error_str
+    assert "Allowed Directories:" in error_str
+    assert "/etc/passwd" in error_str
+    assert "Category: security" in error_str
+    assert (
+        security_exc_info.value.context["reason"]
+        == SecurityErrorReasons.PATH_OUTSIDE_ALLOWED
+    )

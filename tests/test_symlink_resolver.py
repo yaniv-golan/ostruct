@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
+from ostruct.cli.base_errors import OstructFileNotFoundError
 from ostruct.cli.security import (
     PathSecurityError,
     SecurityErrorReasons,
@@ -185,8 +186,9 @@ def test_resolve_symlink_nonexistent(fs: FakeFilesystem) -> None:
 
     # Attempt to resolve
     manager = SecurityManager(base_dir="/test_workspace/base")
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(OstructFileNotFoundError) as exc_info:
         manager.resolve_path("/test_workspace/base/link.txt")
+    assert "Broken symlink" in str(exc_info.value)
 
 
 def test_resolve_symlink_non_symlink(fs: FakeFilesystem) -> None:
