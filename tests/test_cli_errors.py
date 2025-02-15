@@ -2,6 +2,7 @@
 
 import logging
 import os
+from typing import List, Type, TypedDict
 
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -12,7 +13,6 @@ from ostruct.cli.errors import (
     DirectoryNotFoundError,
     FileNotFoundError,
     InvalidJSONError,
-    PathSecurityError,
     SchemaError,
     SchemaFileError,
     SchemaValidationError,
@@ -27,7 +27,8 @@ from ostruct.cli.errors import (
 from ostruct.cli.exit_codes import ExitCode
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_utils import collect_files_from_directory
-from ostruct.cli.security.errors import SecurityErrorReasons
+from ostruct.cli.path_utils import validate_path_mapping
+from ostruct.cli.security.errors import PathSecurityError, SecurityErrorReasons
 from tests.conftest import MockSecurityManager
 
 
@@ -681,3 +682,62 @@ def test_collect_files_security_violations(
         == SecurityErrorReasons.SYMLINK_TARGET_NOT_ALLOWED
     )
     assert "Symlink security violation" in str(exc_info.value)
+
+
+class TestCase(TypedDict):
+    name: str
+    task_file: str
+    expected_error: Type[Exception]
+    expected_msg: str
+
+
+def test_template_path_errors(
+    fs: FakeFilesystem, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that template path errors surface proper error messages."""
+    # Setup test workspace - ensure clean state
+    try:
+        fs.create_dir("/test_workspace")
+    except FileExistsError:
+        pass
+    try:
+        fs.create_dir("/test_workspace/base")
+    except FileExistsError:
+        pass
+
+    fs.create_file("/test_workspace/base/valid.txt", contents="test")
+    os.chdir("/test_workspace/base")
+
+    # Create security manager with base directory
+    security_manager = MockSecurityManager(base_dir="/test_workspace/base")
+
+    test_cases: List[TestCase] = [
+        {
+            "name": "non_existent_template",
+            "task_file": "missing.txt",
+            "expected_error": FileNotFoundError,
+            "expected_msg": "File not found: missing.txt",
+        },
+        {
+            "name": "outside_allowed_dir",
+            "task_file": "/etc/passwd",
+            "expected_error": PathSecurityError,
+            "expected_msg": "is outside the base directory and not in allowed directories",
+        },
+    ]
+
+    for case in test_cases:
+        with pytest.raises(case["expected_error"]) as exc_info:
+            validate_path_mapping(
+                f"task={case['task_file']}", security_manager=security_manager
+            )
+
+        error_str = str(exc_info.value)
+        assert (
+            case["expected_msg"] in error_str
+        ), f"Missing error details for {case['name']}: {error_str}"
+
+        # Verify error context for security errors
+        if isinstance(exc_info.value, PathSecurityError):
+            assert "Base Directory:" in error_str
+            assert "Allowed Directories:" in error_str

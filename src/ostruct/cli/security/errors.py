@@ -6,121 +6,64 @@ the security modules.
 
 from typing import Any, Dict, List, Optional
 
+from .base import SecurityErrorBase
 
-class PathSecurityError(Exception):
-    """Base exception for security-related errors.
 
-    This class provides rich error information for security-related issues,
-    including context and error wrapping capabilities.
-    """
+class PathSecurityError(SecurityErrorBase):
+    """Security error for path-related issues."""
 
     def __init__(
         self,
         message: str,
-        path: str = "",
+        path: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
+        details: Optional[str] = None,
         error_logged: bool = False,
+        wrapped: bool = False,
     ) -> None:
         """Initialize the error.
 
         Args:
             message: The error message.
             path: The path that caused the error.
-            context: Additional context about the error.
-            error_logged: Whether this error has already been logged.
+            context: Additional context for the error.
+            details: Detailed explanation of the error.
+            error_logged: Whether the error has been logged.
+            wrapped: Whether this is a wrapped error.
         """
-        super().__init__(message)
-        self.path = path
-        self.context = context or {}
-        self._error_logged = error_logged
-        self._wrapped = False
-
-    def __str__(self) -> str:
-        """Format the error message with context if available."""
-        msg = super().__str__()
-
-        # Add expanded path information if available
-        if self.context:
-            if (
-                "original_path" in self.context
-                and "expanded_path" in self.context
-            ):
-                msg = (
-                    f"{msg}\n"
-                    f"Original path: {self.context['original_path']}\n"
-                    f"Expanded path: {self.context['expanded_path']}"
-                )
-            if "base_dir" in self.context:
-                msg = f"{msg}\nBase directory: {self.context['base_dir']}"
-            if "allowed_dirs" in self.context:
-                msg = f"{msg}\nAllowed directories: {self.context['allowed_dirs']!r}"
-
-        return msg
+        if context is None:
+            context = {}
+        if path is not None:
+            context["path"] = path
+        if details is None:
+            details = "The specified path violates security constraints"
+            context["troubleshooting"] = [
+                "Check if the path is within allowed directories",
+                "Use --allowed-dir to specify additional allowed directories",
+                "Verify path permissions",
+            ]
+        self._wrapped = wrapped
+        super().__init__(
+            message,
+            context=context,
+            details=details,
+            has_been_logged=error_logged,
+        )
 
     @property
-    def has_been_logged(self) -> bool:
-        """Whether this error has been logged."""
-        return self._error_logged
-
-    @has_been_logged.setter
-    def has_been_logged(self, value: bool) -> None:
-        """Set whether this error has been logged."""
-        self._error_logged = value
+    def error_logged(self) -> bool:
+        """Alias for has_been_logged for backward compatibility."""
+        return self.has_been_logged
 
     @property
     def wrapped(self) -> bool:
-        """Whether this error is wrapping another error."""
+        """Whether this is a wrapped error."""
         return self._wrapped
 
-    def format_with_context(
-        self,
-        original_path: str,
-        expanded_path: str,
-        base_dir: str,
-        allowed_dirs: List[str],
-    ) -> str:
-        """Format the error message with additional context.
-
-        Args:
-            original_path: The original path that caused the error
-            expanded_path: The expanded/absolute path
-            base_dir: The base directory for security checks
-            allowed_dirs: List of allowed directories
-
-        Returns:
-            A formatted error message with context
-        """
-        lines = [
-            str(self),
-            f"Original path: {original_path}",
-            f"Expanded path: {expanded_path}",
-            f"Base directory: {base_dir}",
-            f"Allowed directories: {allowed_dirs}",
-            "Use --allowed-dir to add more allowed directories",
-        ]
-        return "\n".join(lines)
-
-    @classmethod
-    def wrap_error(
-        cls, message: str, original: "PathSecurityError"
-    ) -> "PathSecurityError":
-        """Wrap an existing error with additional context.
-
-        Args:
-            message: The new error message
-            original: The original error to wrap
-
-        Returns:
-            A new PathSecurityError instance wrapping the original
-        """
-        wrapped = cls(
-            f"{message}: {str(original)}",
-            path=original.path,
-            context=original.context,
-            error_logged=original.has_been_logged,
-        )
-        wrapped._wrapped = True
-        return wrapped
+    @property
+    def details(self) -> str:
+        """Get the detailed explanation of the error."""
+        return self.details
 
     @classmethod
     def from_expanded_paths(
@@ -131,30 +74,67 @@ class PathSecurityError(Exception):
         allowed_dirs: List[str],
         error_logged: bool = False,
     ) -> "PathSecurityError":
-        """Create an error instance with expanded path information.
+        """Create an error from expanded paths.
 
         Args:
-            original_path: The original path that caused the error
-            expanded_path: The expanded/absolute path
-            base_dir: The base directory for security checks
-            allowed_dirs: List of allowed directories
-            error_logged: Whether this error has already been logged
+            original_path: The original path.
+            expanded_path: The expanded path.
+            base_dir: The base directory.
+            allowed_dirs: List of allowed directories.
+            error_logged: Whether the error has been logged.
 
         Returns:
-            A new PathSecurityError instance with expanded path context
+            A new PathSecurityError instance.
         """
-        message = f"Path '{original_path}' is outside the base directory and not in allowed directories"
         context = {
             "original_path": original_path,
             "expanded_path": expanded_path,
             "base_dir": base_dir,
             "allowed_dirs": allowed_dirs,
+            "reason": SecurityErrorReasons.PATH_OUTSIDE_ALLOWED,
+            "troubleshooting": [
+                "Check if the path is within allowed directories",
+                f"Ensure the path is within base directory: {base_dir}",
+                f"Current allowed directories: {', '.join(allowed_dirs)}",
+            ],
         }
         return cls(
-            message,
-            path=original_path,
+            "Access denied",
             context=context,
+            details="Path is outside allowed directories",
             error_logged=error_logged,
+        )
+
+    @classmethod
+    def wrap_error(
+        cls, message: str, original_error: Exception
+    ) -> "PathSecurityError":
+        """Wrap another error with a security error.
+
+        Args:
+            message: The security error message.
+            original_error: The original error to wrap.
+
+        Returns:
+            A new PathSecurityError instance.
+        """
+        context = {
+            "wrapped_error": original_error.__class__.__name__,
+            "original_message": str(original_error),
+            "wrapped": True,
+            "troubleshooting": [
+                "Check if the path is within allowed directories",
+                "Verify path permissions",
+                "Check if the original error has been resolved",
+            ],
+        }
+        if hasattr(original_error, "context"):
+            context.update(original_error.context)  # type: ignore
+        return cls(
+            message,
+            context=context,
+            wrapped=True,
+            error_logged=getattr(original_error, "error_logged", False),
         )
 
 
