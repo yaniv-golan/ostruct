@@ -201,17 +201,17 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
         click.option(
             "--temperature",
             type=float,
-            default=0.7,
-            help="The temperature to use",
+            default=None,
+            help="The temperature to use (if supported by model)",
         )(cmd),
     )
     cmd = cast(
         Command,
         click.option(
-            "--max-tokens",
+            "--max-output-tokens",
             type=int,
             default=None,
-            help="The maximum number of tokens to generate",
+            help="The maximum number of tokens to generate (if supported by model)",
         )(cmd),
     )
     cmd = cast(
@@ -219,8 +219,8 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
         click.option(
             "--top-p",
             type=float,
-            default=1.0,
-            help="Nucleus sampling threshold",
+            default=None,
+            help="Nucleus sampling threshold (if supported by model)",
         )(cmd),
     )
     cmd = cast(
@@ -228,8 +228,8 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
         click.option(
             "--frequency-penalty",
             type=float,
-            default=0.0,
-            help="Frequency penalty",
+            default=None,
+            help="Frequency penalty (if supported by model)",
         )(cmd),
     )
     cmd = cast(
@@ -237,8 +237,17 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
         click.option(
             "--presence-penalty",
             type=float,
-            default=0.0,
-            help="Presence penalty",
+            default=None,
+            help="Presence penalty (if supported by model)",
+        )(cmd),
+    )
+    cmd = cast(
+        Command,
+        click.option(
+            "--reasoning-effort",
+            type=click.Choice(["low", "medium", "high"]),
+            default=None,
+            help="Reasoning effort level (if supported by model)",
         )(cmd),
     )
     return cmd
