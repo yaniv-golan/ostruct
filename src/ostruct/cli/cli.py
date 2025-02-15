@@ -1541,6 +1541,283 @@ def cli(**kwargs: Any) -> None:
         sys.exit(ExitCode.INTERNAL_ERROR)
 
 
+async def validate_model_params(args: Namespace) -> Dict[str, Any]:
+    """Validate model parameters and return a dictionary of valid parameters.
+
+    Args:
+        args: Command line arguments
+
+    Returns:
+        Dictionary of validated model parameters
+
+    Raises:
+        CLIError: If model parameters are invalid
+    """
+    params = {
+        "temperature": args.temperature,
+        "max_output_tokens": args.max_output_tokens,
+        "top_p": args.top_p,
+        "frequency_penalty": args.frequency_penalty,
+        "presence_penalty": args.presence_penalty,
+        "reasoning_effort": args.reasoning_effort,
+    }
+    # Remove None values
+    params = {k: v for k, v in params.items() if v is not None}
+    validate_model_parameters(args.model, params)
+    return params
+
+
+async def validate_inputs(
+    args: Namespace,
+) -> Tuple[
+    SecurityManager, str, Dict[str, Any], Dict[str, Any], jinja2.Environment
+]:
+    """Validate all input parameters and return validated components.
+
+    Args:
+        args: Command line arguments
+
+    Returns:
+        Tuple containing:
+        - SecurityManager instance
+        - Task template string
+        - Schema dictionary
+        - Template context dictionary
+        - Jinja2 environment
+
+    Raises:
+        CLIError: For various validation errors
+    """
+    logger.debug("=== Input Validation Phase ===")
+    security_manager = validate_security_manager(
+        base_dir=args.base_dir,
+        allowed_dirs=args.allowed_dir,
+        allowed_dir_file=args.allowed_dir_file,
+    )
+
+    task_template = validate_task_template(args.task, args.task_file)
+    logger.debug("Validating schema from %s", args.schema_file)
+    schema = validate_schema_file(args.schema_file, args.verbose)
+    template_context = create_template_context_from_args(
+        args, security_manager
+    )
+    env = create_jinja_env()
+
+    return security_manager, task_template, schema, template_context, env
+
+
+async def process_templates(
+    args: Namespace,
+    task_template: str,
+    template_context: Dict[str, Any],
+    env: jinja2.Environment,
+) -> Tuple[str, str]:
+    """Process system prompt and user prompt templates.
+
+    Args:
+        args: Command line arguments
+        task_template: Validated task template
+        template_context: Template context dictionary
+        env: Jinja2 environment
+
+    Returns:
+        Tuple of (system_prompt, user_prompt)
+
+    Raises:
+        CLIError: For template processing errors
+    """
+    logger.debug("=== Template Processing Phase ===")
+    system_prompt = process_system_prompt(
+        task_template,
+        args.system_prompt,
+        args.system_prompt_file,
+        template_context,
+        env,
+        args.ignore_task_sysprompt,
+    )
+    user_prompt = render_template(task_template, template_context, env)
+    return system_prompt, user_prompt
+
+
+async def validate_model_and_schema(
+    args: Namespace,
+    schema: Dict[str, Any],
+    system_prompt: str,
+    user_prompt: str,
+) -> Tuple[Type[BaseModel], List[Dict[str, str]], int, ModelRegistry]:
+    """Validate model compatibility and schema, and check token limits.
+
+    Args:
+        args: Command line arguments
+        schema: Schema dictionary
+        system_prompt: Processed system prompt
+        user_prompt: Processed user prompt
+
+    Returns:
+        Tuple of (output_model, messages, total_tokens, registry)
+
+    Raises:
+        CLIError: For validation errors
+        ModelCreationError: When model creation fails
+        SchemaValidationError: When schema is invalid
+    """
+    logger.debug("=== Model & Schema Validation Phase ===")
+    try:
+        output_model = create_dynamic_model(
+            schema,
+            show_schema=args.show_model_schema,
+            debug_validation=args.debug_validation,
+        )
+        logger.debug("Successfully created output model")
+    except (
+        SchemaFileError,
+        InvalidJSONError,
+        SchemaValidationError,
+        ModelCreationError,
+    ) as e:
+        logger.error("Schema error: %s", str(e))
+        raise
+
+    if not supports_structured_output(args.model):
+        msg = f"Model {args.model} does not support structured output"
+        logger.error(msg)
+        raise ModelNotSupportedError(msg)
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    total_tokens = estimate_tokens_with_encoding(messages, args.model)
+    registry = ModelRegistry()
+    capabilities = registry.get_capabilities(args.model)
+    context_limit = capabilities.context_window
+
+    if total_tokens > context_limit:
+        msg = f"Total tokens ({total_tokens}) exceeds model context limit ({context_limit})"
+        logger.error(msg)
+        raise CLIError(
+            msg,
+            context={
+                "total_tokens": total_tokens,
+                "context_limit": context_limit,
+            },
+        )
+
+    return output_model, messages, total_tokens, registry
+
+
+async def execute_model(
+    args: Namespace,
+    params: Dict[str, Any],
+    output_model: Type[BaseModel],
+    system_prompt: str,
+    user_prompt: str,
+) -> ExitCode:
+    """Execute the model and handle the response.
+
+    Args:
+        args: Command line arguments
+        params: Validated model parameters
+        output_model: Generated Pydantic model
+        system_prompt: Processed system prompt
+        user_prompt: Processed user prompt
+
+    Returns:
+        Exit code indicating success or failure
+
+    Raises:
+        CLIError: For execution errors
+    """
+    logger.debug("=== Execution Phase ===")
+    api_key = args.api_key or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        msg = "No API key provided. Set OPENAI_API_KEY environment variable or use --api-key"
+        logger.error(msg)
+        raise CLIError(msg, exit_code=ExitCode.API_ERROR)
+
+    client = AsyncOpenAI(api_key=api_key, timeout=args.timeout)
+
+    # Create detailed log callback
+    def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
+        if args.debug_openai_stream:
+            if extra:
+                extra_str = LogSerializer.serialize_log_extra(extra)
+                if extra_str:
+                    logger.debug("%s\nExtra:\n%s", message, extra_str)
+                else:
+                    logger.debug("%s\nExtra: Failed to serialize", message)
+            else:
+                logger.debug(message)
+
+    try:
+        # Create output buffer
+        output_buffer = []
+
+        # Stream the response
+        async for response in stream_structured_output(
+            client=client,
+            model=args.model,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            output_schema=output_model,
+            output_file=args.output_file,
+            **params,  # Only pass validated model parameters
+            on_log=log_callback,  # Pass logging callback separately
+        ):
+            output_buffer.append(response)
+
+        # Handle final output
+        if args.output_file:
+            with open(args.output_file, "w") as f:
+                if len(output_buffer) == 1:
+                    f.write(output_buffer[0].model_dump_json(indent=2))
+                else:
+                    # Build complete JSON array as a single string
+                    json_output = "[\n"
+                    for i, response in enumerate(output_buffer):
+                        if i > 0:
+                            json_output += ",\n"
+                        json_output += "  " + response.model_dump_json(
+                            indent=2
+                        ).replace("\n", "\n  ")
+                    json_output += "\n]"
+                    f.write(json_output)
+        else:
+            # Write to stdout when no output file is specified
+            if len(output_buffer) == 1:
+                print(output_buffer[0].model_dump_json(indent=2))
+            else:
+                # Build complete JSON array as a single string
+                json_output = "[\n"
+                for i, response in enumerate(output_buffer):
+                    if i > 0:
+                        json_output += ",\n"
+                    json_output += "  " + response.model_dump_json(
+                        indent=2
+                    ).replace("\n", "\n  ")
+                json_output += "\n]"
+                print(json_output)
+
+        return ExitCode.SUCCESS
+
+    except (
+        StreamInterruptedError,
+        StreamBufferError,
+        StreamParseError,
+        APIResponseError,
+        EmptyResponseError,
+        InvalidResponseFormatError,
+    ) as e:
+        logger.error("Stream error: %s", str(e))
+        raise CLIError(str(e), exit_code=ExitCode.API_ERROR)
+    except Exception as e:
+        logger.exception("Unexpected error during streaming")
+        raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
+    finally:
+        await client.close()
+
+
 async def run_cli_async(args: Namespace) -> ExitCode:
     """Async wrapper for CLI operations.
 
@@ -1554,89 +1831,24 @@ async def run_cli_async(args: Namespace) -> ExitCode:
     try:
         # 0. Model Parameter Validation
         logger.debug("=== Model Parameter Validation ===")
-        params = {
-            "temperature": args.temperature,
-            "max_output_tokens": args.max_output_tokens,
-            "top_p": args.top_p,
-            "frequency_penalty": args.frequency_penalty,
-            "presence_penalty": args.presence_penalty,
-            "reasoning_effort": args.reasoning_effort,
-        }
-        # Remove None values
-        params = {k: v for k, v in params.items() if v is not None}
-        validate_model_parameters(args.model, params)
+        params = await validate_model_params(args)
 
         # 1. Input Validation Phase
-        logger.debug("=== Input Validation Phase ===")
-        security_manager = validate_security_manager(
-            base_dir=args.base_dir,
-            allowed_dirs=args.allowed_dir,
-            allowed_dir_file=args.allowed_dir_file,
+        security_manager, task_template, schema, template_context, env = (
+            await validate_inputs(args)
         )
-
-        task_template = validate_task_template(args.task, args.task_file)
-        logger.debug("Validating schema from %s", args.schema_file)
-        schema = validate_schema_file(args.schema_file, args.verbose)
-        template_context = create_template_context_from_args(
-            args, security_manager
-        )
-        env = create_jinja_env()
 
         # 2. Template Processing Phase
-        logger.debug("=== Template Processing Phase ===")
-        system_prompt = process_system_prompt(
-            task_template,
-            args.system_prompt,
-            args.system_prompt_file,
-            template_context,
-            env,
-            args.ignore_task_sysprompt,
+        system_prompt, user_prompt = await process_templates(
+            args, task_template, template_context, env
         )
-        user_prompt = render_template(task_template, template_context, env)
 
         # 3. Model & Schema Validation Phase
-        logger.debug("=== Model & Schema Validation Phase ===")
-        try:
-            output_model = create_dynamic_model(
-                schema,
-                show_schema=args.show_model_schema,
-                debug_validation=args.debug_validation,
+        output_model, messages, total_tokens, registry = (
+            await validate_model_and_schema(
+                args, schema, system_prompt, user_prompt
             )
-            logger.debug("Successfully created output model")
-        except (
-            SchemaFileError,
-            InvalidJSONError,
-            SchemaValidationError,
-            ModelCreationError,
-        ) as e:
-            logger.error("Schema error: %s", str(e))
-            raise  # Let the error propagate with its context
-
-        if not supports_structured_output(args.model):
-            msg = f"Model {args.model} does not support structured output"
-            logger.error(msg)
-            raise ModelNotSupportedError(msg)
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        total_tokens = estimate_tokens_with_encoding(messages, args.model)
-        registry = ModelRegistry()
-        capabilities = registry.get_capabilities(args.model)
-        context_limit = capabilities.context_window
-
-        if total_tokens > context_limit:
-            msg = f"Total tokens ({total_tokens}) exceeds model context limit ({context_limit})"
-            logger.error(msg)
-            raise CLIError(
-                msg,
-                context={
-                    "total_tokens": total_tokens,
-                    "context_limit": context_limit,
-                },
-            )
+        )
 
         # 4. Dry Run Output Phase
         if args.dry_run:
@@ -1644,7 +1856,10 @@ async def run_cli_async(args: Namespace) -> ExitCode:
             logger.info("✓ Template rendered successfully")
             logger.info("✓ Schema validation passed")
             logger.info("✓ Model compatibility validated")
-            logger.info(f"✓ Token count: {total_tokens}/{context_limit}")
+            capabilities = registry.get_capabilities(args.model)
+            logger.info(
+                f"✓ Token count: {total_tokens}/{capabilities.context_window}"
+            )
 
             if args.verbose:
                 logger.info("\nSystem Prompt:")
@@ -1657,79 +1872,9 @@ async def run_cli_async(args: Namespace) -> ExitCode:
             return ExitCode.SUCCESS
 
         # 5. Execution Phase
-        logger.debug("=== Execution Phase ===")
-        api_key = args.api_key or os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            msg = "No API key provided. Set OPENAI_API_KEY environment variable or use --api-key"
-            logger.error(msg)
-            raise CLIError(msg, exit_code=ExitCode.API_ERROR)
-
-        client = AsyncOpenAI(api_key=api_key, timeout=args.timeout)
-
-        # Create detailed log callback
-        def log_callback(
-            level: int, message: str, extra: dict[str, Any]
-        ) -> None:
-            if args.debug_openai_stream:
-                if extra:
-                    extra_str = LogSerializer.serialize_log_extra(extra)
-                    if extra_str:
-                        logger.debug("%s\nExtra:\n%s", message, extra_str)
-                    else:
-                        logger.debug("%s\nExtra: Failed to serialize", message)
-                else:
-                    logger.debug(message)
-
-        try:
-            # Create output buffer
-            output_buffer = []
-
-            # Stream the response
-            async for response in stream_structured_output(
-                client=client,
-                model=args.model,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                output_schema=output_model,
-                output_file=args.output_file,
-                **params,  # Only pass validated model parameters
-                on_log=log_callback,  # Pass logging callback separately
-            ):
-                output_buffer.append(response)
-
-            # Handle final output
-            if args.output_file:
-                with open(args.output_file, "w") as f:
-                    if len(output_buffer) == 1:
-                        f.write(output_buffer[0].model_dump_json(indent=2))
-                    else:
-                        f.write("[")
-                        for i, response in enumerate(output_buffer):
-                            if i > 0:
-                                f.write(",")
-                            f.write("\n  ")
-                            f.write(
-                                response.model_dump_json(indent=2).replace(
-                                    "\n", "\n  "
-                                )
-                            )
-                        f.write("\n]")
-
-            return ExitCode.SUCCESS
-
-        except (
-            StreamInterruptedError,
-            StreamBufferError,
-            StreamParseError,
-            APIResponseError,
-            EmptyResponseError,
-            InvalidResponseFormatError,
-        ) as e:
-            logger.error("Stream error: %s", str(e))
-            raise CLIError(str(e), exit_code=ExitCode.API_ERROR)
-        except Exception as e:
-            logger.exception("Unexpected error during streaming")
-            raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
+        return await execute_model(
+            args, params, output_model, system_prompt, user_prompt
+        )
 
     except KeyboardInterrupt:
         logger.info("Operation cancelled by user")
