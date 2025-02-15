@@ -10,7 +10,7 @@ from collections import Counter
 from typing import Any, Dict, List, Optional, Sequence, TypeVar, Union
 
 import tiktoken
-from jinja2 import Environment
+from jinja2 import Environment, pass_context
 from pygments import highlight
 from pygments.formatters import HtmlFormatter, NullFormatter, TerminalFormatter
 from pygments.lexers import TextLexer, get_lexer_by_name, guess_lexer
@@ -178,10 +178,12 @@ def format_error(e: Exception) -> str:
     return f"{type(e).__name__}: {str(e)}"
 
 
-def estimate_tokens(text: str) -> int:
+@pass_context
+def estimate_tokens(context, text: str) -> int:
     """Estimate number of tokens in text."""
     try:
-        encoding = tiktoken.encoding_for_model("gpt-4")
+        # Use o200k_base encoding for token estimation
+        encoding = tiktoken.get_encoding("o200k_base")
         return len(encoding.encode(str(text)))
     except Exception as e:
         logger.warning(f"Failed to estimate tokens: {e}")
