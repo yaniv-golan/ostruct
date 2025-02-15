@@ -24,9 +24,9 @@ show_help() {
 # Check for OpenAI API key
 check_api_key() {
     if [ -z "${OPENAI_API_KEY}" ]; then
-        echo "Error: OPENAI_API_KEY environment variable is not set"
-        echo "Please set your OpenAI API key:"
-        echo "export OPENAI_API_KEY='your-api-key'"
+        echo "Error: OPENAI_API_KEY environment variable is not set" >&2
+        echo "Please set your OpenAI API key:" >&2
+        echo "export OPENAI_API_KEY='your-api-key'" >&2
         return 1
     fi
     return 0
@@ -61,7 +61,7 @@ fi
 
 # Validate code path
 if [ ! -d "$CODE_PATH" ]; then
-    echo "Error: Directory '$CODE_PATH' does not exist"
+    echo "Error: Directory '$CODE_PATH' does not exist" >&2
     exit 1
 fi
 
@@ -73,22 +73,25 @@ if [ -n "$OUTPUT_FILE" ]; then
     CMD="$CMD --output-file $OUTPUT_FILE"
 fi
 
-# Run the command
-echo "Running code review..."
-echo "Directory: $CODE_PATH"
-echo "Extensions: $EXTENSIONS"
-if [ -n "$OUTPUT_FILE" ]; then
-    echo "Output: $OUTPUT_FILE"
+# Check if output is being piped
+if [ -t 1 ]; then
+    # Output is going to a terminal - show progress
+    echo "Running code review..." >&2
+    echo "Directory: $CODE_PATH" >&2
+    echo "Extensions: $EXTENSIONS" >&2
+    if [ -n "$OUTPUT_FILE" ]; then
+        echo "Output: $OUTPUT_FILE" >&2
+    fi
+    echo >&2
+    echo "Executing command:" >&2
+    echo "$CMD" >&2
+    echo >&2
 fi
-echo
-echo "Executing command:"
-echo "$CMD"
-echo
 
 eval "$CMD"
 exit_code=$?
 
 if [ $exit_code -ne 0 ]; then
-    echo "Error: Code review failed with exit code $exit_code"
+    echo "Error: Code review failed with exit code $exit_code" >&2
     exit $exit_code
 fi
