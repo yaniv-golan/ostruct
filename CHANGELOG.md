@@ -9,16 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for O1/O3 models with their specific parameter constraints.
+- Added support for o1 and o3 models with their specific parameter constraints.
 - Added validation to prevent use of unsupported parameters for each model type.
 - Added explicit type casting for Click commands with improved type hints.
-- Added integration with `openai_structured.model_registry` for better model capability management.
+- Added integration with `openai-structured v2.0.0` and its `openai_structured.model_registry` for better model capability management.
 - Added more comprehensive test coverage for model validation and type safety.
 
 ### Changed
 
+- **Major change to CLI structure:** Introduced the `run` subcommand.  The CLI no longer uses a single command format; instead, it's structured as `ostruct run <TASK_TEMPLATE> <SCHEMA_FILE> [OPTIONS]`. This provides better organization and extensibility.
 - Enhanced parameter validation to ensure compliance with model-specific requirements.
-- Changed default model from `gpt-4-turbo-preview` to `gpt-4o`.
+- Changed default model to `gpt-4o`.
 - Changed default temperature from 0.0 to 0.7.
 - Upgraded minimum Python version requirement from 3.9 to 3.10.
 - Updated MyPy configuration with more specific settings for different modules.
@@ -28,6 +29,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced test infrastructure with better OpenAI test isolation.
 - Improved error handling with consistent use of `ExitCode` enum.
 - Improved handling of paths (relative to security manager's base directory).
+- Changed the command-line options to use Click's option naming convention:
+  - `--task-file` instead of using positional argument or `@` syntax.
+  - `--schema-file` instead of using positional argument.
+  - `--file name=path` now uses  `-f name path`
+  - `--dir name=path` now uses `-d name path`
+  - `--files name=pattern` now uses `-p name pattern`
+  - `--dir-recursive` is now `-R` or `--recursive`
+  - `--var name=value` is now `-V name=value`
+  - `--json-var name=json` is now `-J name='json'`
+  - `--system-prompt` is now `--sys-prompt`
+  - `--system-prompt-file` is now `--sys-file`
+  - `--ignore-task-sysprompt` is now `--ignore-task-sysprompt`
+  - `--max-output-tokens` is now `--max-output-tokens`
+  - `--verbose-schema` is removed. Schema is always validated. Validation details are now shown with `--debug-validation`.
+  - `--ext` is renamed to `--dir-ext`, applying only to directory mappings.
 
 ### Fixed
 
