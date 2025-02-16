@@ -58,13 +58,13 @@ Each example follows this structure:
 ```
 example-name/
 ├── README.md           # Description, usage, and expected output
-├── schemas/           # JSON schemas used in the example
-│   └── *.json
-├── templates/         # Task templates
-│   └── *.txt
-├── sample-data/      # Sample files to process
-│   └── *.*
-└── run.sh           # Shell script to run the example
+├── prompts/           # AI prompts
+│   ├── system.txt     # AI's role and expertise
+│   └── task.j2        # Task template
+├── schemas/           # Output structure
+│   └── result.json    # Schema definition
+└── examples/          # Example inputs
+    └── basic/         # Basic examples
 ```
 
 ## Running Examples
@@ -88,11 +88,7 @@ example-name/
    cd security/vulnerability-scan
    ```
 
-4. Run the example:
-
-   ```bash
-   ./run.sh
-   ```
+4. Run the example using the CLI commands shown in the example's README.md file.
 
 ## Contributing
 
@@ -100,6 +96,10 @@ Feel free to contribute additional examples! Please follow these guidelines:
 
 1. Create a new directory under the appropriate category
 2. Include all necessary files (schema, templates, sample data)
-3. Add a comprehensive README.md
+3. Add a comprehensive README.md with clear CLI usage examples
 4. Ensure the example is self-contained and runnable
 5. Add appropriate security checks and error handling
+
+## Usage
+
+See each example's README.md for specific usage instructions and CLI commands.

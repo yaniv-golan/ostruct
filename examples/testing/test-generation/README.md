@@ -15,7 +15,6 @@ This use case demonstrates how to automatically generate and optimize test cases
 ```
 .
 ├── README.md           # This file
-├── run.sh             # Runner script
 ├── prompts/           # AI prompts
 │   ├── system.txt     # AI's role and expertise
 │   └── task.j2        # Test generation template
@@ -39,64 +38,95 @@ This use case demonstrates how to automatically generate and optimize test cases
 
 1. **Basic Usage**:
 
+   Generic pattern:
+
    ```bash
-   # Using bash directly (no executable permission needed)
-   bash run.sh path/to/your/code
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code path/to/your/code \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=pytest
    ```
 
-2. **With Specific Framework**:
+   Ready to run example:
 
    ```bash
-   bash run.sh --framework pytest path/to/your/code
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code examples/untested \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=pytest
+   ```
+
+2. **With Different Framework**:
+
+   Generic pattern:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code path/to/your/code \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=unittest
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code examples/complex \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=unittest
    ```
 
 3. **Generate Missing Tests Only**:
 
+   Generic pattern:
+
    ```bash
-   bash run.sh --mode missing path/to/your/code
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code path/to/your/code \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=pytest \
+     -V mode=missing
    ```
 
-## Customization
+   Ready to run example:
 
-See `docs/customization.md` for detailed instructions on:
+   ```bash
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code examples/partial \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=pytest \
+     -V mode=missing
+   ```
 
-- Supporting additional test frameworks
-- Customizing test generation style
-- Adding custom assertions
-- Integrating with CI/CD
+4. **Output to File**:
 
-## Schema
+   Generic pattern:
 
-The test generation results follow a structured schema defined in `schemas/test_cases.json`. See `docs/schema.md` for:
+   ```bash
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code path/to/your/code \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=pytest \
+     --output-file test_results.json
+   ```
 
-- Complete schema documentation
-- Test case structure
-- Framework-specific outputs
+   Ready to run example:
 
-## Integration
-
-### GitHub Actions
-
-```yaml
-- name: Generate Tests
-  run: |
-    ostruct \
-      --task @prompts/task.j2 \
-      --schema schemas/test_cases.json \
-      --system-prompt @prompts/system.txt \
-      --dir code=. \
-      --dir-ext py \
-      --dir-recursive \
-      --var framework=pytest
-```
-
-### GitLab CI
-
-```yaml
-test_generation:
-  script:
-    - ostruct --task @prompts/task.j2 --schema schemas/test_cases.json --system-prompt @prompts/system.txt --dir code=. --dir-ext py --dir-recursive
-```
+   ```bash
+   ostruct run prompts/task.j2 schemas/test_cases.json \
+     -d code examples/untested \
+     -R \
+     --sys-file prompts/system.txt \
+     -V framework=pytest \
+     --output-file untested_results.json
+   ```
 
 ## Example Files
 
@@ -123,6 +153,49 @@ test_generation:
    - Priority handling
    - Timeout and retry logic
    - Complex state management
+
+## Customization
+
+See `docs/customization.md` for detailed instructions on:
+
+- Supporting additional test frameworks
+- Customizing test generation style
+- Adding custom assertions
+- Integrating with CI/CD
+
+## Schema
+
+The test generation results follow a structured schema defined in `schemas/test_cases.json`. See `docs/schema.md` for:
+
+- Complete schema documentation
+- Test case structure
+- Framework-specific outputs
+
+## Integration
+
+### GitHub Actions
+
+```yaml
+- name: Generate Tests
+  run: |
+    ostruct run prompts/task.j2 schemas/test_cases.json \
+      -d code . \
+      -R \
+      --sys-file prompts/system.txt \
+      -V framework=pytest
+```
+
+### GitLab CI
+
+```yaml
+test_generation:
+  script:
+    - ostruct run prompts/task.j2 schemas/test_cases.json \
+        -d code . \
+        -R \
+        --sys-file prompts/system.txt \
+        -V framework=pytest
+```
 
 ## Prerequisites
 

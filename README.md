@@ -63,7 +63,16 @@ Extract information about the person: {{ stdin }}
 4. Run the CLI:
 
 ```bash
-echo "John Smith is a 35 year old software engineer" | ostruct --task @task.j2 --schema schema.json
+ostruct run task.j2 schema.json
+```
+
+Or with more options:
+
+```bash
+ostruct run task.j2 schema.json \
+  -f content input.txt \
+  -m gpt-4o \
+  --sys-prompt "You are an expert content analyzer"
 ```
 
 Output:
@@ -84,15 +93,56 @@ Template files use the `.j2` extension to indicate they contain Jinja2 template 
 - Makes it clear the file contains template logic
 - Follows industry standards for Jinja2 templates
 
-While the CLI accepts templates with any extension (when prefixed with `@`), we recommend using `.j2` for better tooling support and clarity.
+## CLI Options
+
+The CLI revolves around a single subcommand called `run`. Basic usage:
+
+```bash
+ostruct run <TASK_TEMPLATE> <SCHEMA_FILE> [OPTIONS]
+```
+
+Common options include:
+
+- File & Directory Inputs:
+  - `-f <NAME> <PATH>`: Map a single file to a variable name
+  - `-d <NAME> <DIR>`: Map a directory to a variable name
+  - `-p <NAME> <PATTERN>`: Map files matching a glob pattern to a variable name
+  - `-R, --recursive`: Enable recursive directory/pattern scanning
+
+- Variables:
+  - `-V name=value`: Define a simple string variable
+  - `-J name='{"key":"value"}'`: Define a JSON variable
+
+- Model Parameters:
+  - `-m, --model MODEL`: Select the OpenAI model (supported: gpt-4o, o1, o3-mini)
+  - `--temperature FLOAT`: Set sampling temperature (0.0-2.0)
+  - `--max-output-tokens INT`: Set maximum output tokens
+  - `--top-p FLOAT`: Set top-p sampling parameter (0.0-1.0)
+  - `--frequency-penalty FLOAT`: Adjust frequency penalty (-2.0-2.0)
+  - `--presence-penalty FLOAT`: Adjust presence penalty (-2.0-2.0)
+  - `--reasoning-effort [low|medium|high]`: Control model reasoning effort
+
+- System Prompt:
+  - `--sys-prompt TEXT`: Provide system prompt directly
+  - `--sys-file FILE`: Load system prompt from file
+  - `--ignore-task-sysprompt`: Ignore system prompt in template frontmatter
+
+- API Configuration:
+  - `--api-key KEY`: OpenAI API key (defaults to OPENAI_API_KEY env var)
+  - `--timeout FLOAT`: API timeout in seconds (default: 60.0)
 
 ## Debug Options
 
-- `--show-model-schema`: Display the generated Pydantic model schema
 - `--debug-validation`: Show detailed schema validation debugging
-- `--verbose-schema`: Enable verbose schema debugging output
-- `--debug-openai-stream`: Enable low-level debug output for OpenAI streaming (very verbose)
-- `--progress-level {none,basic,detailed}`: Set progress reporting level (default: basic)
+- `--debug-openai-stream`: Enable low-level debug output for OpenAI streaming
+- `--progress-level {none,basic,detailed}`: Set progress reporting level
+  - `none`: No progress indicators
+  - `basic`: Show key operation steps (default)
+  - `detailed`: Show all steps with additional info
+- `--show-model-schema`: Display the generated Pydantic model schema
+- `--verbose`: Enable verbose logging
+- `--dry-run`: Validate and render template without making API calls
+- `--no-progress`: Disable all progress indicators
 
 All debug and error logs are written to:
 
@@ -145,13 +195,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Migration from openai-structured
-
-If you were previously using the CLI bundled with openai-structured (pre-1.0.0), this is its new home. The migration is straightforward:
-
-1. Update openai-structured to version 1.0.0 or later
-2. Install ostruct-cli
-3. Replace any `openai-structured` CLI commands with `ostruct`
-
-The functionality remains the same, just moved to a dedicated package for better maintenance and focus.

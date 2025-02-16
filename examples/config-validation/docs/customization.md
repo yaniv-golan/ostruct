@@ -18,9 +18,24 @@ This guide explains how to customize the configuration validation process for yo
 
 2. **Define Custom Patterns**
 
+   Generic pattern:
+
    ```bash
-   # Use the --var flag to pass custom patterns
-   ./run.sh --var custom_patterns='["^service_", "^env_"]' path/to/configs
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs /path/to/configs \
+     -R \
+     --sys-file prompts/system.txt \
+     -J custom_patterns='["^service_", "^env_"]'
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs examples/basic \
+     -R \
+     --sys-file prompts/system.txt \
+     -J custom_patterns='["^service_", "^env_"]'
    ```
 
 ### Rule Severity Levels
@@ -34,20 +49,54 @@ This guide explains how to customize the configuration validation process for yo
 
 ### Development Environment
 
+Generic pattern:
+
 ```bash
-./run.sh --env development \
-  --var allow_local_urls=true \
-  --var skip_ssl_verify=true \
-  path/to/configs
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs /path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  -V environment=development \
+  -V allow_local_urls=true \
+  -V skip_ssl_verify=true
+```
+
+Ready to run example:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs examples/basic \
+  -R \
+  --sys-file prompts/system.txt \
+  -V environment=development \
+  -V allow_local_urls=true \
+  -V skip_ssl_verify=true
 ```
 
 ### Production Environment
 
+Generic pattern:
+
 ```bash
-./run.sh --env production \
-  --var require_ssl=true \
-  --var require_secrets=true \
-  path/to/configs
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs /path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  -V environment=production \
+  -V require_ssl=true \
+  -V require_secrets=true
+```
+
+Ready to run example:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs examples/intermediate \
+  -R \
+  --sys-file prompts/system.txt \
+  -V environment=production \
+  -V require_ssl=true \
+  -V require_secrets=true
 ```
 
 ## Custom Output Formats
@@ -73,12 +122,26 @@ Extend `schemas/validation_result.json` to include custom fields:
 
 ### Output Formatting
 
-Use the `--output` flag with templates:
+Generic pattern:
 
 ```bash
-./run.sh --output custom_format.json \
-  --var format=detailed \
-  path/to/configs
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs /path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  --output-file custom_format.json \
+  -V format=detailed
+```
+
+Ready to run example:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs examples/basic \
+  -R \
+  --sys-file prompts/system.txt \
+  --output-file basic_validation.json \
+  -V format=detailed
 ```
 
 ## Integration Points
@@ -108,6 +171,30 @@ Use the `--output` flag with templates:
          - validation.json
    ```
 
+### Cross-Service Validation
+
+Generic pattern:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs /path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  -V cross_service=true \
+  -J service_map='{"service1": "path1", "service2": "path2"}'
+```
+
+Ready to run example:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs examples/advanced/services \
+  -R \
+  --sys-file prompts/system.txt \
+  -V cross_service=true \
+  -J service_map='{"app": "app.yaml", "db": "db.yaml", "cache": "cache.yaml"}'
+```
+
 ### Custom Hooks
 
 Add pre/post validation hooks:
@@ -117,6 +204,30 @@ Add pre/post validation hooks:
   --pre-validate="./scripts/pre_validate.sh" \
   --post-validate="./scripts/post_validate.sh" \
   path/to/configs
+```
+
+### Template Support
+
+Generic pattern:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs /path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  -V enable_templates=true \
+  -J template_vars='{"env": "prod", "region": "us-west"}'
+```
+
+Ready to run example:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs examples/advanced/services \
+  -R \
+  --sys-file prompts/system.txt \
+  -V enable_templates=true \
+  -J template_vars='{"env": "prod", "region": "us-west"}'
 ```
 
 ## Advanced Features
@@ -179,3 +290,37 @@ Use templates in configurations:
    - Keep rules updated
    - Document customizations
    - Version control configurations
+
+### Custom Patterns
+
+To use custom validation patterns:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  -V custom_patterns='["^service_", "^env_"]'
+```
+
+### Environment-Specific Rules
+
+Development environment:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  -V environment=development
+```
+
+Production environment:
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -d configs path/to/configs \
+  -R \
+  --sys-file prompts/system.txt \
+  -V environment=production
+```

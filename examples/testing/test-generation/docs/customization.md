@@ -8,15 +8,17 @@ This guide explains how to customize the test generation process to match your p
 
 To add support for a new testing framework:
 
-1. Update the schema in `schemas/test_cases.json`:
+1. Update the template in `prompts/task.j2` to handle the new framework:
 
-   ```json
-   "framework": {
-     "enum": ["pytest", "unittest", "jest", "your_framework"]
-   }
+   ```jinja2
+   {% if framework == "your_framework" %}
+   // Your framework-specific test patterns
+   {% else %}
+   // Default patterns
+   {% endif %}
    ```
 
-2. Add framework-specific templates to the system prompt:
+2. Add framework-specific patterns to the system prompt in `prompts/system.txt`:
 
    ```text
    For your_framework, use these patterns:
@@ -40,12 +42,6 @@ Each framework has unique features that can be utilized:
 - setUp/tearDown methods
 - Test class inheritance
 - Test suites
-
-#### jest
-
-- describe/it blocks
-- beforeEach/afterEach
-- Mock functions
 
 ## Test Style Customization
 
@@ -88,28 +84,29 @@ Group tests by:
 
 ### Setting Coverage Targets
 
-Specify minimum coverage requirements:
+Specify minimum coverage requirements in your command:
 
-```yaml
-coverage:
-  minimum_percentage: 80
-  require_tests_for:
-    - public_methods: true
-    - private_methods: false
-    - properties: true
+```bash
+ostruct run prompts/task.j2 schemas/test_cases.json \
+  -d code path/to/your/code \
+  -R \
+  --sys-file prompts/system.txt \
+  -V framework=pytest \
+  -V min_coverage=80
 ```
 
 ### Gap Analysis
 
 Configure what counts as a coverage gap:
 
-```yaml
-gaps:
-  report_on:
-    - untested_functions: true
-    - partial_coverage: true
-    - missing_edge_cases: true
-  minimum_cases_per_function: 2
+```bash
+ostruct run prompts/task.j2 schemas/test_cases.json \
+  -d code path/to/your/code \
+  -R \
+  --sys-file prompts/system.txt \
+  -V framework=pytest \
+  -V min_cases_per_function=2 \
+  -V analyze_private_methods=false
 ```
 
 ## Custom Assertions
@@ -155,20 +152,18 @@ jobs:
       - uses: actions/checkout@v2
       - name: Generate Tests
         run: |
-          ostruct \
-            --task @prompts/task.j2 \
-            --schema schemas/test_cases.json \
-            --system-prompt @prompts/system.txt \
-            --dir code=. \
-            --ext py \
-            --recursive
+          ostruct run prompts/task.j2 schemas/test_cases.json \
+            -d code . \
+            -R \
+            --sys-file prompts/system.txt \
+            -V framework=pytest
       - name: Run Generated Tests
         run: pytest
 ```
 
-### Pre-commit Hooks
+### Pre-commit Configuration
 
-Add test generation to pre-commit:
+Add test generation to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
@@ -176,8 +171,8 @@ repos:
     hooks:
       - id: generate-tests
         name: Generate Tests
-        entry: bash run.sh
-        language: system
+        entry: ostruct run prompts/task.j2 schemas/test_cases.json -d code . -R --sys-file prompts/system.txt -V framework=pytest
+        language: python
         files: \.py$
 ```
 
@@ -187,14 +182,13 @@ repos:
 
 Configure mock data generation:
 
-```yaml
-mocks:
-  database:
-    type: in_memory
-    seed_data: test_data.json
-  external_apis:
-    type: mock_responses
-    response_dir: test/responses
+```bash
+ostruct run prompts/task.j2 schemas/test_cases.json \
+  -d code path/to/your/code \
+  -R \
+  --sys-file prompts/system.txt \
+  -V framework=pytest \
+  -V mock_config='{"database": "in_memory", "apis": "mock_responses"}'
 ```
 
 ### Async Testing
@@ -212,13 +206,12 @@ async def test_async_function():
 
 Define test parameters:
 
-```yaml
-parameters:
-  numeric_tests:
-    - [0, 0, 0]
-    - [1, 2, 3]
-    - [-1, -2, -3]
-  string_tests:
-    - ["", "", ""]
-    - ["a", "b", "ab"]
+```python
+@pytest.mark.parametrize("input,expected", [
+    (0, 0),
+    (1, 1),
+    (-1, 1)
+])
+def test_abs(input, expected):
+    assert abs(input) == expected
 ```

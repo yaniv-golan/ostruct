@@ -16,7 +16,6 @@ This use case demonstrates how to perform automated code reviews on multiple fil
 ```
 .
 ├── README.md           # This file
-├── run.sh             # Runner script
 ├── prompts/           # AI prompts
 │   ├── system.txt     # AI's role and expertise
 │   └── task.j2        # Review request template
@@ -40,25 +39,66 @@ This use case demonstrates how to perform automated code reviews on multiple fil
 
 1. **Basic Usage**:
 
-   ```bash
-   # Using bash directly (no executable permission needed)
-   bash run.sh path/to/your/code
+   Generic pattern:
 
-   # Or make it executable first
-   chmod +x run.sh
-   ./run.sh path/to/your/code
+   ```bash
+   ostruct run prompts/task.j2 schemas/code_review.json \
+     -d code path/to/your/code \
+     -R \
+     --sys-file prompts/system.txt
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/code_review.json \
+     -d code examples/security \
+     -R \
+     --sys-file prompts/system.txt
    ```
 
 2. **With Custom Extensions**:
 
+   Generic pattern:
+
    ```bash
-   bash run.sh path/to/your/code --ext py,js,ts
+   ostruct run prompts/task.j2 schemas/code_review.json \
+     -d code path/to/your/code \
+     -R \
+     -p code "*.{py,js,ts}" \
+     --sys-file prompts/system.txt
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/code_review.json \
+     -d code examples/performance \
+     -R \
+     -p code "*.py" \
+     --sys-file prompts/system.txt
    ```
 
 3. **Output to File**:
 
+   Generic pattern:
+
    ```bash
-   bash run.sh path/to/your/code --output-file review_results.json
+   ostruct run prompts/task.j2 schemas/code_review.json \
+     -d code path/to/your/code \
+     -R \
+     --sys-file prompts/system.txt \
+     --output-file review_results.json
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/code_review.json \
+     -d code examples/style \
+     -R \
+     --sys-file prompts/system.txt \
+     --output-file style_review.json
    ```
 
 ## Customization
@@ -85,13 +125,11 @@ The review results follow a structured schema defined in `schemas/code_review.js
 ```yaml
 - name: Run Code Review
   run: |
-    ostruct \
-      --task @prompts/task.j2 \
-      --schema schemas/code_review.json \
-      --system-prompt @prompts/system.txt \
-      --dir code=. \
-      --ext py,js,ts \
-      --recursive \
+    ostruct run prompts/task.j2 schemas/code_review.json \
+      -d code . \
+      -R \
+      -p code "*.{py,js,ts}" \
+      --sys-file prompts/system.txt \
       --output-file review_results.json
 ```
 
@@ -100,7 +138,10 @@ The review results follow a structured schema defined in `schemas/code_review.js
 ```yaml
 code_review:
   script:
-    - ostruct --task @prompts/task.j2 --schema schemas/code_review.json --system-prompt @prompts/system.txt --dir code=. --recursive
+    - ostruct run prompts/task.j2 schemas/code_review.json \
+        -d code . \
+        -R \
+        --sys-file prompts/system.txt
 ```
 
 ## Prerequisites

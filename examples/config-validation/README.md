@@ -16,7 +16,6 @@ This use case demonstrates how to validate and analyze configuration files (JSON
 ```
 .
 ├── README.md           # This file
-├── run.sh             # Runner script
 ├── prompts/           # AI prompts
 │   ├── system.txt     # AI's role and expertise
 │   └── task.j2        # Validation request template
@@ -43,23 +42,116 @@ This use case demonstrates how to validate and analyze configuration files (JSON
 
 1. **Basic Usage**:
 
+   Generic pattern:
+
    ```bash
-   # Validate configs in a directory
-   bash run.sh path/to/config/dir
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs path/to/your/configs \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=my-service \
+     -V environment=dev \
+     -V cross_env_check=false \
+     -V strict_mode=false \
+     -V ignore_patterns='[]'
    ```
 
-2. **With Environment**:
+   Ready to run example:
 
    ```bash
-   # Validate specific environment configs
-   bash run.sh --env production path/to/config/dir
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs examples/basic \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=basic-app \
+     -V environment=dev \
+     -V cross_env_check=false \
+     -V strict_mode=false \
+     -V ignore_patterns='[]'
    ```
 
-3. **Cross-Environment Check**:
+2. **Environment-Specific Validation**:
+
+   Generic pattern:
 
    ```bash
-   # Compare configs across environments
-   bash run.sh --cross-env-check path/to/config/dir
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs path/to/your/configs \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=my-service \
+     -V environment=prod \
+     -V cross_env_check=true \
+     -V strict_mode=false \
+     -V ignore_patterns='[]'
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs examples/intermediate \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=multi-service \
+     -V environment=prod \
+     -V cross_env_check=true \
+     -V strict_mode=false \
+     -V ignore_patterns='[]'
+   ```
+
+3. **Strict Mode with Custom Ignore Patterns**:
+
+   Generic pattern:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs path/to/your/configs \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=my-service \
+     -V environment=dev \
+     -V cross_env_check=false \
+     -V strict_mode=true \
+     -V ignore_patterns='["*.local.yaml", "test/*.yaml"]'
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs examples/advanced/services \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=microservices \
+     -V environment=dev \
+     -V cross_env_check=false \
+     -V strict_mode=true \
+     -V ignore_patterns='["*.local.yaml", "test/*.yaml"]'
+   ```
+
+4. **Output to File**:
+
+   Generic pattern:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs path/to/your/configs \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=my-service \
+     --output-file validation_results.json
+   ```
+
+   Ready to run example:
+
+   ```bash
+   ostruct run prompts/task.j2 schemas/validation_result.json \
+     -d configs examples/basic \
+     -R \
+     --sys-file prompts/system.txt \
+     -V service_name=basic-app \
+     --output-file basic_validation.json
    ```
 
 ## Example Files

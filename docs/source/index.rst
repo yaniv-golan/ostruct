@@ -59,11 +59,9 @@ Quick Start
 
    .. code-block:: bash
 
-      ostruct \
-        --task-file task.j2 \
-        --schema-file schema.json \
-        --file content=input.txt \
-        --model gpt-4o
+      ostruct run task.j2 schema.json \
+        -f content input.txt \
+        -m gpt-4o
 
 Documentation
 ------------
@@ -118,3 +116,72 @@ Support
 
 - GitHub Issues: https://github.com/yaniv-golan/ostruct/issues
 - Documentation: https://ostruct-cli.readthedocs.io/
+
+CLI Interface
+------------
+
+The CLI revolves around a single subcommand called ``run``. Basic usage:
+
+.. code-block:: bash
+
+   ostruct run <TASK_TEMPLATE> <SCHEMA_FILE> [OPTIONS]
+
+File & Directory Inputs
+~~~~~~~~~~~~~~~~~~~~~
+
+- ``-f <NAME> <PATH>``: Map a single file to a variable name
+- ``-d <NAME> <DIR>``: Map a directory to a variable name
+- ``-p <NAME> <PATTERN>``: Map files matching a glob pattern to a variable name
+- ``-R, --recursive``: Enable recursive directory/pattern scanning
+- ``--base-dir DIR``: Base directory for resolving relative paths
+- ``-A, --allow DIR``: Add an allowed directory for security (repeatable)
+- ``--allowed-dir-file FILE``: File containing allowed directory paths
+
+Variables
+~~~~~~~~
+
+- ``-V name=value``: Define a simple string variable
+- ``-J name='{"key":"value"}'``: Define a JSON variable
+
+Model Parameters
+~~~~~~~~~~~~~~
+
+- ``-m, --model MODEL``: Select the OpenAI model (supported: gpt-4o, o1, o3-mini)
+- ``--temperature FLOAT``: Set sampling temperature (0.0-2.0)
+- ``--max-output-tokens INT``: Set maximum output tokens
+- ``--top-p FLOAT``: Set top-p sampling parameter (0.0-1.0)
+- ``--frequency-penalty FLOAT``: Adjust frequency penalty (-2.0-2.0)
+- ``--presence-penalty FLOAT``: Adjust presence penalty (-2.0-2.0)
+- ``--reasoning-effort [low|medium|high]``: Control model reasoning effort
+
+System Prompt
+~~~~~~~~~~~
+
+- ``--sys-prompt TEXT``: Provide system prompt directly
+- ``--sys-file FILE``: Load system prompt from file
+- ``--ignore-task-sysprompt``: Ignore system prompt in template frontmatter
+
+API Configuration
+~~~~~~~~~~~~~~
+
+- ``--api-key KEY``: OpenAI API key (defaults to OPENAI_API_KEY env var)
+- ``--timeout FLOAT``: API timeout in seconds (default: 60.0)
+
+Output Control
+~~~~~~~~~~~~
+
+- ``--output-file FILE``: Write output to file instead of stdout
+- ``--dry-run``: Validate and render template without making API calls
+
+Debug & Progress
+~~~~~~~~~~~~~~
+
+- ``--debug-validation``: Show detailed schema validation debugging
+- ``--debug-openai-stream``: Enable low-level debug output for OpenAI streaming
+- ``--progress-level {none,basic,detailed}``: Set progress reporting level
+  - ``none``: No progress indicators
+  - ``basic``: Show key operation steps (default)
+  - ``detailed``: Show all steps with additional info
+- ``--show-model-schema``: Display the generated Pydantic model schema
+- ``--verbose``: Enable verbose logging
+- ``--no-progress``: Disable all progress indicators
