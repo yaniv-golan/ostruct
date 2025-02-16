@@ -7,7 +7,7 @@ import pytest
 from jinja2 import Environment, StrictUndefined
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.errors import TemplateValidationError
+from ostruct.cli.errors import TaskTemplateError
 from ostruct.cli.file_utils import FileInfo
 from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_env import create_jinja_env
@@ -111,17 +111,17 @@ def test_render_template_with_dot_dict() -> None:
 def test_render_template_error_handling() -> None:
     """Test error handling in template rendering."""
     # Test undefined variable
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         render_template("{{ undefined }}", {})
-    assert "'undefined' is undefined" in str(exc.value)
+    assert "Missing required template variable: undefined" in str(exc.value)
 
     # Test syntax error
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         render_template("{% if %}", {})
     assert "Task template syntax error" in str(exc.value)
 
     # Test runtime error
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         render_template("{{ x + y }}", {"x": "string", "y": 1})
     assert "can only concatenate str" in str(exc.value)
 
@@ -208,7 +208,7 @@ def test_validate_template_placeholders_missing() -> None:
     """Test template validation with missing variables."""
     template = "Hello {{ name }}!"
     context: Dict[str, str] = {}  # Empty context
-    with pytest.raises(TemplateValidationError):
+    with pytest.raises(TaskTemplateError):
         validate_template_placeholders(template, context)
 
 
@@ -216,7 +216,7 @@ def test_validate_template_placeholders_undefined() -> None:
     """Test template validation with undefined variables."""
     template = "Hello {{ name }}!"
     context = {"wrong_name": "World"}
-    with pytest.raises(TemplateValidationError):
+    with pytest.raises(TaskTemplateError):
         validate_template_placeholders(template, context)
 
 

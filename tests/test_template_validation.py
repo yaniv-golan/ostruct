@@ -8,7 +8,7 @@ import pytest
 from jinja2 import Environment
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.errors import TemplateValidationError
+from ostruct.cli.errors import TaskTemplateError
 from ostruct.cli.file_utils import FileInfo
 from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_rendering import render_template
@@ -87,7 +87,7 @@ def test_validate_template_success(
         (
             "Hello {{ name }}!",
             cast(Dict[str, Any], {}),
-            "undefined variables",
+            "missing required template variable",
         ),  # Missing variable
         (
             "Hello {{ name!",
@@ -102,12 +102,12 @@ def test_validate_template_success(
         (
             "{% if condition %}{{ undefined_var }}{% endif %}",
             cast(Dict[str, Any], {"condition": True}),
-            "undefined variable",
+            "missing required template variable",
         ),  # Undefined in conditional
         (
             "{{ undefined_var }}",
             cast(Dict[str, Any], {}),
-            "undefined variable",
+            "missing required template variable",
         ),  # Simple undefined variable
     ],
 )
@@ -115,7 +115,7 @@ def test_validate_template_errors(
     template: str, file_mappings: Dict[str, Any], error_phrase: str
 ) -> None:
     """Test template validation error cases."""
-    with pytest.raises(TemplateValidationError) as excinfo:
+    with pytest.raises(TaskTemplateError) as excinfo:
         validate_template_placeholders(template, file_mappings)
     assert error_phrase in str(excinfo.value).lower()
 
@@ -187,7 +187,7 @@ def test_validate_invalid_access(
 ) -> None:
     """Test validation with invalid attribute/key access."""
     file_mappings = context_setup(fs, security_manager)
-    with pytest.raises(TemplateValidationError):
+    with pytest.raises(TaskTemplateError):
         validate_template_placeholders(template, file_mappings)
 
 
@@ -233,8 +233,8 @@ def test_validate_complex_template(
 
 
 def test_validate_template_placeholders_invalid_json() -> None:
-    """Test that validate_template_placeholders raises TemplateValidationError for invalid JSON access."""
-    with pytest.raises(TemplateValidationError) as excinfo:
+    """Test that validate_template_placeholders raises TaskTemplateError for invalid JSON access."""
+    with pytest.raises(TaskTemplateError) as excinfo:
         validate_template_placeholders(
             "{{ invalid_json.some_key }}", {"invalid_json": "not json"}
         )
@@ -286,7 +286,7 @@ def test_comment_block_with_real_undefined_vars() -> None:
     context = {"real_var": "Hello World"}
 
     # Should raise validation error only for undefined_real_var
-    with pytest.raises(TemplateValidationError) as excinfo:
+    with pytest.raises(TaskTemplateError) as excinfo:
         validate_template_placeholders(template, context)
 
     # Error should mention the real undefined variable but not the commented ones
@@ -296,8 +296,8 @@ def test_comment_block_with_real_undefined_vars() -> None:
 
 
 def test_validate_template_placeholders_with_invalid_placeholders() -> None:
-    """Test that validate_template_placeholders raises TemplateValidationError for invalid placeholders."""
-    with pytest.raises(TemplateValidationError):
+    """Test that validate_template_placeholders raises TaskTemplateError for invalid placeholders."""
+    with pytest.raises(TaskTemplateError):
         validate_template_placeholders("{{ undefined_var }}")
 
 
@@ -308,5 +308,5 @@ def test_validate_template_placeholders_with_valid_placeholders() -> None:
 
 def test_validate_template_errors_with_placeholders() -> None:
     """Test validation of template placeholders with various error conditions."""
-    with pytest.raises(TemplateValidationError):
+    with pytest.raises(TaskTemplateError):
         validate_template_placeholders("{{ undefined_var }}")

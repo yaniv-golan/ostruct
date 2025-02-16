@@ -7,7 +7,7 @@ import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pyfakefs.fake_filesystem_unittest import Patcher
 
-from ostruct.cli.errors import TemplateValidationError
+from ostruct.cli.errors import TaskTemplateError
 from ostruct.cli.file_utils import FileInfo
 from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_utils import render_template
@@ -41,12 +41,10 @@ def test_render_task_template_basic() -> None:
 
 
 def test_render_task_template_missing_var() -> None:
-    """Test task template rendering with missing variable."""
-    template = "Hello {{ name }}!"
-    context: Dict[str, Any] = {}
-    with pytest.raises(TemplateValidationError) as exc:
-        render_template(template, context)
-    assert "'name' is undefined" in str(exc.value)
+    """Test rendering with missing variable."""
+    with pytest.raises(TaskTemplateError) as exc:
+        render_template("{{ missing }}", {})
+    assert "Missing required template variable: missing" in str(exc.value)
 
 
 def test_validate_task_template_basic() -> None:
@@ -60,16 +58,16 @@ def test_validate_task_template_missing_var() -> None:
     """Test task template validation with missing variable."""
     template = "Hello {{ name }}!"
     file_mappings: Dict[str, Any] = {}  # Empty dict instead of set()
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
-    assert "undefined variable" in str(exc.value)
+    assert "Missing required template variable(s): name" in str(exc.value)
 
 
 def test_validate_task_template_invalid_syntax() -> None:
     """Test task template validation with invalid syntax."""
     template = "Hello {{ name!"  # Missing closing brace
     file_mappings: Dict[str, Any] = {"name": "test"}
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
     assert "Invalid task template syntax" in str(exc.value)
 
@@ -120,7 +118,7 @@ def test_validate_fileinfo_invalid_attribute(
         path="/test_workspace/file.txt", security_manager=security_manager
     )
     file_mappings = {"file": file_info}
-    with pytest.raises(TemplateValidationError):
+    with pytest.raises(TaskTemplateError):
         validate_template_placeholders(template, file_mappings)
     assert file_info.content == "test content"
 
@@ -139,9 +137,11 @@ def test_validate_nested_json_invalid_key() -> None:
     """Test validation with invalid nested JSON key."""
     template = "{{ config['invalid_key'] }}"
     file_mappings = cast(Dict[str, Any], {"config": {"debug": True}})
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
-    assert "undefined" in str(exc.value)
+    assert "Task template uses undefined key 'config['invalid_key']'" in str(
+        exc.value
+    )
 
 
 def test_validate_complex_template(
@@ -222,9 +222,12 @@ def test_validate_template_undefined_in_loop() -> None:
     file_mappings: Dict[str, Any] = cast(
         Dict[str, Any], {"items": [{"name": "item1"}, {"name": "item2"}]}
     )
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
-    assert "undefined" in str(exc.value)
+    assert (
+        "Task template uses undefined attribute 'items[0].undefined_var'"
+        in str(exc.value)
+    )
 
 
 def test_validate_template_conditional_vars() -> None:
@@ -239,9 +242,11 @@ def test_validate_template_conditional_vars() -> None:
     file_mappings: Dict[str, Any] = cast(
         Dict[str, Any], {"condition": True, "defined_var": "test"}
     )
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
-    assert "undefined" in str(exc.value)
+    assert "Missing required template variable(s): undefined_var" in str(
+        exc.value
+    )
 
 
 def test_validate_template_builtin_functions() -> None:
@@ -338,6 +343,8 @@ def test_invalid_json_variable_access() -> None:
     file_mappings: Dict[str, ConfigDict] = {
         "config": {"debug": True, "settings": {"mode": "test"}}
     }
-    with pytest.raises(TemplateValidationError) as exc:
+    with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
-    assert "undefined" in str(exc.value)
+    assert "Task template uses undefined attribute 'config.invalid'" in str(
+        exc.value
+    )

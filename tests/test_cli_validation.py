@@ -16,15 +16,13 @@ from ostruct.cli.errors import (
     DirectoryNotFoundError,
     InvalidJSONError,
     OstructFileNotFoundError,
+    TaskTemplateError,
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
     VariableNameError,
     VariableValueError,
 )
-from ostruct.cli.template_validation import (
-    TemplateValidationError,
-    validate_template_placeholders,
-)
+from ostruct.cli.template_validation import validate_template_placeholders
 
 
 # Variable mapping tests
@@ -225,7 +223,7 @@ def test_validate_schema_file_errors(
         (
             "Hello {{ name }}!",
             cast(Dict[str, Any], {}),
-            "undefined variables",
+            "missing required template variable(s): name",
         ),  # Missing variable
         (
             "Hello {{ name!",
@@ -235,24 +233,24 @@ def test_validate_schema_file_errors(
         (
             "{% for item in items %}{{ item.undefined }}{% endfor %}",
             cast(Dict[str, Any], {"items": [{"name": "test"}]}),
-            "items",
+            "task template uses undefined attribute 'items[0].undefined'",
         ),  # Invalid loop variable
         (
             "{% if condition %}{{ undefined_var }}{% endif %}",
             cast(Dict[str, Any], {"condition": True}),
-            "undefined variable",
+            "missing required template variable(s): undefined_var",
         ),  # Undefined in conditional
         (
             "{{ undefined_var }}",
             cast(Dict[str, Any], {}),
-            "undefined variable",
+            "missing required template variable(s): undefined_var",
         ),  # Simple undefined variable
     ],
 )
 def test_validate_template_placeholders_errors(
     template: str, file_mappings: Dict[str, Any], error_phrase: str
 ) -> None:
-    """Test validation error cases for template placeholders."""
-    with pytest.raises(TemplateValidationError) as exc:
+    """Test template validation error cases."""
+    with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
     assert error_phrase in str(exc.value).lower()
