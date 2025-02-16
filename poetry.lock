@@ -1820,22 +1820,20 @@ name = "openai-structured"
 version = "2.0.0"
 description = "Structured output for OpenAI API"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = "<4.0,>=3.9"
 groups = ["main"]
-files = []
-develop = true
+files = [
+    {file = "openai_structured-2.0.0-py3-none-any.whl", hash = "sha256:3c9fae763f720d8d695a4e49fc915a6bff6ba17e5999310b65f207e1eff98c06"},
+    {file = "openai_structured-2.0.0.tar.gz", hash = "sha256:5a0c2af4b46ca8fe8ea4ae69768f0cab25f092d64086ba081c276bcc3cfcf0dc"},
+]
 
 [package.dependencies]
-aiohttp = "^3.11.11"
-jsonschema = "^4.23.0"
-openai = "^1.12.0"
-pydantic = {version = "^2.6.3", extras = ["mypy"]}
-requests = "^2.31.0"
-typing-extensions = "^4.9.0"
-
-[package.source]
-type = "directory"
-url = "../openai-structured"
+aiohttp = ">=3.11.11,<4.0.0"
+jsonschema = ">=4.23.0,<5.0.0"
+openai = ">=1.12.0,<2.0.0"
+pydantic = {version = ">=2.6.3,<3.0.0", extras = ["mypy"]}
+requests = ">=2.31.0,<3.0.0"
+typing-extensions = ">=4.9.0,<5.0.0"
 
 [[package]]
 name = "outcome"
@@ -3415,4 +3413,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "9a1a6058ed3df9b448a2e0d6447f8d4c0d48689cf54ca0727b6c62d41d35de0f"
+content-hash = "42400a47c0ca9719451ca6bb390d218c5d3ea9b1dfa861884f78b5816eb8c8ae"
