@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 # Get the model registry instance for testing
 model_registry = ModelRegistry()
 
+# Test workspace base directory
+TEST_BASE_DIR = "/test_workspace/base"
+
 
 @pytest.fixture(autouse=True)
 def mock_logging(fs: FakeFilesystem) -> StringIO:
@@ -258,14 +261,19 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.j2", contents="test task")
+
+        # Change to test base directory
+        os.chdir(TEST_BASE_DIR)
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--schema-file",
+                "run",
+                "task.j2",
                 "schema.json",
                 "--dry-run",
             ],
@@ -284,15 +292,21 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
-        fs.create_file("task.txt", contents="test task from file")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/task.txt", contents="test task from file"
+        )
+
+        # Change to test base directory
+        os.chdir(TEST_BASE_DIR)
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task-file",
+                "run",
                 "task.txt",
-                "--schema-file",
                 "schema.json",
                 "--dry-run",
             ],
@@ -311,17 +325,22 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
+
+        # Change to test base directory
+        os.chdir(TEST_BASE_DIR)
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--system-prompt",
-                "custom system prompt",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "schema.json",
+                "--sys-prompt",
+                "custom system prompt",
                 "--dry-run",
             ],
         )
@@ -339,18 +358,26 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
-        fs.create_file("prompt.txt", contents="custom system prompt from file")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/prompt.txt",
+            contents="custom system prompt from file",
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
+
+        # Change to test base directory
+        os.chdir(TEST_BASE_DIR)
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--system-prompt-file",
-                "prompt.txt",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "schema.json",
+                "--sys-file",
+                "prompt.txt",
                 "--dry-run",
             ],
         )
@@ -368,19 +395,25 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
-        fs.create_dir("allowed_dir1")
-        fs.create_dir("allowed_dir2")
         fs.create_file(
-            "allowed_dirs.txt", contents="allowed_dir1\nallowed_dir2"
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
+        fs.create_dir(f"{TEST_BASE_DIR}/allowed_dir1")
+        fs.create_dir(f"{TEST_BASE_DIR}/allowed_dir2")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/allowed_dirs.txt",
+            contents="allowed_dir1\nallowed_dir2",
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
+
+        # Change to test base directory
+        os.chdir(TEST_BASE_DIR)
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "schema.json",
                 "--allowed-dir-file",
                 "allowed_dirs.txt",
@@ -401,18 +434,19 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
-        fs.create_file("task.txt", contents="test task")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
+                "run",
                 "test task",
+                "schema.json",
                 "--task-file",
                 "task.txt",
-                "--schema-file",
-                "schema.json",
             ],
         )
 
@@ -433,20 +467,22 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
-        fs.create_file("prompt.txt", contents="test prompt")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/prompt.txt", contents="test prompt")
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--system-prompt",
-                "test prompt",
-                "--system-prompt-file",
-                "prompt.txt",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "schema.json",
+                "--sys-prompt",
+                "test prompt",
+                "--sys-file",
+                "prompt.txt",
             ],
         )
         cli_runner.check_error_message(result, "Cannot specify both")
@@ -463,17 +499,19 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--schema-file",
+                "run",
                 "schema.json",
             ],
         )
         cli_runner.check_error_message(
-            result, "Must specify either --task or --task-file"
+            result, "Missing argument 'TASK_TEMPLATE'"
         )
 
     def test_help_text(self, cli_runner: CliTestRunner) -> None:
@@ -494,17 +532,9 @@ class TestCLICore:
 
     def test_missing_required_args(self, cli_runner: CliTestRunner) -> None:
         """Test error handling for missing required arguments."""
-        result = cli_runner.invoke(create_cli())
+        result = cli_runner.invoke(create_cli(), ["run"])
         cli_runner.check_error_message(
-            result, "Missing option '--schema-file'"
-        )
-
-        # Test that providing schema-file but no task also fails
-        result = cli_runner.invoke(
-            create_cli(), ["--schema-file", "schema.json"]
-        )
-        cli_runner.check_error_message(
-            result, "Must specify either --task or --task-file"
+            result, "Missing argument 'TASK_TEMPLATE'"
         )
 
     def test_invalid_json_var(
@@ -519,16 +549,18 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "schema.json",
-                "--json-var",
+                "-J",
                 "invalid_json={not json}",
             ],
         )
@@ -545,14 +577,16 @@ class TestCLICore:
     ) -> None:
         """Test error handling for invalid schema file."""
         # Create an invalid schema file
-        fs.create_file("schema.json", contents="{ invalid json }")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents="{ invalid json }"
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "schema.json",
                 "--verbose",  # Add verbose flag to see more logs
             ],
@@ -570,9 +604,8 @@ class TestCLICore:
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "nonexistent.json",
             ],
         )
@@ -590,17 +623,20 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task",
-                "test task",
-                "--schema-file",
+                "run",
+                "task.txt",
                 "schema.json",
-                "--file",
-                "input=nonexistent.txt",
+                "-f",
+                "input",
+                "nonexistent.txt",
             ],
         )
         cli_runner.check_error_message(result, "File not found")
@@ -617,15 +653,18 @@ class TestCLICore:
                 "required": ["result"],
             }
         }
-        fs.create_file("schema.json", contents=json.dumps(schema_content))
-        fs.create_file("task.txt", contents="Invalid syntax: {{ unclosed")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/task.txt", contents="Invalid syntax: {{ unclosed"
+        )
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task-file",
+                "run",
                 "task.txt",
-                "--schema-file",
                 "schema.json",
                 "--dry-run",
             ],
@@ -653,34 +692,32 @@ class TestCLIPreExecution:
             }
         }
         fs.create_file(
-            "/test_workspace/schema.json", contents=json.dumps(schema_content)
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
         fs.create_file(
-            "/test_workspace/task.txt", contents="Files: {{ files | length }}"
+            f"{TEST_BASE_DIR}/task.txt", contents="Files: {{ files | length }}"
         )
-        fs.create_dir("/test_workspace/test_dir")
+        fs.create_dir(f"{TEST_BASE_DIR}/test_dir")
         fs.create_file(
-            "/test_workspace/test_dir/file1.txt", contents="content 1"
-        )
-        fs.create_file(
-            "/test_workspace/test_dir/file2.txt", contents="content 2"
+            f"{TEST_BASE_DIR}/test_dir/file1.txt", contents="content 1"
         )
         fs.create_file(
-            "/test_workspace/test_dir/file3.txt", contents="content 3"
+            f"{TEST_BASE_DIR}/test_dir/file2.txt", contents="content 2"
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/test_dir/file3.txt", contents="content 3"
         )
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task-file",
-                "/test_workspace/task.txt",
-                "--schema-file",
-                "/test_workspace/schema.json",
-                "--dir",
-                "files=/test_workspace/test_dir",
-                "--dir-recursive",
-                "--dir-ext",
-                "txt",
+                "run",
+                f"{TEST_BASE_DIR}/task.txt",
+                f"{TEST_BASE_DIR}/schema.json",
+                "-d",
+                "files",
+                f"{TEST_BASE_DIR}/test_dir",
+                "-R",
                 "--dry-run",
             ],
         )
@@ -712,23 +749,23 @@ class TestCLIExecution:
             }
         }
         fs.create_file(
-            "/test_workspace/schema.json", contents=json.dumps(schema_content)
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
         fs.create_file(
-            "/test_workspace/task.txt",
+            f"{TEST_BASE_DIR}/task.txt",
             contents="Process this: {{ input.content }}",
         )
-        fs.create_file("/test_workspace/input.txt", contents="test content")
+        fs.create_file(f"{TEST_BASE_DIR}/input.txt", contents="test content")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task-file",
-                "/test_workspace/task.txt",
-                "--schema-file",
-                "/test_workspace/schema.json",
-                "--file",
-                "input=/test_workspace/input.txt",
+                "run",
+                f"{TEST_BASE_DIR}/task.txt",
+                f"{TEST_BASE_DIR}/schema.json",
+                "-f",
+                "input",
+                f"{TEST_BASE_DIR}/input.txt",
                 "--debug-validation",
                 "--verbose",
             ],
@@ -750,22 +787,23 @@ class TestCLIExecution:
             }
         }
         fs.create_file(
-            "/test_workspace/schema.json", contents=json.dumps(schema_content)
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
         fs.create_file(
-            "/test_workspace/task.txt", contents="Content: {{ input.content }}"
+            f"{TEST_BASE_DIR}/task.txt",
+            contents="Content: {{ input.content }}",
         )
-        fs.create_file("/test_workspace/input.txt", contents="test content")
+        fs.create_file(f"{TEST_BASE_DIR}/input.txt", contents="test content")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task-file",
-                "/test_workspace/task.txt",
-                "--schema-file",
-                "/test_workspace/schema.json",
-                "--file",
-                "input=/test_workspace/input.txt",
+                "run",
+                f"{TEST_BASE_DIR}/task.txt",
+                f"{TEST_BASE_DIR}/schema.json",
+                "-f",
+                "input",
+                f"{TEST_BASE_DIR}/input.txt",
             ],
         )
         assert result.exit_code == 0
@@ -785,26 +823,26 @@ class TestCLIExecution:
             }
         }
         fs.create_file(
-            "/test_workspace/schema.json", contents=json.dumps(schema_content)
+            f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
         fs.create_file(
-            "/test_workspace/task.txt",
+            f"{TEST_BASE_DIR}/task.txt",
             contents="File: {{ input.content }}, Var: {{ var1 }}, Config: {{ config.key }}",
         )
-        fs.create_file("/test_workspace/input.txt", contents="file content")
+        fs.create_file(f"{TEST_BASE_DIR}/input.txt", contents="file content")
 
         result = cli_runner.invoke(
             create_cli(),
             [
-                "--task-file",
-                "/test_workspace/task.txt",
-                "--schema-file",
-                "/test_workspace/schema.json",
-                "--file",
-                "input=/test_workspace/input.txt",
-                "--var",
+                "run",
+                f"{TEST_BASE_DIR}/task.txt",
+                f"{TEST_BASE_DIR}/schema.json",
+                "-f",
+                "input",
+                f"{TEST_BASE_DIR}/input.txt",
+                "-V",
                 "var1=test value",
-                "--json-var",
+                "-J",
                 'config={"key": "value"}',
                 "--verbose",
             ],
@@ -823,12 +861,12 @@ class TestTemplateContext:
     ) -> None:
         """Test template context creation with a single file."""
         fs.create_file(
-            "/test_workspace/base/input.txt", contents="test content"
+            f"{TEST_BASE_DIR}/base/input.txt", contents="test content"
         )
         file_info = FileInfoList(
             [
                 FileInfo.from_path(
-                    "/test_workspace/base/input.txt",
+                    f"{TEST_BASE_DIR}/base/input.txt",
                     security_manager=security_manager,
                 )
             ]
@@ -850,12 +888,12 @@ class TestTemplateContext:
         security_manager: SecurityManager,
     ) -> None:
         """Test template context creation with multiple files."""
-        fs.create_file("/test_workspace/base/file1.txt", contents="content 1")
-        fs.create_file("/test_workspace/base/file2.txt", contents="content 2")
+        fs.create_file(f"{TEST_BASE_DIR}/base/file1.txt", contents="content 1")
+        fs.create_file(f"{TEST_BASE_DIR}/base/file2.txt", contents="content 2")
         file_info1 = FileInfoList(
             [
                 FileInfo.from_path(
-                    "/test_workspace/base/file1.txt",
+                    f"{TEST_BASE_DIR}/base/file1.txt",
                     security_manager=security_manager,
                 )
             ]
@@ -863,7 +901,7 @@ class TestTemplateContext:
         file_info2 = FileInfoList(
             [
                 FileInfo.from_path(
-                    "/test_workspace/base/file2.txt",
+                    f"{TEST_BASE_DIR}/base/file2.txt",
                     security_manager=security_manager,
                 )
             ]
@@ -886,12 +924,12 @@ class TestTemplateContext:
     ) -> None:
         """Test template context creation with mixed sources."""
         fs.create_file(
-            "/test_workspace/base/input.txt", contents="file content"
+            f"{TEST_BASE_DIR}/base/input.txt", contents="file content"
         )
         file_info = FileInfoList(
             [
                 FileInfo.from_path(
-                    "/test_workspace/base/input.txt",
+                    f"{TEST_BASE_DIR}/base/input.txt",
                     security_manager=security_manager,
                 )
             ]
@@ -925,16 +963,19 @@ def test_basic_cli_mock(
         }
     }
     fs.create_file(
-        "/test_workspace/schema.json", contents=json.dumps(schema_content)
+        f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
     )
+    fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
+
+    # Change to test base directory
+    os.chdir(TEST_BASE_DIR)
 
     result = cli_runner.invoke(
         create_cli(),
         [
-            "--task",
-            "test task",
-            "--schema-file",
-            "/test_workspace/schema.json",
+            "run",
+            "task.txt",
+            "schema.json",
             "--dry-run",
         ],
     )

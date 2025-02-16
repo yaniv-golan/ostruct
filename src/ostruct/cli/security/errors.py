@@ -129,7 +129,7 @@ class PathSecurityError(SecurityErrorBase):
             ],
         }
         if hasattr(original_error, "context"):
-            context.update(original_error.context)  # type: ignore
+            context.update(original_error.context)
         return cls(
             message,
             context=context,

@@ -9,10 +9,11 @@ It re-exports the public APIs from specialized modules:
 - template_io: File I/O operations and metadata extraction
 """
 
+import logging
 from typing import Any, Dict, List, Optional, Set
 
 import jsonschema
-from jinja2 import Environment, meta
+from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nodes import Node
 
 from .errors import (
@@ -34,6 +35,8 @@ from .template_schema import (
     create_validation_context,
 )
 from .template_validation import SafeUndefined, validate_template_placeholders
+
+logger = logging.getLogger(__name__)
 
 
 # Custom error classes
@@ -118,8 +121,13 @@ def find_all_template_variables(
     if env is None:
         env = Environment(undefined=SafeUndefined)
 
-    # Parse template
-    ast = env.parse(template)
+    try:
+        ast = env.parse(template)
+    except TemplateSyntaxError as e:
+        logger.error("Failed to parse template: %s", str(e))
+        return set()  # Return empty set on parse error
+
+    variables: Set[str] = set()
 
     # Find all variables in this template
     variables = meta.find_undeclared_variables(ast)
@@ -252,7 +260,7 @@ def find_all_template_variables(
                 visit_nodes(node.else_)
 
     visit_nodes(ast.body)
-    return variables  # type: ignore[no-any-return]
+    return variables
 
 
 __all__ = [

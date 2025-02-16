@@ -69,16 +69,13 @@ class FileInfoList(List[FileInfo]):
 
         Returns:
             Union[str, List[str]]: For a single file from file mapping, returns its content as a string.
-                                  For multiple files or directory mapping, returns a list of contents.
-
-        Raises:
-            ValueError: If the list is empty
+                                  For multiple files, directory mapping, or empty list, returns a list of contents.
         """
         # Take snapshot under lock
         with self._lock:
             if not self:
                 logger.debug("FileInfoList.content called but list is empty")
-                raise ValueError("No files in FileInfoList")
+                return []
 
             # Make a copy of the files we need to access
             if len(self) == 1 and not self._from_dir:
@@ -112,15 +109,12 @@ class FileInfoList(List[FileInfo]):
 
         Returns:
             Union[str, List[str]]: For a single file from file mapping, returns its path as a string.
-                                  For multiple files or directory mapping, returns a list of paths.
-
-        Raises:
-            ValueError: If the list is empty
+                                  For multiple files, directory mapping, or empty list, returns a list of paths.
         """
         # First get a snapshot of the list state under the lock
         with self._lock:
             if not self:
-                raise ValueError("No files in FileInfoList")
+                return []
             if len(self) == 1 and not self._from_dir:
                 file_info = self[0]
                 is_single = True

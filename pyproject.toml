@@ -9,6 +9,7 @@
     authors = ["Yaniv Golan <yaniv@golan.name>"]
     readme = "README.md"
     packages = [{include = "ostruct", from = "src"}]
+    include = ["py.typed"]
 
     [tool.poetry.dependencies]
     python = ">=3.10,<4.0"
@@ -79,14 +80,14 @@
 
     # Stricter settings for source code
     [[tool.mypy.overrides]]
-    module = "src.ostruct.*"
+    module = "ostruct.*"
     disallow_untyped_defs = true
     warn_return_any = true
     warn_unused_ignores = true
 
     # Special handling for Click-related code
     [[tool.mypy.overrides]]
-    module = ["click.*", "src.ostruct.cli.click_options"]
+    module = ["click.*", "ostruct.cli.click_options"]
     disallow_untyped_decorators = false
     warn_return_any = false
 

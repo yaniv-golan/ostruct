@@ -371,13 +371,17 @@ class MockSecurityManager(SecurityManager):
     in a test environment.
     """
 
-    def __init__(self, base_dir: str = "/test_workspace") -> None:
+    def __init__(self, base_dir: str = "/test_workspace/base") -> None:
         """Initialize mock security manager.
 
         Args:
             base_dir: Base directory for path resolution
         """
         super().__init__(base_dir)
+        # Add parent directory as an allowed directory for testing
+        parent_dir = os.path.dirname(base_dir)
+        if parent_dir:
+            self.add_allowed_directory(parent_dir)
         self._symlink_tracker = SymlinkResolutionTracker()
         self._patch_file_operations()
 
@@ -545,7 +549,7 @@ def patch_security_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     ) -> None:
         """Patch the SecurityManager init to use a fixed base directory."""
         if base_dir is None:
-            base_dir = "/test_workspace"
+            base_dir = "/test_workspace/base"
         original_init(self, base_dir, *args, **kwargs)
 
     monkeypatch.setattr(SecurityManager, "__init__", patched_init)

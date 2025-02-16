@@ -179,7 +179,7 @@ def format_error(e: Exception) -> str:
 
 
 @pass_context
-def estimate_tokens(context, text: str) -> int:
+def estimate_tokens(context: Any, text: str) -> int:
     """Estimate number of tokens in text."""
     try:
         # Use o200k_base encoding for token estimation

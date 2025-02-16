@@ -29,9 +29,7 @@ if not logger.handlers:
 @pytest.fixture
 def security_manager(fs: FakeFilesystem) -> SecurityManager:
     """Create a security manager for testing."""
-    from tests.conftest import MockSecurityManager
-
-    return MockSecurityManager(base_dir="/test_workspace")
+    return SecurityManager(base_dir="/test_workspace/base")
 
 
 def test_read_file_basic(
@@ -39,8 +37,8 @@ def test_read_file_basic(
 ) -> None:
     """Test basic file reading functionality."""
     # Create a test file in the fake filesystem
-    fs.makedirs("/test_workspace", exist_ok=True)
-    test_file = "/test_workspace/test_file.txt"
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    test_file = "/test_workspace/base/test_file.txt"
     fs.create_file(test_file, contents="test content")
 
     # Read the file
@@ -48,7 +46,7 @@ def test_read_file_basic(
 
     # Verify the content was read correctly
     assert file_info.content == "test content"
-    assert file_info.path == test_file
+    assert file_info.path == "test_file.txt"  # Path relative to base_dir
     assert file_info.exists
     assert not file_info.is_binary
 
@@ -58,8 +56,8 @@ def test_read_file_with_encoding(
 ) -> None:
     """Test file reading with specific encoding."""
     content = "test content with unicode: 🚀"
-    fs.makedirs("/test_workspace", exist_ok=True)
-    test_file = "/test_workspace/test_file.txt"
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    test_file = "/test_workspace/base/test_file.txt"
     fs.create_file(test_file, contents=content)
 
     # Read with UTF-8 encoding
@@ -79,8 +77,8 @@ def test_read_file_content_loading(
 ) -> None:
     """Test immediate content loading behavior."""
     # Create a test file in the fake filesystem
-    fs.makedirs("/test_workspace", exist_ok=True)
-    test_file = "/test_workspace/test_file.txt"
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    test_file = "/test_workspace/base/test_file.txt"
     test_content = "test content"
     fs.create_file(test_file, contents=test_content)
 
@@ -95,17 +93,15 @@ def test_read_file_content_loading(
 
     # Verify metadata
     metadata = file_info.to_dict()
-    assert metadata["path"] == test_file
-    assert metadata["size"] == len(test_content)
-    assert metadata["exists"] is True
-    assert metadata["content"] == test_content
+    assert metadata["path"] == "test_file.txt"  # Path relative to base_dir
+    assert metadata["abs_path"] == test_file  # Absolute path preserved
 
 
 def test_read_file_not_found(security_manager: SecurityManager) -> None:
     """Test error handling for non-existent files."""
     with pytest.raises(ValueError) as exc:
         read_file(
-            "/test_workspace/nonexistent_file.txt",
+            "/test_workspace/base/nonexistent_file.txt",
             security_manager=security_manager,
         )
     assert "File not found" in str(exc.value)
@@ -118,8 +114,8 @@ def test_read_file_caching(
     logger.info("Starting file caching test")
 
     # Create test file
-    fs.makedirs("/test_workspace", exist_ok=True)
-    test_file = "/test_workspace/test_file.txt"
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    test_file = "/test_workspace/base/test_file.txt"
     test_content = "test content"
     fs.create_file(test_file, contents=test_content)
 
@@ -157,8 +153,8 @@ def test_extract_metadata(
     security_manager: SecurityManager, fs: FakeFilesystem
 ) -> None:
     """Test metadata extraction from FileInfo."""
-    fs.makedirs("/test_workspace", exist_ok=True)
-    test_file = "/test_workspace/test_file.txt"
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    test_file = "/test_workspace/base/test_file.txt"
     test_content = "test content"
     fs.create_file(test_file, contents=test_content)
 
@@ -168,7 +164,8 @@ def test_extract_metadata(
     metadata = file_info.to_dict()
 
     # Verify basic metadata
-    assert metadata["path"] == test_file
+    assert metadata["path"] == "test_file.txt"  # Path relative to base_dir
+    assert metadata["abs_path"] == test_file  # Absolute path preserved
     assert metadata["exists"] is True
     assert metadata["size"] == len(test_content)
     assert metadata["content"] == test_content
@@ -184,13 +181,13 @@ def test_extract_template_metadata(
 ) -> None:
     """Test metadata extraction from template and context."""
     # Create test file
-    fs.makedirs("/test_workspace", exist_ok=True)
-    test_file = "/test_workspace/test_file.txt"
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    test_file = "/test_workspace/base/test_file.txt"
     test_content = "test content"
     fs.create_file(test_file, contents=test_content)
 
     # Create template context
-    template_str = "/test_workspace/template.j2"
+    template_str = "/test_workspace/base/template.j2"
     context: Dict[str, Union[FileInfo, Dict[str, str], List[str], str]] = {
         "file": read_file(test_file, security_manager=security_manager),
         "config": {"key": "value"},

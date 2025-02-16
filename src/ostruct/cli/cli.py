@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import sys
-from dataclasses import dataclass
 from enum import Enum, IntEnum
 from typing import (
     Any,
@@ -17,6 +16,7 @@ from typing import (
     Set,
     Tuple,
     Type,
+    TypedDict,
     TypeVar,
     Union,
     cast,
@@ -62,7 +62,7 @@ from pydantic.functional_validators import BeforeValidator
 from pydantic.types import constr
 from typing_extensions import TypeAlias
 
-from ostruct.cli.click_options import create_click_command
+from ostruct.cli.click_options import all_options
 from ostruct.cli.exit_codes import ExitCode
 
 from .. import __version__  # noqa: F401 - Used in package metadata
@@ -82,11 +82,10 @@ from .errors import (
     StreamParseError,
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
-    VariableError,
     VariableNameError,
     VariableValueError,
 )
-from .file_utils import FileInfoList, TemplateValue, collect_files
+from .file_utils import FileInfoList, collect_files
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
 from .serialization import LogSerializer
@@ -98,27 +97,24 @@ from .token_utils import estimate_tokens_with_encoding
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
-@dataclass
-class Namespace:
-    """Compatibility class to mimic argparse.Namespace for existing code."""
+class CLIParams(TypedDict, total=False):
+    """Type-safe CLI parameters."""
 
-    # Required fields without defaults
-    task: Optional[str]
-    task_file: Optional[str]
-    file: List[str]
-    files: List[str]
-    dir: List[str]
-    allowed_dir: List[str]
+    files: List[
+        Tuple[str, str]
+    ]  # List of (name, path) tuples from Click's nargs=2
+    dir: List[
+        Tuple[str, str]
+    ]  # List of (name, dir) tuples from Click's nargs=2
+    allowed_dirs: List[str]
     base_dir: str
     allowed_dir_file: Optional[str]
-    dir_recursive: bool
-    dir_ext: Optional[str]
+    recursive: bool
     var: List[str]
     json_var: List[str]
     system_prompt: Optional[str]
     system_prompt_file: Optional[str]
     ignore_task_sysprompt: bool
-    schema_file: str
     model: str
     timeout: float
     output_file: Optional[str]
@@ -129,15 +125,16 @@ class Namespace:
     debug_openai_stream: bool
     show_model_schema: bool
     debug_validation: bool
-    # Model parameters - all optional since support varies by model
-    temperature: Optional[float] = None
-    max_output_tokens: Optional[int] = None
-    top_p: Optional[float] = None
-    frequency_penalty: Optional[float] = None
-    presence_penalty: Optional[float] = None
-    reasoning_effort: Optional[str] = None
-    # Other fields with defaults
-    progress_level: str = "basic"
+    temperature: Optional[float]
+    max_output_tokens: Optional[int]
+    top_p: Optional[float]
+    frequency_penalty: Optional[float]
+    presence_penalty: Optional[float]
+    reasoning_effort: Optional[str]
+    progress_level: str
+    task_file: Optional[str]
+    task: Optional[str]
+    schema_file: str
 
 
 # Set up logging
@@ -241,7 +238,7 @@ def _get_type_with_constraints(
                 show_schema=False,
                 debug_validation=False,
             )
-            array_type: Type[List[Any]] = List[array_item_model]  # type: ignore[valid-type]
+            array_type: Type[List[Any]] = List[array_item_model]  # type: ignore
             return (array_type, Field(**field_kwargs))
 
         # For non-object items, use the type directly
@@ -705,11 +702,20 @@ def validate_task_template(
     template_content: str
     if task_file is not None:
         try:
-            name, path = validate_path_mapping(f"task={task_file}")
-            with open(path, "r", encoding="utf-8") as f:
+            with open(task_file, "r", encoding="utf-8") as f:
                 template_content = f.read()
-        except (OstructFileNotFoundError, PathSecurityError) as e:
-            raise TaskTemplateVariableError(str(e))
+        except FileNotFoundError:
+            raise TaskTemplateVariableError(
+                f"Task template file not found: {task_file}"
+            )
+        except PermissionError:
+            raise TaskTemplateVariableError(
+                f"Permission denied reading task template file: {task_file}"
+            )
+        except Exception as e:
+            raise TaskTemplateVariableError(
+                f"Error reading task template file: {e}"
+            )
     else:
         template_content = task  # type: ignore  # We know task is str here due to the checks above
 
@@ -746,7 +752,7 @@ def validate_schema_file(
 
     try:
         logger.debug("Opening schema file: %s", path)
-        with open(path) as f:
+        with open(path, "r", encoding="utf-8") as f:
             logger.debug("Loading JSON from schema file")
             try:
                 schema = json.load(f)
@@ -822,13 +828,13 @@ def validate_schema_file(
 
 
 def collect_template_files(
-    args: Namespace,
+    args: CLIParams,
     security_manager: SecurityManager,
-) -> Dict[str, TemplateValue]:
+) -> Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]:
     """Collect files from command line arguments.
 
     Args:
-        args: Parsed command line arguments
+        args: Command line arguments
         security_manager: Security manager for path validation
 
     Returns:
@@ -839,15 +845,29 @@ def collect_template_files(
         ValueError: If file mappings are invalid or files cannot be accessed
     """
     try:
-        result = collect_files(
-            file_mappings=args.file,
-            pattern_mappings=args.files,
-            dir_mappings=args.dir,
-            dir_recursive=args.dir_recursive,
-            dir_extensions=args.dir_ext.split(",") if args.dir_ext else None,
+        # Get files and directories from args - they are already tuples from Click's nargs=2
+        files = list(
+            args.get("files", [])
+        )  # List of (name, path) tuples from Click
+        dirs = args.get("dir", [])  # List of (name, dir) tuples from Click
+
+        # Collect files from directories
+        dir_files = collect_files(
+            file_mappings=cast(
+                List[Tuple[str, Union[str, Path]]], files
+            ),  # Cast to correct type
+            dir_mappings=cast(
+                List[Tuple[str, Union[str, Path]]], dirs
+            ),  # Cast to correct type
+            dir_recursive=args.get("recursive", False),
             security_manager=security_manager,
         )
-        return cast(Dict[str, TemplateValue], result)
+
+        # Combine results
+        return cast(
+            Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+            dir_files,
+        )
     except PathSecurityError:
         # Let PathSecurityError propagate without wrapping
         raise
@@ -865,11 +885,11 @@ def collect_template_files(
         raise ValueError(f"Error collecting files: {e}")
 
 
-def collect_simple_variables(args: Namespace) -> Dict[str, str]:
+def collect_simple_variables(args: CLIParams) -> Dict[str, str]:
     """Collect simple string variables from --var arguments.
 
     Args:
-        args: Parsed command line arguments
+        args: Command line arguments
 
     Returns:
         Dictionary mapping variable names to string values
@@ -880,10 +900,15 @@ def collect_simple_variables(args: Namespace) -> Dict[str, str]:
     variables: Dict[str, str] = {}
     all_names: Set[str] = set()
 
-    if args.var:
-        for mapping in args.var:
+    if args.get("var"):
+        for mapping in args["var"]:
             try:
-                name, value = mapping.split("=", 1)
+                # Handle both tuple format and string format
+                if isinstance(mapping, tuple):
+                    name, value = mapping
+                else:
+                    name, value = mapping.split("=", 1)
+
                 if not name.isidentifier():
                     raise VariableNameError(f"Invalid variable name: {name}")
                 if name in all_names:
@@ -898,11 +923,11 @@ def collect_simple_variables(args: Namespace) -> Dict[str, str]:
     return variables
 
 
-def collect_json_variables(args: Namespace) -> Dict[str, Any]:
+def collect_json_variables(args: CLIParams) -> Dict[str, Any]:
     """Collect JSON variables from --json-var arguments.
 
     Args:
-        args: Parsed command line arguments
+        args: Command line arguments
 
     Returns:
         Dictionary mapping variable names to parsed JSON values
@@ -914,33 +939,46 @@ def collect_json_variables(args: Namespace) -> Dict[str, Any]:
     variables: Dict[str, Any] = {}
     all_names: Set[str] = set()
 
-    if args.json_var:
-        for mapping in args.json_var:
+    if args.get("json_var"):
+        for mapping in args["json_var"]:
             try:
-                name, json_str = mapping.split("=", 1)
+                # Handle both tuple format and string format
+                if isinstance(mapping, tuple):
+                    name, value = (
+                        mapping  # Value is already parsed by Click validator
+                    )
+                else:
+                    try:
+                        name, json_str = mapping.split("=", 1)
+                    except ValueError:
+                        raise VariableNameError(
+                            f"Invalid JSON variable mapping format: {mapping}. Expected name=json"
+                        )
+                    try:
+                        value = json.loads(json_str)
+                    except json.JSONDecodeError as e:
+                        raise InvalidJSONError(
+                            f"Invalid JSON value for variable '{name}': {json_str}",
+                            context={"variable_name": name},
+                        ) from e
+
                 if not name.isidentifier():
                     raise VariableNameError(f"Invalid variable name: {name}")
                 if name in all_names:
                     raise VariableNameError(f"Duplicate variable name: {name}")
-                try:
-                    value = json.loads(json_str)
-                    variables[name] = value
-                    all_names.add(name)
-                except json.JSONDecodeError as e:
-                    raise InvalidJSONError(
-                        f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}",
-                        context={"variable_name": name},
-                    )
-            except ValueError:
-                raise VariableNameError(
-                    f"Invalid JSON variable mapping format: {mapping}. Expected name=json"
-                )
+
+                variables[name] = value
+                all_names.add(name)
+            except (VariableNameError, InvalidJSONError):
+                raise
 
     return variables
 
 
 def create_template_context(
-    files: Optional[Dict[str, FileInfoList]] = None,
+    files: Optional[
+        Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]
+    ] = None,
     variables: Optional[Dict[str, str]] = None,
     json_variables: Optional[Dict[str, Any]] = None,
     security_manager: Optional[SecurityManager] = None,
@@ -984,14 +1022,14 @@ def create_template_context(
     return context
 
 
-def create_template_context_from_args(
-    args: "Namespace",
+async def create_template_context_from_args(
+    args: CLIParams,
     security_manager: SecurityManager,
 ) -> Dict[str, Any]:
     """Create template context from command line arguments.
 
     Args:
-        args: Parsed command line arguments
+        args: Command line arguments
         security_manager: Security manager for path validation
 
     Returns:
@@ -1004,51 +1042,13 @@ def create_template_context_from_args(
     """
     try:
         # Collect files from arguments
-        files = None
-        if any([args.file, args.files, args.dir]):
-            files = collect_files(
-                file_mappings=args.file,
-                pattern_mappings=args.files,
-                dir_mappings=args.dir,
-                dir_recursive=args.dir_recursive,
-                dir_extensions=(
-                    args.dir_ext.split(",") if args.dir_ext else None
-                ),
-                security_manager=security_manager,
-            )
+        files = collect_template_files(args, security_manager)
 
         # Collect simple variables
-        try:
-            variables = collect_simple_variables(args)
-        except VariableNameError as e:
-            raise VariableError(str(e))
+        variables = collect_simple_variables(args)
 
         # Collect JSON variables
-        json_variables = {}
-        if args.json_var:
-            for mapping in args.json_var:
-                try:
-                    name, value = mapping.split("=", 1)
-                    if not name.isidentifier():
-                        raise VariableNameError(
-                            f"Invalid variable name: {name}"
-                        )
-                    try:
-                        json_value = json.loads(value)
-                    except json.JSONDecodeError as e:
-                        raise InvalidJSONError(
-                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}",
-                            context={"variable_name": name},
-                        )
-                    if name in json_variables:
-                        raise VariableNameError(
-                            f"Duplicate variable name: {name}"
-                        )
-                    json_variables[name] = json_value
-                except ValueError:
-                    raise VariableNameError(
-                        f"Invalid JSON variable mapping format: {mapping}. Expected name=json"
-                    )
+        json_variables = collect_json_variables(args)
 
         # Get stdin content if available
         stdin_content = None
@@ -1068,7 +1068,7 @@ def create_template_context_from_args(
         )
 
         # Add current model to context
-        context["current_model"] = args.model
+        context["current_model"] = args["model"]
 
         return context
 
@@ -1428,98 +1428,91 @@ async def stream_structured_output(
         await client.close()
 
 
-@create_click_command()
-def cli(**kwargs: Any) -> None:
-    """Command-line interface for making structured OpenAI API calls."""
+@click.group()
+@click.version_option(version=__version__)
+def cli() -> None:
+    """ostruct CLI - Make structured OpenAI API calls.
+
+    ostruct allows you to invoke OpenAI Structured Output to produce structured JSON
+    output using templates and JSON schemas. It provides support for file handling, variable
+    substitution, and output validation.
+
+    For detailed documentation, visit: https://ostruct.readthedocs.io
+
+    Examples:
+
+        # Basic usage with a template and schema
+
+        ostruct run task.j2 schema.json -V name=value
+
+        # Process files with recursive directory scanning
+
+        ostruct run template.j2 schema.json -f code main.py -d src ./src -R
+
+        # Use JSON variables and custom model parameters
+
+        ostruct run task.j2 schema.json -J config='{"env":"prod"}' -m o3-mini
+    """
+    pass
+
+
+@cli.command()
+@click.argument("task_template", type=click.Path(exists=True))
+@click.argument("schema_file", type=click.Path(exists=True))
+@all_options
+@click.pass_context
+def run(
+    ctx: click.Context,
+    task_template: str,
+    schema_file: str,
+    **kwargs: Any,
+) -> None:
+    """Run a structured task with template and schema.
+
+    TASK_TEMPLATE is the path to your Jinja2 template file that defines the task.
+    SCHEMA_FILE is the path to your JSON schema file that defines the expected output structure.
+
+    The command supports various options for file handling, variable definition,
+    model configuration, and output control. Use --help to see all available options.
+
+    Examples:
+        # Basic usage
+        ostruct run task.j2 schema.json
+
+        # Process multiple files
+        ostruct run task.j2 schema.json -f code main.py -f test tests/test_main.py
+
+        # Scan directories recursively
+        ostruct run task.j2 schema.json -d src ./src -R
+
+        # Define variables
+        ostruct run task.j2 schema.json -V debug=true -J config='{"env":"prod"}'
+
+        # Configure model
+        ostruct run task.j2 schema.json -m gpt-4 --temperature 0.7 --max-output-tokens 1000
+
+        # Control output
+        ostruct run task.j2 schema.json --output-file result.json --verbose
+    """
     try:
-        args = Namespace(**kwargs)
-
-        # Validate required arguments first
-        if not args.task and not args.task_file:
-            raise click.UsageError("Must specify either --task or --task-file")
-        if not args.schema_file:
-            raise click.UsageError("Missing option '--schema-file'")
-        if args.task and args.task_file:
-            raise click.UsageError(
-                "Cannot specify both --task and --task-file"
-            )
-        if args.system_prompt and args.system_prompt_file:
-            raise click.UsageError(
-                "Cannot specify both --system-prompt and --system-prompt-file"
-            )
-
-        # Early validation of model parameters
-        registry = ModelRegistry()
-        capabilities = registry.get_capabilities(args.model)
-
-        # Check which parameters were explicitly provided
-        ctx = click.get_current_context()
-        for param_name in [
-            "temperature",
-            "max_output_tokens",
-            "top_p",
-            "frequency_penalty",
-            "presence_penalty",
-            "reasoning_effort",
-        ]:
-            if param_name in ctx.params and ctx.params[param_name] is not None:
-                if param_name not in capabilities.supported_parameters:
-                    msg = f"Model {args.model} does not support parameter: {param_name}"
-                    logger.error(
-                        "Validation failed for model %s: %s", args.model, msg
-                    )
-                    raise CLIError(
-                        msg,
-                        exit_code=ExitCode.VALIDATION_ERROR,
-                        context={"model": args.model, "param": param_name},
-                    )
-                try:
-                    capabilities.validate_parameter(
-                        param_name, ctx.params[param_name]
-                    )
-                except ValueError as e:
-                    msg = f"Invalid value for parameter {param_name}: {str(e)}"
-                    logger.error(
-                        "Validation failed for model %s: %s", args.model, msg
-                    )
-                    raise CLIError(
-                        msg,
-                        exit_code=ExitCode.VALIDATION_ERROR,
-                        context={
-                            "model": args.model,
-                            "param": param_name,
-                            "value": ctx.params[param_name],
-                        },
-                    )
-
-        # Validate JSON variables
-        if args.json_var:
-            try:
-                for mapping in args.json_var:
-                    name, value = mapping.split("=", 1)
-                    if not name:
-                        raise VariableNameError(
-                            "Empty name in JSON variable mapping"
-                        )
-                    try:
-                        json.loads(value)
-                    except json.JSONDecodeError as e:
-                        logger.error("Invalid JSON: %s", str(e))
-                        raise InvalidJSONError(
-                            f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {value}",
-                            context={"variable_name": name},
-                        )
-            except ValueError:
-                raise VariableNameError(
-                    f"Invalid JSON variable mapping format: {mapping}. Expected name=json"
-                )
+        # Convert Click parameters to typed dict
+        params: CLIParams = {
+            "task_file": task_template,
+            "task": None,
+            "schema_file": schema_file,
+        }
+        # Add only valid keys from kwargs
+        valid_keys = set(CLIParams.__annotations__.keys())
+        for k, v in kwargs.items():
+            if k in valid_keys:
+                params[k] = v  # type: ignore[literal-required]
 
         # Run the async function synchronously
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            exit_code = loop.run_until_complete(run_cli_async(args))
-            sys.exit(int(exit_code))  # Convert ExitCode to int
+            exit_code = loop.run_until_complete(run_cli_async(params))
+            sys.exit(int(exit_code))
         finally:
             loop.close()
 
@@ -1541,7 +1534,11 @@ def cli(**kwargs: Any) -> None:
         sys.exit(ExitCode.INTERNAL_ERROR)
 
 
-async def validate_model_params(args: Namespace) -> Dict[str, Any]:
+# Remove the old @create_click_command() decorator and cli function definition
+# Keep all the other functions and code below this point
+
+
+async def validate_model_params(args: CLIParams) -> Dict[str, Any]:
     """Validate model parameters and return a dictionary of valid parameters.
 
     Args:
@@ -1554,21 +1551,21 @@ async def validate_model_params(args: Namespace) -> Dict[str, Any]:
         CLIError: If model parameters are invalid
     """
     params = {
-        "temperature": args.temperature,
-        "max_output_tokens": args.max_output_tokens,
-        "top_p": args.top_p,
-        "frequency_penalty": args.frequency_penalty,
-        "presence_penalty": args.presence_penalty,
-        "reasoning_effort": args.reasoning_effort,
+        "temperature": args.get("temperature"),
+        "max_output_tokens": args.get("max_output_tokens"),
+        "top_p": args.get("top_p"),
+        "frequency_penalty": args.get("frequency_penalty"),
+        "presence_penalty": args.get("presence_penalty"),
+        "reasoning_effort": args.get("reasoning_effort"),
     }
     # Remove None values
     params = {k: v for k, v in params.items() if v is not None}
-    validate_model_parameters(args.model, params)
+    validate_model_parameters(args["model"], params)
     return params
 
 
 async def validate_inputs(
-    args: Namespace,
+    args: CLIParams,
 ) -> Tuple[
     SecurityManager, str, Dict[str, Any], Dict[str, Any], jinja2.Environment
 ]:
@@ -1590,15 +1587,19 @@ async def validate_inputs(
     """
     logger.debug("=== Input Validation Phase ===")
     security_manager = validate_security_manager(
-        base_dir=args.base_dir,
-        allowed_dirs=args.allowed_dir,
-        allowed_dir_file=args.allowed_dir_file,
+        base_dir=args.get("base_dir"),
+        allowed_dirs=args.get("allowed_dirs"),
+        allowed_dir_file=args.get("allowed_dir_file"),
     )
 
-    task_template = validate_task_template(args.task, args.task_file)
-    logger.debug("Validating schema from %s", args.schema_file)
-    schema = validate_schema_file(args.schema_file, args.verbose)
-    template_context = create_template_context_from_args(
+    task_template = validate_task_template(
+        args.get("task"), args.get("task_file")
+    )
+    logger.debug("Validating schema from %s", args["schema_file"])
+    schema = validate_schema_file(
+        args["schema_file"], args.get("verbose", False)
+    )
+    template_context = await create_template_context_from_args(
         args, security_manager
     )
     env = create_jinja_env()
@@ -1607,7 +1608,7 @@ async def validate_inputs(
 
 
 async def process_templates(
-    args: Namespace,
+    args: CLIParams,
     task_template: str,
     template_context: Dict[str, Any],
     env: jinja2.Environment,
@@ -1629,18 +1630,18 @@ async def process_templates(
     logger.debug("=== Template Processing Phase ===")
     system_prompt = process_system_prompt(
         task_template,
-        args.system_prompt,
-        args.system_prompt_file,
+        args.get("system_prompt"),
+        args.get("system_prompt_file"),
         template_context,
         env,
-        args.ignore_task_sysprompt,
+        args.get("ignore_task_sysprompt", False),
     )
     user_prompt = render_template(task_template, template_context, env)
     return system_prompt, user_prompt
 
 
 async def validate_model_and_schema(
-    args: Namespace,
+    args: CLIParams,
     schema: Dict[str, Any],
     system_prompt: str,
     user_prompt: str,
@@ -1665,8 +1666,8 @@ async def validate_model_and_schema(
     try:
         output_model = create_dynamic_model(
             schema,
-            show_schema=args.show_model_schema,
-            debug_validation=args.debug_validation,
+            show_schema=args.get("show_model_schema", False),
+            debug_validation=args.get("debug_validation", False),
         )
         logger.debug("Successfully created output model")
     except (
@@ -1678,8 +1679,8 @@ async def validate_model_and_schema(
         logger.error("Schema error: %s", str(e))
         raise
 
-    if not supports_structured_output(args.model):
-        msg = f"Model {args.model} does not support structured output"
+    if not supports_structured_output(args["model"]):
+        msg = f"Model {args['model']} does not support structured output"
         logger.error(msg)
         raise ModelNotSupportedError(msg)
 
@@ -1688,9 +1689,9 @@ async def validate_model_and_schema(
         {"role": "user", "content": user_prompt},
     ]
 
-    total_tokens = estimate_tokens_with_encoding(messages, args.model)
+    total_tokens = estimate_tokens_with_encoding(messages, args["model"])
     registry = ModelRegistry()
-    capabilities = registry.get_capabilities(args.model)
+    capabilities = registry.get_capabilities(args["model"])
     context_limit = capabilities.context_window
 
     if total_tokens > context_limit:
@@ -1708,7 +1709,7 @@ async def validate_model_and_schema(
 
 
 async def execute_model(
-    args: Namespace,
+    args: CLIParams,
     params: Dict[str, Any],
     output_model: Type[BaseModel],
     system_prompt: str,
@@ -1730,17 +1731,17 @@ async def execute_model(
         CLIError: For execution errors
     """
     logger.debug("=== Execution Phase ===")
-    api_key = args.api_key or os.getenv("OPENAI_API_KEY")
+    api_key = args.get("api_key") or os.getenv("OPENAI_API_KEY")
     if not api_key:
         msg = "No API key provided. Set OPENAI_API_KEY environment variable or use --api-key"
         logger.error(msg)
         raise CLIError(msg, exit_code=ExitCode.API_ERROR)
 
-    client = AsyncOpenAI(api_key=api_key, timeout=args.timeout)
+    client = AsyncOpenAI(api_key=api_key, timeout=args.get("timeout", 60.0))
 
     # Create detailed log callback
     def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
-        if args.debug_openai_stream:
+        if args.get("debug_openai_stream", False):
             if extra:
                 extra_str = LogSerializer.serialize_log_extra(extra)
                 if extra_str:
@@ -1757,19 +1758,20 @@ async def execute_model(
         # Stream the response
         async for response in stream_structured_output(
             client=client,
-            model=args.model,
+            model=args["model"],
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             output_schema=output_model,
-            output_file=args.output_file,
+            output_file=args.get("output_file"),
             **params,  # Only pass validated model parameters
             on_log=log_callback,  # Pass logging callback separately
         ):
             output_buffer.append(response)
 
         # Handle final output
-        if args.output_file:
-            with open(args.output_file, "w") as f:
+        output_file = args.get("output_file")
+        if output_file:
+            with open(output_file, "w") as f:
                 if len(output_buffer) == 1:
                     f.write(output_buffer[0].model_dump_json(indent=2))
                 else:
@@ -1818,7 +1820,7 @@ async def execute_model(
         await client.close()
 
 
-async def run_cli_async(args: Namespace) -> ExitCode:
+async def run_cli_async(args: CLIParams) -> ExitCode:
     """Async wrapper for CLI operations.
 
     Returns:
@@ -1851,17 +1853,16 @@ async def run_cli_async(args: Namespace) -> ExitCode:
         )
 
         # 4. Dry Run Output Phase
-        if args.dry_run:
+        if args.get("dry_run", False):
             logger.info("\n=== Dry Run Summary ===")
             logger.info("✓ Template rendered successfully")
             logger.info("✓ Schema validation passed")
             logger.info("✓ Model compatibility validated")
-            capabilities = registry.get_capabilities(args.model)
             logger.info(
-                f"✓ Token count: {total_tokens}/{capabilities.context_window}"
+                f"✓ Token count: {total_tokens}/{registry.get_capabilities(args['model']).context_window}"
             )
 
-            if args.verbose:
+            if args.get("verbose", False):
                 logger.info("\nSystem Prompt:")
                 logger.info("-" * 40)
                 logger.info(system_prompt)
@@ -1898,7 +1899,6 @@ def create_cli() -> click.Command:
 def main() -> None:
     """Main entry point for the CLI."""
     try:
-        cli = create_cli()
         cli(standalone_mode=False)
     except (
         CLIError,
@@ -1939,17 +1939,16 @@ def create_dynamic_model(
     """Create a Pydantic model from a JSON schema.
 
     Args:
-        schema: JSON schema dict, can be wrapped in {"schema": ...} format
-        base_name: Base name for the model
-        show_schema: Whether to show the generated schema
-        debug_validation: Whether to enable validation debugging
+        schema: JSON schema to create model from
+        base_name: Name for the model class
+        show_schema: Whether to show the generated model schema
+        debug_validation: Whether to show detailed validation errors
 
     Returns:
-        Generated Pydantic model class
+        Type[BaseModel]: The generated Pydantic model class
 
     Raises:
-        ModelCreationError: When model creation fails
-        SchemaValidationError: When schema is invalid
+        ModelValidationError: If the schema is invalid
     """
     if debug_validation:
         logger.info("Creating dynamic model from schema:")
@@ -2041,18 +2040,17 @@ def create_dynamic_model(
                 "  JSON Schema Extra: %s", config.get("json_schema_extra")
             )
 
-        # Create field definitions
-        field_definitions: Dict[str, FieldDefinition] = {}
+        # Process schema properties into fields
         properties = schema.get("properties", {})
+        required = schema.get("required", [])
 
+        field_definitions: Dict[str, Tuple[Type[Any], FieldInfoType]] = {}
         for field_name, field_schema in properties.items():
-            try:
-                if debug_validation:
-                    logger.info("Processing field %s:", field_name)
-                    logger.info(
-                        "  Schema: %s", json.dumps(field_schema, indent=2)
-                    )
+            if debug_validation:
+                logger.info("Processing field %s:", field_name)
+                logger.info("  Schema: %s", json.dumps(field_schema, indent=2))
 
+            try:
                 python_type, field = _get_type_with_constraints(
                     field_schema, field_name, base_name
                 )
@@ -2087,22 +2085,23 @@ def create_dynamic_model(
                 raise ModelValidationError(base_name, [str(e)])
 
         # Create the model with the fields
-        field_defs: dict[str, tuple[type[Any], FieldInfoType]] = {
-            name: (field_type, field)
+        field_defs: Dict[str, Any] = {
+            name: (
+                (
+                    cast(Type[Any], field_type)
+                    if is_container_type(field_type)
+                    else field_type
+                ),
+                field,
+            )
             for name, (field_type, field) in field_definitions.items()
         }
-
-        # Create model with explicit type casting
-        model: Type[BaseModel] = cast(
-            Type[BaseModel],
-            create_model(  # type: ignore[call-overload]
-                base_name,
-                __base__=BaseModel,
-                model_config=config,
-                __module__=__name__,
-                **field_defs,
-            ),
+        model: Type[BaseModel] = create_model(
+            base_name, __config__=config, **field_defs
         )
+
+        # Set the model config after creation
+        model.model_config = config
 
         if debug_validation:
             logger.info("Successfully created model: %s", model.__name__)

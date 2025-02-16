@@ -46,7 +46,8 @@ import codecs
 import glob
 import logging
 import os
-from typing import Any, Dict, List, Optional, Type, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import chardet
 
@@ -113,10 +114,10 @@ def collect_files_from_pattern(
     pattern: str,
     security_manager: SecurityManager,
 ) -> List[FileInfo]:
-    """Collect files matching a glob pattern.
+    """Collect files matching a glob pattern or exact file path.
 
     Args:
-        pattern: Glob pattern to match files
+        pattern: Glob pattern or file path to match
         security_manager: Security manager for path validation
 
     Returns:
@@ -125,7 +126,18 @@ def collect_files_from_pattern(
     Raises:
         PathSecurityError: If any matched file is outside base directory
     """
-    # Expand pattern
+    # First check if it's an exact file path
+    if os.path.isfile(pattern):
+        try:
+            file_info = FileInfo.from_path(pattern, security_manager)
+            return [file_info]
+        except PathSecurityError:
+            raise
+        except Exception as e:
+            logger.warning("Could not process file %s: %s", pattern, str(e))
+            return []
+
+    # If not an exact file, try glob pattern
     matched_paths = glob.glob(pattern, recursive=True)
     if not matched_paths:
         logger.debug("No files matched pattern: %s", pattern)
@@ -140,8 +152,8 @@ def collect_files_from_pattern(
         except PathSecurityError:
             # Let security errors propagate
             raise
-        except Exception:
-            logger.warning("Could not process file %s", path)
+        except Exception as e:
+            logger.warning("Could not process file %s: %s", path, str(e))
 
     return files
 
@@ -256,16 +268,17 @@ def collect_files_from_directory(
                     raise
 
                 try:
+                    # Use absolute path when creating FileInfo
                     file_info = FileInfo.from_path(
-                        rel_path, security_manager=security_manager, **kwargs
+                        abs_path, security_manager=security_manager, **kwargs
                     )
                     files.append(file_info)
-                    logger.debug("Added file to list: %s", rel_path)
+                    logger.debug("Added file to list: %s", abs_path)
                 except PathSecurityError as e:
                     # Log and re-raise security errors immediately
                     logger.error(
                         "Security violation processing file: %s (%s)",
-                        rel_path,
+                        abs_path,
                         str(e),
                     )
                     raise
@@ -289,39 +302,34 @@ def collect_files_from_directory(
 
 
 def _validate_and_split_mapping(
-    mapping: str, mapping_type: str
+    mapping: tuple[str, Union[str, Path]], mapping_type: str
 ) -> tuple[str, str]:
-    """Validate and split a name=value mapping.
+    """Validate a name/path tuple mapping.
 
     Args:
-        mapping: The mapping string to validate (e.g. "name=value")
+        mapping: The mapping tuple (name, path)
         mapping_type: Type of mapping for error messages ("file", "pattern", or "directory")
 
     Returns:
-        Tuple of (name, value)
+        The same tuple of (name, path)
 
     Raises:
         ValueError: If mapping format is invalid
     """
-    try:
-        name, value = mapping.split("=", 1)
-    except ValueError:
-        raise ValueError(
-            f"Invalid {mapping_type} mapping format: {mapping!r} (missing '=' separator)"
-        )
+    name, value = mapping
 
     if not name:
-        raise ValueError(f"Empty name in {mapping_type} mapping: {mapping!r}")
+        raise ValueError(f"Empty name in {mapping_type} mapping")
     if not value:
-        raise ValueError(f"Empty value in {mapping_type} mapping: {mapping!r}")
+        raise ValueError(f"Empty value in {mapping_type} mapping")
 
-    return name, value
+    return name, str(value)  # Convert Path to str if needed
 
 
 def collect_files(
-    file_mappings: Optional[List[str]] = None,
-    pattern_mappings: Optional[List[str]] = None,
-    dir_mappings: Optional[List[str]] = None,
+    file_mappings: Optional[List[Tuple[str, Union[str, Path]]]] = None,
+    pattern_mappings: Optional[List[Tuple[str, Union[str, Path]]]] = None,
+    dir_mappings: Optional[List[Tuple[str, Union[str, Path]]]] = None,
     dir_recursive: bool = False,
     dir_extensions: Optional[List[str]] = None,
     security_manager: Optional[SecurityManager] = None,
@@ -330,9 +338,9 @@ def collect_files(
     """Collect files from multiple sources.
 
     Args:
-        file_mappings: List of file mappings in the format "name=path"
-        pattern_mappings: List of pattern mappings in the format "name=pattern"
-        dir_mappings: List of directory mappings in the format "name=directory"
+        file_mappings: List of file mappings as (name, path) tuples
+        pattern_mappings: List of pattern mappings as (name, pattern) tuples
+        dir_mappings: List of directory mappings as (name, directory) tuples
         dir_recursive: Whether to process directories recursively
         dir_extensions: List of file extensions to include in directory processing
         security_manager: Security manager instance
@@ -383,7 +391,7 @@ def collect_files(
                 raise ValueError(f"Duplicate file mapping: {name}")
 
             file_info = FileInfo.from_path(
-                path, security_manager=security_manager, **kwargs
+                str(path), security_manager=security_manager, **kwargs
             )
             files[name] = FileInfoList([file_info], from_dir=False)
             logger.debug("Added single file mapping: %s -> %s", name, path)
@@ -398,7 +406,7 @@ def collect_files(
 
             try:
                 matched_files = collect_files_from_pattern(
-                    pattern, security_manager=security_manager, **kwargs
+                    str(pattern), security_manager=security_manager, **kwargs
                 )
             except PathSecurityError as e:
                 logger.debug("Security error in pattern mapping: %s", str(e))
@@ -465,7 +473,7 @@ def collect_files(
 
     if not files:
         logger.debug("No files found in any mappings")
-        raise ValueError("No files found")
+        return files
 
     logger.debug("Collected files total mappings: %d", len(files))
     return files

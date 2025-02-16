@@ -63,6 +63,7 @@ from jinja2 import Environment
 
 from .errors import TemplateValidationError
 from .file_utils import FileInfo
+from .progress import ProgressContext
 from .template_env import create_jinja_env
 from .template_schema import DotDict, StdinProxy
 
@@ -92,23 +93,23 @@ TemplateContextValue = Union[
 def render_template(
     template_str: str,
     context: Dict[str, Any],
-    jinja_env: Optional[Environment] = None,
-    progress_enabled: bool = True,
+    env: Optional[Environment] = None,
+    progress: Optional[ProgressContext] = None,
 ) -> str:
-    """Render a task template with the given context.
+    """Render a template with the given context.
 
     Args:
-        template_str: Task template string or path to task template file
-        context: Task template variables
-        jinja_env: Optional Jinja2 environment to use
-        progress_enabled: Whether to show progress indicators
+        template_str: Template string to render
+        context: Context dictionary for template variables
+        env: Optional Jinja2 environment to use
+        progress: Optional progress bar to update
 
     Returns:
-        Rendered task template string
+        str: The rendered template string
 
     Raises:
-        TemplateValidationError: If task template cannot be loaded or rendered. The original error
-                  will be chained using `from` for proper error context.
+        TemplateValidationError: If template rendering fails
+        ValueError: If template or context is invalid
     """
     from .progress import (  # Import here to avoid circular dependency
         ProgressContext,
@@ -116,16 +117,14 @@ def render_template(
 
     with ProgressContext(
         description="Rendering task template",
-        level="basic" if progress_enabled else "none",
+        level="basic" if progress else "none",
     ) as progress:
         try:
             if progress:
                 progress.update(1)  # Update progress for setup
 
-            if jinja_env is None:
-                jinja_env = create_jinja_env(
-                    loader=jinja2.FileSystemLoader(".")
-                )
+            if env is None:
+                env = create_jinja_env(loader=jinja2.FileSystemLoader("."))
 
             logger.debug("=== Raw Input ===")
             logger.debug(
@@ -154,7 +153,7 @@ def render_template(
             # Wrap JSON variables in DotDict and handle special cases
             wrapped_context: Dict[str, TemplateContextValue] = {}
             for key, value in context.items():
-                if isinstance(value, dict):
+                if isinstance(value, dict) and not isinstance(value, DotDict):
                     wrapped_context[key] = DotDict(value)
                 else:
                     wrapped_context[key] = value
@@ -188,7 +187,7 @@ def render_template(
                         f"Task template file not found: {template_str}"
                     )
                 try:
-                    template = jinja_env.get_template(template_str)
+                    template = env.get_template(template_str)
                 except jinja2.TemplateNotFound as e:
                     raise TemplateValidationError(
                         f"Task template file not found: {e.name}"
@@ -199,10 +198,10 @@ def render_template(
                     template_str,
                 )
                 try:
-                    template = jinja_env.from_string(template_str)
+                    template = env.from_string(template_str)
 
                     # Add debug log for loop rendering
-                    def debug_file_render(f: FileInfo) -> str:
+                    def debug_file_render(f: FileInfo) -> Any:
                         logger.info("Rendering file: %s", f.path)
                         return ""
 
@@ -292,6 +291,10 @@ def render_template(
                             "  %s: %s (%r)", key, type(value).__name__, value
                         )
                 result = template.render(**wrapped_context)
+                if not isinstance(result, str):
+                    raise TemplateValidationError(
+                        f"Template rendered to non-string type: {type(result)}"
+                    )
                 logger.info(
                     "Template render result (first 100 chars): %r",
                     result[:100],
@@ -302,7 +305,7 @@ def render_template(
                 )
                 if progress:
                     progress.update(1)
-                return result  # type: ignore[no-any-return]
+                return result
             except (jinja2.TemplateError, Exception) as e:
                 logger.error("Template rendering failed: %s", str(e))
                 raise TemplateValidationError(
@@ -336,4 +339,15 @@ def render_template_file(
     """
     with open(template_path, "r", encoding="utf-8") as f:
         template_str = f.read()
-    return render_template(template_str, context, jinja_env, progress_enabled)
+
+    # Create a progress context if enabled
+    progress = (
+        ProgressContext(
+            description="Rendering template file",
+            level="basic" if progress_enabled else "none",
+        )
+        if progress_enabled
+        else None
+    )
+
+    return render_template(template_str, context, jinja_env, progress)
