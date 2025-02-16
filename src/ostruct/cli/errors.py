@@ -240,7 +240,22 @@ class TaskTemplateSyntaxError(TaskTemplateError):
 class TaskTemplateVariableError(TaskTemplateError):
     """Raised when a task template uses undefined variables."""
 
-    pass
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+        """
+        super().__init__(
+            message,
+            context=context,
+            exit_code=ExitCode.VALIDATION_ERROR,
+        )
 
 
 class TemplateValidationError(TaskTemplateError):

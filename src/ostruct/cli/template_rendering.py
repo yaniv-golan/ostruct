@@ -61,7 +61,7 @@ from typing import Any, Dict, List, Optional, Union
 import jinja2
 from jinja2 import Environment
 
-from .errors import TemplateValidationError
+from .errors import TaskTemplateVariableError, TemplateValidationError
 from .file_utils import FileInfo
 from .progress import ProgressContext
 from .template_env import create_jinja_env
@@ -108,8 +108,8 @@ def render_template(
         str: The rendered template string
 
     Raises:
-        TemplateValidationError: If template rendering fails
-        ValueError: If template or context is invalid
+        TaskTemplateVariableError: If template variables are undefined
+        TemplateValidationError: If template rendering fails for other reasons
     """
     from .progress import (  # Import here to avoid circular dependency
         ProgressContext,
@@ -306,6 +306,16 @@ def render_template(
                 if progress:
                     progress.update(1)
                 return result
+            except jinja2.UndefinedError as e:
+                # Extract variable name from error message
+                var_name = str(e).split("'")[1]
+                error_msg = (
+                    f"Missing required template variable: {var_name}\n"
+                    f"Available variables: {', '.join(sorted(context.keys()))}\n"
+                    "To fix this, please provide the variable using:\n"
+                    f"  -V {var_name}='value'"
+                )
+                raise TaskTemplateVariableError(error_msg) from e
             except (jinja2.TemplateError, Exception) as e:
                 logger.error("Template rendering failed: %s", str(e))
                 raise TemplateValidationError(

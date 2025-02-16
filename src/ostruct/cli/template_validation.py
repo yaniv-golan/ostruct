@@ -67,7 +67,7 @@ from jinja2 import meta
 from jinja2.nodes import For, Name, Node
 
 from . import template_filters
-from .errors import TemplateValidationError
+from .errors import TaskTemplateVariableError, TemplateValidationError
 from .template_env import create_jinja_env
 from .template_schema import (
     DictProxy,
@@ -160,7 +160,8 @@ def validate_template_placeholders(
         template_context: Optional context to validate against
 
     Raises:
-        TemplateValidationError: If any placeholders are invalid
+        TaskTemplateVariableError: If any variables are undefined
+        TemplateValidationError: If template validation fails for other reasons
     """
     logger = logging.getLogger(__name__)
 
@@ -309,10 +310,15 @@ def validate_template_placeholders(
         }
 
         if missing:
-            raise TemplateValidationError(
-                f"Task template uses undefined variables: {', '.join(sorted(missing))}. "
-                f"Available variables: {', '.join(sorted(available_vars))}"
+            # Create a more user-friendly error message
+            error_msg = (
+                f"Missing required template variable(s): {', '.join(sorted(missing))}\n"
+                f"Available variables: {', '.join(sorted(available_vars))}\n"
+                "To fix this, please provide the missing variable(s) using:\n"
             )
+            for var in sorted(missing):
+                error_msg += f"  -V {var}='value'\n"
+            raise TaskTemplateVariableError(error_msg)
 
         logger.debug(
             "Before create_validation_context - available_vars type: %s, value: %s",
@@ -336,8 +342,17 @@ def validate_template_placeholders(
         try:
             env.from_string(template).render(validation_context)
         except jinja2.UndefinedError as e:
-            # Convert Jinja2 undefined errors to our own ValueError
-            raise TemplateValidationError(str(e))
+            # Convert Jinja2 undefined errors to TaskTemplateVariableError with helpful message
+            var_name = str(e).split("'")[
+                1
+            ]  # Extract variable name from error message
+            error_msg = (
+                f"Missing required template variable: {var_name}\n"
+                f"Available variables: {', '.join(sorted(available_vars))}\n"
+                "To fix this, please provide the variable using:\n"
+                f"  -V {var_name}='value'"
+            )
+            raise TaskTemplateVariableError(error_msg) from e
         except ValueError as e:
             # Convert validation errors from template_schema to TemplateValidationError
             raise TemplateValidationError(str(e))
@@ -348,10 +363,13 @@ def validate_template_placeholders(
             raise
 
     except jinja2.TemplateSyntaxError as e:
-        # Convert Jinja2 syntax errors to our own ValueError
+        # Convert Jinja2 syntax errors to TemplateValidationError
         raise TemplateValidationError(
             f"Invalid task template syntax: {str(e)}"
         )
+    except (TaskTemplateVariableError, TemplateValidationError):
+        # Re-raise these without wrapping
+        raise
     except Exception as e:
         logger.error("Unexpected error during template validation: %s", str(e))
         raise
