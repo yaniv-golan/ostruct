@@ -5,14 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - Unreleased
+## [0.5.0] - 2024-02-16
 
 ### Added
 
 - Added support for o1 and o3 models with their specific parameter constraints.
 - Added validation to prevent use of unsupported parameters for each model type.
 - Added explicit type casting for Click commands with improved type hints.
-- Added integration with `openai-structured v2.0.0` and its `openai_structured.model_registry` for better model capability management.
+- Added integration with [openai-structured v2.0.0](https://github.com/yaniv-golan/openai-structured) and its `openai_structured.model_registry` for better model capability management.
 - Added more comprehensive test coverage for model validation and type safety.
 
 ### Changed
