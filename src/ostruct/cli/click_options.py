@@ -5,10 +5,11 @@ We isolate this code here and provide proper type annotations for Click's
 decorator-based API.
 """
 
-from typing import Any, Callable, ParamSpec, TypeVar, Union, cast
+from typing import Any, Callable, TypeVar, Union, cast
 
 import click
 from click import Command
+from typing_extensions import ParamSpec
 
 from ostruct import __version__
 from ostruct.cli.errors import (  # noqa: F401 - Used in error handling

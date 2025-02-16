@@ -684,7 +684,7 @@ def test_collect_files_security_violations(
     assert "Symlink security violation" in str(exc_info.value)
 
 
-class TestCase(TypedDict):
+class PathTestData(TypedDict):
     name: str
     task_file: str
     expected_error: Type[Exception]
