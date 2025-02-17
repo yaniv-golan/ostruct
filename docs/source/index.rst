@@ -71,8 +71,9 @@ Documentation
    :caption: Contents:
 
    cli
-   migration
+   templates
    template_filters
+   migration
 
 Why Structured Output?
 -------------------
