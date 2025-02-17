@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-02-17
+
+### Added
+
+- Added shell completion support for command options and file paths
+- Added comprehensive documentation with three detailed usage examples in README
+- Added enhanced template context support for pattern-matched files
+
+### Changed
+
+- **Breaking:** Schema validation now enforces OpenAI compatibility rules
+  - Root schemas must be of type 'object' (arrays must be wrapped in an object)
+  - Improved error messages with examples and fixing instructions
+- Enhanced error handling with more detailed context and troubleshooting tips
+- Improved error messages for API responses and schema validation
+- Pinned tiktoken to version 0.9.0 for better compatibility
+
+### Fixed
+
+- Fixed pattern-based file matching with `-p` or `--pattern` option for matching multiple files using glob patterns
+- Improved type safety with better type hints and compatibility
+- Enhanced error handling for API responses
+- Fixed schema validation error reporting with more context
+- Improved handling of OpenAI schema-specific errors
+
+### Security
+
+- Enhanced schema validation error messages to prevent exposure of sensitive information
+
 ## [0.5.0] - 2024-02-16
 
 ### Added

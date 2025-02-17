@@ -165,11 +165,44 @@ See `docs/customization.md` for detailed instructions on:
 
 ## Schema
 
-The test generation results follow a structured schema defined in `schemas/test_cases.json`. See `docs/schema.md` for:
+The test generation results follow a structured schema defined in `schemas/test_cases.json`. The output is a JSON object containing:
 
-- Complete schema documentation
-- Test case structure
-- Framework-specific outputs
+1. `test_cases`: Array of test cases, each with:
+   - `function_name`: Name of the function being tested
+   - `test_name`: Name of the test function
+   - `test_type`: One of "unit", "integration", or "edge_case"
+   - `description`: What the test verifies
+   - `code`: The actual test code
+   - `lines_covered`: Comma-separated list of line numbers this test is expected to cover
+   - `branches_covered`: Comma-separated list of branch numbers this test is expected to cover
+
+2. `summary`: Object with:
+   - `total_functions`: Number of functions analyzed
+   - `functions_with_tests`: Number of functions that have tests
+   - `coverage_delta`: Estimated coverage improvement
+
+Example output:
+
+```json
+{
+  "test_cases": [
+    {
+      "function_name": "add",
+      "test_name": "test_add_positive",
+      "test_type": "unit",
+      "description": "Test addition of two positive numbers",
+      "code": "def test_add_positive():\n    result = add(2, 3)\n    assert result == 5",
+      "lines_covered": "1,2",
+      "branches_covered": "1"
+    }
+  ],
+  "summary": {
+    "total_functions": 1,
+    "functions_with_tests": 1,
+    "coverage_delta": 0.8
+  }
+}
+```
 
 ## Integration
 

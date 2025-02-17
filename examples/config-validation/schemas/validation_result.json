@@ -2,18 +2,22 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "required": [
-        "validation_results",
+        "files",
+        "findings",
         "summary"
     ],
+    "additionalProperties": false,
     "properties": {
-        "validation_results": {
+        "files": {
             "type": "array",
             "items": {
                 "type": "object",
+                "additionalProperties": false,
                 "required": [
                     "file_path",
                     "is_valid",
-                    "findings"
+                    "finding_ids",
+                    "metadata"
                 ],
                 "properties": {
                     "file_path": {
@@ -24,81 +28,18 @@
                         "type": "boolean",
                         "description": "Whether the configuration is valid"
                     },
-                    "findings": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "required": [
-                                "severity",
-                                "message",
-                                "location"
-                            ],
-                            "properties": {
-                                "severity": {
-                                    "type": "string",
-                                    "enum": [
-                                        "error",
-                                        "warning",
-                                        "info",
-                                        "security"
-                                    ],
-                                    "description": "Severity level of the finding"
-                                },
-                                "message": {
-                                    "type": "string",
-                                    "description": "Human-readable description of the issue"
-                                },
-                                "location": {
-                                    "type": "object",
-                                    "required": [
-                                        "line",
-                                        "column"
-                                    ],
-                                    "properties": {
-                                        "line": {
-                                            "type": "integer",
-                                            "description": "Line number where the issue was found"
-                                        },
-                                        "column": {
-                                            "type": "integer",
-                                            "description": "Column number where the issue was found"
-                                        },
-                                        "path": {
-                                            "type": "string",
-                                            "description": "JSON/YAML path to the problematic field"
-                                        }
-                                    }
-                                },
-                                "suggestion": {
-                                    "type": "string",
-                                    "description": "Suggested fix for the issue"
-                                },
-                                "context": {
-                                    "type": "object",
-                                    "description": "Additional context about the finding",
-                                    "properties": {
-                                        "related_files": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            },
-                                            "description": "Other files related to this finding"
-                                        },
-                                        "documentation": {
-                                            "type": "string",
-                                            "description": "Link to relevant documentation"
-                                        },
-                                        "best_practice": {
-                                            "type": "string",
-                                            "description": "Description of the best practice being violated"
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    "finding_ids": {
+                        "type": "string",
+                        "description": "Comma-separated list of finding IDs"
                     },
                     "metadata": {
                         "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "environment",
+                            "service",
+                            "last_modified"
+                        ],
                         "properties": {
                             "environment": {
                                 "type": "string",
@@ -110,20 +51,84 @@
                             },
                             "last_modified": {
                                 "type": "string",
-                                "format": "date-time",
-                                "description": "When this config was last modified"
+                                "description": "When this config was last modified (ISO 8601 date-time)"
                             }
                         }
                     }
                 }
             }
         },
+        "findings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "id",
+                    "severity",
+                    "message",
+                    "line",
+                    "column",
+                    "path",
+                    "suggestion",
+                    "documentation",
+                    "best_practice"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Unique identifier for the finding"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "warning",
+                            "info",
+                            "security"
+                        ],
+                        "description": "Severity level of the finding"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Human-readable description of the issue"
+                    },
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number where the issue was found"
+                    },
+                    "column": {
+                        "type": "integer",
+                        "description": "Column number where the issue was found"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "JSON/YAML path to the problematic field"
+                    },
+                    "suggestion": {
+                        "type": "string",
+                        "description": "Suggested fix for the issue"
+                    },
+                    "documentation": {
+                        "type": "string",
+                        "description": "Link to relevant documentation"
+                    },
+                    "best_practice": {
+                        "type": "string",
+                        "description": "Description of the best practice being violated"
+                    }
+                }
+            }
+        },
         "summary": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
                 "total_files",
                 "valid_files",
-                "total_findings"
+                "total_findings",
+                "findings_by_severity",
+                "environment_issues"
             ],
             "properties": {
                 "total_files": {
@@ -140,6 +145,13 @@
                 },
                 "findings_by_severity": {
                     "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "error",
+                        "warning",
+                        "info",
+                        "security"
+                    ],
                     "properties": {
                         "error": {
                             "type": "integer"
@@ -155,24 +167,23 @@
                         }
                     }
                 },
-                "cross_environment_issues": {
+                "environment_issues": {
                     "type": "array",
                     "items": {
                         "type": "object",
+                        "additionalProperties": false,
                         "required": [
                             "description",
-                            "affected_environments"
+                            "environments"
                         ],
                         "properties": {
                             "description": {
                                 "type": "string",
                                 "description": "Description of the cross-environment issue"
                             },
-                            "affected_environments": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
+                            "environments": {
+                                "type": "string",
+                                "description": "Comma-separated list of affected environments"
                             }
                         }
                     }

@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from io import StringIO
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Union, cast
 
 import click
 import pytest
@@ -16,6 +16,7 @@ from ostruct.cli.cli import create_cli, create_template_context
 from ostruct.cli.errors import CLIError, InvalidJSONError
 from ostruct.cli.exit_codes import ExitCode
 from ostruct.cli.file_list import FileInfo, FileInfoList
+from ostruct.cli.file_utils import collect_files
 from ostruct.cli.security import SecurityManager
 
 # Configure logging for tests
@@ -259,6 +260,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -290,6 +292,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -323,6 +326,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -356,6 +360,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -393,6 +398,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -432,6 +438,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -465,6 +472,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -497,6 +505,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -547,6 +556,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -621,6 +631,7 @@ class TestCLICore:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -647,11 +658,10 @@ class TestCLICore:
         """Test error handling for invalid template syntax."""
         # Create necessary files
         schema_content = {
-            "schema": {
-                "type": "object",
-                "properties": {"result": {"type": "string"}},
-                "required": ["result"],
-            }
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"result": {"type": "string"}},
+            "required": ["result"],
         }
         fs.create_file(
             f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
@@ -671,6 +681,111 @@ class TestCLICore:
         )
         cli_runner.check_error_message(result, "Template syntax error")
 
+    def test_schema_validation_error_logging(
+        self,
+        cli_runner: CliTestRunner,
+        fs: FakeFilesystem,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that schema validation errors are logged appropriately with and without debug validation."""
+        # Create a schema that exceeds max nesting depth
+        deeply_nested_schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "level1": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "level2": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "level3": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "properties": {
+                                        "level4": {
+                                            "type": "object",
+                                            "additionalProperties": False,
+                                            "properties": {
+                                                "level5": {
+                                                    "type": "object",
+                                                    "additionalProperties": False,
+                                                    "properties": {
+                                                        "level6": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                }
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
+                }
+            },
+        }
+
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json",
+            contents=json.dumps(deeply_nested_schema),
+        )
+        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
+
+        # Change to test base directory
+        os.chdir(TEST_BASE_DIR)
+
+        # Test without debug validation
+        with caplog.at_level(logging.ERROR):
+            caplog.clear()
+            result = cli_runner.invoke(
+                create_cli(),
+                [
+                    "run",
+                    "task.txt",
+                    "schema.json",
+                ],
+            )
+
+            # Check error classification
+            assert result.exit_code == ExitCode.SCHEMA_ERROR
+            error_msg = str(result.exception)
+            assert "[SCHEMA_ERROR]" in error_msg
+            assert "[INTERNAL_ERROR]" not in error_msg
+
+            # Check logs - should only have basic error info
+            assert "Schema validation error:" in caplog.text
+            assert "Error type:" not in caplog.text
+            assert "Error details:" not in caplog.text
+            assert "Traceback:" not in caplog.text
+
+        # Test with debug validation
+        with caplog.at_level(logging.ERROR):
+            caplog.clear()
+            result_with_debug = cli_runner.invoke(
+                create_cli(),
+                [
+                    "run",
+                    "task.txt",
+                    "schema.json",
+                    "--debug-validation",
+                ],
+            )
+
+            # Check error classification
+            assert result_with_debug.exit_code == ExitCode.SCHEMA_ERROR
+            error_msg_with_debug = str(result_with_debug.exception)
+            assert "[SCHEMA_ERROR]" in error_msg_with_debug
+            assert "[INTERNAL_ERROR]" not in error_msg_with_debug
+
+            # Check logs - should have both basic and detailed error info
+            assert "Schema validation error:" in caplog.text
+            assert "Error type:" in caplog.text
+            assert "Error details:" in caplog.text
+
 
 # OpenAI-dependent tests
 class TestCLIPreExecution:
@@ -689,6 +804,7 @@ class TestCLIPreExecution:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -746,6 +862,7 @@ class TestCLIExecution:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -784,6 +901,7 @@ class TestCLIExecution:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -820,6 +938,7 @@ class TestCLIExecution:
                 "type": "object",
                 "properties": {"result": {"type": "string"}},
                 "required": ["result"],
+                "additionalProperties": False,
             }
         }
         fs.create_file(
@@ -849,6 +968,73 @@ class TestCLIExecution:
         )
         assert result.exit_code == 0
 
+    def test_pattern_file_input(
+        self,
+        fs: FakeFilesystem,
+        mock_logging: StringIO,
+        cli_runner: CliTestRunner,
+    ) -> None:
+        """Test CLI execution with pattern-matched file input."""
+        # Create test files
+        fs.create_file(
+            f"{TEST_BASE_DIR}/task.j2",
+            contents="""
+            Extract information about the people from this data:
+            {% for profile in profiles %}
+            == {{ profile.name }}
+            {{ profile.content }}
+            {% endfor %}
+            """,
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json",
+            contents=json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                        "occupation": {"type": "string"},
+                    },
+                    "required": ["name", "age", "occupation"],
+                    "additionalProperties": False,
+                }
+            ),
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/profiles/john.txt",
+            contents="John Smith is a 35-year-old software engineer",
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/profiles/jane.txt",
+            contents="Jane Doe is a 28-year-old data scientist",
+        )
+        os.chdir(TEST_BASE_DIR)
+
+        # Run CLI with pattern option
+        result = cli_runner.invoke(
+            create_cli(),
+            [
+                "run",
+                "task.j2",
+                "schema.json",
+                "-p",
+                "profiles",
+                "profiles/*.txt",
+                "-A",
+                "profiles",
+                "--base-dir",
+                ".",
+            ],
+        )
+
+        # Check result
+        assert result.exit_code == ExitCode.SUCCESS
+        output = json.loads(result.stdout)
+        assert output["name"] == "John Smith"
+        assert output["age"] == 35
+        assert output["occupation"].lower() == "software engineer"
+
 
 # Template Context Tests
 class TestTemplateContext:
@@ -873,7 +1059,10 @@ class TestTemplateContext:
         )
 
         context = create_template_context(
-            files={"input": file_info},
+            files=cast(
+                Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+                {"input": file_info},
+            ),
             variables={},
             json_variables={},
             security_manager=security_manager,
@@ -908,7 +1097,10 @@ class TestTemplateContext:
         )
 
         context = create_template_context(
-            files={"file1": file_info1, "file2": file_info2},
+            files=cast(
+                Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+                {"file1": file_info1, "file2": file_info2},
+            ),
             variables={},
             json_variables={},
             security_manager=security_manager,
@@ -936,7 +1128,10 @@ class TestTemplateContext:
         )
 
         context = create_template_context(
-            files={"input": file_info},
+            files=cast(
+                Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+                {"input": file_info},
+            ),
             variables={"var1": "test value"},
             json_variables={"config": {"key": "value"}},
             security_manager=security_manager,
@@ -947,6 +1142,107 @@ class TestTemplateContext:
         assert context["var1"] == "test value"
         assert context["config"]["key"] == "value"
         assert context["stdin"] == "stdin content"
+
+    def test_template_context_pattern_files(
+        self,
+        fs: FakeFilesystem,
+        security_manager: SecurityManager,
+    ) -> None:
+        """Test creating template context with pattern-matched files."""
+        # Create test files
+        fs.create_file(
+            "/test_workspace/base/profiles/john.txt",
+            contents="John Smith is a 35-year-old software engineer",
+        )
+        fs.create_file(
+            "/test_workspace/base/profiles/jane.txt",
+            contents="Jane Doe is a 28-year-old data scientist",
+        )
+        os.chdir("/test_workspace/base")
+
+        # Create context with pattern files
+        context = create_template_context(
+            files=cast(
+                Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+                collect_files(
+                    pattern_mappings=[("profiles", "profiles/*.txt")],
+                    security_manager=security_manager,
+                ),
+            )
+        )
+
+        # Verify context
+        assert "profiles" in context
+        assert isinstance(context["profiles"], FileInfoList)
+        assert len(context["profiles"]) == 2
+        assert {f.name.removesuffix(".txt") for f in context["profiles"]} == {
+            "john",
+            "jane",
+        }
+        assert any("John Smith" in f.content for f in context["profiles"])
+        assert any("Jane Doe" in f.content for f in context["profiles"])
+
+    def test_template_context_mixed_with_patterns(
+        self,
+        fs: FakeFilesystem,
+        security_manager: SecurityManager,
+    ) -> None:
+        """Test creating template context with mixed sources including patterns."""
+        # Create test files
+        fs.create_file("/test_workspace/base/single.txt", contents="single")
+        fs.create_file(
+            "/test_workspace/base/profiles/john.txt", contents="John Smith"
+        )
+        fs.create_file(
+            "/test_workspace/base/profiles/jane.txt", contents="Jane Doe"
+        )
+        fs.create_file("/test_workspace/base/dir/test.py", contents="test")
+        os.chdir("/test_workspace/base")
+
+        # Create context with mixed sources
+        context = create_template_context(
+            files=cast(
+                Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+                collect_files(
+                    file_mappings=[("single", "single.txt")],
+                    dir_mappings=[("dir", "dir")],
+                    pattern_mappings=[("profiles", "profiles/*.txt")],
+                    security_manager=security_manager,
+                ),
+            ),
+            variables={"var": "value"},
+            json_variables={"json": {"key": "value"}},
+        )
+
+        # Verify context
+        assert "single" in context
+        assert "dir" in context
+        assert "profiles" in context
+        assert "var" in context
+        assert "json" in context
+
+        # Verify file content
+        assert isinstance(context["single"], FileInfoList)
+        assert context["single"].content == "single"
+
+        # Verify directory content
+        assert isinstance(context["dir"], FileInfoList)
+        assert len(context["dir"]) == 1
+        assert context["dir"][0].content == "test"
+
+        # Verify pattern content
+        assert isinstance(context["profiles"], FileInfoList)
+        assert len(context["profiles"]) == 2
+        assert {f.name.removesuffix(".txt") for f in context["profiles"]} == {
+            "john",
+            "jane",
+        }
+        assert any("John Smith" in f.content for f in context["profiles"])
+        assert any("Jane Doe" in f.content for f in context["profiles"])
+
+        # Verify other variables
+        assert context["var"] == "value"
+        assert context["json"] == {"key": "value"}
 
 
 @pytest.mark.mock_openai
@@ -960,6 +1256,7 @@ def test_basic_cli_mock(
             "type": "object",
             "properties": {"result": {"type": "string"}},
             "required": ["result"],
+            "additionalProperties": False,
         }
     }
     fs.create_file(

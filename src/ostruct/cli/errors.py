@@ -1,5 +1,6 @@
 """Custom error classes for CLI error handling."""
 
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -323,31 +324,54 @@ class SchemaFileError(CLIError):
 
 
 class SchemaValidationError(CLIError):
-    """Raised when a schema fails validation."""
+    """Error raised when a schema fails validation."""
 
     def __init__(
         self,
         message: str,
-        schema_path: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ):
         context = context or {}
-        if schema_path:
-            context["schema_path"] = schema_path
-            context["source"] = schema_path
-            context.setdefault("details", "The schema validation failed")
-            context.setdefault(
-                "troubleshooting",
-                [
-                    "Check if the schema follows JSON Schema specification",
-                    "Verify all required fields are present",
-                    "Ensure field types are correctly specified",
-                    "Check for any syntax errors in the schema",
-                ],
+
+        # Format error message with tips
+        formatted_message = [message]
+
+        if "path" in context:
+            formatted_message.append(f"\nLocation: {context['path']}")
+
+        if "found" in context:
+            formatted_message.append(f"Found: {context['found']}")
+
+        if "count" in context:
+            formatted_message.append(f"Count: {context['count']}")
+
+        if "missing_required" in context:
+            formatted_message.append(
+                f"Missing required: {context['missing_required']}"
             )
 
+        if "extra_required" in context:
+            formatted_message.append(
+                f"Extra required: {context['extra_required']}"
+            )
+
+        if "prohibited_used" in context:
+            formatted_message.append(
+                f"Prohibited keywords used: {context['prohibited_used']}"
+            )
+
+        if "tips" in context:
+            formatted_message.append("\nHow to fix:")
+            for tip in context["tips"]:
+                if isinstance(tip, dict):
+                    # Format JSON example
+                    formatted_message.append("Example schema:")
+                    formatted_message.append(json.dumps(tip, indent=2))
+                else:
+                    formatted_message.append(f"- {tip}")
+
         super().__init__(
-            message,
+            "\n".join(formatted_message),
             context=context,
             exit_code=ExitCode.SCHEMA_ERROR,
         )
@@ -430,9 +454,30 @@ class EmptyResponseError(CLIError):
 
 
 class InvalidResponseFormatError(CLIError):
-    """Exception raised when the API response format is invalid."""
+    """Raised when the response format is invalid."""
 
-    pass
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
+        if "schema must be a JSON Schema of 'type: \"object\"'" in message:
+            message = (
+                "The schema must have a root type of 'object', but got 'array'. "
+                "To fix this, wrap your array in an object. For example:\n\n"
+                "{\n"
+                '  "type": "object",\n'
+                '  "properties": {\n'
+                '    "items": {\n'
+                '      "type": "array",\n'
+                '      "items": { ... your array items schema ... }\n'
+                "    }\n"
+                "  },\n"
+                '  "required": ["items"]\n'
+                "}\n\n"
+                "Then update your template to handle the wrapper object."
+            )
+        super().__init__(
+            message,
+            exit_code=ExitCode.API_ERROR,
+            context=context,
+        )
 
 
 class OpenAIClientError(CLIError):

@@ -16,12 +16,14 @@ from ostruct.cli.errors import (
     DirectoryNotFoundError,
     InvalidJSONError,
     OstructFileNotFoundError,
+    SchemaValidationError,
     TaskTemplateError,
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
     VariableNameError,
     VariableValueError,
 )
+from ostruct.cli.schema_validation import validate_openai_schema
 from ostruct.cli.template_validation import validate_template_placeholders
 
 
@@ -254,3 +256,35 @@ def test_validate_template_placeholders_errors(
     with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
     assert error_phrase in str(exc.value).lower()
+
+
+def test_validate_array_root_schema() -> None:
+    """Test that array root schemas are properly rejected."""
+    array_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The person's full name",
+                },
+                "age": {"type": "integer", "description": "The person's age"},
+                "occupation": {
+                    "type": "string",
+                    "description": "The person's job or profession",
+                },
+            },
+            "required": ["name", "age", "occupation"],
+        },
+    }
+
+    with pytest.raises(SchemaValidationError) as exc:
+        validate_openai_schema(array_schema)
+
+    error_msg = str(exc.value)
+    assert "Root schema must be type 'object'" in error_msg
+    assert "Found: array" in error_msg
+    assert "The root of your schema must be an object type" in error_msg
+    assert "wrap it in an object property" in error_msg
+    assert "Example schema" in error_msg

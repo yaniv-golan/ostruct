@@ -10,18 +10,61 @@ Command-line interface for working with OpenAI models and structured output, pow
 
 ## Features
 
-- Generate structured output from natural language using OpenAI models
-- Rich template system for defining output schemas
+- Generate structured JSON output from natural language using OpenAI models and a JSON schema
+- Rich template system for defining prompts (Jinja2-based)
 - Automatic token counting and context window management
 - Streaming support for real-time output
-- Caching system for cost optimization
 - Secure handling of sensitive data
 
 ## Installation
 
+### For Users
+
+To install the latest stable version from PyPI:
+
 ```bash
 pip install ostruct-cli
 ```
+
+### For Developers
+
+If you plan to contribute to the project, see the [Development Setup](#development-setup) section below for instructions on setting up the development environment with Poetry.
+
+## Shell Completion
+
+ostruct-cli supports shell completion for Bash, Zsh, and Fish shells. To enable it:
+
+### Bash
+
+Add this to your `~/.bashrc`:
+
+```bash
+eval "$(_OSTRUCT_COMPLETE=bash_source ostruct)"
+```
+
+### Zsh
+
+Add this to your `~/.zshrc`:
+
+```bash
+eval "$(_OSTRUCT_COMPLETE=zsh_source ostruct)"
+```
+
+### Fish
+
+Add this to your `~/.config/fish/completions/ostruct.fish`:
+
+```fish
+eval (env _OSTRUCT_COMPLETE=fish_source ostruct)
+```
+
+After adding the appropriate line, restart your shell or source the configuration file.
+Shell completion will help you with:
+
+- Command options and their arguments
+- File paths for template and schema files
+- Directory paths for `-d` and `--base-dir` options
+- And more!
 
 ## Quick Start
 
@@ -31,57 +74,193 @@ pip install ostruct-cli
 export OPENAI_API_KEY=your-api-key
 ```
 
-2. Create a task template file `task.j2`:
+### Example 1: Using stdin (Simplest)
 
-```
-Extract information about the person: {{ stdin }}
+1. Create a template file `extract_person.j2`:
+
+```jinja
+Extract information about the person from this text: {{ stdin }}
 ```
 
-3. Create a schema file `schema.json`:
+2. Create a schema file `schema.json`:
 
 ```json
 {
   "type": "object",
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "The person's full name"
-    },
-    "age": {
-      "type": "integer",
-      "description": "The person's age"
-    },
-    "occupation": {
-      "type": "string",
-      "description": "The person's job or profession"
+    "person": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The person's full name"
+        },
+        "age": {
+          "type": "integer",
+          "description": "The person's age"
+        },
+        "occupation": {
+          "type": "string",
+          "description": "The person's job or profession"
+        }
+      },
+      "required": ["name", "age", "occupation"],
+      "additionalProperties": false
     }
   },
-  "required": ["name", "age", "occupation"]
+  "required": ["person"],
+  "additionalProperties": false
 }
 ```
 
-4. Run the CLI:
+3. Run the CLI:
 
 ```bash
-ostruct run task.j2 schema.json
+# Basic usage
+echo "John Smith is a 35-year-old software engineer" | ostruct run extract_person.j2 schema.json
+
+# For longer text using heredoc
+cat << EOF | ostruct run extract_person.j2 schema.json
+John Smith is a 35-year-old software engineer
+working at Tech Corp. He has been programming
+for over 10 years.
+EOF
+
+# With advanced options
+echo "John Smith is a 35-year-old software engineer" | \
+  ostruct run extract_person.j2 schema.json \
+  --model gpt-4o \
+  --sys-prompt "Extract precise information about the person" \
+  --temperature 0.7
 ```
 
-Or with more options:
-
-```bash
-ostruct run task.j2 schema.json \
-  -f content input.txt \
-  -m gpt-4o \
-  --sys-prompt "You are an expert content analyzer"
-```
-
-Output:
+The command will output:
 
 ```json
 {
-  "name": "John Smith",
-  "age": 35,
-  "occupation": "software engineer"
+  "person": {
+    "name": "John Smith",
+    "age": 35,
+    "occupation": "software engineer"
+  }
+}
+```
+
+### Example 2: Processing a Single File
+
+1. Create a template file `extract_from_file.j2`:
+
+```jinja
+Extract information about the person from this text: {{ text.content }}
+```
+
+2. Use the same schema file `schema.json` as above.
+
+3. Run the CLI:
+
+```bash
+# Basic usage
+ostruct run extract_from_file.j2 schema.json -f text input.txt
+
+# With advanced options
+ostruct run extract_from_file.j2 schema.json \
+  -f text input.txt \
+  --model gpt-4o \
+  --max-output-tokens 1000 \
+  --temperature 0.7
+```
+
+The command will output:
+
+```json
+{
+  "person": {
+    "name": "John Smith",
+    "age": 35,
+    "occupation": "software engineer"
+  }
+}
+```
+
+### Example 3: Processing Multiple Files
+
+1. Create a template file `extract_from_profiles.j2`:
+
+```jinja
+Extract information about the people from this data:
+
+{% for profile in profiles %}
+== {{ profile.name }}
+
+{{ profile.content }}
+
+{% endfor %}
+```
+
+2. Use the same schema file `schema.json` as above, but updated for multiple people:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The person's full name"
+          },
+          "age": {
+            "type": "integer",
+            "description": "The person's age"
+          },
+          "occupation": {
+            "type": "string",
+            "description": "The person's job or profession"
+          }
+        },
+        "required": ["name", "age", "occupation"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["people"],
+  "additionalProperties": false
+}
+```
+
+3. Run the CLI:
+
+```bash
+# Basic usage
+ostruct run extract_from_profiles.j2 schema.json -p profiles "profiles/*.txt"
+
+# With advanced options
+ostruct run extract_from_profiles.j2 schema.json \
+  -p profiles "profiles/*.txt" \
+  --model gpt-4o \
+  --sys-prompt "Extract precise information about the person" \
+  --temperature 0.5
+```
+
+The command will output:
+
+```json
+{
+  "people": [
+    {
+      "name": "John Smith",
+      "age": 35,
+      "occupation": "software engineer"
+    },
+    {
+      "name": "Jane Doe",
+      "age": 28,
+      "occupation": "data scientist"
+    }
+  ]
 }
 ```
 

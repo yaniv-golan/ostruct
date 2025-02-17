@@ -5,17 +5,21 @@
         "test_cases",
         "summary"
     ],
+    "additionalProperties": false,
     "properties": {
         "test_cases": {
             "type": "array",
             "items": {
                 "type": "object",
+                "additionalProperties": false,
                 "required": [
                     "function_name",
                     "test_name",
                     "test_type",
                     "description",
-                    "code"
+                    "code",
+                    "lines_covered",
+                    "branches_covered"
                 ],
                 "properties": {
                     "function_name": {
@@ -43,30 +47,20 @@
                         "type": "string",
                         "description": "The actual test code"
                     },
-                    "coverage_impact": {
-                        "type": "object",
-                        "properties": {
-                            "lines_covered": {
-                                "type": "array",
-                                "items": {
-                                    "type": "integer"
-                                },
-                                "description": "Line numbers this test is expected to cover"
-                            },
-                            "branches_covered": {
-                                "type": "array",
-                                "items": {
-                                    "type": "integer"
-                                },
-                                "description": "Branch numbers this test is expected to cover"
-                            }
-                        }
+                    "lines_covered": {
+                        "type": "string",
+                        "description": "Comma-separated list of line numbers this test is expected to cover"
+                    },
+                    "branches_covered": {
+                        "type": "string",
+                        "description": "Comma-separated list of branch numbers this test is expected to cover"
                     }
                 }
             }
         },
         "summary": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
                 "total_functions",
                 "functions_with_tests",

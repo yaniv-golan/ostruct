@@ -106,6 +106,9 @@ class CLIParams(TypedDict, total=False):
     dir: List[
         Tuple[str, str]
     ]  # List of (name, dir) tuples from Click's nargs=2
+    patterns: List[
+        Tuple[str, str]
+    ]  # List of (name, pattern) tuples from Click's nargs=2
     allowed_dirs: List[str]
     base_dir: str
     allowed_dir_file: Optional[str]
@@ -796,7 +799,7 @@ def validate_schema_file(
     if not isinstance(schema, dict):
         msg = f"Schema in {path} must be a JSON object"
         logger.error(msg)
-        raise SchemaValidationError(msg, schema_path=path)
+        raise SchemaValidationError(msg, context={"path": path})
 
     # Validate schema structure
     if "schema" in schema:
@@ -806,7 +809,7 @@ def validate_schema_file(
         if not isinstance(inner_schema, dict):
             msg = f"Inner schema in {path} must be a JSON object"
             logger.error(msg)
-            raise SchemaValidationError(msg, schema_path=path)
+            raise SchemaValidationError(msg, context={"path": path})
         if verbose:
             logger.debug("Inner schema validated successfully")
             logger.debug(
@@ -821,7 +824,7 @@ def validate_schema_file(
     if "type" not in schema.get("schema", schema):
         msg = f"Schema in {path} must specify a type"
         logger.error(msg)
-        raise SchemaValidationError(msg, schema_path=path)
+        raise SchemaValidationError(msg, context={"path": path})
 
     # Return the full schema including wrapper
     return schema
@@ -845,20 +848,22 @@ def collect_template_files(
         ValueError: If file mappings are invalid or files cannot be accessed
     """
     try:
-        # Get files and directories from args - they are already tuples from Click's nargs=2
+        # Get files, directories, and patterns from args - they are already tuples from Click's nargs=2
         files = list(
             args.get("files", [])
         )  # List of (name, path) tuples from Click
         dirs = args.get("dir", [])  # List of (name, dir) tuples from Click
+        patterns = args.get(
+            "patterns", []
+        )  # List of (name, pattern) tuples from Click
 
-        # Collect files from directories
+        # Collect files from directories and patterns
         dir_files = collect_files(
-            file_mappings=cast(
-                List[Tuple[str, Union[str, Path]]], files
-            ),  # Cast to correct type
-            dir_mappings=cast(
-                List[Tuple[str, Union[str, Path]]], dirs
-            ),  # Cast to correct type
+            file_mappings=cast(List[Tuple[str, Union[str, Path]]], files),
+            dir_mappings=cast(List[Tuple[str, Union[str, Path]]], dirs),
+            pattern_mappings=cast(
+                List[Tuple[str, Union[str, Path]]], patterns
+            ),
             dir_recursive=args.get("recursive", False),
             security_manager=security_manager,
         )
@@ -984,22 +989,7 @@ def create_template_context(
     security_manager: Optional[SecurityManager] = None,
     stdin_content: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Create template context from direct inputs.
-
-    Args:
-        files: Optional dictionary mapping names to FileInfoList objects
-        variables: Optional dictionary of simple string variables
-        json_variables: Optional dictionary of JSON variables
-        security_manager: Optional security manager for path validation
-        stdin_content: Optional content to use for stdin
-
-    Returns:
-        Template context dictionary
-
-    Raises:
-        PathSecurityError: If any file paths violate security constraints
-        VariableError: If variable mappings are invalid
-    """
+    """Create template context from files and variables."""
     context: Dict[str, Any] = {}
 
     # Add file variables
@@ -1413,11 +1403,33 @@ async def stream_structured_output(
         ):
             yield chunk
 
+    except APIResponseError as e:
+        if "Invalid schema for response_format" in str(
+            e
+        ) and 'type: "array"' in str(e):
+            error_msg = (
+                "OpenAI API Schema Error: The schema must have a root type of 'object', not 'array'. "
+                "To fix this:\n"
+                "1. Wrap your array in an object property, e.g.:\n"
+                "   {\n"
+                '     "type": "object",\n'
+                '     "properties": {\n'
+                '       "items": {\n'
+                '         "type": "array",\n'
+                '         "items": { ... your array items schema ... }\n'
+                "       }\n"
+                "     }\n"
+                "   }\n"
+                "2. Make sure to update your template to handle the wrapper object."
+            )
+            logger.error(error_msg)
+            raise InvalidResponseFormatError(error_msg)
+        logger.error(f"API error: {e}")
+        raise
     except (
         StreamInterruptedError,
         StreamBufferError,
         StreamParseError,
-        APIResponseError,
         EmptyResponseError,
         InvalidResponseFormatError,
     ) as e:
@@ -1763,8 +1775,7 @@ async def execute_model(
             user_prompt=user_prompt,
             output_schema=output_model,
             output_file=args.get("output_file"),
-            **params,  # Only pass validated model parameters
-            on_log=log_callback,  # Pass logging callback separately
+            on_log=log_callback,
         ):
             output_buffer.append(response)
 
@@ -1949,15 +1960,13 @@ def create_dynamic_model(
 
     Raises:
         ModelValidationError: If the schema is invalid
+        SchemaValidationError: If the schema violates OpenAI requirements
     """
     if debug_validation:
         logger.info("Creating dynamic model from schema:")
         logger.info(json.dumps(schema, indent=2))
 
     try:
-        # Extract required fields
-        required: Set[str] = set(schema.get("required", []))
-
         # Handle our wrapper format if present
         if "schema" in schema:
             if debug_validation:
@@ -1980,32 +1989,15 @@ def create_dynamic_model(
                 logger.info(json.dumps(inner_schema, indent=2))
             schema = inner_schema
 
-        # Ensure schema has type field
-        if "type" not in schema:
-            if debug_validation:
-                logger.info("Schema missing type field, assuming object type")
-            schema["type"] = "object"
+        # Validate against OpenAI requirements
+        from .schema_validation import validate_openai_schema
 
-        # For non-object root schemas, create a wrapper model
-        if schema["type"] != "object":
-            if debug_validation:
-                logger.info(
-                    "Converting non-object root schema to object wrapper"
-                )
-            schema = {
-                "type": "object",
-                "properties": {"value": schema},
-                "required": ["value"],
-            }
+        validate_openai_schema(schema)
 
         # Create model configuration
         config = ConfigDict(
             title=schema.get("title", base_name),
-            extra=(
-                "forbid"
-                if schema.get("additionalProperties") is False
-                else "allow"
-            ),
+            extra="forbid",  # OpenAI requires additionalProperties: false
             validate_default=True,
             use_enum_values=True,
             arbitrary_types_allowed=True,
@@ -2115,24 +2107,38 @@ def create_dynamic_model(
         try:
             model.model_json_schema()
         except ValidationError as e:
-            if debug_validation:
-                logger.error("Schema validation failed:")
-                logger.error("  Error type: %s", type(e).__name__)
-                logger.error("  Error message: %s", str(e))
             validation_errors = (
                 [str(err) for err in e.errors()]
                 if hasattr(e, "errors")
                 else [str(e)]
             )
+            if debug_validation:
+                logger.error("Schema validation failed:")
+                logger.error("  Error type: %s", type(e).__name__)
+                logger.error("  Error message: %s", str(e))
             raise ModelValidationError(base_name, validation_errors)
 
         return model
 
-    except Exception as e:
+    except SchemaValidationError as e:
+        # Always log basic error info
+        logger.error("Schema validation error: %s", str(e))
+
+        # Log additional debug info if requested
         if debug_validation:
-            logger.error("Failed to create model:")
             logger.error("  Error type: %s", type(e).__name__)
-            logger.error("  Error message: %s", str(e))
+            logger.error("  Error details: %s", str(e))
+        # Always raise schema validation errors directly
+        raise
+
+    except Exception as e:
+        # Always log basic error info
+        logger.error("Model creation error: %s", str(e))
+
+        # Log additional debug info if requested
+        if debug_validation:
+            logger.error("  Error type: %s", type(e).__name__)
+            logger.error("  Error details: %s", str(e))
             if hasattr(e, "__cause__"):
                 logger.error("  Caused by: %s", str(e.__cause__))
             if hasattr(e, "__context__"):
@@ -2144,9 +2150,11 @@ def create_dynamic_model(
                     "  Traceback:\n%s",
                     "".join(traceback.format_tb(e.__traceback__)),
                 )
+        # Always wrap other errors as ModelCreationError
         raise ModelCreationError(
-            f"Failed to create model '{base_name}': {str(e)}"
-        )
+            f"Failed to create model {base_name}",
+            context={"error": str(e)},
+        ) from e
 
 
 # Validation functions
