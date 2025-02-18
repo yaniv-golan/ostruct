@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import sys
-from enum import Enum, IntEnum
 from typing import (
     Any,
     AsyncGenerator,
@@ -20,12 +19,11 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    get_origin,
     overload,
 )
 
 if sys.version_info >= (3, 11):
-    from enum import StrEnum
+    pass
 
 from datetime import date, datetime, time
 from pathlib import Path
@@ -48,15 +46,7 @@ from openai_structured.errors import (
     StreamBufferError,
 )
 from openai_structured.model_registry import ModelRegistry
-from pydantic import (
-    AnyUrl,
-    BaseModel,
-    ConfigDict,
-    EmailStr,
-    Field,
-    ValidationError,
-    create_model,
-)
+from pydantic import AnyUrl, BaseModel, EmailStr, Field
 from pydantic.fields import FieldInfo as FieldInfoType
 from pydantic.functional_validators import BeforeValidator
 from pydantic.types import constr
@@ -69,11 +59,8 @@ from .. import __version__  # noqa: F401 - Used in package metadata
 from .errors import (
     CLIError,
     DirectoryNotFoundError,
-    FieldDefinitionError,
     InvalidJSONError,
     ModelCreationError,
-    ModelValidationError,
-    NestedModelError,
     OstructFileNotFoundError,
     PathSecurityError,
     SchemaFileError,
@@ -86,6 +73,7 @@ from .errors import (
     VariableValueError,
 )
 from .file_utils import FileInfoList, collect_files
+from .model_creation import _create_enum_type, create_dynamic_model
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
 from .serialization import LogSerializer
@@ -95,6 +83,71 @@ from .token_utils import estimate_tokens_with_encoding
 
 # Constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+
+# Validation functions
+def pattern(regex: str) -> Any:
+    return constr(pattern=regex)
+
+
+def min_length(length: int) -> Any:
+    return BeforeValidator(lambda v: v if len(str(v)) >= length else None)
+
+
+def max_length(length: int) -> Any:
+    return BeforeValidator(lambda v: v if len(str(v)) <= length else None)
+
+
+def ge(value: Union[int, float]) -> Any:
+    return BeforeValidator(lambda v: v if float(v) >= value else None)
+
+
+def le(value: Union[int, float]) -> Any:
+    return BeforeValidator(lambda v: v if float(v) <= value else None)
+
+
+def gt(value: Union[int, float]) -> Any:
+    return BeforeValidator(lambda v: v if float(v) > value else None)
+
+
+def lt(value: Union[int, float]) -> Any:
+    return BeforeValidator(lambda v: v if float(v) < value else None)
+
+
+def multiple_of(value: Union[int, float]) -> Any:
+    return BeforeValidator(lambda v: v if float(v) % value == 0 else None)
+
+
+def create_template_context(
+    files: Optional[
+        Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]
+    ] = None,
+    variables: Optional[Dict[str, str]] = None,
+    json_variables: Optional[Dict[str, Any]] = None,
+    security_manager: Optional[SecurityManager] = None,
+    stdin_content: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create template context from files and variables."""
+    context: Dict[str, Any] = {}
+
+    # Add file variables
+    if files:
+        for name, file_list in files.items():
+            context[name] = file_list  # Always keep FileInfoList wrapper
+
+    # Add simple variables
+    if variables:
+        context.update(variables)
+
+    # Add JSON variables
+    if json_variables:
+        context.update(json_variables)
+
+    # Add stdin if provided
+    if stdin_content is not None:
+        context["stdin"] = stdin_content
+
+    return context
 
 
 class CLIParams(TypedDict, total=False):
@@ -183,12 +236,6 @@ FieldDefinition = Tuple[FieldType, FieldInfoType]
 ModelType = TypeVar("ModelType", bound=BaseModel)
 ItemType: TypeAlias = Type[BaseModel]
 ValueType: TypeAlias = Type[Any]
-
-
-def is_container_type(tp: Type[Any]) -> bool:
-    """Check if a type is a container type (list, dict, etc.)."""
-    origin = get_origin(tp)
-    return origin in (list, dict)
 
 
 def _create_field(**kwargs: Any) -> FieldInfoType:
@@ -877,8 +924,11 @@ def collect_template_files(
         # Let PathSecurityError propagate without wrapping
         raise
     except (FileNotFoundError, DirectoryNotFoundError) as e:
-        # Wrap file-related errors
-        raise ValueError(f"File access error: {e}")
+        # Convert FileNotFoundError to OstructFileNotFoundError
+        if isinstance(e, FileNotFoundError):
+            raise OstructFileNotFoundError(str(e))
+        # Let DirectoryNotFoundError propagate
+        raise
     except Exception as e:
         # Don't wrap InvalidJSONError
         if isinstance(e, InvalidJSONError):
@@ -980,38 +1030,6 @@ def collect_json_variables(args: CLIParams) -> Dict[str, Any]:
     return variables
 
 
-def create_template_context(
-    files: Optional[
-        Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]
-    ] = None,
-    variables: Optional[Dict[str, str]] = None,
-    json_variables: Optional[Dict[str, Any]] = None,
-    security_manager: Optional[SecurityManager] = None,
-    stdin_content: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Create template context from files and variables."""
-    context: Dict[str, Any] = {}
-
-    # Add file variables
-    if files:
-        for name, file_list in files.items():
-            context[name] = file_list  # Always keep FileInfoList wrapper
-
-    # Add simple variables
-    if variables:
-        context.update(variables)
-
-    # Add JSON variables
-    if json_variables:
-        context.update(json_variables)
-
-    # Add stdin if provided
-    if stdin_content is not None:
-        context["stdin"] = stdin_content
-
-    return context
-
-
 async def create_template_context_from_args(
     args: CLIParams,
     security_manager: SecurityManager,
@@ -1066,8 +1084,11 @@ async def create_template_context_from_args(
         # Let PathSecurityError propagate without wrapping
         raise
     except (FileNotFoundError, DirectoryNotFoundError) as e:
-        # Wrap file-related errors
-        raise ValueError(f"File access error: {e}")
+        # Convert FileNotFoundError to OstructFileNotFoundError
+        if isinstance(e, FileNotFoundError):
+            raise OstructFileNotFoundError(str(e))
+        # Let DirectoryNotFoundError propagate
+        raise
     except Exception as e:
         # Don't wrap InvalidJSONError
         if isinstance(e, InvalidJSONError):
@@ -1195,41 +1216,6 @@ def parse_json_var(var_str: str) -> Tuple[str, Any]:
                 f"Invalid JSON variable mapping (expected name=json format): {var_str!r}"
             )
         raise
-
-
-def _create_enum_type(values: List[Any], field_name: str) -> Type[Enum]:
-    """Create an enum type from a list of values.
-
-    Args:
-        values: List of enum values
-        field_name: Name of the field for enum type name
-
-    Returns:
-        Created enum type
-    """
-    # Determine the value type
-    value_types = {type(v) for v in values}
-
-    if len(value_types) > 1:
-        # Mixed types, use string representation
-        enum_dict = {f"VALUE_{i}": str(v) for i, v in enumerate(values)}
-        return type(f"{field_name.title()}Enum", (str, Enum), enum_dict)
-    elif value_types == {int}:
-        # All integer values
-        enum_dict = {f"VALUE_{v}": v for v in values}
-        return type(f"{field_name.title()}Enum", (IntEnum,), enum_dict)
-    elif value_types == {str}:
-        # All string values
-        enum_dict = {v.upper().replace(" ", "_"): v for v in values}
-        if sys.version_info >= (3, 11):
-            return type(f"{field_name.title()}Enum", (StrEnum,), enum_dict)
-        else:
-            # Other types, use string representation
-            return type(f"{field_name.title()}Enum", (str, Enum), enum_dict)
-
-    # Default case: treat as string enum
-    enum_dict = {f"VALUE_{i}": str(v) for i, v in enumerate(values)}
-    return type(f"{field_name.title()}Enum", (str, Enum), enum_dict)
 
 
 def handle_error(e: Exception) -> None:
@@ -1433,7 +1419,7 @@ async def stream_structured_output(
         EmptyResponseError,
         InvalidResponseFormatError,
     ) as e:
-        logger.error(f"Stream error: {e}")
+        logger.error("Stream error: %s", str(e))
         raise
     finally:
         # Always ensure client is properly closed
@@ -1939,255 +1925,6 @@ __all__ = [
     "create_cli",
     "main",
 ]
-
-
-def create_dynamic_model(
-    schema: Dict[str, Any],
-    base_name: str = "DynamicModel",
-    show_schema: bool = False,
-    debug_validation: bool = False,
-) -> Type[BaseModel]:
-    """Create a Pydantic model from a JSON schema.
-
-    Args:
-        schema: JSON schema to create model from
-        base_name: Name for the model class
-        show_schema: Whether to show the generated model schema
-        debug_validation: Whether to show detailed validation errors
-
-    Returns:
-        Type[BaseModel]: The generated Pydantic model class
-
-    Raises:
-        ModelValidationError: If the schema is invalid
-        SchemaValidationError: If the schema violates OpenAI requirements
-    """
-    if debug_validation:
-        logger.info("Creating dynamic model from schema:")
-        logger.info(json.dumps(schema, indent=2))
-
-    try:
-        # Handle our wrapper format if present
-        if "schema" in schema:
-            if debug_validation:
-                logger.info("Found schema wrapper, extracting inner schema")
-                logger.info(
-                    "Original schema: %s", json.dumps(schema, indent=2)
-                )
-            inner_schema = schema["schema"]
-            if not isinstance(inner_schema, dict):
-                if debug_validation:
-                    logger.info(
-                        "Inner schema must be a dictionary, got %s",
-                        type(inner_schema),
-                    )
-                raise SchemaValidationError(
-                    "Inner schema must be a dictionary"
-                )
-            if debug_validation:
-                logger.info("Using inner schema:")
-                logger.info(json.dumps(inner_schema, indent=2))
-            schema = inner_schema
-
-        # Validate against OpenAI requirements
-        from .schema_validation import validate_openai_schema
-
-        validate_openai_schema(schema)
-
-        # Create model configuration
-        config = ConfigDict(
-            title=schema.get("title", base_name),
-            extra="forbid",  # OpenAI requires additionalProperties: false
-            validate_default=True,
-            use_enum_values=True,
-            arbitrary_types_allowed=True,
-            json_schema_extra={
-                k: v
-                for k, v in schema.items()
-                if k
-                not in {
-                    "type",
-                    "properties",
-                    "required",
-                    "title",
-                    "description",
-                    "additionalProperties",
-                    "readOnly",
-                }
-            },
-        )
-
-        if debug_validation:
-            logger.info("Created model configuration:")
-            logger.info("  Title: %s", config.get("title"))
-            logger.info("  Extra: %s", config.get("extra"))
-            logger.info(
-                "  Validate Default: %s", config.get("validate_default")
-            )
-            logger.info("  Use Enum Values: %s", config.get("use_enum_values"))
-            logger.info(
-                "  Arbitrary Types: %s", config.get("arbitrary_types_allowed")
-            )
-            logger.info(
-                "  JSON Schema Extra: %s", config.get("json_schema_extra")
-            )
-
-        # Process schema properties into fields
-        properties = schema.get("properties", {})
-        required = schema.get("required", [])
-
-        field_definitions: Dict[str, Tuple[Type[Any], FieldInfoType]] = {}
-        for field_name, field_schema in properties.items():
-            if debug_validation:
-                logger.info("Processing field %s:", field_name)
-                logger.info("  Schema: %s", json.dumps(field_schema, indent=2))
-
-            try:
-                python_type, field = _get_type_with_constraints(
-                    field_schema, field_name, base_name
-                )
-
-                # Handle optional fields
-                if field_name not in required:
-                    if debug_validation:
-                        logger.info(
-                            "Field %s is optional, wrapping in Optional",
-                            field_name,
-                        )
-                    field_type = cast(Type[Any], Optional[python_type])
-                else:
-                    field_type = python_type
-                    if debug_validation:
-                        logger.info("Field %s is required", field_name)
-
-                # Create field definition
-                field_definitions[field_name] = (field_type, field)
-
-                if debug_validation:
-                    logger.info("Successfully created field definition:")
-                    logger.info("  Name: %s", field_name)
-                    logger.info("  Type: %s", str(field_type))
-                    logger.info("  Required: %s", field_name in required)
-
-            except (FieldDefinitionError, NestedModelError) as e:
-                if debug_validation:
-                    logger.error("Error creating field %s:", field_name)
-                    logger.error("  Error type: %s", type(e).__name__)
-                    logger.error("  Error message: %s", str(e))
-                raise ModelValidationError(base_name, [str(e)])
-
-        # Create the model with the fields
-        field_defs: Dict[str, Any] = {
-            name: (
-                (
-                    cast(Type[Any], field_type)
-                    if is_container_type(field_type)
-                    else field_type
-                ),
-                field,
-            )
-            for name, (field_type, field) in field_definitions.items()
-        }
-        model: Type[BaseModel] = create_model(
-            base_name, __config__=config, **field_defs
-        )
-
-        # Set the model config after creation
-        model.model_config = config
-
-        if debug_validation:
-            logger.info("Successfully created model: %s", model.__name__)
-            logger.info("Model config: %s", dict(model.model_config))
-            logger.info(
-                "Model schema: %s",
-                json.dumps(model.model_json_schema(), indent=2),
-            )
-
-        # Validate the model's JSON schema
-        try:
-            model.model_json_schema()
-        except ValidationError as e:
-            validation_errors = (
-                [str(err) for err in e.errors()]
-                if hasattr(e, "errors")
-                else [str(e)]
-            )
-            if debug_validation:
-                logger.error("Schema validation failed:")
-                logger.error("  Error type: %s", type(e).__name__)
-                logger.error("  Error message: %s", str(e))
-            raise ModelValidationError(base_name, validation_errors)
-
-        return model
-
-    except SchemaValidationError as e:
-        # Always log basic error info
-        logger.error("Schema validation error: %s", str(e))
-
-        # Log additional debug info if requested
-        if debug_validation:
-            logger.error("  Error type: %s", type(e).__name__)
-            logger.error("  Error details: %s", str(e))
-        # Always raise schema validation errors directly
-        raise
-
-    except Exception as e:
-        # Always log basic error info
-        logger.error("Model creation error: %s", str(e))
-
-        # Log additional debug info if requested
-        if debug_validation:
-            logger.error("  Error type: %s", type(e).__name__)
-            logger.error("  Error details: %s", str(e))
-            if hasattr(e, "__cause__"):
-                logger.error("  Caused by: %s", str(e.__cause__))
-            if hasattr(e, "__context__"):
-                logger.error("  Context: %s", str(e.__context__))
-            if hasattr(e, "__traceback__"):
-                import traceback
-
-                logger.error(
-                    "  Traceback:\n%s",
-                    "".join(traceback.format_tb(e.__traceback__)),
-                )
-        # Always wrap other errors as ModelCreationError
-        raise ModelCreationError(
-            f"Failed to create model {base_name}",
-            context={"error": str(e)},
-        ) from e
-
-
-# Validation functions
-def pattern(regex: str) -> Any:
-    return constr(pattern=regex)
-
-
-def min_length(length: int) -> Any:
-    return BeforeValidator(lambda v: v if len(str(v)) >= length else None)
-
-
-def max_length(length: int) -> Any:
-    return BeforeValidator(lambda v: v if len(str(v)) <= length else None)
-
-
-def ge(value: Union[int, float]) -> Any:
-    return BeforeValidator(lambda v: v if float(v) >= value else None)
-
-
-def le(value: Union[int, float]) -> Any:
-    return BeforeValidator(lambda v: v if float(v) <= value else None)
-
-
-def gt(value: Union[int, float]) -> Any:
-    return BeforeValidator(lambda v: v if float(v) > value else None)
-
-
-def lt(value: Union[int, float]) -> Any:
-    return BeforeValidator(lambda v: v if float(v) < value else None)
-
-
-def multiple_of(value: Union[int, float]) -> Any:
-    return BeforeValidator(lambda v: v if float(v) % value == 0 else None)
 
 
 if __name__ == "__main__":
