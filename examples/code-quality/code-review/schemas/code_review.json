@@ -1,181 +1,145 @@
 {
-    "name": "review_schema",
-    "schema": {
-        "type": "object",
-        "properties": {
-            "reviews": {
-                "type": "array",
-                "description": "List of reviews for different files.",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "file": {
-                            "type": "string",
-                            "description": "Path to the reviewed file."
-                        },
-                        "issues": {
-                            "type": "array",
-                            "description": "List of issues identified in the file.",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "severity": {
-                                        "type": "string",
-                                        "enum": [
-                                            "high",
-                                            "medium",
-                                            "low"
-                                        ],
-                                        "description": "Severity level of the issue."
-                                    },
-                                    "category": {
-                                        "type": "string",
-                                        "enum": [
-                                            "security",
-                                            "performance",
-                                            "maintainability",
-                                            "reliability",
-                                            "style",
-                                            "documentation",
-                                            "testing",
-                                            "dependencies"
-                                        ],
-                                        "description": "Category of the issue."
-                                    },
-                                    "description": {
-                                        "type": "string",
-                                        "description": "Detailed description of the issue."
-                                    },
-                                    "line_number": {
-                                        "type": "integer",
-                                        "description": "Line number where the issue was found."
-                                    },
-                                    "code_snippet": {
-                                        "type": "string",
-                                        "description": "The relevant code snippet."
-                                    },
-                                    "recommendation": {
-                                        "type": "string",
-                                        "description": "Suggested fix or improvement."
-                                    }
-                                },
-                                "required": [
-                                    "severity",
-                                    "category",
-                                    "description",
-                                    "recommendation"
-                                ],
-                                "additionalProperties": false
-                            }
-                        },
-                        "metrics": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "reviews": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string"
+                    },
+                    "issues": {
+                        "type": "array",
+                        "items": {
                             "type": "object",
-                            "description": "Code quality metrics for the file.",
                             "properties": {
-                                "complexity": {
-                                    "type": "object",
-                                    "properties": {
-                                        "cyclomatic": {
-                                            "type": "integer",
-                                            "description": "Cyclomatic complexity score"
-                                        },
-                                        "cognitive": {
-                                            "type": "integer",
-                                            "description": "Cognitive complexity score"
-                                        }
-                                    }
-                                },
-                                "maintainability": {
+                                "severity": {
                                     "type": "string",
                                     "enum": [
                                         "high",
                                         "medium",
                                         "low"
-                                    ],
-                                    "description": "Overall maintainability rating"
+                                    ]
                                 },
-                                "documentation_quality": {
+                                "category": {
                                     "type": "string",
                                     "enum": [
-                                        "good",
-                                        "needs_improvement",
-                                        "poor"
-                                    ],
-                                    "description": "Quality of documentation and comments"
+                                        "security",
+                                        "performance",
+                                        "maintainability",
+                                        "reliability",
+                                        "style",
+                                        "documentation",
+                                        "testing",
+                                        "dependencies"
+                                    ]
+                                },
+                                "description": {
+                                    "type": "string"
+                                },
+                                "line_number": {
+                                    "type": "integer"
+                                },
+                                "code_snippet": {
+                                    "type": "string"
+                                },
+                                "recommendation": {
+                                    "type": "string"
                                 }
-                            }
-                        },
-                        "summary": {
-                            "type": "string",
-                            "description": "Overall assessment of the file."
+                            },
+                            "required": [
+                                "severity",
+                                "category",
+                                "description",
+                                "line_number",
+                                "code_snippet",
+                                "recommendation"
+                            ],
+                            "additionalProperties": false
                         }
                     },
-                    "required": [
-                        "file",
-                        "issues",
-                        "metrics",
-                        "summary"
-                    ],
-                    "additionalProperties": false
-                }
-            },
-            "overall_summary": {
-                "type": "object",
-                "description": "Project-wide summary",
-                "properties": {
-                    "total_files": {
-                        "type": "integer",
-                        "description": "Total number of files reviewed"
-                    },
-                    "total_issues": {
+                    "metrics": {
                         "type": "object",
                         "properties": {
-                            "high": {
-                                "type": "integer",
-                                "description": "Number of high severity issues"
+                            "maintainability": {
+                                "type": "string",
+                                "enum": [
+                                    "high",
+                                    "medium",
+                                    "low"
+                                ]
                             },
-                            "medium": {
-                                "type": "integer",
-                                "description": "Number of medium severity issues"
-                            },
-                            "low": {
-                                "type": "integer",
-                                "description": "Number of low severity issues"
+                            "documentation": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "needs_improvement",
+                                    "poor"
+                                ]
                             }
                         },
                         "required": [
-                            "high",
-                            "medium",
-                            "low"
-                        ]
-                    },
-                    "risk_level": {
-                        "type": "string",
-                        "enum": [
-                            "high",
-                            "medium",
-                            "low"
+                            "maintainability",
+                            "documentation"
                         ],
-                        "description": "Overall project risk level"
+                        "additionalProperties": false
                     },
                     "summary": {
-                        "type": "string",
-                        "description": "Overall project assessment"
+                        "type": "string"
                     }
                 },
                 "required": [
-                    "total_files",
-                    "total_issues",
-                    "risk_level",
+                    "file",
+                    "issues",
+                    "metrics",
                     "summary"
-                ]
+                ],
+                "additionalProperties": false
             }
         },
-        "required": [
-            "reviews",
-            "overall_summary"
-        ],
-        "additionalProperties": false
+        "total_files": {
+            "type": "integer"
+        },
+        "total_issues": {
+            "type": "object",
+            "properties": {
+                "high": {
+                    "type": "integer"
+                },
+                "medium": {
+                    "type": "integer"
+                },
+                "low": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "high",
+                "medium",
+                "low"
+            ],
+            "additionalProperties": false
+        },
+        "risk_level": {
+            "type": "string",
+            "enum": [
+                "high",
+                "medium",
+                "low"
+            ]
+        },
+        "summary": {
+            "type": "string"
+        }
     },
-    "strict": true
+    "required": [
+        "reviews",
+        "total_files",
+        "total_issues",
+        "risk_level",
+        "summary"
+    ],
+    "additionalProperties": false
 }

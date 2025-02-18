@@ -15,8 +15,6 @@ Focus on these key areas:
    - Code organization
    - Naming conventions
    - Error handling
-   - Cyclomatic complexity
-   - Cognitive complexity
 
 3. Performance
    - Algorithmic efficiency
@@ -46,7 +44,6 @@ For each issue found:
 - Offer actionable recommendations for improvement
 
 For each file, provide metrics:
-- Complexity scores (cyclomatic and cognitive)
 - Maintainability rating (high, medium, low)
 - Documentation quality (good, needs_improvement, poor)
 

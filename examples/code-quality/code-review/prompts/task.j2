@@ -9,8 +9,6 @@ Review the following code files and provide a structured analysis that follows t
    - Dependency issues
 
 2. Code Metrics:
-   - Cyclomatic complexity
-   - Cognitive complexity
    - Overall maintainability (high/medium/low)
    - Documentation quality (good/needs_improvement/poor)
 
@@ -22,6 +20,38 @@ For each issue, provide:
 - Relevant code snippet
 - Specific recommendation for improvement
 
+Provide your analysis in a format that matches this structure exactly:
+{
+    "reviews": [
+        {
+            "file": "<file_path>",
+            "issues": [
+                {
+                    "severity": "high|medium|low",
+                    "category": "security|performance|maintainability|reliability|style|documentation|testing|dependencies",
+                    "description": "<description>",
+                    "line_number": <number>,
+                    "code_snippet": "<code>",
+                    "recommendation": "<recommendation>"
+                }
+            ],
+            "metrics": {
+                "maintainability": "high|medium|low",
+                "documentation": "good|needs_improvement|poor"
+            },
+            "summary": "<file_summary>"
+        }
+    ],
+    "total_files": <number>,
+    "total_issues": {
+        "high": <number>,
+        "medium": <number>,
+        "low": <number>
+    },
+    "risk_level": "high|medium|low",
+    "summary": "<overall_project_summary>"
+}
+
 Files to review:
 
 {% for file in code %}
@@ -30,41 +60,3 @@ Files to review:
 {{ file.content }}
 
 {% endfor %}
-
-Provide your analysis in a format that matches this structure:
-{
-    "reviews": [
-        {
-            "file": "<file_path>",
-            "issues": [
-                {
-                    "severity": "<severity>",
-                    "category": "<category>",
-                    "description": "<description>",
-                    "line_number": <number>,
-                    "code_snippet": "<code>",
-                    "recommendation": "<recommendation>"
-                }
-            ],
-            "metrics": {
-                "complexity": {
-                    "cyclomatic": <number>,
-                    "cognitive": <number>
-                },
-                "maintainability": "<rating>",
-                "documentation_quality": "<rating>"
-            },
-            "summary": "<file_summary>"
-        }
-    ],
-    "overall_summary": {
-        "total_files": <number>,
-        "total_issues": {
-            "high": <number>,
-            "medium": <number>,
-            "low": <number>
-        },
-        "risk_level": "<level>",
-        "summary": "<project_summary>"
-    }
-}
