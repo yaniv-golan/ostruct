@@ -2,9 +2,7 @@
 
 This guide provides information on how to create templates for use with `ostruct`.
 
-## ostruct and Jinja2
-
-`ostruct` templates are implemented using a customized instance of Jinja2. Jinja2 is a templating engine for Python. It allows you to combine static text with dynamic content using placeholders and logic. In `ostruct`, Jinja2 templates are used to define the prompts sent to the OpenAI API. This guide assumes no prior knowledge of Jinja2.
+> `ostruct` prompt templates are implemented using a customized instance of Jinja2, a templating engine for Python. It allows you to combine static text with dynamic content using placeholders and logic. This guide assumes no prior knowledge of Jinja2.
 
 ## Basic Syntax
 
@@ -165,15 +163,14 @@ Review the following code and identify any security vulnerabilities:
 {% for file in source_files %}
 ## File: {{ file.path }}
 
-```python
 {{ file.content }}
-```
 
 {% endfor %}
 
 ```
 
 This template:
+
 1. Sets a security-focused system prompt
 2. Iterates through files in the `source_files` variable (mapped with `-d` or `-p`)
 3. Formats each file's content within a code block
@@ -189,9 +186,7 @@ Validate the following configuration files:
 {% for file in config_files %}
 ## Config: {{ file.path }}
 
-```yaml
 {{ file.content }}
-```
 
 {% endfor %}
 
