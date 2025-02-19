@@ -100,9 +100,9 @@ See the CLI documentation for detailed guidance on handling large files.
 Requirements
 -----------
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 - OpenAI API key
-- ``openai-structured`` >= 0.9.1
+- ``openai-structured`` >= 2.0.0
 
 Logging
 -------

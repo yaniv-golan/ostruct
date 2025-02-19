@@ -4,7 +4,7 @@ This directory contains practical examples demonstrating various use cases for t
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 - `ostruct-cli` installed (`pip install ostruct-cli`)
 - OpenAI API key set in environment (`OPENAI_API_KEY`)
 
