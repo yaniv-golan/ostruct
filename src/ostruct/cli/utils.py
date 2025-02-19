@@ -12,7 +12,7 @@ def parse_mapping(mapping: str) -> Tuple[str, str]:
         mapping: Mapping string in format 'name=value'
 
     Returns:
-        Tuple of (name, value)
+        Tuple of (name, value) with whitespace stripped from both parts
 
     Raises:
         ValueError: If mapping format is invalid
@@ -23,6 +23,8 @@ def parse_mapping(mapping: str) -> Tuple[str, str]:
         raise ValueError("Invalid mapping format")
 
     name, value = mapping.split("=", 1)
+    name = name.strip()
+    value = value.strip()
     if not name:
         raise VariableNameError("Empty name in mapping")
     if not value:
