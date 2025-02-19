@@ -73,7 +73,6 @@ Documentation
    cli
    templates
    template_filters
-   migration
 
 Why Structured Output?
 -------------------
