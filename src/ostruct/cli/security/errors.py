@@ -63,7 +63,7 @@ class PathSecurityError(SecurityErrorBase):
     @property
     def details(self) -> str:
         """Get the detailed explanation of the error."""
-        return self.details
+        return str(self.context.get("details", ""))
 
     @classmethod
     def from_expanded_paths(
