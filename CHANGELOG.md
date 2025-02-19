@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2025-02-18
+
+### Added
+
+- Added clear documentation for system prompt precedence rules in README
+- Added detailed logging configuration section with command-line options and environment variables
+
+### Changed
+
+- Changed comment block handling to explicitly reject nested comments for simpler, more predictable syntax
+- Improved whitespace handling in variable parsing for better user experience
+- Updated SecurityManager documentation for clarity
+
+### Fixed
+
+- Fixed path traversal detection in Unicode safety pattern to allow valid filenames with multiple dots
+- Fixed whitespace handling in variable and JSON variable validators
+- Fixed infinite recursion in PathSecurityError.details property
+
+### Removed
+
+- Removed outdated migration guide
+
 ## [0.6.0] - 2025-02-17
 
 ### Added
