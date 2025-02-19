@@ -61,7 +61,7 @@ from .errors import PathSecurityError, SecurityErrorReasons
 # Patterns for path normalization and validation
 _UNICODE_SAFETY_PATTERN = re.compile(
     r"[\u0000-\u001F\u007F-\u009F\u2028-\u2029\u0085]"  # Control chars and line separators
-    r"|\.{2,}"  # Directory traversal attempts
+    r"|(?:^|/)\.\.(?:/|$)"  # Directory traversal attempts (only ".." as a path component)
     r"|[\u2024\u2025\uFE52\u2024\u2025\u2026\uFE19\uFE30\uFE52\uFF0E\uFF61]"  # Alternative dots and separators
 )
 _BACKSLASH_PATTERN = re.compile(r"\\")
