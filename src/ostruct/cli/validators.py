@@ -49,7 +49,7 @@ def validate_variable(
         value: List of "name=value" strings
 
     Returns:
-        List of validated (name, value) tuples
+        List of validated (name, value) tuples with whitespace stripped from both parts
 
     Raises:
         click.BadParameter: If validation fails
@@ -64,6 +64,8 @@ def validate_variable(
                 f"Variable must be in format name=value: {var}"
             )
         name, val = var.split("=", 1)
+        name = name.strip()
+        val = val.strip()
         if not name.isidentifier():
             raise click.BadParameter(f"Invalid variable name: {name}")
         result.append((name, val))
@@ -81,7 +83,7 @@ def validate_json_variable(
         value: List of "name=json_string" values
 
     Returns:
-        List of validated (name, parsed_json) tuples
+        List of validated (name, parsed_json) tuples with whitespace stripped from name
 
     Raises:
         click.BadParameter: If validation fails
@@ -96,6 +98,8 @@ def validate_json_variable(
                 f'JSON variable must be in format name=\'{"json":"value"}\': {var}'
             )
         name, json_str = var.split("=", 1)
+        name = name.strip()
+        json_str = json_str.strip()
         if not name.isidentifier():
             raise VariableNameError(f"Invalid variable name: {name}")
         try:
