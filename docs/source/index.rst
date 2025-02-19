@@ -112,6 +112,32 @@ The CLI writes logs to the following files in ``~/.ostruct/logs/``:
 - ``ostruct.log``: General application logs (debug, errors, status)
 - ``openai_stream.log``: OpenAI streaming operations logs
 
+Logging Configuration
+~~~~~~~~~~~~~~~~~~
+
+You can configure logging behavior through:
+
+1. Command-line options:
+   - ``--verbose``: Enable verbose logging (sets log level to DEBUG)
+   - ``--debug-openai-stream``: Enable detailed OpenAI API stream logging
+   - ``--debug-validation``: Enable schema validation debug logging
+
+2. Environment variables:
+   - ``OSTRUCT_LOG_LEVEL``: Set the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+   - ``OSTRUCT_LOG_DIR``: Override the default log directory
+   - ``OSTRUCT_LOG_FORMAT``: Customize the log message format
+
+Example:
+
+.. code-block:: bash
+
+   # Set custom log level and directory
+   export OSTRUCT_LOG_LEVEL=DEBUG
+   export OSTRUCT_LOG_DIR=/path/to/logs
+
+   # Run with verbose logging
+   ostruct run task.j2 schema.json --verbose
+
 Support
 -------
 
