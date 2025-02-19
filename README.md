@@ -185,3 +185,52 @@ The command will output:
   }
 }
 ```
+
+## System Prompt Handling
+
+ostruct-cli provides three ways to specify a system prompt, with a clear precedence order:
+
+1. Command-line option (`--sys-prompt` or `--sys-file`):
+
+   ```bash
+   # Direct string
+   ostruct run template.j2 schema.json --sys-prompt "You are an expert analyst"
+
+   # From file
+   ostruct run template.j2 schema.json --sys-file system_prompt.txt
+   ```
+
+2. Template frontmatter:
+
+   ```jinja
+   ---
+   system_prompt: You are an expert analyst
+   ---
+   Extract information from: {{ text }}
+   ```
+
+3. Default system prompt (built into the CLI)
+
+### Precedence Rules
+
+When multiple system prompts are provided, they are resolved in this order:
+
+1. Command-line options take highest precedence:
+   - If both `--sys-prompt` and `--sys-file` are provided, `--sys-prompt` wins
+   - Use `--ignore-task-sysprompt` to ignore template frontmatter
+
+2. Template frontmatter is used if:
+   - No command-line options are provided
+   - `--ignore-task-sysprompt` is not set
+
+3. Default system prompt is used only if no other prompts are provided
+
+Example combining multiple sources:
+
+```bash
+# Command-line prompt will override template frontmatter
+ostruct run template.j2 schema.json --sys-prompt "Override prompt"
+
+# Ignore template frontmatter and use default
+ostruct run template.j2 schema.json --ignore-task-sysprompt
+```
