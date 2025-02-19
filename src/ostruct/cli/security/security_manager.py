@@ -39,9 +39,15 @@ class SecurityManager:
 
     The security model is based on:
     1. A base directory that serves as the root for all file operations
+       (typically set to the current working directory by higher-level functions)
     2. A set of explicitly allowed directories that can be accessed outside the base directory
     3. Special handling for temporary directories that are always allowed
     4. Case-sensitive or case-insensitive path handling based on platform
+
+    Note:
+        While the SecurityManager class itself requires base_dir to be explicitly provided,
+        higher-level functions in the CLI layer (like validate_security_manager and file_utils)
+        will automatically use the current working directory as the base_dir if none is specified.
 
     Example:
         >>> sm = SecurityManager("/base/dir")
@@ -62,7 +68,9 @@ class SecurityManager:
         """Initialize the SecurityManager.
 
         Args:
-            base_dir: The root directory for file operations.
+            base_dir: The root directory for file operations. While this parameter is required here,
+                     note that higher-level functions in the CLI layer will automatically use the
+                     current working directory if no base_dir is specified.
             allowed_dirs: Additional directories allowed for access.
             allow_temp_paths: Whether to allow temporary directory paths.
             max_symlink_depth: Maximum depth for symlink resolution.
