@@ -1,0 +1,10 @@
+automobile
+microscope
+telephone
+television
+microwave
+helicopter
+submarine
+aqueduct
+manuscript
+bibliography

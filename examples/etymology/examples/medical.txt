@@ -1,0 +1,10 @@
+cardiomyopathy
+osteoarthritis
+pneumonia
+gastroenteritis
+ophthalmology
+dermatitis
+nephrology
+neurology
+hematology
+oncology

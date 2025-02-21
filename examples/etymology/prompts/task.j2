@@ -1,0 +1,79 @@
+---
+system prompt: You are an expert etymologist. You are given a word and you need to analyze its etymology and provide a nested breakdown of its components.
+---
+# Etymology Analysis for "{{ word }}"
+
+Given the word "{{ word }}", analyze its etymology and provide a nested breakdown of its components. Include:
+- The complete word
+- Each component's origin language
+- The meaning of each component
+- Any nested etymological relationships, including parallel components
+
+Note: Each component must be an exact substring of the original word or its parent component.
+
+The response should follow this exact structure:
+```json
+{
+  "word": "{{ word }}",
+  "etymology": {
+    "component": "", // The complete word or major component
+    "originLanguage": "", // Language of origin for this part
+    "meaning": "", // Original meaning of this component
+    "order": 1,
+    "children": [ // Optional array of nested components
+      {
+        "component": "", // First child component (exact substring)
+        "originLanguage": "", // Its language of origin
+        "meaning": "", // Its meaning
+        "order": 1,
+        "children": [] // Further nesting if needed
+      },
+      {
+        "component": "", // Second child component (exact substring)
+        "originLanguage": "", // Its language of origin
+        "meaning": "", // Its meaning
+        "order": 2,
+        "children": [] // Further nesting if needed
+      }
+    ]
+  }
+}
+```
+
+For example, for the word "automobile", the output would be:
+```json
+{
+  "word": "automobile",
+  "etymology": {
+    "component": "automobile",
+    "originLanguage": "French",
+    "meaning": "self-moving vehicle",
+    "order": 1,
+    "children": [
+      {
+        "component": "auto",
+        "originLanguage": "Greek",
+        "meaning": "self",
+        "order": 1,
+        "children": []
+      },
+      {
+        "component": "mobile",
+        "originLanguage": "Latin",
+        "meaning": "moving",
+        "order": 2,
+        "children": []
+      }
+    ]
+  }
+}
+```
+
+Please break down the word into its etymological components, showing how each part evolved and contributed to the final meaning. Ensure each component includes:
+1. The specific component (must be an exact substring of its parent)
+2. Its language of origin
+3. Its original meaning
+4. The order of appearance in the parent word (1-based)
+5. Any nested or parallel relationships to other components
+
+The output must strictly follow the JSON schema provided.
