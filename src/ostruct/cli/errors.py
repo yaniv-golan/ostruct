@@ -323,60 +323,6 @@ class SchemaFileError(CLIError):
         return self.context.get("schema_path")
 
 
-class SchemaValidationError(CLIError):
-    """Error raised when a schema fails validation."""
-
-    def __init__(
-        self,
-        message: str,
-        context: Optional[Dict[str, Any]] = None,
-    ):
-        context = context or {}
-
-        # Format error message with tips
-        formatted_message = [message]
-
-        if "path" in context:
-            formatted_message.append(f"\nLocation: {context['path']}")
-
-        if "found" in context:
-            formatted_message.append(f"Found: {context['found']}")
-
-        if "count" in context:
-            formatted_message.append(f"Count: {context['count']}")
-
-        if "missing_required" in context:
-            formatted_message.append(
-                f"Missing required: {context['missing_required']}"
-            )
-
-        if "extra_required" in context:
-            formatted_message.append(
-                f"Extra required: {context['extra_required']}"
-            )
-
-        if "prohibited_used" in context:
-            formatted_message.append(
-                f"Prohibited keywords used: {context['prohibited_used']}"
-            )
-
-        if "tips" in context:
-            formatted_message.append("\nHow to fix:")
-            for tip in context["tips"]:
-                if isinstance(tip, dict):
-                    # Format JSON example
-                    formatted_message.append("Example schema:")
-                    formatted_message.append(json.dumps(tip, indent=2))
-                else:
-                    formatted_message.append(f"- {tip}")
-
-        super().__init__(
-            "\n".join(formatted_message),
-            context=context,
-            exit_code=ExitCode.SCHEMA_ERROR,
-        )
-
-
 class ModelCreationError(CLIError):
     """Base class for model creation errors."""
 
@@ -494,6 +440,67 @@ class OpenAIClientError(CLIError):
         context: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, exit_code=exit_code, context=context)
+
+
+class SchemaValidationError(ModelCreationError):
+    """Raised when schema validation fails."""
+
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        exit_code: ExitCode = ExitCode.SCHEMA_ERROR,
+    ):
+        context = context or {}
+        # Preserve validation type for error handling
+        context.setdefault("validation_type", "schema")
+
+        # Format error message with tips
+        formatted_message = []
+
+        if "path" in context:
+            formatted_message.append(f"\nLocation: {context['path']}")
+
+        if "found" in context:
+            formatted_message.append(f"Found: {context['found']}")
+
+        if "reference" in context:
+            formatted_message.append(f"Reference: {context['reference']}")
+
+        if "count" in context:
+            formatted_message.append(f"Count: {context['count']}")
+
+        if "missing_required" in context:
+            formatted_message.append(
+                f"Missing required: {context['missing_required']}"
+            )
+
+        if "extra_required" in context:
+            formatted_message.append(
+                f"Extra required: {context['extra_required']}"
+            )
+
+        if "prohibited_used" in context:
+            formatted_message.append(
+                f"Prohibited keywords used: {context['prohibited_used']}"
+            )
+
+        if "tips" in context:
+            formatted_message.append("\nHow to fix:")
+            for tip in context["tips"]:
+                if isinstance(tip, dict):
+                    # Format JSON example
+                    formatted_message.append("Example schema:")
+                    formatted_message.append(json.dumps(tip, indent=2))
+                else:
+                    formatted_message.append(f"- {tip}")
+
+        # Combine message with details
+        final_message = message
+        if formatted_message:
+            final_message += "\n" + "\n".join(formatted_message)
+
+        super().__init__(final_message, context=context, exit_code=exit_code)
 
 
 # Export public API

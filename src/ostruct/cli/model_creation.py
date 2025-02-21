@@ -40,6 +40,7 @@ from .errors import (
     NestedModelError,
     SchemaValidationError,
 )
+from .exit_codes import ExitCode
 
 logger = logging.getLogger(__name__)
 
@@ -297,90 +298,26 @@ def create_dynamic_model(
     show_schema: bool = False,
     debug_validation: bool = False,
 ) -> Type[BaseModel]:
-    """Create a Pydantic model from a JSON schema.
+    """Create a Pydantic model from a JSON Schema.
 
     Args:
-        schema: JSON schema to create model from
-        base_name: Name for the model class
-        show_schema: Whether to show the generated model schema
-        debug_validation: Whether to show detailed validation errors
+        schema: JSON Schema to create model from
+        base_name: Base name for the model class
+        show_schema: Whether to show the generated schema
+        debug_validation: Whether to show debug validation info
 
     Returns:
-        Type[BaseModel]: The generated Pydantic model class
+        Generated Pydantic model class
 
     Raises:
-        ModelValidationError: If the schema is invalid
-        SchemaValidationError: If the schema violates OpenAI requirements
+        SchemaValidationError: If schema validation fails
+        ModelCreationError: If model creation fails
     """
-    if debug_validation:
-        logger.info("Creating dynamic model from schema:")
-        logger.info(json.dumps(schema, indent=2))
-
     try:
-        # Handle our wrapper format if present
-        if "schema" in schema:
-            if debug_validation:
-                logger.info("Found schema wrapper, extracting inner schema")
-                logger.info(
-                    "Original schema: %s", json.dumps(schema, indent=2)
-                )
-            inner_schema = schema["schema"]
-            if not isinstance(inner_schema, dict):
-                if debug_validation:
-                    logger.info(
-                        "Inner schema must be a dictionary, got %s",
-                        type(inner_schema),
-                    )
-                raise SchemaValidationError(
-                    "Inner schema must be a dictionary"
-                )
-            if debug_validation:
-                logger.info("Using inner schema:")
-                logger.info(json.dumps(inner_schema, indent=2))
-            schema = inner_schema
+        # Validate schema structure before model creation
+        from .template_utils import validate_json_schema
 
-        # Validate against OpenAI requirements
-        from .schema_validation import validate_openai_schema
-
-        validate_openai_schema(schema)
-
-        # Create model configuration
-        config = ConfigDict(
-            title=schema.get("title", base_name),
-            extra="forbid",  # OpenAI requires additionalProperties: false
-            validate_default=True,
-            use_enum_values=True,
-            arbitrary_types_allowed=True,
-            json_schema_extra={
-                k: v
-                for k, v in schema.items()
-                if k
-                not in {
-                    "type",
-                    "properties",
-                    "required",
-                    "title",
-                    "description",
-                    "additionalProperties",
-                    "readOnly",
-                }
-            },
-        )
-
-        if debug_validation:
-            logger.info("Created model configuration:")
-            logger.info("  Title: %s", config.get("title"))
-            logger.info("  Extra: %s", config.get("extra"))
-            logger.info(
-                "  Validate Default: %s", config.get("validate_default")
-            )
-            logger.info("  Use Enum Values: %s", config.get("use_enum_values"))
-            logger.info(
-                "  Arbitrary Types: %s", config.get("arbitrary_types_allowed")
-            )
-            logger.info(
-                "  JSON Schema Extra: %s", config.get("json_schema_extra")
-            )
+        validate_json_schema(schema)
 
         # Process schema properties into fields
         properties = schema.get("properties", {})
@@ -438,23 +375,25 @@ def create_dynamic_model(
             )
             for name, (field_type, field) in field_definitions.items()
         }
-        model: Type[BaseModel] = create_model(
-            base_name, __config__=config, **field_defs
+
+        # Create model class
+        model = create_model(base_name, __base__=BaseModel, **field_defs)
+
+        # Set model config
+        model.model_config = ConfigDict(
+            title=schema.get("title", base_name),
+            extra="forbid",
         )
 
-        # Set the model config after creation
-        model.model_config = config
-
-        if debug_validation:
-            logger.info("Successfully created model: %s", model.__name__)
-            logger.info("Model config: %s", dict(model.model_config))
+        if show_schema:
             logger.info(
-                "Model schema: %s",
+                "Generated schema for %s:\n%s",
+                base_name,
                 json.dumps(model.model_json_schema(), indent=2),
             )
 
-        # Validate the model's JSON schema
         try:
+            # Validate model schema
             model.model_json_schema()
         except ValidationError as e:
             validation_errors = (
@@ -467,18 +406,52 @@ def create_dynamic_model(
                 logger.error("  Error type: %s", type(e).__name__)
                 logger.error("  Error message: %s", str(e))
             raise ModelValidationError(base_name, validation_errors)
+        except KeyError as e:
+            # Handle Pydantic schema generation errors, particularly for recursive references
+            error_msg = str(e).strip(
+                "'\""
+            )  # Strip quotes from KeyError message
+            if error_msg.startswith("#/definitions/"):
+                context = {
+                    "schema_path": schema.get("$id", "unknown"),
+                    "reference": error_msg,
+                    "found": "circular reference or missing definition",
+                    "tips": [
+                        "Add explicit $ref definitions for recursive structures",
+                        "Use Pydantic's deferred annotations with typing.Self",
+                        "Limit recursion depth with max_depth validator",
+                        "Flatten nested structures using reference IDs",
+                    ],
+                }
+
+                error_msg = (
+                    f"Invalid schema reference: {error_msg}\n"
+                    "Detected circular reference or missing definition.\n"
+                    "Solutions:\n"
+                    "1. Add missing $ref definitions to your schema\n"
+                    "2. Use explicit ID references instead of nested objects\n"
+                    "3. Implement depth limits for recursive structures"
+                )
+
+                if debug_validation:
+                    logger.error("Schema reference error:")
+                    logger.error("  Error type: %s", type(e).__name__)
+                    logger.error("  Error message: %s", error_msg)
+
+                raise SchemaValidationError(
+                    error_msg, context=context, exit_code=ExitCode.SCHEMA_ERROR
+                ) from e
+
+            # For other KeyErrors, preserve the original error
+            raise ModelCreationError(
+                f"Failed to create model {base_name}",
+                context={"error": str(e)},
+            ) from e
 
         return model
 
-    except SchemaValidationError as e:
-        # Always log basic error info
-        logger.error("Schema validation error: %s", str(e))
-
-        # Log additional debug info if requested
-        if debug_validation:
-            logger.error("  Error type: %s", type(e).__name__)
-            logger.error("  Error details: %s", str(e))
-        # Always raise schema validation errors directly
+    except SchemaValidationError:
+        # Re-raise schema validation errors without wrapping
         raise
 
     except Exception as e:

@@ -47,30 +47,189 @@ class TemplateMetadataError(TaskTemplateError):
 
 
 def validate_json_schema(schema: Dict[str, Any]) -> None:
-    """Validate that a dictionary follows JSON Schema structure.
-
-    This function checks that the provided dictionary is a valid JSON Schema,
-    following the JSON Schema specification.
+    """Validate a JSON schema.
 
     Args:
-        schema: Dictionary to validate as a JSON Schema
+        schema: The schema to validate
 
     Raises:
         SchemaValidationError: If the schema is invalid
     """
     try:
-        # Get the validator class for the schema
-        validator_cls = jsonschema.validators.validator_for(schema)
+        # 1. Quick structural validation
+        if not isinstance(schema, dict):
+            raise SchemaValidationError(
+                "Invalid JSON Schema: Schema must be a JSON object",
+                context={
+                    "validation_type": "schema",
+                    "found": type(schema).__name__,
+                    "tips": ["Ensure your schema is a valid JSON object"],
+                },
+            )
 
-        # Check schema itself is valid
-        validator_cls.check_schema(schema)
+        # 2. Extract and validate schema wrapper
+        schema_to_validate = schema.get("schema", schema)
+        if not isinstance(schema_to_validate, dict):
+            raise SchemaValidationError(
+                "Invalid JSON Schema: Inner schema must be a JSON object",
+                context={
+                    "validation_type": "schema",
+                    "found": type(schema_to_validate).__name__,
+                    "tips": [
+                        "If using a schema wrapper, ensure the inner schema is a valid JSON object"
+                    ],
+                },
+            )
 
-        # Create validator instance
-        validator_cls(schema)
-    except jsonschema.exceptions.SchemaError as e:
-        raise SchemaValidationError(f"Invalid JSON Schema: {e}")
+        # 3. Check for circular references with enhanced detection
+        def resolve_ref(ref: str, root: Dict[str, Any]) -> Dict[str, Any]:
+            """Resolve a JSON reference to its target object."""
+            if not ref.startswith("#/"):
+                raise SchemaValidationError(
+                    "Invalid JSON Schema: Only local references are supported",
+                    context={
+                        "validation_type": "schema",
+                        "ref": ref,
+                        "tips": [
+                            "Use only local references (starting with #/)"
+                        ],
+                    },
+                )
+
+            parts = ref[2:].split("/")
+            current = root
+            for part in parts:
+                if part not in current:
+                    raise SchemaValidationError(
+                        f"Invalid JSON Schema: Reference {ref} not found",
+                        context={
+                            "validation_type": "schema",
+                            "ref": ref,
+                            "tips": [
+                                "Check that all references point to existing definitions"
+                            ],
+                        },
+                    )
+                current = current[part]
+            return current
+
+        def check_refs(
+            obj: Any,
+            path: List[str],
+            seen_refs: List[str],
+            root: Dict[str, Any],
+        ) -> None:
+            """Check for circular references in the schema."""
+            if isinstance(obj, dict):
+                if "$ref" in obj:
+                    ref = obj["$ref"]
+                    if ref in seen_refs:
+                        raise SchemaValidationError(
+                            "Invalid JSON Schema: Circular reference found",
+                            context={
+                                "validation_type": "schema",
+                                "path": "/".join(path),
+                                "ref": ref,
+                                "found": "circular reference",
+                                "tips": [
+                                    "Remove circular references in your schema",
+                                    "Use unique identifiers instead of nested references",
+                                    "Consider flattening your schema structure",
+                                ],
+                            },
+                        )
+
+                    # Resolve the reference and check its contents
+                    seen_refs.append(ref)
+                    try:
+                        resolved = resolve_ref(ref, root)
+                        check_refs(resolved, path, seen_refs.copy(), root)
+                    except SchemaValidationError:
+                        raise
+                    except Exception as e:
+                        raise SchemaValidationError(
+                            f"Invalid JSON Schema: Failed to resolve reference {ref}",
+                            context={
+                                "validation_type": "schema",
+                                "path": "/".join(path),
+                                "ref": ref,
+                                "error": str(e),
+                                "tips": [
+                                    "Check that all references are properly formatted"
+                                ],
+                            },
+                        )
+
+                for key, value in obj.items():
+                    if key != "$ref":  # Skip checking the reference itself
+                        check_refs(value, path + [key], seen_refs.copy(), root)
+            elif isinstance(obj, list):
+                for i, value in enumerate(obj):
+                    check_refs(value, path + [str(i)], seen_refs.copy(), root)
+
+        check_refs(schema_to_validate, [], [], schema_to_validate)
+
+        # 4. Check required root properties
+        if "type" not in schema_to_validate:
+            raise SchemaValidationError(
+                "Invalid JSON Schema: Missing required 'type' property",
+                context={
+                    "validation_type": "schema",
+                    "tips": ["Add a 'type' property to your schema root"],
+                },
+            )
+
+        # 5. Check for required fields not defined in properties
+        if schema_to_validate.get("type") == "object":
+            required_fields = schema_to_validate.get("required", [])
+            properties = schema_to_validate.get("properties", {})
+            missing_fields = [
+                field for field in required_fields if field not in properties
+            ]
+            if missing_fields:
+                raise SchemaValidationError(
+                    "Invalid JSON Schema: Required fields must be defined in properties",
+                    context={
+                        "validation_type": "schema",
+                        "missing_fields": missing_fields,
+                        "tips": [
+                            "Add the following fields to 'properties':",
+                            *[f"  - {field}" for field in missing_fields],
+                            "Or remove them from 'required' if they are not needed",
+                        ],
+                    },
+                )
+
+        # 6. Validate against JSON Schema meta-schema
+        try:
+            validator = jsonschema.validators.validator_for(schema_to_validate)
+            validator.check_schema(schema_to_validate)
+        except jsonschema.exceptions.SchemaError as e:
+            raise SchemaValidationError(
+                f"Invalid JSON Schema: {str(e)}",
+                context={
+                    "validation_type": "schema",
+                    "path": "/".join(str(p) for p in e.path),
+                    "details": e.message,
+                    "tips": [
+                        "Ensure your schema follows JSON Schema specification",
+                        "Check property types and formats",
+                        "Validate schema structure",
+                    ],
+                },
+            )
+
+    except SchemaValidationError:
+        raise  # Re-raise SchemaValidationError without wrapping
     except Exception as e:
-        raise SchemaValidationError(f"Schema validation error: {e}")
+        raise SchemaValidationError(
+            f"Invalid JSON Schema: {str(e)}",
+            context={
+                "validation_type": "schema",
+                "error": str(e),
+                "tips": ["Check schema syntax", "Validate JSON structure"],
+            },
+        )
 
 
 def validate_response(

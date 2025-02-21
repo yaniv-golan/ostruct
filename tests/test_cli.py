@@ -13,7 +13,11 @@ from openai_structured.model_registry import ModelRegistry
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.cli import create_cli, create_template_context
-from ostruct.cli.errors import CLIError, InvalidJSONError
+from ostruct.cli.errors import (
+    CLIError,
+    InvalidJSONError,
+    SchemaValidationError,
+)
 from ostruct.cli.exit_codes import ExitCode
 from ostruct.cli.file_list import FileInfo, FileInfoList
 from ostruct.cli.file_utils import collect_files
@@ -106,7 +110,25 @@ class CliTestRunner:
 
                 # Handle SystemExit explicitly
                 if isinstance(exc_value, SystemExit):
-                    # First check for wrapped CLIError or InvalidJSONError in the context chain
+                    # First check for SchemaValidationError in both context and cause chains
+                    current = exc_value.__context__
+                    while current is not None:
+                        if isinstance(current, SchemaValidationError):
+                            result.exception = current
+                            result.exit_code = current.exit_code
+                            return result
+                        current = getattr(current, "__context__", None)
+
+                    # Check __cause__ chain
+                    current = exc_value.__cause__
+                    while current is not None:
+                        if isinstance(current, SchemaValidationError):
+                            result.exception = current
+                            result.exit_code = current.exit_code
+                            return result
+                        current = getattr(current, "__cause__", None)
+
+                    # Check for CLIError and InvalidJSONError
                     current = exc_value.__context__
                     while current is not None:
                         if isinstance(current, (CLIError, InvalidJSONError)):
@@ -118,7 +140,7 @@ class CliTestRunner:
                             return result
                         current = getattr(current, "__context__", None)
 
-                    # If no CLIError found, use the exit code
+                    # If no specific error found, use the SystemExit code
                     result.exit_code = (
                         exc_value.code
                         if isinstance(exc_value.code, int)
@@ -126,7 +148,16 @@ class CliTestRunner:
                     )
                     return result
 
-                # Handle CLIError and InvalidJSONError directly
+                # Handle SchemaValidationError directly
+                current = exc_value
+                while current is not None:
+                    if isinstance(current, SchemaValidationError):
+                        result.exception = current
+                        result.exit_code = current.exit_code
+                        return result
+                    current = getattr(current, "__cause__", None)
+
+                # Handle CLIError and InvalidJSONError
                 current = exc_value
                 while current is not None:
                     if isinstance(current, (CLIError, InvalidJSONError)):
@@ -687,104 +718,114 @@ class TestCLICore:
         fs: FakeFilesystem,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test that schema validation errors are logged appropriately with and without debug validation."""
-        # Create a schema that exceeds max nesting depth
-        deeply_nested_schema = {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "level1": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "level2": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "level3": {
-                                    "type": "object",
-                                    "additionalProperties": False,
-                                    "properties": {
-                                        "level4": {
-                                            "type": "object",
-                                            "additionalProperties": False,
-                                            "properties": {
-                                                "level5": {
-                                                    "type": "object",
-                                                    "additionalProperties": False,
-                                                    "properties": {
-                                                        "level6": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                }
-                                            },
-                                        }
-                                    },
-                                }
-                            },
-                        }
-                    },
-                }
-            },
-        }
+        """Test that schema validation errors are logged appropriately."""
 
-        fs.create_file(
-            f"{TEST_BASE_DIR}/schema.json",
-            contents=json.dumps(deeply_nested_schema),
-        )
-        fs.create_file(f"{TEST_BASE_DIR}/task.txt", contents="test task")
-
-        # Change to test base directory
-        os.chdir(TEST_BASE_DIR)
-
-        # Test without debug validation
+        # Test schema validation with debug validation enabled
         with caplog.at_level(logging.ERROR):
             caplog.clear()
+
+            # Create invalid schema with circular reference
+            invalid_schema = {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",  # Add schema version
+                "type": "object",
+                "properties": {"test": {"$ref": "#/definitions/test"}},
+                "required": ["test"],
+                "additionalProperties": False,
+                "definitions": {  # Add definitions section for proper circular reference
+                    "test": {
+                        "type": "object",
+                        "properties": {
+                            "test": {
+                                "$ref": "#/definitions/test"
+                            }  # Creates true circular reference
+                        },
+                    }
+                },
+            }
+
+            # Write schema and template files
+            fs.create_file(
+                f"{TEST_BASE_DIR}/schema.json",
+                contents=json.dumps(invalid_schema),
+            )
+            fs.create_file(
+                f"{TEST_BASE_DIR}/template.j2", contents="test template"
+            )
+
+            # Change to test base directory
+            os.chdir(TEST_BASE_DIR)
+
             result = cli_runner.invoke(
                 create_cli(),
                 [
                     "run",
-                    "task.txt",
+                    "template.j2",
                     "schema.json",
+                    "--debug-validation",  # Enable debug validation to catch schema errors early
+                    "--dry-run",  # Avoid making actual API calls
                 ],
             )
 
-            # Check error classification
+            # Check error classification and messages
             assert result.exit_code == ExitCode.SCHEMA_ERROR
-            error_msg = str(result.exception)
-            assert "[SCHEMA_ERROR]" in error_msg
-            assert "[INTERNAL_ERROR]" not in error_msg
+            assert "Invalid JSON Schema" in str(result.exception)
+            assert (
+                "Circular reference found" in caplog.text
+            )  # Updated assertion for circular reference detection
 
-            # Check logs - should only have basic error info
-            assert "Schema validation error:" in caplog.text
-            assert "Error type:" not in caplog.text
-            assert "Error details:" not in caplog.text
-            assert "Traceback:" not in caplog.text
+    def test_schema_validation_error_chain(
+        self,
+        cli_runner: CliTestRunner,
+        fs: FakeFilesystem,
+    ) -> None:
+        """Test that schema validation errors preserve their exit codes and chain."""
 
-        # Test with debug validation
-        with caplog.at_level(logging.ERROR):
-            caplog.clear()
-            result_with_debug = cli_runner.invoke(
-                create_cli(),
-                [
-                    "run",
-                    "task.txt",
-                    "schema.json",
-                    "--debug-validation",
-                ],
-            )
+        # Create invalid schema with missing required field
+        invalid_schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": [
+                "missing_field"
+            ],  # Field is required but not defined in properties
+            "properties": {},
+            "additionalProperties": False,
+        }
 
-            # Check error classification
-            assert result_with_debug.exit_code == ExitCode.SCHEMA_ERROR
-            error_msg_with_debug = str(result_with_debug.exception)
-            assert "[SCHEMA_ERROR]" in error_msg_with_debug
-            assert "[INTERNAL_ERROR]" not in error_msg_with_debug
+        # Write schema and template files
+        fs.create_file(
+            f"{TEST_BASE_DIR}/schema.json",
+            contents=json.dumps(invalid_schema),
+        )
+        fs.create_file(
+            f"{TEST_BASE_DIR}/template.j2", contents="test template"
+        )
 
-            # Check logs - should have both basic and detailed error info
-            assert "Schema validation error:" in caplog.text
-            assert "Error type:" in caplog.text
-            assert "Error details:" in caplog.text
+        # Change to test base directory
+        os.chdir(TEST_BASE_DIR)
+
+        result = cli_runner.invoke(
+            create_cli(),
+            [
+                "run",
+                "template.j2",
+                "schema.json",
+                "--debug-validation",
+                "--dry-run",
+            ],
+        )
+
+        # Verify error chain preservation
+        assert result.exit_code == ExitCode.SCHEMA_ERROR
+        assert isinstance(result.exception, SchemaValidationError)
+
+        # Verify error details
+        assert "missing_field" in str(result.exception)
+        assert "required" in str(result.exception)
+
+        # Verify error context
+        assert result.exception.context is not None
+        assert "validation_type" in result.exception.context
+        assert result.exception.context["validation_type"] == "schema"
 
 
 # OpenAI-dependent tests

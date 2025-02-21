@@ -78,7 +78,11 @@ from .path_utils import validate_path_mapping
 from .security import SecurityManager
 from .serialization import LogSerializer
 from .template_env import create_jinja_env
-from .template_utils import SystemPromptError, render_template
+from .template_utils import (
+    SystemPromptError,
+    render_template,
+    validate_json_schema,
+)
 from .token_utils import estimate_tokens_with_encoding
 
 # Constants
@@ -831,7 +835,7 @@ def validate_schema_file(
         logger.error(msg)
         raise SchemaFileError(msg, schema_path=path)
     except Exception as e:
-        if isinstance(e, InvalidJSONError):
+        if isinstance(e, (InvalidJSONError, SchemaValidationError)):
             raise
         msg = f"Failed to read schema file {path}: {e}"
         logger.error(msg)
@@ -846,7 +850,13 @@ def validate_schema_file(
     if not isinstance(schema, dict):
         msg = f"Schema in {path} must be a JSON object"
         logger.error(msg)
-        raise SchemaValidationError(msg, context={"path": path})
+        raise SchemaValidationError(
+            msg,
+            context={
+                "validation_type": "schema",
+                "schema_path": path,
+            },
+        )
 
     # Validate schema structure
     if "schema" in schema:
@@ -856,7 +866,13 @@ def validate_schema_file(
         if not isinstance(inner_schema, dict):
             msg = f"Inner schema in {path} must be a JSON object"
             logger.error(msg)
-            raise SchemaValidationError(msg, context={"path": path})
+            raise SchemaValidationError(
+                msg,
+                context={
+                    "validation_type": "schema",
+                    "schema_path": path,
+                },
+            )
         if verbose:
             logger.debug("Inner schema validated successfully")
             logger.debug(
@@ -871,7 +887,20 @@ def validate_schema_file(
     if "type" not in schema.get("schema", schema):
         msg = f"Schema in {path} must specify a type"
         logger.error(msg)
-        raise SchemaValidationError(msg, context={"path": path})
+        raise SchemaValidationError(
+            msg,
+            context={
+                "validation_type": "schema",
+                "schema_path": path,
+            },
+        )
+
+    # Validate schema against JSON Schema spec
+    try:
+        validate_json_schema(schema)
+    except SchemaValidationError as e:
+        logger.error("Schema validation error: %s", str(e))
+        raise  # Re-raise to preserve error chain
 
     # Return the full schema including wrapper
     return schema
@@ -1225,19 +1254,24 @@ def handle_error(e: Exception) -> None:
     Provides enhanced debug logging for CLI errors.
     """
     # 1. Determine error type and message
-    if isinstance(e, click.UsageError):
+    if isinstance(e, SchemaValidationError):
+        msg = str(e)  # Already formatted in SchemaValidationError
+        exit_code = e.exit_code
+    elif isinstance(e, ModelCreationError):
+        # Unwrap ModelCreationError that might wrap SchemaValidationError
+        if isinstance(e.__cause__, SchemaValidationError):
+            return handle_error(e.__cause__)
+        msg = f"Model creation error: {str(e)}"
+        exit_code = ExitCode.SCHEMA_ERROR
+    elif isinstance(e, click.UsageError):
         msg = f"Usage error: {str(e)}"
         exit_code = ExitCode.USAGE_ERROR
     elif isinstance(e, SchemaFileError):
-        # Preserve specific schema error handling
         msg = str(e)  # Use existing __str__ formatting
         exit_code = ExitCode.SCHEMA_ERROR
     elif isinstance(e, (InvalidJSONError, json.JSONDecodeError)):
         msg = f"Invalid JSON error: {str(e)}"
         exit_code = ExitCode.DATA_ERROR
-    elif isinstance(e, SchemaValidationError):
-        msg = f"Schema validation error: {str(e)}"
-        exit_code = ExitCode.VALIDATION_ERROR
     elif isinstance(e, CLIError):
         msg = str(e)  # Use existing __str__ formatting
         exit_code = ExitCode(e.exit_code)  # Convert int to ExitCode
@@ -1249,7 +1283,7 @@ def handle_error(e: Exception) -> None:
     if isinstance(e, CLIError) and logger.isEnabledFor(logging.DEBUG):
         # Format context fields with lowercase keys and simple values
         context_str = ""
-        if hasattr(e, "context"):
+        if hasattr(e, "context") and e.context:
             for key, value in sorted(e.context.items()):
                 if key not in {
                     "timestamp",
@@ -1257,13 +1291,18 @@ def handle_error(e: Exception) -> None:
                     "version",
                     "python_version",
                 }:
-                    context_str += f"{key.lower()}: {value}\n"
+                    if isinstance(value, dict):
+                        context_str += (
+                            f"{key.lower()}:\n{json.dumps(value, indent=2)}\n"
+                        )
+                    else:
+                        context_str += f"{key.lower()}: {value}\n"
 
-        logger.debug(
-            "Error details:\n"
-            f"Type: {type(e).__name__}\n"
-            f"{context_str.rstrip()}"
-        )
+            logger.debug(
+                "Error details:\n"
+                f"Type: {type(e).__name__}\n"
+                f"{context_str.rstrip()}"
+            )
     elif not isinstance(e, click.UsageError):
         logger.error(msg, exc_info=True)
     else:
@@ -1467,30 +1506,11 @@ def run(
 ) -> None:
     """Run a structured task with template and schema.
 
-    TASK_TEMPLATE is the path to your Jinja2 template file that defines the task.
-    SCHEMA_FILE is the path to your JSON schema file that defines the expected output structure.
-
-    The command supports various options for file handling, variable definition,
-    model configuration, and output control. Use --help to see all available options.
-
-    Examples:
-        # Basic usage
-        ostruct run task.j2 schema.json
-
-        # Process multiple files
-        ostruct run task.j2 schema.json -f code main.py -f test tests/test_main.py
-
-        # Scan directories recursively
-        ostruct run task.j2 schema.json -d src ./src -R
-
-        # Define variables
-        ostruct run task.j2 schema.json -V debug=true -J config='{"env":"prod"}'
-
-        # Configure model
-        ostruct run task.j2 schema.json -m gpt-4 --temperature 0.7 --max-output-tokens 1000
-
-        # Control output
-        ostruct run task.j2 schema.json --output-file result.json --verbose
+    Args:
+        ctx: Click context
+        task_template: Path to task template file
+        schema_file: Path to schema file
+        **kwargs: Additional CLI options
     """
     try:
         # Convert Click parameters to typed dict
@@ -1511,25 +1531,33 @@ def run(
         try:
             exit_code = loop.run_until_complete(run_cli_async(params))
             sys.exit(int(exit_code))
+        except SchemaValidationError as e:
+            # Log the error with full context
+            logger.error("Schema validation error: %s", str(e))
+            if e.context:
+                logger.debug(
+                    "Error context: %s", json.dumps(e.context, indent=2)
+                )
+            # Re-raise to preserve error chain and exit code
+            raise
+        except (CLIError, InvalidJSONError, SchemaFileError) as e:
+            handle_error(e)
+            sys.exit(
+                e.exit_code
+                if hasattr(e, "exit_code")
+                else ExitCode.INTERNAL_ERROR
+            )
+        except click.UsageError as e:
+            handle_error(e)
+            sys.exit(ExitCode.USAGE_ERROR)
+        except Exception as e:
+            handle_error(e)
+            sys.exit(ExitCode.INTERNAL_ERROR)
         finally:
             loop.close()
-
-    except (
-        CLIError,
-        InvalidJSONError,
-        SchemaFileError,
-        SchemaValidationError,
-    ) as e:
-        handle_error(e)
-        sys.exit(
-            e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
-        )
-    except click.UsageError as e:
-        handle_error(e)
-        sys.exit(ExitCode.USAGE_ERROR)
-    except Exception as e:
-        handle_error(e)
-        sys.exit(ExitCode.INTERNAL_ERROR)
+    except KeyboardInterrupt:
+        logger.info("Operation cancelled by user")
+        raise
 
 
 # Remove the old @create_click_command() decorator and cli function definition
@@ -1582,6 +1610,7 @@ async def validate_inputs(
 
     Raises:
         CLIError: For various validation errors
+        SchemaValidationError: When schema is invalid
     """
     logger.debug("=== Input Validation Phase ===")
     security_manager = validate_security_manager(
@@ -1593,10 +1622,22 @@ async def validate_inputs(
     task_template = validate_task_template(
         args.get("task"), args.get("task_file")
     )
+
+    # Load and validate schema
     logger.debug("Validating schema from %s", args["schema_file"])
-    schema = validate_schema_file(
-        args["schema_file"], args.get("verbose", False)
-    )
+    try:
+        schema = validate_schema_file(
+            args["schema_file"], args.get("verbose", False)
+        )
+
+        # Validate schema structure before any model creation
+        validate_json_schema(
+            schema
+        )  # This will raise SchemaValidationError if invalid
+    except SchemaValidationError as e:
+        logger.error("Schema validation error: %s", str(e))
+        raise  # Re-raise the SchemaValidationError to preserve the error chain
+
     template_context = await create_template_context_from_args(
         args, security_manager
     )
@@ -1675,6 +1716,7 @@ async def validate_model_and_schema(
         ModelCreationError,
     ) as e:
         logger.error("Schema error: %s", str(e))
+        # Pass through the error without additional wrapping
         raise
 
     if not supports_structured_output(args["model"]):
@@ -1820,19 +1862,21 @@ async def execute_model(
 async def run_cli_async(args: CLIParams) -> ExitCode:
     """Async wrapper for CLI operations.
 
+    Args:
+        args: CLI parameters.
+
     Returns:
-        Exit code to return from the CLI
+        Exit code.
 
     Raises:
-        CLIError: For various error conditions
-        KeyboardInterrupt: When operation is cancelled by user
+        CLIError: For errors during CLI operations.
     """
     try:
         # 0. Model Parameter Validation
         logger.debug("=== Model Parameter Validation ===")
         params = await validate_model_params(args)
 
-        # 1. Input Validation Phase
+        # 1. Input Validation Phase (includes schema validation)
         security_manager, task_template, schema, template_context, env = (
             await validate_inputs(args)
         )
@@ -1849,15 +1893,12 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             )
         )
 
-        # 4. Dry Run Output Phase
+        # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):
             logger.info("\n=== Dry Run Summary ===")
+            # Only log success if we got this far (no validation errors)
             logger.info("✓ Template rendered successfully")
             logger.info("✓ Schema validation passed")
-            logger.info("✓ Model compatibility validated")
-            logger.info(
-                f"✓ Token count: {total_tokens}/{registry.get_capabilities(args['model']).context_window}"
-            )
 
             if args.get("verbose", False):
                 logger.info("\nSystem Prompt:")
@@ -1867,6 +1908,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
                 logger.info("-" * 40)
                 logger.info(user_prompt)
 
+            # Return success only if we got here (no validation errors)
             return ExitCode.SUCCESS
 
         # 5. Execution Phase
@@ -1877,6 +1919,10 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
     except KeyboardInterrupt:
         logger.info("Operation cancelled by user")
         raise
+    except SchemaValidationError as e:
+        # Ensure schema validation errors are properly propagated with the correct exit code
+        logger.error("Schema validation error: %s", str(e))
+        raise  # Re-raise the SchemaValidationError to preserve the error chain
     except Exception as e:
         if isinstance(e, CLIError):
             raise  # Let our custom errors propagate
