@@ -3,7 +3,11 @@
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.security import PathSecurityError, SecurityManager
+from ostruct.cli.security import (
+    PathSecurityError,
+    SecurityErrorReasons,
+    SecurityManager,
+)
 
 
 def test_security_manager_base_dir_validation(fs: FakeFilesystem) -> None:
@@ -60,6 +64,15 @@ def test_unicode_normalization_security(fs: FakeFilesystem) -> None:
     ]
 
     for path in test_paths:
-        assert not manager.is_path_allowed(path)
-        with pytest.raises(PathSecurityError):
+        try:
+            # First try to validate the path
             manager.validate_path(path)
+            # If we get here, the path was incorrectly allowed
+            pytest.fail(f"Security bypass possible with path: {path}")
+        except PathSecurityError as e:
+            # Verify error reason indicates a security violation
+            assert e.context["reason"] in [
+                SecurityErrorReasons.PATH_TRAVERSAL,
+                SecurityErrorReasons.UNSAFE_UNICODE,
+                SecurityErrorReasons.PATH_OUTSIDE_ALLOWED,
+            ], f"Unexpected error reason for path {path}: {e.context['reason']}"

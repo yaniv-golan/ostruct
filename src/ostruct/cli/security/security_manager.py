@@ -242,20 +242,53 @@ class SecurityManager:
                     context={"reason": SecurityErrorReasons.SYMLINK_ERROR},
                 ) from e
 
-        # For non-symlinks, just check if the normalized path is allowed
+        # Check for directory traversal attempts
+        if ".." in str(norm_path):
+            logger.error("Directory traversal attempt detected: %s", path)
+            raise PathSecurityError(
+                "Directory traversal attempt blocked",
+                path=str(path),
+                context={
+                    "reason": SecurityErrorReasons.PATH_TRAVERSAL,
+                    "base_dir": str(self._base_dir),
+                    "allowed_dirs": [str(d) for d in self._allowed_dirs],
+                },
+            )
+
+        # Check for suspicious Unicode characters
+        if any(
+            c in str(norm_path)
+            for c in [
+                "\u2024",
+                "\u2025",
+                "\u2026",
+                "\u0085",
+                "\u2028",
+                "\u2029",
+            ]
+        ):
+            logger.error("Suspicious Unicode characters detected: %s", path)
+            raise PathSecurityError(
+                "Suspicious characters detected in path",
+                path=str(path),
+                context={
+                    "reason": SecurityErrorReasons.UNSAFE_UNICODE,
+                    "base_dir": str(self._base_dir),
+                    "allowed_dirs": [str(d) for d in self._allowed_dirs],
+                },
+            )
+
+        # For non-symlinks, check if the normalized path is allowed
         logger.debug("Checking if path is allowed: %s", norm_path)
         if not self.is_path_allowed(norm_path):
             logger.error(
-                "Security violation: Path %s is outside allowed directories (base_dir=%s, allowed_dirs=%s)",
+                "Path outside allowed directories: %s (base_dir=%s, allowed_dirs=%s)",
                 path,
                 self._base_dir,
                 self._allowed_dirs,
             )
             raise PathSecurityError(
-                (
-                    f"Access denied: {os.path.basename(str(path))} is outside "
-                    "base directory and not in allowed directories"
-                ),
+                "Path outside allowed directories",
                 path=str(path),
                 context={
                     "reason": SecurityErrorReasons.PATH_OUTSIDE_ALLOWED,
