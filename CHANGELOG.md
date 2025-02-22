@@ -5,18 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.2] - 2025-02-18
+## [0.6.2] - 2025-02-22
 
 ### Added
 
 - Added clear documentation for system prompt precedence rules in README
 - Added detailed logging configuration section with command-line options and environment variables
+- Added ostruct logo assets in multiple formats (SVG, PNG at 1x, 2x, 3x resolutions)
+- Added comprehensive etymology analysis example with documentation and schemas
+- Added enhanced path validation and security checks
 
 ### Changed
 
 - Changed comment block handling to explicitly reject nested comments for simpler, more predictable syntax
 - Improved whitespace handling in variable parsing for better user experience
 - Updated SecurityManager documentation for clarity
+- Updated project description in README for better clarity and focus on core functionality
+- Enhanced schema validation and error handling
+- Updated Python version requirement to 3.10 and bumped openai-structured dependency
 
 ### Fixed
 
@@ -27,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Removed outdated migration guide
+- Removed temporary Read the Docs configuration file
 
 ## [0.6.0] - 2025-02-17
 
