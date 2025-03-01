@@ -45,7 +45,10 @@ from openai_structured.errors import (
     OpenAIClientError,
     StreamBufferError,
 )
-from openai_structured.model_registry import ModelRegistry
+from openai_structured.model_registry import (
+    ModelRegistry,
+    RegistryUpdateStatus,
+)
 from pydantic import AnyUrl, BaseModel, EmailStr, Field
 from pydantic.fields import FieldInfo as FieldInfoType
 from pydantic.functional_validators import BeforeValidator
@@ -1597,7 +1600,6 @@ def update_registry(url: Optional[str] = None, force: bool = False) -> None:
         config_path = registry._config_path
         click.echo(f"Current registry file: {config_path}")
 
-        # If force is used, attempt to refresh regardless
         if force:
             click.echo("Forcing registry update...")
             success = registry.refresh_from_remote(url)
@@ -1607,67 +1609,40 @@ def update_registry(url: Optional[str] = None, force: bool = False) -> None:
                 click.echo(
                     "❌ Failed to update registry. See logs for details."
                 )
-        else:
-            # Check if registry file exists
-            if not os.path.exists(config_path):
-                click.echo("Registry file not found. Creating new one...")
-                success = registry.refresh_from_remote(url)
-                if success:
-                    click.echo("✅ Registry successfully created!")
-                else:
-                    click.echo(
-                        "❌ Failed to create registry. See logs for details."
-                    )
+            sys.exit(ExitCode.SUCCESS.value)
+
+        if config_path is None or not os.path.exists(config_path):
+            click.echo("Registry file not found. Creating new one...")
+            success = registry.refresh_from_remote(url)
+            if success:
+                click.echo("✅ Registry successfully created!")
             else:
-                # Use conditional HTTP request to check if update is needed
-                import time
-
-                import requests
-
-                config_url = url or (
-                    "https://raw.githubusercontent.com/yaniv-golan/"
-                    "openai-structured/main/src/openai_structured/config/models.yml"
+                click.echo(
+                    "❌ Failed to create registry. See logs for details."
                 )
+            sys.exit(ExitCode.SUCCESS.value)
 
-                headers = {}
-                # Add last-modified header if file exists
-                file_mtime = (
-                    os.path.getmtime(config_path)
-                    if os.path.exists(config_path)
-                    else None
-                )
-                if file_mtime:
-                    last_modified = time.strftime(
-                        "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(file_mtime)
-                    )
-                    headers["If-Modified-Since"] = last_modified
+        # Use the built-in update checking functionality
+        click.echo("Checking for updates...")
+        update_result = registry.check_for_updates()
 
-                click.echo(f"Checking for updates from {config_url}...")
-                response = requests.head(config_url, headers=headers)
+        if update_result.status == RegistryUpdateStatus.UPDATE_AVAILABLE:
+            click.echo(
+                f"{click.style('✓', fg='green')} {update_result.message}"
+            )
+            exit_code = ExitCode.SUCCESS
+        elif update_result.status == RegistryUpdateStatus.ALREADY_CURRENT:
+            click.echo(
+                f"{click.style('✓', fg='green')} Registry is up to date"
+            )
+            exit_code = ExitCode.SUCCESS
+        else:
+            click.echo("❓ Unable to determine if updates are available.")
 
-                # Check if file has been modified (not 304 Not Modified)
-                if response.status_code == 304:
-                    click.echo("✅ Registry is already up to date.")
-                    sys.exit(ExitCode.SUCCESS.value)
-                elif response.status_code == 200:
-                    click.echo("Updates available, downloading...")
-                    success = registry.refresh_from_remote(url)
-                    if success:
-                        click.echo("✅ Registry successfully updated!")
-                    else:
-                        click.echo(
-                            "❌ Failed to update registry. See logs for details."
-                        )
-                else:
-                    click.echo(
-                        f"❌ Error checking for updates: HTTP {response.status_code}"
-                    )
-                    sys.exit(ExitCode.EXTERNAL_SERVICE_ERROR.value)
-
-        sys.exit(ExitCode.SUCCESS.value)
+        sys.exit(exit_code)
     except Exception as e:
         click.echo(f"❌ Error updating registry: {str(e)}")
-        sys.exit(ExitCode.EXTERNAL_SERVICE_ERROR.value)
+        sys.exit(ExitCode.API_ERROR.value)
 
 
 async def validate_model_params(args: CLIParams) -> Dict[str, Any]:

@@ -58,7 +58,10 @@ def _get_last_check_time() -> Optional[float]:
     try:
         with open(cache_file, "r") as f:
             data = json.load(f)
-            return data.get("last_check_time")
+            last_check_time = data.get("last_check_time")
+            return (
+                float(last_check_time) if last_check_time is not None else None
+            )
     except (json.JSONDecodeError, IOError, OSError):
         return None
 
