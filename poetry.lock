@@ -1817,14 +1817,14 @@ realtime = ["websockets (>=13,<15)"]
 
 [[package]]
 name = "openai-structured"
-version = "2.0.0"
+version = "2.1.0"
 description = "Structured output for OpenAI API"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "openai_structured-2.0.0-py3-none-any.whl", hash = "sha256:3c9fae763f720d8d695a4e49fc915a6bff6ba17e5999310b65f207e1eff98c06"},
-    {file = "openai_structured-2.0.0.tar.gz", hash = "sha256:5a0c2af4b46ca8fe8ea4ae69768f0cab25f092d64086ba081c276bcc3cfcf0dc"},
+    {file = "openai_structured-2.1.0-py3-none-any.whl", hash = "sha256:506daeba9ca016c508fb41b7357783b4e7f570dd2853cf6edcca06346f7c8205"},
+    {file = "openai_structured-2.1.0.tar.gz", hash = "sha256:b11d74296feedeba6fa242b134ec1ee335f110b5c5c3f60c477222153537a4d4"},
 ]
 
 [package.dependencies]
@@ -3413,4 +3413,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "29e209b21a981aeb5a5269e08b4ef3d6dc8236d129b20e27c62b5426a9e87c00"
+content-hash = "efde62912784f2339421057a51fe8f0160f74682c9156229c371a39e8d888d20"
