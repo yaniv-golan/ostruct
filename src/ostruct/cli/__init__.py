@@ -8,6 +8,7 @@ from .cli import (
     validate_variable_mapping,
 )
 from .path_utils import validate_path_mapping
+from .registry_updates import get_update_notification
 
 __all__ = [
     "ExitCode",
@@ -16,4 +17,5 @@ __all__ = [
     "validate_schema_file",
     "validate_task_template",
     "validate_variable_mapping",
+    "get_update_notification",
 ]
