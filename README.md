@@ -17,6 +17,8 @@ ostruct will process a set of plain text files (data, source code, CSV, etc), in
 - Automatic token counting and context window management
 - Streaming support for real-time output
 - Secure handling of sensitive data
+- Model registry management with support for updating to the latest OpenAI models
+- Non-intrusive registry update checks with user notifications
 
 ## Requirements
 
@@ -35,6 +37,16 @@ pip install ostruct-cli
 ### For Developers
 
 If you plan to contribute to the project, see the [Development Setup](#development-setup) section below for instructions on setting up the development environment with Poetry.
+
+## Environment Variables
+
+ostruct-cli respects the following environment variables:
+
+- `OPENAI_API_KEY`: Your OpenAI API key (required unless provided via command line)
+- `OPENAI_API_BASE`: Custom API base URL (optional)
+- `OPENAI_API_VERSION`: API version to use (optional)
+- `OPENAI_API_TYPE`: API type (e.g., "azure") (optional)
+- `OSTRUCT_DISABLE_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
 
 ## Shell Completion
 
@@ -236,3 +248,35 @@ ostruct run template.j2 schema.json --sys-prompt "Override prompt"
 # Ignore template frontmatter and use default
 ostruct run template.j2 schema.json --ignore-task-sysprompt
 ```
+
+## Model Registry Management
+
+ostruct-cli maintains a registry of OpenAI models and their capabilities, which includes:
+
+- Context window sizes for each model
+- Maximum output token limits
+- Supported parameters and their constraints
+- Model version information
+
+To ensure you're using the latest models and features, you can update the registry:
+
+```bash
+# Update from the official repository
+ostruct update-registry
+
+# Update from a custom URL
+ostruct update-registry --url https://example.com/models.yml
+
+# Force an update even if the registry is current
+ostruct update-registry --force
+```
+
+This is especially useful when:
+
+- New OpenAI models are released
+- Model capabilities or parameters change
+- You need to work with custom model configurations
+
+The registry file is stored at `~/.openai_structured/config/models.yml` and is automatically referenced when validating model parameters and token limits.
+
+The update command uses HTTP conditional requests (If-Modified-Since headers) to check if the remote registry has changed before downloading, ensuring efficient updates.

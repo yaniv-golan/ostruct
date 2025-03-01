@@ -407,6 +407,21 @@ This example demonstrates:
 ## Environment Variables
 
 - `OPENAI_API_KEY`: Your OpenAI API key (required)
+- `OPENAI_API_BASE`: Custom API base URL (optional)
+- `OPENAI_API_VERSION`: API version to use (optional)
+- `OPENAI_API_TYPE`: API type (e.g., "azure") (optional)
+- `OSTRUCT_DISABLE_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
+
+## Registry Update Checks
+
+ostruct-cli includes a non-intrusive mechanism to check for updates to the model registry. This helps ensure you're aware of new models and features without requiring manual intervention.
+
+Key features:
+
+- Checks are performed at most once per day to minimize overhead
+- Update notifications are displayed in the CLI when updates are available
+- The registry is automatically updated when needed during normal operation
+- Checks can be disabled by setting the `OSTRUCT_DISABLE_UPDATE_CHECKS` environment variable
 
 ## Logging
 
