@@ -1,7 +1,5 @@
 ![ostruct](src/assets/ostruct-header.png)
 
-# ostruct-cli
-
 <div align="center">
 
 [![PyPI version](https://badge.fury.io/py/ostruct-cli.svg)](https://badge.fury.io/py/ostruct-cli)
@@ -10,10 +8,13 @@
 [![CI](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-ostruct tranforms unstructured inputs into structured, usable JSON output using OpenAI APIs.
+*ostruct tranforms ***unstructured*** inputs into ***structured***, usable ***JSON*** output using ***OpenAI APIs*** using dynamic ***templates***
+
+</div>
+
+# ostruct-cli
 
 ostruct will process a set of plain text files (data, source code, CSV, etc), input variables, a dynamic prompt template, and a JSON schema specifying the desired output format, and will produce the result in JSON format.
-</div>
 
 ## Features
 
