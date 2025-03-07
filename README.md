@@ -16,6 +16,12 @@
 
 ostruct will process a set of plain text files (data, source code, CSV, etc), input variables, a dynamic prompt template, and a JSON schema specifying the desired output format, and will produce the result in JSON format.
 
+<div align="center">
+
+![How ostruct works](src/assets/ostrict-hl-diagram.png)
+
+</div>
+
 ## Features
 
 - Generate structured JSON output from natural language using OpenAI models and a JSON schema
