@@ -17,9 +17,7 @@
 ostruct will process a set of plain text files (data, source code, CSV, etc), input variables, a dynamic prompt template, and a JSON schema specifying the desired output format, and will produce the result in JSON format.
 
 <div align="center">
-
-![How ostruct works](src/assets/ostrict-hl-diagram.png)
-
+  <img src="src/assets/ostrict-hl-diagram.png" alt="How ostruct works" style="width:50%;">
 </div>
 
 ## Features
