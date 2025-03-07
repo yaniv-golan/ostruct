@@ -107,3 +107,6 @@ poetry.toml
 .cursor/rules/development-setup.mdc
 .cursor/rules/pytest-capsys-caplog.mdc
 .cursor/rules/cursor-rules.mdc
+
+# Local history
+.history/*

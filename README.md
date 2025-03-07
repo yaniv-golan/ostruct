@@ -1,3 +1,5 @@
+![ostruct](src/assets/ostruct-header.png)
+
 # ostruct-cli
 
 [![PyPI version](https://badge.fury.io/py/ostruct-cli.svg)](https://badge.fury.io/py/ostruct-cli)
