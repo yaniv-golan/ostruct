@@ -1,7 +1,8 @@
 ![ostruct](src/assets/ostruct-header.png)
 
-<div align="center">
 # ostruct-cli
+
+<div align="center">
 
 [![PyPI version](https://badge.fury.io/py/ostruct-cli.svg)](https://badge.fury.io/py/ostruct-cli)
 [![Python Versions](https://img.shields.io/pypi/pyversions/ostruct-cli.svg)](https://pypi.org/project/ostruct-cli)
