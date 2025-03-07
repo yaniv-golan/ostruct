@@ -8,7 +8,7 @@
 [![CI](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-*ostruct tranforms ***unstructured*** inputs into ***structured***, usable ***JSON*** output using ***OpenAI APIs*** using dynamic ***templates***
+**ostruct** tranforms **unstructured** inputs into **structured**, usable **JSON** output using **OpenAI APIs** using dynamic **templates**
 
 </div>
 
