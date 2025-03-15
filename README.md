@@ -17,8 +17,56 @@
 ostruct will process a set of plain text files (data, source code, CSV, etc), input variables, a dynamic prompt template, and a JSON schema specifying the desired output format, and will produce the result in JSON format.
 
 <div align="center">
-  <img src="src/assets/ostrict-hl-diagram.png" alt="How ostruct works" style="width:50%;">
+
+![How ostruct works](src/assets/ostrict-hl-diagram.png)
+
 </div>
+
+## Why ostruct?
+
+LLMs are powerful, but getting consistent, structured output from them can be challenging. ostruct solves this problem by providing a streamlined approach to transform unstructured data into reliable JSON structures. The motivation behind creating ostruct was to:
+
+- **Bridge the gap** between freeform LLM capabilities and structured data needs in production systems
+- **Simplify integration** of AI into existing workflows and applications that expect consistent data formats
+- **Ensure reliability** and validate output against a defined schema to avoid unexpected formats or missing data
+- **Reduce development time** by providing a standardized way to interact with OpenAI models for structured outputs
+- **Enable non-developers** to leverage AI capabilities through a simple CLI interface with templates
+
+## Real-World Use Cases
+
+ostruct can be used for various scenarios, including:
+
+### Etymology Analysis
+
+```bash
+ostruct run prompts/task.j2 schemas/etymology.json -f input examples/scientific.txt --model gpt-4o
+```
+
+Break down words into their components, showing their origins, meanings, and hierarchical relationships. Useful for linguistics, educational tools, and understanding terminology in specialized fields.
+
+### Automated Code Review
+
+```bash
+ostruct run prompts/task.j2 schemas/code_review.json -p source "examples/security/*.py" --model gpt-4o
+```
+
+Analyze code for security vulnerabilities, style issues, and performance problems, producing structured reports that can be easily integrated into CI/CD pipelines or developer workflows.
+
+### Security Vulnerability Scanning
+
+```bash
+ostruct run prompts/task.j2 schemas/scan_result.json -d examples/intermediate --model gpt-4o
+```
+
+Scan codebases for security vulnerabilities, combining static analysis with AI-powered reasoning to identify potential issues, suggest fixes, and provide detailed explanations.
+
+### Configuration Validation & Analysis
+
+```bash
+ostruct run prompts/task.j2 schemas/validation_result.json -f dev examples/basic/dev.yaml -f prod examples/basic/prod.yaml
+```
+
+Validate configuration files across environments, check for inconsistencies, and provide intelligent feedback on potential issues or improvements in infrastructure setups.
 
 ## Features
 
