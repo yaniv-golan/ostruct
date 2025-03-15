@@ -5,12 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2025-03-07
+
+### Fixed
+
+- Added missing Jinja2 dependency which is used for template rendering
+
 ## [0.7.1] - 2025-03-07
 
 ### Fixed
 
 - Added missing Pygments dependency to fix startup errors when invoking the CLI
 - Updated openai-structured dependency to version 3.0.0 to resolve Pydantic protected namespace warnings
+- Improved error handling for missing dependencies
 
 ## [0.7.0] - 2025-03-01
 
