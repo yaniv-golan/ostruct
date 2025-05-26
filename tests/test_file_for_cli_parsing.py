@@ -1,5 +1,6 @@
 """Test --file-for CLI argument parsing specifically."""
 
+from typing import Any, Dict
 from unittest.mock import Mock
 
 import pytest
@@ -51,9 +52,7 @@ class TestFileForCLIParsing:
         # Verify Windows paths are preserved correctly
         assert "C:\\Users\\admin\\config.yaml" in routing.template_files
         assert "D:\\data\\analysis.csv" in routing.code_interpreter_files
-        assert (
-            "C:\\Program Files\\docs\\manual.pdf" in routing.file_search_files
-        )
+        assert "C:\\Program Files\\docs\\manual.pdf" in routing.file_search_files
 
     def test_old_syntax_would_have_failed(self):
         """Demonstrate that the old syntax would have been problematic."""
@@ -159,7 +158,7 @@ class TestFileForCLIParsing:
         processor = ExplicitFileProcessor(Mock())
 
         # Mix --file-for with -ft, -fc, -fs options
-        args = {
+        args: Dict[str, Any] = {
             "tool_files": [
                 ("template", "/explicit/config.yaml"),
                 ("code-interpreter", "/explicit/data.csv"),

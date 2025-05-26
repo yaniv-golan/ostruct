@@ -180,7 +180,7 @@ class MCPClient:
             else:
                 return data
 
-        return sanitize_dict(response)  # type: ignore[return-value]
+        return sanitize_dict(response)  # type: ignore[no-any-return]
 
     def _check_rate_limit(self) -> None:
         """Check and enforce rate limiting."""

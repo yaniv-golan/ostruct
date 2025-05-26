@@ -1,6 +1,7 @@
 """Tests for explicit file routing functionality."""
 
-from unittest.mock import AsyncMock, Mock
+from typing import Any, Dict
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -60,7 +61,7 @@ class TestExplicitFileProcessor:
         valid_tools = ["template", "code-interpreter", "file-search"]
 
         for tool in valid_tools:
-            args = {
+            args: Dict[str, Any] = {
                 "tool_files": [
                     (tool, "/test/file.txt"),
                 ]
@@ -118,7 +119,7 @@ class TestExplicitFileProcessor:
     @pytest.mark.asyncio
     async def test_process_file_routing_basic(self):
         """Test basic file routing processing."""
-        args = {
+        args: Dict[str, Any] = {
             "tool_files": [
                 ("template", "/test/config.yaml"),
                 ("code-interpreter", "/test/data.csv"),
@@ -126,18 +127,19 @@ class TestExplicitFileProcessor:
         }
 
         # Mock the validation methods
-        self.processor._validate_routing_security = AsyncMock(
-            return_value=ExplicitRouting(
+        with patch.object(
+            self.processor, "_validate_routing_security", new_callable=AsyncMock
+        ) as mock_validate:
+            mock_validate.return_value = ExplicitRouting(
                 template_files=["/test/config.yaml"],
                 code_interpreter_files=["/test/data.csv"],
             )
-        )
 
-        result = await self.processor.process_file_routing(args)
+            result = await self.processor.process_file_routing(args)
 
-        assert isinstance(result, ProcessingResult)
-        assert len(result.enabled_tools) > 0
-        assert "code-interpreter" in result.enabled_tools
+            assert isinstance(result, ProcessingResult)
+            assert len(result.enabled_tools) > 0
+            assert "code-interpreter" in result.enabled_tools
 
     def test_routing_summary(self):
         """Test routing summary generation."""
@@ -223,9 +225,7 @@ class TestFileRoutingPerformance:
         processor = ExplicitFileProcessor(Mock())
 
         # Create a large list of files
-        large_file_list = [
-            ("template", f"/test/file_{i}.py") for i in range(100)
-        ]
+        large_file_list = [("template", f"/test/file_{i}.py") for i in range(100)]
 
         args = {"tool_files": large_file_list}
 

@@ -48,7 +48,7 @@ def multiple_of(value: Union[int, float]) -> Any:
 
 def _create_field(**kwargs: Any) -> FieldInfoType:
     """Create a Pydantic field with the given constraints."""
-    return Field(**kwargs)  # type: ignore[return-value]
+    return Field(**kwargs)  # type: ignore[no-any-return]
 
 
 def _get_type_with_constraints(
