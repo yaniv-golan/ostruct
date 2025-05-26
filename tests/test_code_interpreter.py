@@ -1,15 +1,12 @@
 """Tests for Code Interpreter integration."""
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
-import tempfile
-import json
 import os
-from pathlib import Path
-from typing import List
+import tempfile
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from ostruct.cli.code_interpreter import CodeInterpreterManager
-from ostruct.cli.file_utils import FileInfo
 
 
 class TestCodeInterpreterManager:
@@ -45,7 +42,10 @@ class TestCodeInterpreterManager:
             mock_file2 = Mock()
             mock_file2.id = "file-789012"
 
-            self.mock_client.files.create.side_effect = [mock_file1, mock_file2]
+            self.mock_client.files.create.side_effect = [
+                mock_file1,
+                mock_file2,
+            ]
 
             # Test upload
             file_ids = await self.manager.upload_files_for_code_interpreter(
@@ -54,7 +54,10 @@ class TestCodeInterpreterManager:
 
             assert len(file_ids) == 2
             assert file_ids == ["file-123456", "file-789012"]
-            assert self.manager.uploaded_file_ids == ["file-123456", "file-789012"]
+            assert self.manager.uploaded_file_ids == [
+                "file-123456",
+                "file-789012",
+            ]
             assert self.mock_client.files.create.call_count == 2
 
             # Verify correct purpose was used
@@ -67,7 +70,9 @@ class TestCodeInterpreterManager:
         non_existent_file = "/path/that/does/not/exist.py"
 
         with pytest.raises(FileNotFoundError, match="File not found"):
-            await self.manager.upload_files_for_code_interpreter([non_existent_file])
+            await self.manager.upload_files_for_code_interpreter(
+                [non_existent_file]
+            )
 
     @pytest.mark.asyncio
     async def test_upload_files_upload_failure(self):
@@ -81,7 +86,9 @@ class TestCodeInterpreterManager:
             self.mock_client.files.create.side_effect = Exception("API Error")
 
             with pytest.raises(Exception, match="API Error"):
-                await self.manager.upload_files_for_code_interpreter([test_file])
+                await self.manager.upload_files_for_code_interpreter(
+                    [test_file]
+                )
 
     def test_build_tool_config(self):
         """Test building Code Interpreter tool configuration."""
@@ -126,7 +133,10 @@ class TestCodeInterpreterManager:
                 mock_file_info1,
                 mock_file_info2,
             ]
-            self.mock_client.files.content.side_effect = [mock_content1, mock_content2]
+            self.mock_client.files.content.side_effect = [
+                mock_content1,
+                mock_content2,
+            ]
 
             # Test download
             file_ids = ["file-output-123", "file-output-456"]
@@ -218,7 +228,12 @@ class TestCodeInterpreterManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create valid test files
             valid_files = []
-            for filename in ["test.py", "data.csv", "config.json", "readme.md"]:
+            for filename in [
+                "test.py",
+                "data.csv",
+                "config.json",
+                "readme.md",
+            ]:
                 file_path = os.path.join(temp_dir, filename)
                 with open(file_path, "w") as f:
                     f.write("test content")
@@ -229,7 +244,10 @@ class TestCodeInterpreterManager:
 
     def test_validate_files_for_upload_missing_files(self):
         """Test validation with missing files."""
-        missing_files = ["/path/that/does/not/exist.py", "/another/missing/file.csv"]
+        missing_files = [
+            "/path/that/does/not/exist.py",
+            "/another/missing/file.csv",
+        ]
 
         errors = self.manager.validate_files_for_upload(missing_files)
 
@@ -301,7 +319,9 @@ class TestCodeInterpreterIntegration:
             self.mock_client.files.create.side_effect = mock_files
 
             # Upload files
-            file_ids = await self.manager.upload_files_for_code_interpreter(test_files)
+            file_ids = await self.manager.upload_files_for_code_interpreter(
+                test_files
+            )
             assert len(file_ids) == 3
 
             # Build tool config
@@ -335,7 +355,9 @@ class TestCodeInterpreterIntegration:
 
             # Should cleanup successfully uploaded files on error
             with pytest.raises(Exception, match="Upload failed"):
-                await self.manager.upload_files_for_code_interpreter(test_files)
+                await self.manager.upload_files_for_code_interpreter(
+                    test_files
+                )
 
             # Verify cleanup was called for the successful upload
             self.mock_client.files.delete.assert_called_once_with("file-1")
@@ -394,7 +416,9 @@ class TestCodeInterpreterPerformance:
             self.mock_client.files.create.side_effect = mock_files
 
             # Upload all files
-            file_ids = await self.manager.upload_files_for_code_interpreter(test_files)
+            file_ids = await self.manager.upload_files_for_code_interpreter(
+                test_files
+            )
 
             assert len(file_ids) == 10
             assert self.mock_client.files.create.call_count == 10
@@ -447,7 +471,11 @@ class TestCodeInterpreterSecurity:
         limits = self.manager.get_container_limits_info()
 
         # Verify security-relevant limits are documented
-        assert limits["max_runtime_minutes"] <= 20  # Reasonable execution time limit
+        assert (
+            limits["max_runtime_minutes"] <= 20
+        )  # Reasonable execution time limit
         assert limits["max_file_size_mb"] <= 100  # Reasonable file size limit
         assert "python" in limits["supported_languages"]  # Known safe language
-        assert "expires" in limits["note"].lower()  # Session expiration for security
+        assert (
+            "expires" in limits["note"].lower()
+        )  # Session expiration for security

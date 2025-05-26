@@ -1,6 +1,5 @@
 """API compatibility tests to ensure refactoring doesn't break public interfaces."""
 
-
 from ostruct.cli import (
     ExitCode,
     OstructRunner,

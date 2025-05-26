@@ -6,12 +6,12 @@
 models:
   default: gpt-4o  # Default model to use
 
-# Tool-specific settings  
+# Tool-specific settings
 tools:
   code_interpreter:
     auto_download: true
     output_directory: "./output"
-    
+
   file_search:
     max_results: 10
 
@@ -21,7 +21,7 @@ mcp:
   # Built-in server shortcuts (uncomment to use)
   # stripe: "https://mcp.stripe.com"
   # shopify: "https://mcp.shopify.com"
-  
+
   # Custom servers
   # my_server: "https://my-mcp-server.com"
 
@@ -30,7 +30,7 @@ operation:
   timeout_minutes: 60
   retry_attempts: 3
   require_approval: never  # Options: never, always, expensive
-  
+
 # Cost and safety limits
 limits:
   max_cost_per_run: 10.00

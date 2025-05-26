@@ -52,7 +52,7 @@ This example shows CI/CD automation patterns using:
 **.github/workflows/analysis.yml**:
 ```yaml
 name: Enhanced Code Analysis
-on: 
+on:
   push:
     branches: [main, develop]
   pull_request:
@@ -62,22 +62,22 @@ jobs:
   analysis:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for better analysis
-          
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Install Dependencies
         run: |
           pip install ostruct-cli
-          
+
       - name: Health Check
         run: |
           # Verify API key and configuration
@@ -85,13 +85,13 @@ jobs:
             echo "❌ OPENAI_API_KEY not set"
             exit 1
           fi
-          
+
           # Test basic functionality
           echo "test" | ostruct run <(echo "{{ stdin }}") <(echo '{"type":"string"}') >/dev/null
           echo "✅ ostruct health check passed"
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          
+
       - name: Multi-Tool Code Analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -105,7 +105,7 @@ jobs:
             --sys-file prompts/system-ci.txt \
             --progress-level basic \
             --output-file analysis_results.json
-            
+
       - name: Security Scan
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -118,12 +118,12 @@ jobs:
             -V repo_owner=${{ github.repository_owner }} \
             -V repo_name=${{ github.event.repository.name }} \
             --output-file security_report.json
-            
+
       - name: Check Results
         run: |
           # Parse results and set job status
           python ci/scripts/cost-monitor.py analysis_results.json
-          
+
           # Check for critical issues
           if python -c "
           import json
@@ -140,7 +140,7 @@ jobs:
             echo "Analysis failed"
             exit 1
           fi
-          
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         if: always()
@@ -151,7 +151,7 @@ jobs:
             security_report.json
             ci_output/
           retention-days: 30
-          
+
       - name: Comment PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
@@ -159,22 +159,22 @@ jobs:
           script: |
             const fs = require('fs');
             const analysis = JSON.parse(fs.readFileSync('analysis_results.json', 'utf8'));
-            
+
             const comment = `## 🤖 ostruct Analysis Results
-            
+
             **Quality Score**: ${analysis.quality_score}/100
             **Issues Found**: ${analysis.issues.length}
             **Cost**: $${analysis.estimated_cost.toFixed(4)}
-            
+
             ${analysis.summary}
-            
+
             <details>
             <summary>View Details</summary>
-            
+
             ${analysis.issues.map(issue => `- **${issue.severity}**: ${issue.description}`).join('\n')}
-            
+
             </details>`;
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -196,18 +196,18 @@ on:
 jobs:
   security-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Install ostruct
         run: pip install ostruct-cli
-        
+
       - name: Security Analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -231,7 +231,7 @@ jobs:
             max_cost_per_run: 5.00
             warn_expensive_operations: true
           EOF
-          
+
           # Run comprehensive security scan
           ostruct --config security_config.yaml run prompts/security-scan.j2 schemas/security_report.json \
             -fc src/ \
@@ -243,7 +243,7 @@ jobs:
             -V repo_owner=${{ github.repository_owner }} \
             -V repo_name=${{ github.event.repository.name }} \
             --output-file security_report.json
-            
+
       - name: Create Security Issue
         if: failure()
         uses: actions/github-script@v6
@@ -252,7 +252,7 @@ jobs:
             const fs = require('fs');
             if (fs.existsSync('security_report.json')) {
               const report = JSON.parse(fs.readFileSync('security_report.json', 'utf8'));
-              
+
               if (report.critical_vulnerabilities && report.critical_vulnerabilities.length > 0) {
                 await github.rest.issues.create({
                   owner: context.repo.owner,
@@ -364,7 +364,7 @@ generate_report:
 ```groovy
 pipeline {
     agent any
-    
+
     parameters {
         choice(
             name: 'ANALYSIS_TYPE',
@@ -377,12 +377,12 @@ pipeline {
             description: 'Enable MCP server integration'
         )
     }
-    
+
     environment {
         OPENAI_API_KEY = credentials('openai-api-key')
         OSTRUCT_CONFIG = 'ci/ostruct.yaml'
     }
-    
+
     stages {
         stage('Setup') {
             steps {
@@ -392,7 +392,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Health Check') {
             steps {
                 script {
@@ -406,15 +406,15 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Analysis') {
             parallel {
                 stage('Code Analysis') {
                     steps {
                         script {
-                            def mcpFlag = params.ENABLE_MCP ? 
+                            def mcpFlag = params.ENABLE_MCP ?
                                 '--mcp-server deepwiki@https://mcp.deepwiki.com/sse' : ''
-                            
+
                             sh """
                                 ostruct --config \$OSTRUCT_CONFIG run prompts/ci-analysis.j2 schemas/ci_analysis.json \\
                                   -fc src/ \\
@@ -428,7 +428,7 @@ pipeline {
                         }
                     }
                 }
-                
+
                 stage('Security Scan') {
                     when {
                         anyOf {
@@ -449,12 +449,12 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Cost Monitoring') {
             steps {
                 script {
                     sh 'python ci/scripts/cost-monitor.py analysis_results.json'
-                    
+
                     // Check if costs are within budget
                     def costReport = readJSON file: 'cost_report.json'
                     if (costReport.total_cost > 5.0) {
@@ -463,16 +463,16 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Quality Gate') {
             steps {
                 script {
                     def analysis = readJSON file: 'analysis_results.json'
-                    
+
                     if (analysis.quality_score < 70) {
                         unstable("Quality score ${analysis.quality_score} below threshold")
                     }
-                    
+
                     if (analysis.critical_issues && analysis.critical_issues.size() > 0) {
                         error("Found ${analysis.critical_issues.size()} critical issues")
                     }
@@ -480,11 +480,11 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             archiveArtifacts artifacts: '*.json, ci_output/**', allowEmptyArchive: true
-            
+
             publishHTML([
                 allowMissing: false,
                 alwaysLinkToLastBuild: true,
@@ -494,23 +494,23 @@ pipeline {
                 reportName: 'ostruct Analysis Report'
             ])
         }
-        
+
         failure {
             emailext (
                 subject: "❌ ostruct Analysis Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
                 body: """
                 The ostruct analysis pipeline has failed.
-                
+
                 Job: ${env.JOB_NAME}
                 Build: ${env.BUILD_NUMBER}
                 URL: ${env.BUILD_URL}
-                
+
                 Please check the logs for details.
                 """,
                 to: "${env.CHANGE_AUTHOR_EMAIL}"
             )
         }
-        
+
         success {
             script {
                 if (currentBuild.previousBuild?.result == 'FAILURE') {
@@ -605,7 +605,7 @@ for config in ci/ostruct.yaml ci/security.yaml; do
         echo "❌ Configuration file missing: $config"
         exit 1
     fi
-    
+
     if ! python -c "import yaml; yaml.safe_load(open('$config'))" 2>/dev/null; then
         echo "❌ Invalid YAML in $config"
         exit 1
@@ -649,24 +649,24 @@ from datetime import datetime
 
 def monitor_costs(results_file):
     """Monitor costs from ostruct results."""
-    
+
     if not Path(results_file).exists():
         print(f"❌ Results file not found: {results_file}")
         return 1
-    
+
     with open(results_file) as f:
         results = json.load(f)
-    
+
     cost = results.get('estimated_cost', 0)
     tokens = results.get('total_tokens', 0)
-    
+
     print(f"💰 Analysis Cost: ${cost:.4f}")
     print(f"🎯 Tokens Used: {tokens:,}")
-    
+
     # Cost thresholds
     budget = float(os.environ.get('COST_BUDGET', '3.00'))
     warning_threshold = budget * 0.8
-    
+
     if cost > budget:
         print(f"❌ Cost ${cost:.4f} exceeds budget ${budget:.2f}")
         return 1
@@ -674,7 +674,7 @@ def monitor_costs(results_file):
         print(f"⚠️  Cost ${cost:.4f} approaching budget ${budget:.2f}")
     else:
         print(f"✅ Cost within budget: ${cost:.4f} / ${budget:.2f}")
-    
+
     # Log cost data
     cost_log = {
         'timestamp': datetime.now().isoformat(),
@@ -683,10 +683,10 @@ def monitor_costs(results_file):
         'budget': budget,
         'status': 'within_budget' if cost <= budget else 'over_budget'
     }
-    
+
     with open('cost_report.json', 'w') as f:
         json.dump(cost_log, f, indent=2)
-    
+
     return 0
 
 if __name__ == '__main__':

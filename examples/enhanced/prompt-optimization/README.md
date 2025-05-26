@@ -172,7 +172,7 @@ limits:
   warn_expensive_operations: true
 ```
 
-#### Performance-Focused Configuration  
+#### Performance-Focused Configuration
 **configs/optimized.yaml**:
 ```yaml
 models:
@@ -274,13 +274,13 @@ def run_command(cmd, description):
     """Run command and measure performance."""
     print(f"Running: {description}")
     start_time = time.time()
-    
+
     try:
         result = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, check=True
         )
         end_time = time.time()
-        
+
         return {
             "description": description,
             "duration": end_time - start_time,
@@ -301,7 +301,7 @@ def run_command(cmd, description):
 def extract_metrics(output):
     """Extract cost and token metrics from output."""
     metrics = {"tokens": 0, "cost": 0.0}
-    
+
     # Parse JSON output if available
     try:
         if output and output.strip().startswith('{'):
@@ -310,12 +310,12 @@ def extract_metrics(output):
             metrics["cost"] = data.get("estimated_cost", 0.0)
     except json.JSONDecodeError:
         pass
-    
+
     return metrics
 
 def main():
     """Run performance benchmarks."""
-    
+
     benchmarks = [
         {
             "name": "Traditional Data Analysis",
@@ -327,7 +327,7 @@ def main():
             "type": "traditional"
         },
         {
-            "name": "Optimized Data Analysis", 
+            "name": "Optimized Data Analysis",
             "cmd": """ostruct --config configs/optimized.yaml run before-after/optimized/efficient-analysis.j2 schemas/analysis_result.json \
                      -fc data/large_dataset.csv \
                      -fc data/sample_code.py \
@@ -352,39 +352,39 @@ def main():
             "type": "optimized"
         }
     ]
-    
+
     results = []
-    
+
     for benchmark in benchmarks:
         result = run_command(benchmark["cmd"], benchmark["name"])
         metrics = extract_metrics(result["stdout"])
-        
+
         results.append({
             **benchmark,
             **result,
             **metrics
         })
-        
+
         print(f"  Duration: {result['duration']:.2f}s")
         print(f"  Tokens: {metrics['tokens']:,}")
         print(f"  Est. Cost: ${metrics['cost']:.4f}")
         print(f"  Success: {result['success']}")
         print()
-    
+
     # Generate comparison report
     traditional_results = [r for r in results if r["type"] == "traditional"]
     optimized_results = [r for r in results if r["type"] == "optimized"]
-    
+
     if traditional_results and optimized_results:
         avg_traditional_cost = sum(r["cost"] for r in traditional_results) / len(traditional_results)
         avg_optimized_cost = sum(r["cost"] for r in optimized_results) / len(optimized_results)
-        
+
         avg_traditional_tokens = sum(r["tokens"] for r in traditional_results) / len(traditional_results)
         avg_optimized_tokens = sum(r["tokens"] for r in optimized_results) / len(optimized_results)
-        
+
         cost_savings = ((avg_traditional_cost - avg_optimized_cost) / avg_traditional_cost) * 100
         token_savings = ((avg_traditional_tokens - avg_optimized_tokens) / avg_traditional_tokens) * 100
-        
+
         print("=" * 50)
         print("OPTIMIZATION SUMMARY")
         print("=" * 50)
@@ -394,11 +394,11 @@ def main():
         print(f"Optimized Avg Cost: ${avg_optimized_cost:.4f}")
         print(f"Traditional Avg Tokens: {avg_traditional_tokens:,.0f}")
         print(f"Optimized Avg Tokens: {avg_optimized_tokens:,.0f}")
-    
+
     # Save detailed results
     with open("benchmark_results.json", "w") as f:
         json.dump(results, f, indent=2)
-    
+
     print(f"\nDetailed results saved to benchmark_results.json")
 
 if __name__ == "__main__":
@@ -418,33 +418,33 @@ from pathlib import Path
 
 def analyze_costs(traditional_file, optimized_file):
     """Analyze cost differences between approaches."""
-    
+
     def load_results(filename):
         if not Path(filename).exists():
             print(f"File not found: {filename}")
             return None
-        
+
         with open(filename) as f:
             return json.load(f)
-    
+
     traditional = load_results(traditional_file)
     optimized = load_results(optimized_file)
-    
+
     if not traditional or not optimized:
         return 1
-    
+
     traditional_cost = traditional.get("estimated_cost", 0)
     optimized_cost = optimized.get("estimated_cost", 0)
-    
+
     traditional_tokens = traditional.get("total_tokens", 0)
     optimized_tokens = optimized.get("total_tokens", 0)
-    
+
     cost_savings = traditional_cost - optimized_cost
     cost_savings_pct = (cost_savings / traditional_cost * 100) if traditional_cost > 0 else 0
-    
+
     token_savings = traditional_tokens - optimized_tokens
     token_savings_pct = (token_savings / traditional_tokens * 100) if traditional_tokens > 0 else 0
-    
+
     print("COST COMPARISON ANALYSIS")
     print("=" * 40)
     print(f"Traditional Cost: ${traditional_cost:.4f}")
@@ -455,7 +455,7 @@ def analyze_costs(traditional_file, optimized_file):
     print(f"Optimized Tokens:   {optimized_tokens:,}")
     print(f"Token Savings:      {token_savings:,} ({token_savings_pct:.1f}%)")
     print()
-    
+
     if cost_savings_pct > 20:
         print("🎉 Excellent optimization! >20% cost savings")
     elif cost_savings_pct > 10:
@@ -464,14 +464,14 @@ def analyze_costs(traditional_file, optimized_file):
         print("👍 Some optimization achieved")
     else:
         print("⚠️  Optimization may need tuning")
-    
+
     return 0
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: cost-comparison.py <traditional_results.json> <optimized_results.json>")
         sys.exit(1)
-    
+
     sys.exit(analyze_costs(sys.argv[1], sys.argv[2]))
 ```
 

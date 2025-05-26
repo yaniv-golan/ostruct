@@ -1,10 +1,7 @@
 """Tests for configuration management."""
 
-import json
 import os
-import tempfile
-from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 import yaml
@@ -36,7 +33,9 @@ class TestOstructConfig:
         assert config.operation.require_approval == "never"
 
         # Invalid approval setting
-        with pytest.raises(ValueError, match="require_approval must be one of"):
+        with pytest.raises(
+            ValueError, match="require_approval must be one of"
+        ):
             OstructConfig(operation={"require_approval": "invalid"})
 
     @pytest.mark.no_fs
@@ -210,7 +209,7 @@ class TestConfigurationIntegration:
         mock_load.return_value = mock_config
 
         # Test that config is loaded correctly
-        config = get_config()
+        get_config()
         mock_load.assert_called_once()
 
     def test_example_config_content(self):

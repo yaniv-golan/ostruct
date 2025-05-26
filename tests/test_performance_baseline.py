@@ -2,7 +2,6 @@
 
 import time
 
-
 from ostruct.cli.cli import create_cli
 
 

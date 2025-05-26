@@ -1,6 +1,5 @@
 """Test the OstructRunner interface."""
 
-
 from ostruct.cli import OstructRunner
 
 

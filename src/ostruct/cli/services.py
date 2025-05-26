@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional, Protocol
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-
 logger = logging.getLogger(__name__)
 
 # Type alias for CLI parameters

@@ -5,10 +5,10 @@ import os
 from unittest.mock import Mock, patch
 
 import pytest
+from click.testing import CliRunner
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.cli import create_cli
-from click.testing import CliRunner
 
 
 @pytest.fixture
@@ -41,7 +41,8 @@ class TestBackwardCompatibility:
             f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
         fs.create_file(
-            f"{TEST_BASE_DIR}/task.j2", contents="Legacy task: {{ input.content }}"
+            f"{TEST_BASE_DIR}/task.j2",
+            contents="Legacy task: {{ input.content }}",
         )
         fs.create_file(f"{TEST_BASE_DIR}/input.txt", contents="legacy input")
 
@@ -98,7 +99,8 @@ class TestBackwardCompatibility:
             # Create a test file for file content template
             if "file.content" in template:
                 fs.create_file(
-                    f"{TEST_BASE_DIR}/test_file.txt", contents="test file content"
+                    f"{TEST_BASE_DIR}/test_file.txt",
+                    contents="test file content",
                 )
 
             # Build variable arguments based on template requirements
@@ -293,7 +295,10 @@ class TestToolAutoEnablement:
 
     @patch("ostruct.cli.code_interpreter.CodeInterpreterManager")
     def test_auto_code_interpreter_detection(
-        self, mock_code_interpreter: Mock, cli_runner: CliRunner, fs: FakeFilesystem
+        self,
+        mock_code_interpreter: Mock,
+        cli_runner: CliRunner,
+        fs: FakeFilesystem,
     ) -> None:
         """Test automatic code interpreter enablement via file routing."""
         mock_instance = Mock()
@@ -326,7 +331,8 @@ class TestToolAutoEnablement:
 
         for code_file in code_files:
             fs.create_file(
-                f"{TEST_BASE_DIR}/{code_file}", contents=f"# {code_file} content"
+                f"{TEST_BASE_DIR}/{code_file}",
+                contents=f"# {code_file} content",
             )
 
         # Change to test base directory
@@ -388,7 +394,8 @@ class TestToolAutoEnablement:
 
         for search_file in search_files:
             fs.create_file(
-                f"{TEST_BASE_DIR}/{search_file}", contents=f"Content of {search_file}"
+                f"{TEST_BASE_DIR}/{search_file}",
+                contents=f"Content of {search_file}",
             )
 
         # Change to test base directory
@@ -473,14 +480,10 @@ class TestConfigurationMigration:
     ) -> None:
         """Test that legacy configuration formats are supported."""
         # Create legacy config format
-        legacy_config = {
-            "openai": {"model": "gpt-4", "temperature": 0.7},
-            "security": {"allowed_dirs": ["/safe/path"]},
-        }
 
         fs.create_file(
             f"{TEST_BASE_DIR}/.ostruct.yaml",
-            contents=f"""
+            contents="""
 openai:
   model: gpt-4
   temperature: 0.7
@@ -530,7 +533,7 @@ security:
         # Create config with deprecated options
         fs.create_file(
             f"{TEST_BASE_DIR}/.ostruct.yaml",
-            contents=f"""
+            contents="""
 # Deprecated option
 api_key: sk-deprecated
 model: gpt-3.5-turbo  # Deprecated model

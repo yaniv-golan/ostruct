@@ -85,7 +85,7 @@ The quickest way to understand ostruct is through a simple example:
         "type": "object",
         "properties": {
           "summary": {
-            "type": "string", 
+            "type": "string",
             "description": "Brief summary of the content"
           },
           "key_points": {
@@ -122,6 +122,6 @@ Next Steps
 ----------
 
 - :doc:`quickstart` - Follow the step-by-step tutorial
-- :doc:`cli_reference` - Explore all CLI options and features  
+- :doc:`cli_reference` - Explore all CLI options and features
 - :doc:`template_authoring` - Learn advanced template techniques
 - :doc:`../security/overview` - Understand security considerations

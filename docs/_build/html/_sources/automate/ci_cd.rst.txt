@@ -12,7 +12,7 @@ Quick Start
 Basic ostruct CI/CD integration requires:
 
 1. **API Key Management** - Secure credential storage
-2. **Environment Setup** - Python and ostruct installation  
+2. **Environment Setup** - Python and ostruct installation
 3. **File Security** - Proper path restrictions
 4. **Output Handling** - Results processing and storage
 
@@ -25,29 +25,29 @@ Basic GitHub Actions Workflow
 .. code-block:: yaml
 
    name: Automated Analysis
-   
+
    on:
      push:
        branches: [ main, develop ]
      pull_request:
        branches: [ main ]
-   
+
    jobs:
      analyze:
        runs-on: ubuntu-latest
-       
+
        steps:
        - uses: actions/checkout@v4
-       
+
        - name: Set up Python
          uses: actions/setup-python@v5
          with:
            python-version: '3.11'
-           
+
        - name: Install ostruct
          run: |
            pip install ostruct-cli
-           
+
        - name: Run Code Analysis
          env:
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -58,7 +58,7 @@ Basic GitHub Actions Workflow
              -fc src/ \
              --code-interpreter-cleanup \
              --output-file analysis_results.json
-             
+
        - name: Upload Results
          uses: actions/upload-artifact@v4
          with:
@@ -71,9 +71,9 @@ Multi-Platform Analysis
 .. code-block:: yaml
 
    name: Cross-Platform Analysis
-   
+
    on: [push, pull_request]
-   
+
    jobs:
      analyze:
        strategy:
@@ -83,21 +83,21 @@ Multi-Platform Analysis
            # Windows and macOS support available but commented for cost optimization
            # Uncomment and test thoroughly before enabling in production
            # os: [ubuntu-latest, windows-latest, macos-latest]
-           
+
        runs-on: ${{ matrix.os }}
-       
+
        steps:
        - uses: actions/checkout@v4
-       
+
        - name: Set up Python ${{ matrix.python-version }}
          uses: actions/setup-python@v5
          with:
            python-version: ${{ matrix.python-version }}
-           
+
        - name: Install dependencies
          run: |
            pip install ostruct-cli
-           
+
        - name: Configure analysis environment
          shell: bash
          run: |
@@ -107,7 +107,7 @@ Multi-Platform Analysis
            else
              echo "ANALYSIS_BASE=${{ github.workspace }}" >> $GITHUB_ENV
            fi
-           
+
        - name: Run Security Scan
          env:
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -136,7 +136,7 @@ Advanced GitHub Actions Patterns
      run: |
        # Get changed files
        git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD > changed_files.txt
-       
+
        # Only analyze if Python files changed
        if grep -q "\.py$" changed_files.txt; then
          ostruct run templates/pr_review.j2 schemas/pr_analysis.json \
@@ -153,11 +153,11 @@ Advanced GitHub Actions Patterns
 
    strategy:
      matrix:
-       analysis-type: 
+       analysis-type:
          - { name: "security", template: "security_scan.j2", schema: "security.json" }
          - { name: "performance", template: "perf_analysis.j2", schema: "performance.json" }
          - { name: "quality", template: "code_quality.j2", schema: "quality.json" }
-         
+
    steps:
    - name: Run ${{ matrix.analysis-type.name }} Analysis
      env:
@@ -178,21 +178,21 @@ Basic GitLab CI Configuration
 
    # .gitlab-ci.yml
    image: python:3.11-slim
-   
+
    variables:
      PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-     
+
    cache:
      paths:
        - .cache/pip/
-       
+
    before_script:
      - pip install ostruct-cli
-     
+
    stages:
      - analyze
      - report
-     
+
    code_analysis:
      stage: analyze
      script:
@@ -229,7 +229,7 @@ GitLab CI with Security Scanning
          # Create secure analysis environment
          export ANALYSIS_DIR="$CI_PROJECT_DIR/analysis"
          mkdir -p $ANALYSIS_DIR
-         
+
          ostruct run templates/security_deep_scan.j2 schemas/security_detailed.json \
            --base-dir $CI_PROJECT_DIR \
            -A $CI_PROJECT_DIR/src \
@@ -241,7 +241,7 @@ GitLab CI with Security Scanning
            --code-interpreter-cleanup \
            --timeout 900 \
            --output-file $ANALYSIS_DIR/security_report.json
-           
+
        - |
          # Generate summary for merge request
          if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
@@ -270,12 +270,12 @@ Declarative Pipeline
 
    pipeline {
        agent any
-       
+
        environment {
            PYTHON_VERSION = '3.11'
            ANALYSIS_WORKSPACE = "${WORKSPACE}/analysis"
        }
-       
+
        stages {
            stage('Setup') {
                steps {
@@ -289,7 +289,7 @@ Declarative Pipeline
                    }
                }
            }
-           
+
            stage('Code Analysis') {
                environment {
                    OPENAI_API_KEY = credentials('openai-api-key')
@@ -299,7 +299,7 @@ Declarative Pipeline
                        sh '''
                            source venv/bin/activate
                            mkdir -p ${ANALYSIS_WORKSPACE}
-                           
+
                            ostruct run templates/jenkins_analysis.j2 schemas/ci_analysis.json \
                                --base-dir ${WORKSPACE} \
                                -A ${WORKSPACE}/src \
@@ -327,7 +327,7 @@ Declarative Pipeline
                    }
                }
            }
-           
+
            stage('Security Validation') {
                when {
                    anyOf {
@@ -342,7 +342,7 @@ Declarative Pipeline
                    script {
                        sh '''
                            source venv/bin/activate
-                           
+
                            ostruct run templates/security_validation.j2 schemas/security_check.json \
                                --base-dir ${WORKSPACE} \
                                -A ${WORKSPACE}/src \
@@ -356,7 +356,7 @@ Declarative Pipeline
                }
            }
        }
-       
+
        post {
            cleanup {
                cleanWs()
@@ -371,12 +371,12 @@ Scripted Pipeline with Advanced Features
 
    node {
        def analysisResults = [:]
-       
+
        try {
            stage('Checkout') {
                checkout scm
            }
-           
+
            stage('Setup Environment') {
                sh '''
                    python3 -m venv venv
@@ -384,7 +384,7 @@ Scripted Pipeline with Advanced Features
                    pip install ostruct-cli
                '''
            }
-           
+
            stage('Parallel Analysis') {
                parallel {
                    'Security Analysis': {
@@ -417,10 +417,10 @@ Scripted Pipeline with Advanced Features
                    }
                }
            }
-           
+
            stage('Generate Report') {
                writeJSON file: 'combined_results.json', json: analysisResults
-               
+
                withCredentials([string(credentialsId: 'openai-api-key', variable: 'OPENAI_API_KEY')]) {
                    sh '''
                        source venv/bin/activate
@@ -433,7 +433,7 @@ Scripted Pipeline with Advanced Features
                    '''
                }
            }
-           
+
        } catch (Exception e) {
            currentBuild.result = 'FAILURE'
            throw e
@@ -456,18 +456,18 @@ Azure Pipelines YAML
        include:
          - main
          - develop
-   
+
    pr:
      branches:
        include:
          - main
-   
+
    pool:
      vmImage: 'ubuntu-latest'
-   
+
    variables:
      pythonVersion: '3.11'
-     
+
    stages:
    - stage: Analysis
      displayName: 'Code Analysis'
@@ -479,18 +479,18 @@ Azure Pipelines YAML
          inputs:
            versionSpec: '$(pythonVersion)'
          displayName: 'Use Python $(pythonVersion)'
-         
+
        - script: |
            pip install ostruct-cli
          displayName: 'Install ostruct'
-         
+
        - task: AzureKeyVault@2
          inputs:
            azureSubscription: 'your-service-connection'
            KeyVaultName: 'your-keyvault'
            SecretsFilter: 'openai-api-key'
          displayName: 'Get API Key from KeyVault'
-         
+
        - script: |
            ostruct run templates/azure_analysis.j2 schemas/analysis.json \
              --base-dir $(Build.SourcesDirectory) \
@@ -502,7 +502,7 @@ Azure Pipelines YAML
          env:
            OPENAI_API_KEY: $(openai-api-key)
          displayName: 'Run Analysis'
-         
+
        - task: PublishBuildArtifacts@1
          inputs:
            pathToPublish: '$(Build.ArtifactStagingDirectory)'
@@ -561,7 +561,7 @@ Environment Variable Security
      echo "Error: OPENAI_API_KEY not set"
      exit 1
    fi
-   
+
    # Mask sensitive values in logs
    set +x  # Disable command echoing for sensitive operations
    ostruct run template.j2 schema.json --api-key "$OPENAI_API_KEY"
@@ -608,7 +608,7 @@ Parallel Execution
    strategy:
      matrix:
        analysis: [security, performance, quality]
-       
+
    steps:
    - name: Run ${{ matrix.analysis }} Analysis
      run: |
@@ -639,7 +639,7 @@ Caching Strategies
      with:
        path: ~/.cache/pip
        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-       
+
    # Cache analysis results for unchanged files
    - name: Cache Analysis Results
      uses: actions/cache@v4
@@ -673,25 +673,25 @@ Comprehensive Error Handling
    - name: Analysis with Error Handling
      run: |
        set -e  # Exit on error
-       
+
        # Validate environment
        if [ -z "$OPENAI_API_KEY" ]; then
          echo "::error::OpenAI API key not configured"
          exit 1
        fi
-       
+
        # Run analysis with error capture
        if ! ostruct run template.j2 schema.json \
          -fc src/ \
          --timeout 300 \
          --output-file results.json; then
          echo "::error::Analysis failed"
-         
+
          # Generate fallback report
          echo '{"status": "failed", "timestamp": "'$(date -Iseconds)'"}' > results.json
          exit 1
        fi
-       
+
        # Validate output
        if [ ! -f results.json ] || [ ! -s results.json ]; then
          echo "::error::No analysis results generated"
@@ -736,7 +736,7 @@ Integration with External Tools
        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
        aws-region: us-east-1
-       
+
    - run: |
        aws s3 cp results.json s3://analysis-results-bucket/$(date +%Y%m%d)/
 
@@ -754,11 +754,11 @@ Pull Request Analysis Template
      Focus on security, performance, and maintainability issues.
    ---
    # Pull Request Analysis
-   
+
    **PR**: #{{ pr_number }} - {{ pr_title }}
    **Author**: {{ pr_author }}
    **Files Changed**: {{ changed_files | length }}
-   
+
    ## Changed Files
    {% for file in changed_files %}
    ### {{ file.name }}
@@ -770,7 +770,7 @@ Pull Request Analysis Template
    ```
    {% endif %}
    {% endfor %}
-   
+
    ## Analysis Request
    Please review this pull request and provide:
    1. **Security Issues**: Any potential vulnerabilities
@@ -789,17 +789,17 @@ Security Scan Template
      Focus on identifying vulnerabilities, insecure patterns, and compliance issues.
    ---
    # Automated Security Scan
-   
+
    **Scan Date**: {{ now() }}
    **Repository**: {{ repo_name }}
    **Branch**: {{ branch_name }}
    **Commit**: {{ commit_hash }}
-   
+
    ## Scanned Files
    {% for file in source_files %}
    - **{{ file.name }}**: {{ file.size }} bytes
    {% endfor %}
-   
+
    ## Configuration Files
    {% for config in config_files %}
    ### {{ config.name }}
@@ -807,7 +807,7 @@ Security Scan Template
    {{ config.content }}
    ```
    {% endfor %}
-   
+
    ## Source Code Analysis
    {% for file in source_files if file.ext in ['py', 'js', 'ts', 'java', 'go'] %}
    ### {{ file.name }}
@@ -815,7 +815,7 @@ Security Scan Template
    {{ file.content }}
    ```
    {% endfor %}
-   
+
    Please perform a comprehensive security analysis focusing on:
    1. **Injection vulnerabilities** (SQL, XSS, Command injection)
    2. **Authentication and authorization** flaws
@@ -836,7 +836,7 @@ Common CI/CD Issues
 
    # Debug: Check if API key is available
    echo "API key status: ${OPENAI_API_KEY:+SET}"
-   
+
    # Solution: Verify secret configuration in CI platform
 
 **File Access Errors:**
@@ -845,7 +845,7 @@ Common CI/CD Issues
 
    # Debug: List accessible files
    find . -name "*.py" -type f | head -10
-   
+
    # Solution: Check base-dir and allowed directory settings
    ostruct run template.j2 schema.json \
      --base-dir $PWD \
@@ -860,7 +860,7 @@ Common CI/CD Issues
    ostruct run template.j2 schema.json \
      --dry-run \
      -fc src/
-   
+
    # Solution: Increase timeout or reduce file size
    ostruct run template.j2 schema.json \
      -fc src/ \
@@ -886,7 +886,7 @@ Performance Monitoring
 
    # Monitor execution time
    time ostruct run template.j2 schema.json -fc src/
-   
+
    # Monitor token usage with dry run
    ostruct run template.j2 schema.json --dry-run -fc src/
 

@@ -56,15 +56,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Install ostruct
         run: pip install ostruct-cli
-        
+
       - name: Run Analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -113,11 +113,11 @@ analyze:
 ```groovy
 pipeline {
     agent any
-    
+
     environment {
         OPENAI_API_KEY = credentials('openai-api-key')
     }
-    
+
     stages {
         stage('Analysis') {
             steps {
@@ -140,7 +140,7 @@ pipeline {
 **after/enhanced-github.yml**:
 ```yaml
 name: Enhanced Multi-Tool Analysis
-on: 
+on:
   push:
     branches: [main, develop]
   pull_request:
@@ -150,21 +150,21 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Install Dependencies
         run: pip install ostruct-cli
-        
+
       - name: Health Check
         run: |
           # Validate environment and configuration
@@ -172,13 +172,13 @@ jobs:
             echo "❌ OPENAI_API_KEY not set"
             exit 1
           fi
-          
+
           # Test basic functionality
           echo "test" | ostruct run <(echo "{{ stdin }}") <(echo '{"type":"string"}') >/dev/null
           echo "✅ Health check passed"
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          
+
       - name: Create CI Configuration
         run: |
           cat > ci-config.yaml << EOF
@@ -198,7 +198,7 @@ jobs:
             max_cost_per_run: 3.00
             warn_expensive_operations: true
           EOF
-          
+
       - name: Multi-Tool Analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -212,7 +212,7 @@ jobs:
             -ft .github/ \
             --progress-level basic \
             --output-file analysis_results.json
-            
+
       - name: Security Scan
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -224,11 +224,11 @@ jobs:
             -V repo_owner=${{ github.repository_owner }} \
             -V repo_name=${{ github.event.repository.name }} \
             --output-file security_report.json
-            
+
       - name: Cost Monitoring
         run: |
           python scripts/cost-monitor.py analysis_results.json
-          
+
       - name: Quality Gate
         run: |
           # Check analysis results and set job status
@@ -236,24 +236,24 @@ jobs:
           import json, sys
           with open('analysis_results.json') as f:
               data = json.load(f)
-          
+
           quality_score = data.get('quality_score', 0)
           critical_issues = data.get('critical_issues', [])
-          
+
           print(f'Quality Score: {quality_score}')
           print(f'Critical Issues: {len(critical_issues)}')
-          
+
           if quality_score < 70:
               print('❌ Quality score below threshold')
               sys.exit(1)
-          
+
           if len(critical_issues) > 0:
               print('❌ Critical issues found')
               sys.exit(1)
-              
+
           print('✅ Quality gate passed')
           "
-          
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         if: always()
@@ -264,7 +264,7 @@ jobs:
             security_report.json
             ci_output/
           retention-days: 30
-          
+
       - name: Comment PR
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v6
@@ -273,16 +273,16 @@ jobs:
             const fs = require('fs');
             if (fs.existsSync('analysis_results.json')) {
               const analysis = JSON.parse(fs.readFileSync('analysis_results.json', 'utf8'));
-              
+
               const comment = `## 🤖 Enhanced ostruct Analysis
-              
+
               **Quality Score**: ${analysis.quality_score}/100
               **Issues Found**: ${analysis.issues?.length || 0}
               **Cost**: $${analysis.estimated_cost?.toFixed(4) || '0.0000'}
-              
+
               ${analysis.summary || 'Analysis completed successfully.'}
               `;
-              
+
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
@@ -396,7 +396,7 @@ cost_monitoring:
 ```groovy
 pipeline {
     agent any
-    
+
     parameters {
         choice(
             name: 'ANALYSIS_LEVEL',
@@ -414,12 +414,12 @@ pipeline {
             description: 'Maximum cost per run ($)'
         )
     }
-    
+
     environment {
         OPENAI_API_KEY = credentials('openai-api-key')
         OSTRUCT_CONFIG = 'configs/ci-advanced.yaml'
     }
-    
+
     stages {
         stage('Setup') {
             steps {
@@ -429,7 +429,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Health Check') {
             steps {
                 script {
@@ -443,7 +443,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Create Dynamic Configuration') {
             steps {
                 script {
@@ -468,15 +468,15 @@ limits:
                 }
             }
         }
-        
+
         stage('Enhanced Analysis') {
             parallel {
                 stage('Code Analysis') {
                     steps {
                         script {
-                            def mcpFlag = params.ENABLE_MCP ? 
+                            def mcpFlag = params.ENABLE_MCP ?
                                 '--mcp-server deepwiki@https://mcp.deepwiki.com/sse' : ''
-                            
+
                             sh """
                                 ostruct --config dynamic-config.yaml run templates/ci-analysis.j2 schemas/analysis_result.json \\
                                   -fc src/ \\
@@ -489,7 +489,7 @@ limits:
                         }
                     }
                 }
-                
+
                 stage('Security Scan') {
                     when {
                         anyOf {
@@ -509,34 +509,34 @@ limits:
                 }
             }
         }
-        
+
         stage('Cost Analysis') {
             steps {
                 script {
                     sh 'python scripts/cost-monitor.py analysis_results.json'
-                    
+
                     def costReport = readJSON file: 'cost_report.json'
                     echo "Total Cost: \$${costReport.total_cost}"
-                    
+
                     if (costReport.total_cost > params.COST_LIMIT.toFloat()) {
                         warning("Cost \$${costReport.total_cost} exceeds limit \$${params.COST_LIMIT}")
                     }
                 }
             }
         }
-        
+
         stage('Quality Gate') {
             steps {
                 script {
                     def analysis = readJSON file: 'analysis_results.json'
-                    
+
                     echo "Quality Score: ${analysis.quality_score}"
                     echo "Issues Found: ${analysis.issues?.size() ?: 0}"
-                    
+
                     if (analysis.quality_score < 70) {
                         unstable("Quality score ${analysis.quality_score} below threshold")
                     }
-                    
+
                     if (analysis.critical_issues && analysis.critical_issues.size() > 0) {
                         error("Found ${analysis.critical_issues.size()} critical issues")
                     }
@@ -544,11 +544,11 @@ limits:
             }
         }
     }
-    
+
     post {
         always {
             archiveArtifacts artifacts: '*.json, jenkins_output/**', allowEmptyArchive: true
-            
+
             publishHTML([
                 allowMissing: false,
                 alwaysLinkToLastBuild: true,
@@ -558,7 +558,7 @@ limits:
                 reportName: 'Enhanced Analysis Report'
             ])
         }
-        
+
         success {
             script {
                 if (currentBuild.previousBuild?.result == 'FAILURE') {
@@ -568,7 +568,7 @@ limits:
                 }
             }
         }
-        
+
         failure {
             slackSend channel: '#dev',
                      color: 'danger',
@@ -673,20 +673,20 @@ from pathlib import Path
 
 def migrate_github_actions(content):
     """Migrate GitHub Actions workflow."""
-    
+
     # Replace traditional ostruct commands
     patterns = [
-        (r'ostruct run (\S+) (\S+) -f (\w+)=(\S+)', 
+        (r'ostruct run (\S+) (\S+) -f (\w+)=(\S+)',
          r'ostruct --config ci-config.yaml run \1 \2 -ft \4'),
-        (r'ostruct run (\S+) (\S+) -d (\w+)=(\S+)', 
+        (r'ostruct run (\S+) (\S+) -d (\w+)=(\S+)',
          r'ostruct --config ci-config.yaml run \1 \2 -fc \4'),
         (r'--dir-recursive', '--progress-level basic'),
     ]
-    
+
     migrated = content
     for pattern, replacement in patterns:
         migrated = re.sub(pattern, replacement, migrated)
-    
+
     # Add configuration setup
     config_step = '''
       - name: Create CI Configuration
@@ -705,7 +705,7 @@ def migrate_github_actions(content):
             max_cost_per_run: 3.00
           EOF
 '''
-    
+
     # Insert after Python setup
     migrated = re.sub(
         r'(- name: Setup Python.*?\n.*?python-version:.*?\n)',
@@ -713,50 +713,50 @@ def migrate_github_actions(content):
         migrated,
         flags=re.DOTALL
     )
-    
+
     return migrated
 
 def migrate_file(filepath):
     """Migrate a CI/CD file."""
-    
+
     if not Path(filepath).exists():
         print(f"❌ File not found: {filepath}")
         return False
-    
+
     with open(filepath, 'r') as f:
         content = f.read()
-    
+
     if 'github' in filepath.lower():
         migrated = migrate_github_actions(content)
     else:
         print(f"⚠️  Migration not implemented for: {filepath}")
         return False
-    
+
     # Create backup
     backup_path = f"{filepath}.backup"
     with open(backup_path, 'w') as f:
         f.write(content)
-    
+
     # Write migrated version
     with open(filepath, 'w') as f:
         f.write(migrated)
-    
+
     print(f"✅ Migrated: {filepath}")
     print(f"📋 Backup created: {backup_path}")
     return True
 
 def main():
     """Main migration function."""
-    
+
     if len(sys.argv) < 2:
         print("Usage: migrate-ci.py <ci-file> [ci-file2] ...")
         sys.exit(1)
-    
+
     success_count = 0
     for filepath in sys.argv[1:]:
         if migrate_file(filepath):
             success_count += 1
-    
+
     print(f"\n📊 Migration Summary:")
     print(f"✅ Successfully migrated: {success_count}")
     print(f"❌ Failed migrations: {len(sys.argv) - 1 - success_count}")

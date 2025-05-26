@@ -351,7 +351,6 @@ class TestResponsesAPIIntegration:
         mock_client = AsyncMock()
         mock_openai_class.return_value = mock_client
 
-
         mock_client.responses.create.side_effect = Exception("API Error")
 
         # Create test files

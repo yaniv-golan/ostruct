@@ -1,6 +1,5 @@
 """Tests for MCP (Model Context Protocol) integration."""
 
-
 import pytest
 
 from ostruct.cli.mcp_integration import (

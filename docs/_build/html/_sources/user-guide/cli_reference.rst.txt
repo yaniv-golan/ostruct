@@ -66,7 +66,7 @@ Equals Syntax
 
    -ft, --file-for-template NAME=PATH
 
-   # Examples  
+   # Examples
    ostruct run task.j2 schema.json -ft config=settings.yaml    # → config variable
    ostruct run task.j2 schema.json -ft data=input.json        # → data variable
 
@@ -241,7 +241,7 @@ Traditional file routing options continue to work for backward compatibility:
 .. code-block:: bash
 
    -f, --file NAME PATH                         # Map file to template variable
-   -d, --dir NAME PATH                          # Map directory to template variable  
+   -d, --dir NAME PATH                          # Map directory to template variable
    -p, --pattern NAME PATTERN                   # Map glob pattern to template variable
 
 Variables and Input
@@ -280,7 +280,7 @@ Model Selection
 
 **Supported models:**
 - ``gpt-4o`` - 128k context window (default)
-- ``o1`` - 200k context window 
+- ``o1`` - 200k context window
 - ``o3-mini`` - 200k context window
 
 Model Parameters
@@ -484,7 +484,7 @@ Single Tool Examples
    # Template-only access (no uploads)
    ostruct run config_analysis.j2 schema.json -ft config.yaml
 
-   # Code Interpreter for data analysis  
+   # Code Interpreter for data analysis
    ostruct run data_analysis.j2 schema.json -fc sales_data.csv
 
    # File Search for document retrieval

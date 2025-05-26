@@ -7,7 +7,7 @@
 The enhanced CLI includes:
 
 - **Code Interpreter**: Upload and analyze data files, execute Python code, generate visualizations
-- **File Search**: Vector-based document search and retrieval from uploaded files  
+- **File Search**: Vector-based document search and retrieval from uploaded files
 - **MCP Servers**: Connect to Model Context Protocol servers for extended functionality
 - **Explicit File Routing**: Route different files to specific tools for optimized processing
 - **Configuration System**: YAML-based configuration with environment variable support
@@ -32,7 +32,7 @@ ostruct run TEMPLATE_FILE SCHEMA_FILE [OPTIONS]
 # Auto-naming: -ft config.yaml → config_yaml variable
 -ft, --file-for-template PATH
 
-# Equals syntax: -ft name=path → name variable  
+# Equals syntax: -ft name=path → name variable
 -ft, --file-for-template NAME=PATH
 
 # Two-argument alias: --fta name path → name variable (with tab completion)
@@ -54,7 +54,7 @@ ostruct run TEMPLATE_FILE SCHEMA_FILE [OPTIONS]
 # Two-argument alias: --fca dataset data.csv → dataset variable (with tab completion)
 --fca, --file-for-code-interpreter-alias NAME PATH
 
-# Directories  
+# Directories
 -dc, --dir-for-code-interpreter DIR      Upload directories for analysis
 ```
 
@@ -67,7 +67,7 @@ ostruct run TEMPLATE_FILE SCHEMA_FILE [OPTIONS]
 # Equals syntax: -fs manual=docs.pdf → manual variable
 -fs, --file-for-search NAME=PATH
 
-# Two-argument alias: --fsa manual docs.pdf → manual variable (with tab completion)  
+# Two-argument alias: --fsa manual docs.pdf → manual variable (with tab completion)
 --fsa, --file-for-search-alias NAME PATH
 
 # Directories
@@ -115,7 +115,7 @@ Connect to Model Context Protocol servers:
 
 Supported models:
 - `gpt-4o` (128k context window)
-- `o1` (200k context window) 
+- `o1` (200k context window)
 - `o3-mini` (200k context window)
 
 ### Model Parameters
@@ -264,7 +264,7 @@ All existing patterns continue to work:
 # Traditional file mapping (unchanged)
 ostruct run template.j2 schema.json -f data=input.txt -d source=./src
 
-# Pattern matching (unchanged)  
+# Pattern matching (unchanged)
 ostruct run template.j2 schema.json -p "*.py" source_files
 
 # Variable passing (unchanged)
@@ -329,7 +329,7 @@ tools:
   code_interpreter:
     auto_download: true
     output_directory: "./output"
-    
+
   file_search:
     max_results: 10
 
@@ -380,7 +380,7 @@ ostruct run analysis.j2 schema.json \
 # Development
 ostruct --config dev.yaml run template.j2 schema.json -fc dev_data/
 
-# Production  
+# Production
 ostruct --config prod.yaml run template.j2 schema.json -fc prod_data/
 ```
 

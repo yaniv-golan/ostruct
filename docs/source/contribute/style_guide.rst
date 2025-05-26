@@ -81,7 +81,7 @@ Use **isort** for import sorting with these guidelines:
 **Import ordering:**
 
 1. Standard library imports
-2. Third-party library imports  
+2. Third-party library imports
 3. Local application imports
 
 **Import style:**
@@ -111,7 +111,7 @@ Use comprehensive type hints for better code clarity:
    # Class definitions
    class TemplateRenderer:
        """Renders Jinja2 templates with file content access."""
-       
+
        def __init__(self, template_dir: Path) -> None:
            self.template_dir = template_dir
            self._cache: Dict[str, str] = {}
@@ -145,7 +145,7 @@ Follow Python naming conventions:
    class TemplateProcessor:
        def __init__(self):
            self._template_cache = {}
-       
+
        def _validate_template(self, content: str) -> bool:
            return bool(content.strip())
 
@@ -229,15 +229,15 @@ Use the structured exception hierarchy from ``cli/errors.py``:
        """Validate and return a Path object."""
        if not path:
            raise ValidationError("File path cannot be empty")
-       
+
        try:
            file_path = Path(path).resolve()
        except (OSError, ValueError) as e:
            raise ValidationError(f"Invalid file path '{path}': {e}")
-       
+
        if not file_path.exists():
            raise ValidationError(f"File not found: {file_path}")
-       
+
        return file_path
 
 Error Messages
@@ -279,10 +279,10 @@ Use structured logging with appropriate levels:
    def process_files(files: List[Path]) -> None:
        """Process multiple files with proper logging."""
        logger.info(f"Starting to process {len(files)} files")
-       
+
        for file_path in files:
            logger.debug(f"Processing file: {file_path}")
-           
+
            try:
                result = process_single_file(file_path)
                logger.info(f"Successfully processed {file_path}")
@@ -316,11 +316,11 @@ Validate all inputs through the security layer:
    def process_user_files(file_paths: List[str]) -> None:
        """Process user-provided files with security validation."""
        security_manager = SecurityManager()
-       
+
        for file_path in file_paths:
            # Always validate through security manager
            validated_path = security_manager.validate_file_access(file_path)
-           
+
            # Process the validated path
            with validated_path.open('r') as f:
                content = f.read()
@@ -341,11 +341,11 @@ Use secure path operations:
        # Use SafeJoiner to prevent directory traversal
        safe_joiner = SafeJoiner(base_dir)
        joined_path = safe_joiner.join(user_path)
-       
+
        # Resolve symlinks securely
        resolver = SymlinkResolver()
        resolved_path = resolver.resolve_safely(joined_path)
-       
+
        return resolved_path
 
 **Security practices:**
@@ -382,7 +382,7 @@ Organize tests by functionality and scope:
            """Create a temporary directory with sample templates."""
            template_dir = tmp_path / "templates"
            template_dir.mkdir()
-           
+
            (template_dir / "simple.j2").write_text("Hello, {{ name }}!")
            return template_dir
 
@@ -447,10 +447,10 @@ Use mocking effectively for external dependencies:
        mock_client = MagicMock()
        mock_openai.return_value = mock_client
        mock_client.chat.completions.create.return_value = mock_response
-       
+
        # Test implementation
        result = call_openai_api("test prompt")
-       
+
        # Verify behavior
        mock_client.chat.completions.create.assert_called_once()
        assert result.content == "expected response"
@@ -525,11 +525,11 @@ Document all public APIs comprehensively:
 
    class TemplateRenderer:
        """Renders Jinja2 templates with security controls.
-       
+
        The TemplateRenderer provides a secure interface for rendering
        Jinja2 templates with file content access. It includes built-in
        security validation and caching for improved performance.
-       
+
        Example:
            >>> renderer = TemplateRenderer(template_dir)
            >>> result = renderer.render("template.j2", {"var": "value"})
@@ -537,14 +537,14 @@ Document all public APIs comprehensively:
 
        def render(self, template_name: str, context: Dict[str, Any]) -> str:
            """Render a template with the provided context.
-           
+
            Args:
                template_name: Name of the template file to render.
                context: Dictionary containing template variables.
-           
+
            Returns:
                The rendered template as a string.
-           
+
            Raises:
                TemplateError: If template rendering fails.
            """
@@ -566,7 +566,7 @@ Use async/await for I/O operations:
        """Process multiple files asynchronously."""
        tasks = [process_single_file(path) for path in file_paths]
        results = await asyncio.gather(*tasks, return_exceptions=True)
-       
+
        # Handle results and exceptions
        processed_results = []
        for result in results:
@@ -574,7 +574,7 @@ Use async/await for I/O operations:
                logger.error(f"Processing failed: {result}")
            else:
                processed_results.append(result)
-       
+
        return processed_results
 
 Caching Strategies
@@ -589,7 +589,7 @@ Implement appropriate caching for performance:
 
    class TemplateCache:
        """Template caching with size limits."""
-       
+
        def __init__(self, max_size: int = 128):
            self._cache: Dict[str, str] = {}
            self._max_size = max_size

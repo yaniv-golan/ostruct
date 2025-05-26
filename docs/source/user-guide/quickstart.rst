@@ -36,16 +36,16 @@ First, create a file called ``juno_profile.txt``:
 .. code-block:: text
 
    JUNO - BEAGLE MIX LOOKING FOR HOME
-   
-   Meet Juno! This adorable 3-year-old beagle mix is the perfect companion for 
-   an active family. Juno loves long walks, playing fetch, and snuggling on 
+
+   Meet Juno! This adorable 3-year-old beagle mix is the perfect companion for
+   an active family. Juno loves long walks, playing fetch, and snuggling on
    the couch after a day of adventures.
-   
+
    Personality: Friendly, energetic, loyal, great with kids
    Medical: Fully vaccinated, spayed, microchipped
    Training: House-trained, knows basic commands (sit, stay, come)
    Ideal Home: Active family with a yard, no cats (she gets too excited!)
-   
+
    Contact the Sunny Valley Animal Shelter to meet Juno today!
    Phone: (555) 123-PETS
    Email: adopt@sunnyvalley.org
@@ -65,7 +65,7 @@ Create ``pet_schema.json`` to specify exactly what information you want to extra
          "description": "Pet's name"
        },
        "breed": {
-         "type": "string", 
+         "type": "string",
          "description": "Primary breed"
        },
        "age": {
@@ -126,14 +126,14 @@ Create ``analyze_pet.j2`` to tell the AI how to process the profile:
 
 .. tip::
    **Pro Tip**: Share system prompts across templates using ``include_system:``:
-   
+
    .. code-block:: text
-   
+
       ---
       include_system: shared/pet_expert.txt
       system_prompt: Focus on adoption readiness assessment.
       ---
-   
+
    See :doc:`template_authoring` for advanced shared prompt techniques.
 
 Step 4: Run the Analysis
@@ -153,7 +153,7 @@ Now use ostruct to extract structured data from Juno's profile:
 
    {
      "name": "Juno",
-     "breed": "Beagle Mix", 
+     "breed": "Beagle Mix",
      "age": 3,
      "personality_traits": ["Friendly", "Energetic", "Loyal", "Great with kids"],
      "medical_status": {
@@ -165,7 +165,7 @@ Now use ostruct to extract structured data from Juno's profile:
      "ideal_home": "Active family with a yard, no cats",
      "contact_info": {
        "organization": "Sunny Valley Animal Shelter",
-       "phone": "(555) 123-PETS", 
+       "phone": "(555) 123-PETS",
        "email": "adopt@sunnyvalley.org"
      }
    }
@@ -243,7 +243,7 @@ Create ``comprehensive_schema.json``:
          "properties": {
            "ready_for_adoption": {"type": "boolean"},
            "recommended_followup": {
-             "type": "array", 
+             "type": "array",
              "items": {"type": "string"}
            }
          }
@@ -291,7 +291,7 @@ Perfect for developers who need immediate results:
    # Basic document analysis
    ostruct run template.j2 schema.json -ft document.txt
 
-   # With custom variables  
+   # With custom variables
    ostruct run template.j2 schema.json -ft doc.txt -V env=prod
 
    # Direct output to file

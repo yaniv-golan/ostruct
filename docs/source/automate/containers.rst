@@ -683,7 +683,7 @@ Resource Management
      limits:
        memory: "512Mi"
        cpu: "500m"
-   
+
    # Horizontal Pod Autoscaler (if processing queues)
    apiVersion: autoscaling/v2
    kind: HorizontalPodAutoscaler

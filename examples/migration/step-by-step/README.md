@@ -13,7 +13,7 @@ This migration guide demonstrates:
 ## Migration Phases
 
 ### Phase 1: Baseline Assessment
-### Phase 2: Add Explicit File Routing  
+### Phase 2: Add Explicit File Routing
 ### Phase 3: Introduce Configuration Management
 ### Phase 4: Enable Multi-Tool Integration
 ### Phase 5: Optimize Templates and Workflows
@@ -95,29 +95,29 @@ def measure_command(cmd, description):
     """Measure performance of a command."""
     print(f"Measuring: {description}")
     print(f"Command: {cmd}")
-    
+
     start_time = time.time()
-    
+
     try:
         # Add --dry-run to avoid API costs during measurement
         dry_run_cmd = f"{cmd} --dry-run" if "--dry-run" not in cmd else cmd
-        
+
         result = subprocess.run(
             dry_run_cmd, shell=True, capture_output=True, text=True, check=True
         )
-        
+
         end_time = time.time()
         duration = end_time - start_time
-        
+
         # Try to extract token estimates from output
         tokens = 0
         cost = 0.0
-        
+
         # Look for token information in output
         if "tokens" in result.stderr.lower():
             # Parse token information if available
             pass
-        
+
         return {
             "command": cmd,
             "description": description,
@@ -127,7 +127,7 @@ def measure_command(cmd, description):
             "estimated_cost": cost,
             "output_length": len(result.stdout)
         }
-        
+
     except subprocess.CalledProcessError as e:
         end_time = time.time()
         return {
@@ -140,7 +140,7 @@ def measure_command(cmd, description):
 
 def main():
     """Run baseline measurements."""
-    
+
     # Define your current commands here
     commands = [
         {
@@ -156,22 +156,22 @@ def main():
             "description": "Configuration validation"
         }
     ]
-    
+
     results = []
-    
+
     print("🔍 Running baseline performance measurements...")
     print("=" * 60)
-    
+
     for command_info in commands:
         result = measure_command(command_info["cmd"], command_info["description"])
         results.append(result)
-        
+
         if result["success"]:
             print(f"✅ Duration: {result['duration']:.2f}s")
         else:
             print(f"❌ Failed: {result.get('error', 'Unknown error')}")
         print()
-    
+
     # Save baseline results
     baseline_data = {
         "timestamp": time.time(),
@@ -180,10 +180,10 @@ def main():
         "average_duration": sum(r["duration"] for r in results) / len(results),
         "commands": results
     }
-    
+
     with open("baseline_results.json", "w") as f:
         json.dump(baseline_data, f, indent=2)
-    
+
     print("=" * 60)
     print("📊 BASELINE SUMMARY")
     print("=" * 60)
@@ -222,7 +222,7 @@ if __name__ == "__main__":
 
 ### Files by Type
 - **Data Files**: `*.csv`, `*.json` (analysis data) → Code Interpreter
-- **Source Code**: `*.py`, `*.js`, `*.ts` → Code Interpreter  
+- **Source Code**: `*.py`, `*.js`, `*.ts` → Code Interpreter
 - **Documentation**: `*.md`, `docs/` → File Search
 - **Configuration**: `*.yaml`, `*.json` (config) → Template
 - **Tests**: `test_*.py`, `*_test.js` → Code Interpreter
@@ -259,7 +259,7 @@ ostruct run templates/analysis.j2 schemas/result.json \
   -d source=examples/src \
   --output-file traditional_analysis.json
 
-# Traditional code review  
+# Traditional code review
 ostruct run templates/review.j2 schemas/review.json \
   -d code=examples/src \
   --dir-recursive \
@@ -316,39 +316,39 @@ from pathlib import Path
 
 def compare_results(traditional_file, enhanced_file):
     """Compare traditional and enhanced results."""
-    
+
     def load_json(filename):
         if not Path(filename).exists():
             print(f"❌ File not found: {filename}")
             return None
-        
+
         try:
             with open(filename) as f:
                 return json.load(f)
         except json.JSONDecodeError:
             print(f"❌ Invalid JSON in {filename}")
             return None
-    
+
     traditional = load_json(traditional_file)
     enhanced = load_json(enhanced_file)
-    
+
     if not traditional or not enhanced:
         return 1
-    
+
     # Extract metrics
     trad_cost = traditional.get("estimated_cost", 0)
     enh_cost = enhanced.get("estimated_cost", 0)
-    
+
     trad_tokens = traditional.get("total_tokens", 0)
     enh_tokens = enhanced.get("total_tokens", 0)
-    
+
     # Calculate improvements
     cost_savings = trad_cost - enh_cost
     cost_savings_pct = (cost_savings / trad_cost * 100) if trad_cost > 0 else 0
-    
+
     token_savings = trad_tokens - enh_tokens
     token_savings_pct = (token_savings / trad_tokens * 100) if trad_tokens > 0 else 0
-    
+
     print("📊 ROUTING COMPARISON RESULTS")
     print("=" * 50)
     print(f"Traditional Cost:  ${trad_cost:.4f}")
@@ -359,7 +359,7 @@ def compare_results(traditional_file, enhanced_file):
     print(f"Enhanced Tokens:    {enh_tokens:,}")
     print(f"Token Savings:      {token_savings:,} ({token_savings_pct:.1f}%)")
     print()
-    
+
     # Provide recommendations
     if cost_savings_pct > 30:
         print("🎉 Excellent savings! Migration highly recommended.")
@@ -369,32 +369,32 @@ def compare_results(traditional_file, enhanced_file):
         print("👍 Some savings. Consider template optimization.")
     else:
         print("⚠️  No savings detected. Review routing strategy.")
-    
+
     return 0
 
 def main():
     """Compare all result files."""
-    
+
     comparisons = [
         ("traditional_analysis.json", "enhanced_analysis.json", "Data Analysis"),
         ("traditional_review.json", "enhanced_review.json", "Code Review"),
         ("traditional_config.json", "enhanced_config.json", "Config Validation")
     ]
-    
+
     total_savings = 0
     successful_comparisons = 0
-    
+
     for trad_file, enh_file, description in comparisons:
         print(f"\n🔍 Comparing: {description}")
         print("-" * 40)
-        
+
         if compare_results(trad_file, enh_file) == 0:
             successful_comparisons += 1
-    
+
     print(f"\n📈 PHASE 2 SUMMARY")
     print("=" * 50)
     print(f"Successful Comparisons: {successful_comparisons}/{len(comparisons)}")
-    
+
     if successful_comparisons == len(comparisons):
         print("✅ Phase 2 migration successful! Ready for Phase 3.")
     else:
@@ -580,17 +580,17 @@ from pathlib import Path
 
 def check_migration_status():
     """Check overall migration status."""
-    
+
     print("🔍 Checking migration status...")
-    
+
     # Check 1: Configuration exists
     config_exists = Path("ostruct.yaml").exists()
     print(f"✅ Configuration file: {'Found' if config_exists else '❌ Missing'}")
-    
+
     # Check 2: Baseline results available
     baseline_exists = Path("baseline_results.json").exists()
     print(f"✅ Baseline results: {'Found' if baseline_exists else '❌ Missing'}")
-    
+
     # Check 3: Test enhanced commands
     try:
         result = subprocess.run(
@@ -601,7 +601,7 @@ def check_migration_status():
     except subprocess.CalledProcessError:
         print("❌ Enhanced commands failing")
         return False
-    
+
     # Check 4: Compare performance if results available
     if Path("traditional_analysis.json").exists() and Path("enhanced_analysis.json").exists():
         # Load and compare results
@@ -610,29 +610,29 @@ def check_migration_status():
                 trad = json.load(f)
             with open("enhanced_analysis.json") as f:
                 enh = json.load(f)
-            
+
             trad_cost = trad.get("estimated_cost", 0)
             enh_cost = enh.get("estimated_cost", 0)
-            
+
             if enh_cost < trad_cost:
                 savings = (trad_cost - enh_cost) / trad_cost * 100
                 print(f"✅ Cost savings: {savings:.1f}%")
             else:
                 print("⚠️  No cost savings detected")
-        
+
         except (json.JSONDecodeError, FileNotFoundError):
             print("⚠️  Could not compare performance")
-    
+
     return True
 
 if __name__ == "__main__":
     success = check_migration_status()
-    
+
     if success:
         print("\n🎉 Migration validation successful!")
         print("\n📝 Next steps:")
         print("1. Run your production workflows with enhanced syntax")
-        print("2. Monitor costs and performance")  
+        print("2. Monitor costs and performance")
         print("3. Update team documentation")
         print("4. Consider template optimization")
     else:

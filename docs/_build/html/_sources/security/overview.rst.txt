@@ -15,7 +15,7 @@ Security Architecture
 ostruct implements a multi-layered security model:
 
 1. **API Key Management** - Secure handling of OpenAI credentials
-2. **File Access Control** - Path validation and directory restrictions  
+2. **File Access Control** - Path validation and directory restrictions
 3. **Data Upload Controls** - Tool-specific file routing with explicit user control
 4. **MCP Security** - Validation and approval for external server connections
 5. **Runtime Security** - Symlink resolution and path traversal prevention
@@ -75,10 +75,10 @@ Environment-Specific Keys
 
    # Development
    export OPENAI_API_KEY="sk-dev-..."
-   
-   # Staging  
+
+   # Staging
    export OPENAI_API_KEY="sk-staging-..."
-   
+
    # Production
    export OPENAI_API_KEY="sk-prod-..."
 
@@ -124,7 +124,7 @@ By default, ostruct restricts file access to the current working directory. Expa
    /data
    /configs
    /tmp/workspace
-   
+
    ostruct run template.j2 schema.json --allowed-dir-file allowed_dirs.txt
 
 Base Directory Control
@@ -161,7 +161,7 @@ ostruct prevents common path traversal attacks:
    # These are blocked by SecurityManager
    ostruct run template.j2 schema.json -ft "../../../etc/passwd"
    ostruct run template.j2 schema.json -ft "config/../../../sensitive.txt"
-   
+
    # Use allowed directories for legitimate access outside project
    ostruct run template.j2 schema.json -A /etc -ft /etc/config.yaml
 
@@ -249,7 +249,7 @@ Enable cleanup to minimize data retention:
    ostruct run template.j2 schema.json \
      -fc data.csv \
      --code-interpreter-cleanup
-   
+
    ostruct run template.j2 schema.json \
      -fs docs.pdf \
      --file-search-cleanup
@@ -310,7 +310,7 @@ Secure MCP server authentication:
    ostruct run template.j2 schema.json \
      --mcp-server "secure@https://mcp.example.com" \
      --mcp-headers '{"Authorization": "Bearer token123"}'
-   
+
    # API key authentication
    ostruct run template.j2 schema.json \
      --mcp-server "api@https://mcp.example.com" \
@@ -444,7 +444,7 @@ Development Environment
 
    # Development: Relaxed but secure
    export OPENAI_API_KEY="sk-dev-..."
-   
+
    ostruct run template.j2 schema.json \
      --base-dir ./project \
      -A ./test_data \
@@ -460,7 +460,7 @@ Staging Environment
 
    # Staging: Production-like security
    export OPENAI_API_KEY="sk-staging-..."
-   
+
    ostruct run template.j2 schema.json \
      --base-dir /app \
      -A /app/data \
@@ -478,7 +478,7 @@ Production Environment
 
    # Production: Maximum security
    export OPENAI_API_KEY="sk-prod-..."
-   
+
    ostruct run template.j2 schema.json \
      --base-dir /prod/app \
      --allowed-dir-file /prod/security/allowed_dirs.txt \

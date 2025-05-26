@@ -421,7 +421,7 @@ class MCPServerManager:
             url = server.get("url", "")
             # Use MCPClient validation logic for all URLs (including empty ones)
             try:
-                client = MCPClient(url)
+                MCPClient(url)
             except ValueError as e:
                 raise ValueError(f"Invalid server URL: {e}")
 
@@ -448,9 +448,7 @@ class MCPServerManager:
 
             # Validate URL format and security using existing MCPClient validation
             # This reuses the production validation logic without making network calls
-            client = MCPClient(
-                server_url, timeout=1
-            )  # Quick timeout for validation
+            MCPClient(server_url, timeout=1)  # Quick timeout for validation
 
             logger.debug(f"MCP server URL validation successful: {server_url}")
             return True

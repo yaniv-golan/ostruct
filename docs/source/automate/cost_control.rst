@@ -67,10 +67,10 @@ Set spending limits using environment variables:
 
    # Daily budget limit (in USD)
    export OPENAI_DAILY_BUDGET=100.00
-   
+
    # Monthly budget limit
    export OPENAI_MONTHLY_BUDGET=2000.00
-   
+
    # Token limit per request
    export OPENAI_MAX_TOKENS_PER_REQUEST=2000
 
@@ -100,7 +100,7 @@ Use configuration files for budget controls:
      request_limit: 1000
      token_limit: 100000
      alert_threshold: 0.8  # Alert at 80% of limit
-     
+
    models:
      default: gpt-3.5-turbo
      fallback: gpt-3.5-turbo  # Fallback if budget exceeded
@@ -192,7 +192,7 @@ Design cost-effective templates:
    {# Inefficient template #}
    Please analyze this document in detail:
    {{ file_content }}
-   
+
    Provide comprehensive analysis including:
    - Detailed summary
    - All mentioned entities
@@ -204,7 +204,7 @@ Design cost-effective templates:
    {# Optimized template #}
    Extract key data from:
    {{ file_content | truncate(2000) }}
-   
+
    Return JSON with:
    - summary (max 100 words)
    - entities (list)
@@ -255,7 +255,7 @@ Cache API responses to avoid duplicate calls:
      backend: redis
      ttl: 3600  # 1 hour
      key_strategy: content_hash
-   
+
    redis:
      host: localhost
      port: 6379
@@ -271,12 +271,12 @@ Cache based on content similarity:
    # Custom cache implementation
    import hashlib
    from ostruct.cache import SemanticCache
-   
+
    cache = SemanticCache(
        similarity_threshold=0.95,
        embedding_model="text-embedding-ada-002"
    )
-   
+
    # Check cache before API call
    cache_key = cache.get_semantic_key(input_text)
    if cache.exists(cache_key):
@@ -386,7 +386,7 @@ Configure different alert types:
 
    # Custom alert handler
    from ostruct.alerts import BudgetAlert
-   
+
    def handle_budget_alert(alert: BudgetAlert):
        if alert.percentage >= 0.9:
            # Critical alert - stop processing
@@ -407,13 +407,13 @@ Analyze usage patterns to optimize costs:
 .. code-block:: sql
 
    -- Query usage database
-   SELECT 
+   SELECT
        model,
        AVG(tokens_used) as avg_tokens,
        AVG(cost) as avg_cost,
        COUNT(*) as request_count,
        DATE(timestamp) as date
-   FROM usage_logs 
+   FROM usage_logs
    WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
    GROUP BY model, DATE(timestamp)
    ORDER BY date DESC;
@@ -503,7 +503,7 @@ Establish clear cost management policies:
      model_restrictions:
        gpt-4: ["senior-engineers", "data-scientists"]
        gpt-3.5-turbo: ["all-users"]
-     
+
      default_limits:
        daily_budget: 25.00
        monthly_budget: 500.00
@@ -553,13 +553,13 @@ Implement automatic safeguards:
 
    # Circuit breaker implementation
    from ostruct.circuit_breaker import CostCircuitBreaker
-   
+
    breaker = CostCircuitBreaker(
        daily_limit=100.00,
        failure_threshold=5,
        recovery_timeout=3600
    )
-   
+
    @breaker.protected
    def process_with_ai(content):
        return ostruct.process(content)

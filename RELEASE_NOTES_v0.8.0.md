@@ -81,7 +81,7 @@ mcp:
 
 ### Validated Performance Baselines
 - **Basic Operations**: 1-2 seconds
-- **Code Interpreter**: 10-16 seconds  
+- **Code Interpreter**: 10-16 seconds
 - **File Search**: 7-8 seconds
 - **MCP Integration**: 5-6 seconds
 

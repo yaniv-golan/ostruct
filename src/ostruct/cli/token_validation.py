@@ -7,7 +7,6 @@ from typing import List, Tuple
 import tiktoken
 
 from .errors import PromptTooLargeError
-from .token_utils import estimate_tokens_with_encoding
 
 
 class TokenLimitValidator:
@@ -17,7 +16,7 @@ class TokenLimitValidator:
 
     def __init__(self, model: str = "gpt-4o"):
         """Initialize validator with model-specific encoding.
-        
+
         Args:
             model: Model name for token encoding selection
         """
@@ -32,18 +31,18 @@ class TokenLimitValidator:
             return tiktoken.get_encoding("cl100k_base")
 
     def validate_prompt_size(
-        self, 
-        template_content: str, 
+        self,
+        template_content: str,
         template_files: List[str],
-        context_limit: int = None
+        context_limit: int = None,
     ) -> None:
         """Check if prompt will exceed context window and provide actionable guidance.
-        
+
         Args:
             template_content: Rendered template content
             template_files: List of file paths included in template
             context_limit: Optional custom context limit (defaults to MAX_TOKENS)
-            
+
         Raises:
             PromptTooLargeError: If prompt exceeds context window with actionable guidance
         """
@@ -73,7 +72,7 @@ class TokenLimitValidator:
     def _count_file_tokens(self, file_path: str) -> int:
         """Count tokens in a file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
                 return len(self.encoder.encode(content))
         except UnicodeDecodeError:
@@ -85,34 +84,82 @@ class TokenLimitValidator:
     def _is_data_file(self, file_path: str) -> bool:
         """Detect if file is likely a data file suitable for Code Interpreter."""
         data_extensions = {
-            '.csv', '.json', '.xlsx', '.xls', '.tsv', '.parquet',
-            '.sql', '.db', '.sqlite', '.sqlite3', '.pkl', '.pickle',
-            '.npy', '.npz', '.h5', '.hdf5', '.xml', '.yaml', '.yml'
+            ".csv",
+            ".json",
+            ".xlsx",
+            ".xls",
+            ".tsv",
+            ".parquet",
+            ".sql",
+            ".db",
+            ".sqlite",
+            ".sqlite3",
+            ".pkl",
+            ".pickle",
+            ".npy",
+            ".npz",
+            ".h5",
+            ".hdf5",
+            ".xml",
+            ".yaml",
+            ".yml",
         }
         return Path(file_path).suffix.lower() in data_extensions
 
     def _is_document_file(self, file_path: str) -> bool:
         """Detect if file is likely a document suitable for File Search."""
         doc_extensions = {
-            '.pdf', '.doc', '.docx', '.txt', '.md', '.rst', '.tex',
-            '.html', '.htm', '.rtf', '.odt', '.epub', '.mobi'
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".txt",
+            ".md",
+            ".rst",
+            ".tex",
+            ".html",
+            ".htm",
+            ".rtf",
+            ".odt",
+            ".epub",
+            ".mobi",
         }
         return Path(file_path).suffix.lower() in doc_extensions
 
     def _is_code_file(self, file_path: str) -> bool:
         """Detect if file is likely source code."""
         code_extensions = {
-            '.py', '.js', '.ts', '.java', '.cpp', '.c', '.h', '.hpp',
-            '.cs', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.scala',
-            '.r', '.m', '.sh', '.bash', '.ps1', '.pl', '.lua', '.dart'
+            ".py",
+            ".js",
+            ".ts",
+            ".java",
+            ".cpp",
+            ".c",
+            ".h",
+            ".hpp",
+            ".cs",
+            ".go",
+            ".rs",
+            ".rb",
+            ".php",
+            ".swift",
+            ".kt",
+            ".scala",
+            ".r",
+            ".m",
+            ".sh",
+            ".bash",
+            ".ps1",
+            ".pl",
+            ".lua",
+            ".dart",
         }
         return Path(file_path).suffix.lower() in code_extensions
 
     def _raise_actionable_error(
-        self, 
-        total_tokens: int, 
-        limit: int, 
-        oversized_files: List[Tuple[str, int]]
+        self,
+        total_tokens: int,
+        limit: int,
+        oversized_files: List[Tuple[str, int]],
     ) -> None:
         """Raise PromptTooLargeError with specific guidance for explicit file routing."""
         error_msg = (
@@ -125,7 +172,7 @@ class TokenLimitValidator:
 
             for file_path, tokens in oversized_files:
                 file_name = Path(file_path).name
-                
+
                 if self._is_data_file(file_path):
                     error_msg += f"   📊 Data file: ostruct -fc {file_name} <template> <schema>\n"
                     error_msg += f"       (Moves {file_name} to Code Interpreter for data processing)\n\n"
@@ -137,30 +184,40 @@ class TokenLimitValidator:
                     error_msg += f"       (Moves {file_name} to Code Interpreter for analysis)\n\n"
                 else:
                     error_msg += f"   📁 Large file: ostruct -fc {file_name} OR -fs {file_name} <template> <schema>\n"
-                    error_msg += f"       (Choose based on usage: -fc for processing, -fs for retrieval)\n\n"
+                    error_msg += "       (Choose based on usage: -fc for processing, -fs for retrieval)\n\n"
 
-                error_msg += f"       Size: {tokens:,} tokens ({file_path})\n\n"
+                error_msg += (
+                    f"       Size: {tokens:,} tokens ({file_path})\n\n"
+                )
 
-            error_msg += "🔧 Alternative: Use --file-for for specific tool routing:\n"
+            error_msg += (
+                "🔧 Alternative: Use --file-for for specific tool routing:\n"
+            )
             error_msg += f"    ostruct --file-for code-interpreter {oversized_files[0][0]} <template> <schema>\n\n"
 
         else:
             error_msg += "💡 Suggestion: Consider breaking down your template or using fewer input files\n\n"
 
-        error_msg += f"🔍 Check file sizes: tiktoken_cli count <filename>\n"
-        error_msg += f"📖 Learn more: ostruct --help (see File Routing section)"
+        error_msg += "🔍 Check file sizes: tiktoken_cli count <filename>\n"
+        error_msg += "📖 Learn more: ostruct --help (see File Routing section)"
 
         raise PromptTooLargeError(
             error_msg,
             context={
                 "total_tokens": total_tokens,
                 "context_limit": limit,
-                "oversized_files": [(path, tokens) for path, tokens in oversized_files],
-                "suggested_routing": self._generate_routing_suggestions(oversized_files)
-            }
+                "oversized_files": [
+                    (path, tokens) for path, tokens in oversized_files
+                ],
+                "suggested_routing": self._generate_routing_suggestions(
+                    oversized_files
+                ),
+            },
         )
 
-    def _generate_routing_suggestions(self, oversized_files: List[Tuple[str, int]]) -> List[dict]:
+    def _generate_routing_suggestions(
+        self, oversized_files: List[Tuple[str, int]]
+    ) -> List[dict]:
         """Generate structured routing suggestions for programmatic use."""
         suggestions = []
         for file_path, tokens in oversized_files:
@@ -168,7 +225,7 @@ class TokenLimitValidator:
                 "file_path": file_path,
                 "tokens": tokens,
                 "file_type": self._classify_file(file_path),
-                "recommended_flags": self._get_recommended_flags(file_path)
+                "recommended_flags": self._get_recommended_flags(file_path),
             }
             suggestions.append(suggestion)
         return suggestions
@@ -196,20 +253,22 @@ class TokenLimitValidator:
 
 def validate_token_limits(
     template_content: str,
-    template_files: List[str], 
+    template_files: List[str],
     model: str,
-    context_limit: int = None
+    context_limit: int = None,
 ) -> None:
     """Convenience function for token limit validation.
-    
+
     Args:
         template_content: Rendered template content
         template_files: List of file paths included in template
         model: Model name for encoding selection
         context_limit: Optional custom context limit
-        
+
     Raises:
         PromptTooLargeError: If prompt exceeds context window
     """
     validator = TokenLimitValidator(model)
-    validator.validate_prompt_size(template_content, template_files, context_limit)
+    validator.validate_prompt_size(
+        template_content, template_files, context_limit
+    )

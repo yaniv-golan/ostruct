@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 
-from unittest.mock import patch, MagicMock
 import sys
+from unittest.mock import MagicMock, patch
+
+from openai_model_registry import ModelRegistry
+
+from ostruct.cli.registry_updates import check_for_registry_updates
+from tests.test_registry_updates import (
+    RegistryUpdateResult,
+    RegistryUpdateStatus,
+)
 
 sys.path.insert(0, ".")
 
-from tests.test_registry_updates import RegistryUpdateResult, RegistryUpdateStatus
-from ostruct.cli.registry_updates import check_for_registry_updates
-
 print("=== Testing with global mock only ===")
-with patch("ostruct.cli.registry_updates.should_check_for_updates", return_value=True):
+with patch(
+    "ostruct.cli.registry_updates.should_check_for_updates", return_value=True
+):
     with patch("ostruct.cli.registry_updates._save_last_check_time"):
         result = check_for_registry_updates()
         print(f"Result with global mock: {result}")
 
 # Now let's see what the global mock actually returns
-from openai_model_registry import ModelRegistry
 
 registry = ModelRegistry.get_instance()
 update_result = registry.check_for_updates()
@@ -31,7 +37,9 @@ print(
 
 # Let's also check what happens when we try to patch
 print("\n=== Testing with patch ===")
-with patch("ostruct.cli.registry_updates.should_check_for_updates", return_value=True):
+with patch(
+    "ostruct.cli.registry_updates.should_check_for_updates", return_value=True
+):
     with patch("ostruct.cli.registry_updates._save_last_check_time"):
         with patch(
             "openai_model_registry.ModelRegistry.get_instance"

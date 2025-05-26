@@ -29,9 +29,9 @@ Basic Template Example
    system_prompt: You are an expert data analyst.
    ---
    Analyze this configuration file:
-   
+
    {{ config_yaml.content }}
-   
+
    Summary of findings:
    {% for file in logs %}
    - {{ file.name }}: {{ file.content | word_count }} words
@@ -121,7 +121,7 @@ Auto-Naming Examples
    # Access in template
    Configuration settings:
    {{ config_yaml.content }}
-   
+
    Sales data summary:
    {{ sales_data_csv.content | word_count }} characters
 
@@ -134,8 +134,8 @@ Override auto-naming with explicit variable names:
 
    # Equals syntax
    ostruct run template.j2 schema.json -ft app_config=config.yaml
-   
-   # Two-argument alias syntax  
+
+   # Two-argument alias syntax
    ostruct run template.j2 schema.json --fta app_config config.yaml
 
 .. code-block:: jinja
@@ -220,12 +220,12 @@ Simple string values from the ``-V`` flag:
 
    Environment: {{ env }}
    Debug mode: {{ debug }}
-   
+
    {% if env == "production" %}
    Using production settings
    {% endif %}
 
-JSON Variables  
+JSON Variables
 --------------
 
 Complex data structures from the ``-J`` flag:
@@ -239,7 +239,7 @@ Complex data structures from the ``-J`` flag:
    Database configuration:
    - Host: {{ config.database.host }}
    - Port: {{ config.database.port }}
-   
+
    Enabled features:
    {% for feature in config.features %}
    - {{ feature }}
@@ -256,11 +256,11 @@ Conditional Logic
    {% if env == "production" %}
    **PRODUCTION ENVIRONMENT**
    {% elif env == "staging" %}
-   **STAGING ENVIRONMENT**  
+   **STAGING ENVIRONMENT**
    {% else %}
    **DEVELOPMENT ENVIRONMENT**
    {% endif %}
-   
+
    {% if file.size > 1000000 %}
    Warning: Large file detected ({{ file.size | filesizeformat }})
    {% endif %}
@@ -283,7 +283,7 @@ Loops and Iteration
 **Loop Variables:**
 
 - ``loop.index`` - Current iteration (1-based)
-- ``loop.index0`` - Current iteration (0-based) 
+- ``loop.index0`` - Current iteration (0-based)
 - ``loop.first`` - True if first iteration
 - ``loop.last`` - True if last iteration
 - ``loop.length`` - Total number of items
@@ -297,7 +297,7 @@ Filtering and Grouping
    {% for file in files if file.ext == "py" %}
    - {{ file.name }}
    {% endfor %}
-   
+
    Files by extension:
    {% for ext, group in files | groupby('ext') %}
    {{ ext }} files:
@@ -326,10 +326,10 @@ Text Processing Filters
 
    Clean code (comments removed):
    {{ source_code | remove_comments }}
-   
+
    Normalized text:
    {{ messy_text | normalize }}
-   
+
    Wrapped text:
    {{ long_text | wrap(width=80) }}
 
@@ -351,7 +351,7 @@ Data Processing Filters
 
    Configuration as JSON:
    {{ config | to_json }}
-   
+
    Parsed data:
    {% set data = json_string | from_json %}
    {{ data.key }}
@@ -364,7 +364,7 @@ Data Processing Filters
    {% for file in files | sort_by('name') %}
    - {{ file.name }}
    {% endfor %}
-   
+
    Unique extensions:
    {% for ext in files | extract_field('ext') | unique %}
    - {{ ext }}
@@ -390,7 +390,7 @@ Code Processing Filters
 
    Python code with highlighting:
    {{ python_code | format_code('python') }}
-   
+
    Auto-detected language:
    {{ code | format_code }}
 
@@ -410,7 +410,7 @@ Table and Data Formatting
 
    File listing:
    {{ files | auto_table }}
-   
+
    Custom table:
    {{ data | dict_to_table }}
 
@@ -425,7 +425,7 @@ Estimate tokens for content planning:
 .. code-block:: jinja
 
    Content size: {{ estimate_tokens(large_text) }} tokens
-   
+
    {% if estimate_tokens(content) > 4000 %}
    Warning: Content may exceed context limits
    {% endif %}
@@ -469,13 +469,13 @@ Add configuration and system prompts to templates using YAML frontmatter:
 
    ---
    system_prompt: |
-     You are an expert software architect with deep knowledge of 
+     You are an expert software architect with deep knowledge of
      system design patterns and best practices.
    model: gpt-4o
    temperature: 0.3
    ---
    Analyze this system architecture:
-   
+
    {{ architecture_doc.content }}
 
 System Prompt Best Practices
@@ -563,7 +563,7 @@ The ``include_system:`` feature allows you to:
    model: gpt-4o
    ---
    Analyze this database access code:
-   
+
    {{ database_code.content }}
 
 .. note::
@@ -583,22 +583,22 @@ Multi-File Analysis Template
    system_prompt: You are a code review expert analyzing a multi-file codebase.
    ---
    # Code Review Analysis
-   
+
    ## Files Analyzed
    {% for file in source_files %}
    - **{{ file.name }}** ({{ file.size }} bytes, {{ file.content | word_count }} words)
    {% endfor %}
-   
+
    ## Security Concerns
    {% for file in source_files if 'password' in file.content.lower() or 'secret' in file.content.lower() %}
    ⚠️ **{{ file.name }}**: Potential credential exposure detected
    {% endfor %}
-   
+
    ## Code Quality Metrics
    {% set total_lines = source_files | sum(attribute='content') | word_count %}
    - Total lines across all files: {{ total_lines }}
    - Average file size: {{ (source_files | extract_field('size') | sum) // (source_files | length) }} bytes
-   
+
    ## Detailed Analysis
    {% for file in source_files %}
    ### {{ file.name }}
@@ -616,21 +616,21 @@ Configuration Comparison Template
    system_prompt: You are a DevOps engineer comparing environment configurations.
    ---
    # Configuration Comparison: {{ env1 }} vs {{ env2 }}
-   
+
    ## {{ env1 | title }} Configuration
    ```yaml
    {{ config1.content }}
    ```
-   
-   ## {{ env2 | title }} Configuration  
+
+   ## {{ env2 | title }} Configuration
    ```yaml
    {{ config2.content }}
    ```
-   
+
    ## Analysis Request
    Compare these configurations and identify:
    1. **Security differences** - Authentication, encryption, access controls
-   2. **Resource allocation** - CPU, memory, storage differences  
+   2. **Resource allocation** - CPU, memory, storage differences
    3. **Feature flags** - Enabled/disabled features
    4. **Environment-specific settings** - URLs, database connections
    5. **Potential issues** - Misconfigurations or inconsistencies
@@ -644,19 +644,19 @@ Data Analysis Template
    system_prompt: You are a data scientist analyzing business metrics.
    ---
    # Data Analysis Report
-   
+
    ## Dataset Overview
    {% for dataset in datasets %}
    **{{ dataset.name }}**:
    - Size: {{ dataset.content | char_count }} characters
    - Estimated records: {{ dataset.content | word_count // 10 }}
    {% endfor %}
-   
+
    ## Analysis Parameters
    - Analysis type: {{ analysis_type }}
    - Date range: {{ date_range }}
    - Metrics focus: {{ metrics.join(', ') }}
-   
+
    ## Raw Data
    {% for dataset in datasets %}
    ### {{ dataset.name }}
@@ -664,7 +664,7 @@ Data Analysis Template
    {{ dataset.content }}
    ```
    {% endfor %}
-   
+
    Please analyze this data focusing on trends, anomalies, and business insights.
 
 Tool Integration Variables
@@ -681,10 +681,10 @@ When files are routed to Code Interpreter (``-fc``), additional context is avail
    {% for file in code_interpreter_files %}
    - {{ file.name }} (uploaded for Python analysis)
    {% endfor %}
-   
+
    Please analyze the uploaded data and generate visualizations showing:
    1. Key trends over time
-   2. Distribution patterns  
+   2. Distribution patterns
    3. Correlation analysis
 
 File Search Context
@@ -698,7 +698,7 @@ When files are routed to File Search (``-fs``), they're available for semantic s
    {% for file in search_files %}
    - {{ file.name }} (available for semantic search)
    {% endfor %}
-   
+
    Use the uploaded documents to answer questions about {{ topic }}.
    Provide specific references to source documents in your responses.
 
@@ -784,10 +784,10 @@ Use debug functions in templates:
 
    {# Debug variable contents #}
    Debug info: {{ debug(config) }}
-   
+
    {# Check variable types #}
    Type of data: {{ type_of(data) }}
-   
+
    {# List available attributes #}
    Available methods: {{ dir_of(file_object) }}
 
@@ -800,7 +800,7 @@ Common Template Issues
 
    {# Wrong - conflicts with built-in #}
    {{ list.content }}
-   
+
    {# Right - descriptive names #}
    {{ file_list.content }}
 
@@ -810,7 +810,7 @@ Common Template Issues
 
    {# Wrong - may fail if file missing #}
    {{ config.content }}
-   
+
    {# Right - defensive programming #}
    {% if config and config.exists %}
    {{ config.content }}
@@ -828,7 +828,7 @@ Common Template Issues
    Process line: {{ line }}
    {% endfor %}
    {% endfor %}
-   
+
    {# Better - use filters #}
    {% for file in files %}
    Lines: {{ file.content | word_count }}
@@ -884,6 +884,6 @@ Next Steps
 ==========
 
 - :doc:`quickstart` - Learn with hands-on examples
-- :doc:`cli_reference` - Complete CLI option reference  
+- :doc:`cli_reference` - Complete CLI option reference
 - :doc:`../security/overview` - Security considerations for templates
 - `Jinja2 Documentation <https://jinja.palletsprojects.com/>`_ - Advanced Jinja2 features

@@ -11,8 +11,6 @@ import click
 import jinja2
 import yaml
 
-DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
-
 from .errors import (
     DirectoryNotFoundError,
     InvalidJSONError,
@@ -31,8 +29,7 @@ from .types import CLIParams
 
 logger = logging.getLogger(__name__)
 
-# Type alias for CLI parameters
-CLIParams = Dict[str, Any]
+DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
 def process_system_prompt(

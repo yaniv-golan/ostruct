@@ -6,7 +6,7 @@ This example demonstrates the power of ostruct's enhanced multi-tool integration
 
 This example shows how to leverage multiple tools simultaneously for:
 - **Code Interpreter**: Data analysis and Python execution
-- **File Search**: Document retrieval and context search  
+- **File Search**: Document retrieval and context search
 - **MCP Server**: External repository documentation access
 - **Explicit File Routing**: Optimized file processing
 
@@ -211,15 +211,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Install ostruct
         run: pip install ostruct-cli
-        
+
       - name: Multi-Tool Analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -231,7 +231,7 @@ jobs:
             -ft config/ \
             --progress-level none \
             --output-file analysis_results.json
-            
+
       - name: Upload Results
         uses: actions/upload-artifact@v3
         with:

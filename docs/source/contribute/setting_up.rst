@@ -64,7 +64,7 @@ Repository Setup
       poetry run ostruct --version
 
    This installs:
-   
+
    - **Core dependencies**: Required for ostruct functionality
    - **Development dependencies**: Testing, linting, formatting tools
    - **Documentation dependencies**: Sphinx and related tools
