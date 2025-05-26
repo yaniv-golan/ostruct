@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Template Filters &mdash; ostruct-cli  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/sphinx-design.min.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Template Creation Guide" href="templates.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ostruct-cli
+          </a>
+              <div class="version">
+                0.8.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="templates.html">Template Creation Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Template Filters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#text-processing-filters">Text Processing Filters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#word-count"><code class="docutils literal notranslate"><span class="pre">word_count</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#char-count"><code class="docutils literal notranslate"><span class="pre">char_count</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#to-json"><code class="docutils literal notranslate"><span class="pre">to_json</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#from-json"><code class="docutils literal notranslate"><span class="pre">from_json</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-comments"><code class="docutils literal notranslate"><span class="pre">remove_comments</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#normalize"><code class="docutils literal notranslate"><span class="pre">normalize</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#strip-markdown"><code class="docutils literal notranslate"><span class="pre">strip_markdown</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wrap"><code class="docutils literal notranslate"><span class="pre">wrap</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#indent"><code class="docutils literal notranslate"><span class="pre">indent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dedent"><code class="docutils literal notranslate"><span class="pre">dedent</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#data-processing-filters">Data Processing Filters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sort-by"><code class="docutils literal notranslate"><span class="pre">sort_by</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#group-by"><code class="docutils literal notranslate"><span class="pre">group_by</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#filter-by"><code class="docutils literal notranslate"><span class="pre">filter_by</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extract-field"><code class="docutils literal notranslate"><span class="pre">extract_field</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#unique"><code class="docutils literal notranslate"><span class="pre">unique</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#frequency"><code class="docutils literal notranslate"><span class="pre">frequency</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aggregate"><code class="docutils literal notranslate"><span class="pre">aggregate</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#table-formatting-filters">Table Formatting Filters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#table"><code class="docutils literal notranslate"><span class="pre">table</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#align-table"><code class="docutils literal notranslate"><span class="pre">align_table</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dict-to-table"><code class="docutils literal notranslate"><span class="pre">dict_to_table</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#list-to-table"><code class="docutils literal notranslate"><span class="pre">list_to_table</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#auto-table"><code class="docutils literal notranslate"><span class="pre">auto_table</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#code-processing-filters">Code Processing Filters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#format-code"><code class="docutils literal notranslate"><span class="pre">format_code</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#strip-comments"><code class="docutils literal notranslate"><span class="pre">strip_comments</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#special-character-handling">Special Character Handling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#escape-special"><code class="docutils literal notranslate"><span class="pre">escape_special</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#template-globals">Template Globals</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#estimate-tokens"><code class="docutils literal notranslate"><span class="pre">estimate_tokens</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#format-json"><code class="docutils literal notranslate"><span class="pre">format_json</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#now"><code class="docutils literal notranslate"><span class="pre">now</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#debug"><code class="docutils literal notranslate"><span class="pre">debug</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#type-of"><code class="docutils literal notranslate"><span class="pre">type_of</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dir-of"><code class="docutils literal notranslate"><span class="pre">dir_of</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#len-of"><code class="docutils literal notranslate"><span class="pre">len_of</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#validate-json"><code class="docutils literal notranslate"><span class="pre">validate_json</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#format-error"><code class="docutils literal notranslate"><span class="pre">format_error</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ostruct-cli</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Template Filters</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/template_filters.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="template-filters">
+<h1>Template Filters<a class="headerlink" href="#template-filters" title="Link to this heading"></a></h1>
+<p>This document describes the template filters and globals available in the Jinja2 environment.</p>
+<section id="text-processing-filters">
+<h2>Text Processing Filters<a class="headerlink" href="#text-processing-filters" title="Link to this heading"></a></h2>
+<section id="word-count">
+<h3><code class="docutils literal notranslate"><span class="pre">word_count</span></code><a class="headerlink" href="#word-count" title="Link to this heading"></a></h3>
+<p>Counts the number of words in a text string.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">count</span> <span class="o">=</span> <span class="nv">text</span> <span class="o">|</span> <span class="nf">word_count</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="char-count">
+<h3><code class="docutils literal notranslate"><span class="pre">char_count</span></code><a class="headerlink" href="#char-count" title="Link to this heading"></a></h3>
+<p>Counts the number of characters in a text string.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">count</span> <span class="o">=</span> <span class="nv">text</span> <span class="o">|</span> <span class="nf">char_count</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="to-json">
+<h3><code class="docutils literal notranslate"><span class="pre">to_json</span></code><a class="headerlink" href="#to-json" title="Link to this heading"></a></h3>
+<p>Converts an object to a JSON string.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">json_str</span> <span class="o">=</span> <span class="nv">data</span> <span class="o">|</span> <span class="nf">to_json</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="from-json">
+<h3><code class="docutils literal notranslate"><span class="pre">from_json</span></code><a class="headerlink" href="#from-json" title="Link to this heading"></a></h3>
+<p>Parses a JSON string into an object.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">obj</span> <span class="o">=</span> <span class="nv">json_str</span> <span class="o">|</span> <span class="nf">from_json</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="remove-comments">
+<h3><code class="docutils literal notranslate"><span class="pre">remove_comments</span></code><a class="headerlink" href="#remove-comments" title="Link to this heading"></a></h3>
+<p>Removes comments from text (supports #, //, and /**/ style comments).</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">clean_text</span> <span class="o">=</span> <span class="nv">code</span> <span class="o">|</span> <span class="nf">remove_comments</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="normalize">
+<h3><code class="docutils literal notranslate"><span class="pre">normalize</span></code><a class="headerlink" href="#normalize" title="Link to this heading"></a></h3>
+<p>Normalizes whitespace in text.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">normalized</span> <span class="o">=</span> <span class="nv">text</span> <span class="o">|</span> <span class="nf">normalize</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="strip-markdown">
+<h3><code class="docutils literal notranslate"><span class="pre">strip_markdown</span></code><a class="headerlink" href="#strip-markdown" title="Link to this heading"></a></h3>
+<p>Removes markdown formatting characters.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">plain_text</span> <span class="o">=</span> <span class="nv">markdown</span> <span class="o">|</span> <span class="nf">strip_markdown</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="wrap">
+<h3><code class="docutils literal notranslate"><span class="pre">wrap</span></code><a class="headerlink" href="#wrap" title="Link to this heading"></a></h3>
+<p>Wraps text to a specified width.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">wrapped</span> <span class="o">=</span> <span class="nv">text</span> <span class="o">|</span> <span class="nf">wrap</span><span class="o">(</span><span class="nv">width</span><span class="o">=</span><span class="m">80</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="indent">
+<h3><code class="docutils literal notranslate"><span class="pre">indent</span></code><a class="headerlink" href="#indent" title="Link to this heading"></a></h3>
+<p>Indents text by a specified amount.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">indented</span> <span class="o">=</span> <span class="nv">text</span> <span class="o">|</span> <span class="nf">indent</span><span class="o">(</span><span class="m">4</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="dedent">
+<h3><code class="docutils literal notranslate"><span class="pre">dedent</span></code><a class="headerlink" href="#dedent" title="Link to this heading"></a></h3>
+<p>Removes common leading whitespace from every line.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">dedented</span> <span class="o">=</span> <span class="nv">text</span> <span class="o">|</span> <span class="nf">dedent</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="data-processing-filters">
+<h2>Data Processing Filters<a class="headerlink" href="#data-processing-filters" title="Link to this heading"></a></h2>
+<section id="sort-by">
+<h3><code class="docutils literal notranslate"><span class="pre">sort_by</span></code><a class="headerlink" href="#sort-by" title="Link to this heading"></a></h3>
+<p>Sorts a sequence of items by a specified key.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">sorted_items</span> <span class="o">=</span> <span class="nv">items</span> <span class="o">|</span> <span class="nf">sort_by</span><span class="o">(</span><span class="s1">&#39;name&#39;</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="group-by">
+<h3><code class="docutils literal notranslate"><span class="pre">group_by</span></code><a class="headerlink" href="#group-by" title="Link to this heading"></a></h3>
+<p>Groups items by a specified key.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">grouped</span> <span class="o">=</span> <span class="nv">items</span> <span class="o">|</span> <span class="nf">group_by</span><span class="o">(</span><span class="s1">&#39;category&#39;</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="filter-by">
+<h3><code class="docutils literal notranslate"><span class="pre">filter_by</span></code><a class="headerlink" href="#filter-by" title="Link to this heading"></a></h3>
+<p>Filters items by matching a key to a value.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">filtered</span> <span class="o">=</span> <span class="nv">items</span> <span class="o">|</span> <span class="nf">filter_by</span><span class="o">(</span><span class="s1">&#39;status&#39;</span><span class="o">,</span> <span class="s1">&#39;active&#39;</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="extract-field">
+<h3><code class="docutils literal notranslate"><span class="pre">extract_field</span></code><a class="headerlink" href="#extract-field" title="Link to this heading"></a></h3>
+<p>Extracts a specific field from each item in a sequence.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">names</span> <span class="o">=</span> <span class="nv">items</span> <span class="o">|</span> <span class="nf">extract_field</span><span class="o">(</span><span class="s1">&#39;name&#39;</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="unique">
+<h3><code class="docutils literal notranslate"><span class="pre">unique</span></code><a class="headerlink" href="#unique" title="Link to this heading"></a></h3>
+<p>Returns unique items from a sequence.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">unique_items</span> <span class="o">=</span> <span class="nv">items</span> <span class="o">|</span> <span class="nf">unique</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="frequency">
+<h3><code class="docutils literal notranslate"><span class="pre">frequency</span></code><a class="headerlink" href="#frequency" title="Link to this heading"></a></h3>
+<p>Computes frequency distribution of items.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">freq</span> <span class="o">=</span> <span class="nv">items</span> <span class="o">|</span> <span class="nf">frequency</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="aggregate">
+<h3><code class="docutils literal notranslate"><span class="pre">aggregate</span></code><a class="headerlink" href="#aggregate" title="Link to this heading"></a></h3>
+<p>Computes aggregate statistics (count, sum, avg, min, max) for numeric values.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">stats</span> <span class="o">=</span> <span class="nv">numbers</span> <span class="o">|</span> <span class="nf">aggregate</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="table-formatting-filters">
+<h2>Table Formatting Filters<a class="headerlink" href="#table-formatting-filters" title="Link to this heading"></a></h2>
+<section id="table">
+<h3><code class="docutils literal notranslate"><span class="pre">table</span></code><a class="headerlink" href="#table" title="Link to this heading"></a></h3>
+<p>Formats data as a table.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">table</span> <span class="o">=</span> <span class="nv">data</span> <span class="o">|</span> <span class="nf">table</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="align-table">
+<h3><code class="docutils literal notranslate"><span class="pre">align_table</span></code><a class="headerlink" href="#align-table" title="Link to this heading"></a></h3>
+<p>Aligns columns in a table.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">aligned</span> <span class="o">=</span> <span class="nv">table</span> <span class="o">|</span> <span class="nf">align_table</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="dict-to-table">
+<h3><code class="docutils literal notranslate"><span class="pre">dict_to_table</span></code><a class="headerlink" href="#dict-to-table" title="Link to this heading"></a></h3>
+<p>Converts a dictionary to a table format.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">table</span> <span class="o">=</span> <span class="nv">dict_data</span> <span class="o">|</span> <span class="nf">dict_to_table</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="list-to-table">
+<h3><code class="docutils literal notranslate"><span class="pre">list_to_table</span></code><a class="headerlink" href="#list-to-table" title="Link to this heading"></a></h3>
+<p>Converts a list to a table format.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">table</span> <span class="o">=</span> <span class="nv">list_data</span> <span class="o">|</span> <span class="nf">list_to_table</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="auto-table">
+<h3><code class="docutils literal notranslate"><span class="pre">auto_table</span></code><a class="headerlink" href="#auto-table" title="Link to this heading"></a></h3>
+<p>Automatically formats data as a table based on its type.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">table</span> <span class="o">=</span> <span class="nv">data</span> <span class="o">|</span> <span class="nf">auto_table</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="code-processing-filters">
+<h2>Code Processing Filters<a class="headerlink" href="#code-processing-filters" title="Link to this heading"></a></h2>
+<section id="format-code">
+<h3><code class="docutils literal notranslate"><span class="pre">format_code</span></code><a class="headerlink" href="#format-code" title="Link to this heading"></a></h3>
+<p>Formats code with syntax highlighting.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">formatted</span> <span class="o">=</span> <span class="nv">code</span> <span class="o">|</span> <span class="nf">format_code</span><span class="o">(</span><span class="s1">&#39;python&#39;</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="strip-comments">
+<h3><code class="docutils literal notranslate"><span class="pre">strip_comments</span></code><a class="headerlink" href="#strip-comments" title="Link to this heading"></a></h3>
+<p>Removes comments from code.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">clean_code</span> <span class="o">=</span> <span class="nv">code</span> <span class="o">|</span> <span class="nf">strip_comments</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="special-character-handling">
+<h2>Special Character Handling<a class="headerlink" href="#special-character-handling" title="Link to this heading"></a></h2>
+<section id="escape-special">
+<h3><code class="docutils literal notranslate"><span class="pre">escape_special</span></code><a class="headerlink" href="#escape-special" title="Link to this heading"></a></h3>
+<p>Escapes special characters in text.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">escaped</span> <span class="o">=</span> <span class="nv">text</span> <span class="o">|</span> <span class="nf">escape_special</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="template-globals">
+<h2>Template Globals<a class="headerlink" href="#template-globals" title="Link to this heading"></a></h2>
+<section id="estimate-tokens">
+<h3><code class="docutils literal notranslate"><span class="pre">estimate_tokens</span></code><a class="headerlink" href="#estimate-tokens" title="Link to this heading"></a></h3>
+<p>Estimates the number of tokens in text using model-specific encodings.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">token_count</span> <span class="o">=</span> <span class="nv">estimate_tokens</span><span class="o">(</span><span class="nv">text</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+<p>The function uses tiktoken with model-specific encodings:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">o200k_base</span></code> for GPT-4o, O1, and O3 models</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cl100k_base</span></code> for other models</p></li>
+</ul>
+<p>It includes:</p>
+<ul class="simple">
+<li><p>Message formatting overhead (+4 tokens)</p></li>
+<li><p>Graceful fallback to word count if token estimation fails</p></li>
+</ul>
+</section>
+<section id="format-json">
+<h3><code class="docutils literal notranslate"><span class="pre">format_json</span></code><a class="headerlink" href="#format-json" title="Link to this heading"></a></h3>
+<p>Formats JSON with indentation and proper string conversion.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">formatted</span> <span class="o">=</span> <span class="nv">format_json</span><span class="o">(</span><span class="nv">data</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="now">
+<h3><code class="docutils literal notranslate"><span class="pre">now</span></code><a class="headerlink" href="#now" title="Link to this heading"></a></h3>
+<p>Returns the current datetime.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">current_time</span> <span class="o">=</span> <span class="nv">now</span><span class="o">()</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="debug">
+<h3><code class="docutils literal notranslate"><span class="pre">debug</span></code><a class="headerlink" href="#debug" title="Link to this heading"></a></h3>
+<p>Prints debug information during template rendering.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{{</span> <span class="nv">debug</span><span class="o">(</span><span class="nv">variable</span><span class="o">)</span> <span class="cp">}}</span>
+</pre></div>
+</div>
+</section>
+<section id="type-of">
+<h3><code class="docutils literal notranslate"><span class="pre">type_of</span></code><a class="headerlink" href="#type-of" title="Link to this heading"></a></h3>
+<p>Returns the type name of an object.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">type_name</span> <span class="o">=</span> <span class="nv">type_of</span><span class="o">(</span><span class="nv">variable</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="dir-of">
+<h3><code class="docutils literal notranslate"><span class="pre">dir_of</span></code><a class="headerlink" href="#dir-of" title="Link to this heading"></a></h3>
+<p>Returns a list of attributes for an object.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">attributes</span> <span class="o">=</span> <span class="nv">dir_of</span><span class="o">(</span><span class="nv">object</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="len-of">
+<h3><code class="docutils literal notranslate"><span class="pre">len_of</span></code><a class="headerlink" href="#len-of" title="Link to this heading"></a></h3>
+<p>Returns the length of an object if available.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">length</span> <span class="o">=</span> <span class="nv">len_of</span><span class="o">(</span><span class="nv">sequence</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="validate-json">
+<h3><code class="docutils literal notranslate"><span class="pre">validate_json</span></code><a class="headerlink" href="#validate-json" title="Link to this heading"></a></h3>
+<p>Validates JSON data against a schema.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">is_valid</span> <span class="o">=</span> <span class="nv">validate_json</span><span class="o">(</span><span class="nv">data</span><span class="o">,</span> <span class="nv">schema</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="format-error">
+<h3><code class="docutils literal notranslate"><span class="pre">format_error</span></code><a class="headerlink" href="#format-error" title="Link to this heading"></a></h3>
+<p>Formats error messages consistently.</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">set</span> <span class="nv">error_msg</span> <span class="o">=</span> <span class="nv">format_error</span><span class="o">(</span><span class="nv">error</span><span class="o">)</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="templates.html" class="btn btn-neutral float-left" title="Template Creation Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Yaniv Golan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

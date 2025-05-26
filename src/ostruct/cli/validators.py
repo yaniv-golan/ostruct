@@ -38,6 +38,68 @@ def validate_name_path_pair(
     return result
 
 
+def validate_file_routing_spec(
+    ctx: click.Context,
+    param: click.Parameter,
+    value: List[str],
+) -> List[Tuple[str, Union[str, Path]]]:
+    """Validate file routing specifications supporting multiple syntaxes.
+
+    Supports two syntaxes currently:
+    - Simple path: -ft config.yaml (auto-generates variable name)
+    - Equals syntax: -ft code_file=src/main.py (custom variable name)
+
+    Note: Two-argument syntax (-ft name path) requires special handling at the CLI level
+    and is not supported in this validator due to Click's argument processing.
+
+    Args:
+        ctx: Click context
+        param: Click parameter
+        value: List of file specifications from multiple options
+
+    Returns:
+        List of (variable_name, path) tuples where variable_name=None means auto-generate
+
+    Raises:
+        click.BadParameter: If validation fails
+    """
+    if not value:
+        return []
+
+    result: List[Tuple[str, Union[str, Path]]] = []
+
+    for spec in value:
+        if "=" in spec:
+            # Equals syntax: -ft code_file=src/main.py
+            if spec.count("=") != 1:
+                raise click.BadParameter(
+                    f"Invalid format '{spec}'. Use name=path or just path."
+                )
+            name, path = spec.split("=", 1)
+            if not name.strip():
+                raise click.BadParameter(f"Empty variable name in '{spec}'")
+            if not path.strip():
+                raise click.BadParameter(f"Empty path in '{spec}'")
+            name = name.strip()
+            path = path.strip()
+            if not name.isidentifier():
+                raise click.BadParameter(f"Invalid variable name: {name}")
+            if not Path(path).exists():
+                raise click.BadParameter(f"File not found: {path}")
+            result.append((name, Path(path)))
+        else:
+            # Simple path: -ft config.yaml
+            path = spec.strip()
+            if not path:
+                raise click.BadParameter("Empty file path")
+            if not Path(path).exists():
+                raise click.BadParameter(f"File not found: {path}")
+            # Mark as auto-name with None, will be processed later
+            result.append((None, Path(path)))
+
+    return result
+
+
 def validate_variable(
     ctx: click.Context, param: click.Parameter, value: Optional[List[str]]
 ) -> Optional[List[Tuple[str, str]]]:

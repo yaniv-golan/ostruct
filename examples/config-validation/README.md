@@ -1,15 +1,26 @@
 # Configuration Validation & Analysis
 
-This use case demonstrates how to validate and analyze configuration files (JSON, YAML) across multiple environments and projects using the OpenAI Structured CLI. It goes beyond traditional schema validation by understanding semantic relationships between configs, suggesting improvements, and providing intelligent feedback.
+This use case demonstrates how to validate and analyze configuration files (JSON, YAML) across multiple environments and projects using ostruct CLI with both traditional and enhanced multi-tool capabilities. It goes beyond traditional schema validation by understanding semantic relationships between configs, suggesting improvements, and providing intelligent feedback.
+
+## Problem This Solves
+
+Configuration files are often complex, environment-specific, and prone to subtle errors that can cause production failures. This validation system goes beyond simple schema checking to understand semantic relationships, detect security issues, and provide intelligent recommendations. It helps ensure configuration consistency across environments and catches issues before deployment.
 
 ## Features
 
+### Core Validation
 - Multi-file configuration validation
 - Cross-environment consistency checking
 - Semantic understanding of config values
 - Security and best practice recommendations
 - Intelligent error messages and fix suggestions
 - Support for JSON and YAML formats
+
+### Enhanced Multi-Tool Integration
+- **File Search**: Search documentation for configuration best practices
+- **Code Interpreter**: Validate configuration logic and dependencies
+- **MCP Servers**: Connect to external services for additional context
+- **Explicit File Routing**: Optimize processing through targeted file routing
 
 ## Directory Structure
 
@@ -39,6 +50,10 @@ This use case demonstrates how to validate and analyze configuration files (JSON
 ```
 
 ## Usage
+
+### Traditional Usage (Unchanged)
+
+These commands work exactly as before:
 
 1. **Basic Usage**:
 
@@ -154,6 +169,98 @@ This use case demonstrates how to validate and analyze configuration files (JSON
      --output-file basic_validation.json
    ```
 
+### Enhanced Multi-Tool Usage
+
+#### Configuration Analysis with Documentation Context
+Upload configuration files for analysis while searching documentation for best practices:
+
+```bash
+# Configuration analysis with documentation search
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -ft examples/basic/dev.yaml \
+  -ft examples/basic/prod.yaml \
+  -fs docs/ \
+  --sys-file prompts/system.txt \
+  -V service_name=basic-app \
+  -V cross_env_check=true
+
+# Multi-environment validation with explicit routing
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -ft examples/intermediate/ \
+  -fs infrastructure_docs/ \
+  --sys-file prompts/system.txt \
+  -V environment=all \
+  --output-file multi_env_validation.json
+```
+
+#### Code Interpreter for Logic Validation
+Use Code Interpreter to validate configuration logic and dependencies:
+
+```bash
+# Configuration with dependency validation
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -fc examples/advanced/services/ \
+  -ft examples/advanced/shared/ \
+  --sys-file prompts/system.txt \
+  -V service_name=microservices \
+  -V strict_mode=true
+
+# Complex configuration analysis
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -fc config_templates/ \
+  -fc validation_scripts/ \
+  -fs documentation/ \
+  --sys-file prompts/system.txt \
+  --output-file comprehensive_validation.json
+```
+
+#### MCP Server Integration for Repository Context
+Connect to MCP servers to access repository documentation and standards:
+
+```bash
+# Configuration validation with repository context
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -ft examples/basic/ \
+  --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
+  --sys-file prompts/system.txt \
+  -V service_name=basic-app \
+  -V repo_owner=your-org \
+  -V repo_name=your-repo
+
+# Multi-tool analysis with external documentation
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -fc config_files/ \
+  -fs local_docs/ \
+  --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
+  --sys-file prompts/system.txt \
+  --output-file enhanced_validation.json
+```
+
+#### Configuration-Driven Workflows
+Use persistent configuration for consistent validation:
+
+```bash
+# Create ostruct.yaml for config validation
+cat > ostruct.yaml << EOF
+models:
+  default: gpt-4o
+tools:
+  file_search:
+    max_results: 20
+mcp:
+  deepwiki: "https://mcp.deepwiki.com/sse"
+operation:
+  timeout_minutes: 15
+limits:
+  max_cost_per_run: 3.00
+EOF
+
+# Run with configuration
+ostruct --config ostruct.yaml run prompts/task.j2 schemas/validation_result.json \
+  -ft config/ \
+  -fs docs/
+```
+
 ## Example Files
 
 1. **Basic Configuration**
@@ -220,6 +327,52 @@ config_validation:
 - OpenAI Structured CLI installed
 - OpenAI API key configured
 - Configuration files to validate (YAML/JSON)
+
+## Template System Prompt Sharing
+
+The ostruct template system supports sharing system prompts between templates using the `include_system:` feature. This allows you to maintain common system prompt content in shared files while adding template-specific instructions.
+
+### Example: Shared System Prompt
+
+Create a shared system prompt file:
+
+```bash
+# Create shared prompt
+cat > prompts/shared_base.txt << EOF
+You are an expert configuration analyst with deep knowledge of:
+- YAML and JSON configuration formats
+- Environment-specific deployment patterns
+- Security best practices for configuration management
+- Cross-service dependency validation
+
+Always provide actionable recommendations and specific examples.
+EOF
+```
+
+Then reference it in your template with additional context:
+
+```yaml
+---
+model: gpt-4o
+include_system: shared_base.txt
+system_prompt: |
+  For this configuration validation task, focus specifically on:
+  - Database connection security
+  - Environment variable management
+  - Secret handling best practices
+
+  Pay special attention to production vs development differences.
+---
+
+# Configuration Validation Task
+Analyze the provided configuration files...
+```
+
+This approach allows teams to:
+- **Share expertise**: Common system prompts across multiple templates
+- **Maintain consistency**: Standardized instructions and tone
+- **Add specificity**: Template-specific guidance while inheriting shared knowledge
+- **Simplify maintenance**: Update shared prompts in one place
 
 ## Limitations
 

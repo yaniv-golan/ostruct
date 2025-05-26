@@ -4,10 +4,10 @@ ostruct-cli
 ``ostruct-cli`` is a command-line tool for generating structured output from OpenAI models. It combines the power of OpenAI's language models with the reliability of JSON Schema validation to ensure consistent, well-structured responses.
 
 Key Features
------------
+============
 
 - **Schema-First Approach**: Define your output structure using JSON Schema (validation is always performed automatically)
-- **Template-Based Input**: Use Jinja2 templates with support for YAML frontmatter and system prompts
+- **Template-Based Input**: Use Jinja2 templates with support for YAML frontmatter, system prompts, and shared system prompt includes
 - **File Processing**: Handle single files, multiple files, or entire directories with thread-safe operations
 - **Cross-Platform**: Robust support for Windows, macOS, and Linux with consistent path handling
 - **Security-Focused**: Safe file access with explicit directory permissions and enhanced error handling
@@ -16,7 +16,7 @@ Key Features
 - **Model Support**: Optimized handling for both streaming and non-streaming models
 
 Quick Start
-----------
+-----------
 
 1. Install the package:
 
@@ -64,18 +64,42 @@ Quick Start
         -m gpt-4o
 
 Documentation
-------------
+=============
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: 📖 User Guides:
 
-   cli
-   templates
-   template_filters
+   user-guide/introduction
+   user-guide/quickstart
+   user-guide/cli_reference
+   user-guide/template_authoring
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 🤖 Automation:
+
+   automate/ci_cd
+   automate/containers
+   automate/scripting_patterns
+   automate/cost_control
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 🔒 Security:
+
+   security/overview
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 🛠️ Contributing:
+
+   contribute/setting_up
+   contribute/style_guide
+   contribute/how_to_contribute
 
 Why Structured Output?
--------------------
+----------------------
 
 Structured output offers several advantages:
 
@@ -85,7 +109,7 @@ Structured output offers several advantages:
 4. **Validation**: Catch and handle invalid responses before they reach your application
 
 Handling Large Files
-------------------
+--------------------
 
 When working with large files, the CLI provides several features to help:
 
@@ -97,7 +121,7 @@ When working with large files, the CLI provides several features to help:
 See the CLI documentation for detailed guidance on handling large files.
 
 Requirements
------------
+------------
 
 - Python 3.10 or higher
 - OpenAI API key
@@ -112,7 +136,7 @@ The CLI writes logs to the following files in ``~/.ostruct/logs/``:
 - ``openai_stream.log``: OpenAI streaming operations logs
 
 Logging Configuration
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 You can configure logging behavior through:
 
@@ -141,10 +165,10 @@ Support
 -------
 
 - GitHub Issues: https://github.com/yaniv-golan/ostruct/issues
-- Documentation: https://ostruct-cli.readthedocs.io/
+- Documentation: https://ostruct.readthedocs.io/
 
 CLI Interface
-------------
+-------------
 
 The CLI revolves around a single subcommand called ``run``. Basic usage:
 
@@ -153,7 +177,7 @@ The CLI revolves around a single subcommand called ``run``. Basic usage:
    ostruct run <TASK_TEMPLATE> <SCHEMA_FILE> [OPTIONS]
 
 File & Directory Inputs
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``-f <NAME> <PATH>``: Map a single file to a variable name
 - ``-d <NAME> <DIR>``: Map a directory to a variable name
@@ -164,13 +188,13 @@ File & Directory Inputs
 - ``--allowed-dir-file FILE``: File containing allowed directory paths
 
 Variables
-~~~~~~~~
+~~~~~~~~~
 
 - ``-V name=value``: Define a simple string variable
 - ``-J name='{"key":"value"}'``: Define a JSON variable
 
 Model Parameters
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 - ``-m, --model MODEL``: Select the OpenAI model (supported: gpt-4o, o1, o3-mini)
 - ``--temperature FLOAT``: Set sampling temperature (0.0-2.0)
@@ -181,26 +205,26 @@ Model Parameters
 - ``--reasoning-effort [low|medium|high]``: Control model reasoning effort
 
 System Prompt
-~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 - ``--sys-prompt TEXT``: Provide system prompt directly
 - ``--sys-file FILE``: Load system prompt from file
 - ``--ignore-task-sysprompt``: Ignore system prompt in template frontmatter
 
 API Configuration
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 - ``--api-key KEY``: OpenAI API key (defaults to OPENAI_API_KEY env var)
 - ``--timeout FLOAT``: API timeout in seconds (default: 60.0)
 
 Output Control
-~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 - ``--output-file FILE``: Write output to file instead of stdout
 - ``--dry-run``: Validate and render template without making API calls
 
 Debug & Progress
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 - ``--debug-validation``: Show detailed schema validation debugging
 - ``--debug-openai-stream``: Enable low-level debug output for OpenAI streaming

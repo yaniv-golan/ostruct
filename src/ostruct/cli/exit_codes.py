@@ -16,3 +16,4 @@ class ExitCode(IntEnum):
     UNKNOWN_ERROR = 7
     SECURITY_ERROR = 8
     FILE_ERROR = 9
+    OPERATION_TIMEOUT = 10

@@ -1,6 +1,7 @@
 """Command-line interface for making structured OpenAI API calls."""
 
 import asyncio
+import copy
 import json
 import logging
 import os
@@ -32,22 +33,13 @@ import click
 import jinja2
 import yaml
 from openai import AsyncOpenAI
-from openai_structured.client import (
-    async_openai_structured_stream,
-    supports_structured_output,
-)
-from openai_structured.errors import (
-    APIResponseError,
-    EmptyResponseError,
-    InvalidResponseFormatError,
+from openai_model_registry import (
     ModelNotSupportedError,
-    ModelVersionError,
-    OpenAIClientError,
-    StreamBufferError,
-)
-from openai_structured.model_registry import (
     ModelRegistry,
-    RegistryUpdateStatus,
+    ModelRegistryError,
+    ModelVersionError,
+    ParameterNotSupportedError,
+    ParameterValidationError,
 )
 from pydantic import AnyUrl, BaseModel, EmailStr, Field
 from pydantic.fields import FieldInfo as FieldInfoType
@@ -59,7 +51,11 @@ from ostruct.cli.click_options import all_options
 from ostruct.cli.exit_codes import ExitCode
 
 from .. import __version__  # noqa: F401 - Used in package metadata
+from .code_interpreter import CodeInterpreterManager
+from .config import OstructConfig
+from .cost_estimation import calculate_cost_estimate, format_cost_breakdown
 from .errors import (
+    APIErrorMapper,
     CLIError,
     DirectoryNotFoundError,
     InvalidJSONError,
@@ -75,9 +71,17 @@ from .errors import (
     VariableNameError,
     VariableValueError,
 )
+from .explicit_file_processor import ExplicitFileProcessor
+from .file_search import FileSearchManager
 from .file_utils import FileInfoList, collect_files
+from .mcp_integration import MCPConfiguration, MCPServerManager
 from .model_creation import _create_enum_type, create_dynamic_model
 from .path_utils import validate_path_mapping
+from .progress_reporting import (
+    configure_progress_reporter,
+    get_progress_reporter,
+    report_success,
+)
 from .registry_updates import get_update_notification
 from .security import SecurityManager
 from .serialization import LogSerializer
@@ -88,6 +92,81 @@ from .template_utils import (
     validate_json_schema,
 )
 from .token_utils import estimate_tokens_with_encoding
+from .token_validation import TokenLimitValidator
+from .unattended_operation import (
+    UnattendedCompatibilityValidator,
+    UnattendedOperationManager,
+)
+
+
+def make_strict(obj: Any) -> None:
+    """Transform Pydantic schema for Responses API strict mode.
+
+    This function recursively adds 'additionalProperties: false' to all object types
+    in a JSON schema to make it compatible with OpenAI's strict mode requirement.
+
+    Args:
+        obj: The schema object to transform (modified in-place)
+    """
+    if isinstance(obj, dict):
+        if obj.get("type") == "object" and "additionalProperties" not in obj:
+            obj["additionalProperties"] = False
+        for value in obj.values():
+            make_strict(value)
+    elif isinstance(obj, list):
+        for item in obj:
+            make_strict(item)
+
+
+# Model Registry Integration - Using external openai-model-registry library
+
+
+# For compatibility with existing code
+def supports_structured_output(model: str) -> bool:
+    """Check if model supports structured output."""
+    try:
+        registry = ModelRegistry.get_instance()
+        capabilities = registry.get_capabilities(model)
+        return getattr(capabilities, "supports_structured_output", True)
+    except Exception:
+        # Default to True for backward compatibility
+        return True
+
+
+class RegistryUpdateStatus:
+    """Status constants for registry updates."""
+
+    UPDATE_AVAILABLE = "UPDATE_AVAILABLE"
+    ALREADY_CURRENT = "ALREADY_CURRENT"
+
+
+# Code Interpreter Integration (T2.2) - File upload and code execution
+# Error Mapping (T3.1) - OpenAI SDK error mapping
+# Explicit File Routing (T2.4) - Tool-specific file routing system
+# File Search Integration (T2.3) - Vector store and retrieval
+# MCP Integration (T2.1) - Model Context Protocol server support
+
+
+# Temporary error classes (to be replaced in T1.2)
+class APIResponseError(Exception):
+    pass
+
+
+class EmptyResponseError(Exception):
+    pass
+
+
+class InvalidResponseFormatError(Exception):
+    pass
+
+
+class OpenAIClientError(Exception):
+    pass
+
+
+class StreamBufferError(Exception):
+    pass
+
 
 # Constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
@@ -161,12 +240,8 @@ def create_template_context(
 class CLIParams(TypedDict, total=False):
     """Type-safe CLI parameters."""
 
-    files: List[
-        Tuple[str, str]
-    ]  # List of (name, path) tuples from Click's nargs=2
-    dir: List[
-        Tuple[str, str]
-    ]  # List of (name, dir) tuples from Click's nargs=2
+    files: List[Tuple[str, str]]  # List of (name, path) tuples from Click's nargs=2
+    dir: List[Tuple[str, str]]  # List of (name, dir) tuples from Click's nargs=2
     patterns: List[
         Tuple[str, str]
     ]  # List of (name, pattern) tuples from Click's nargs=2
@@ -199,13 +274,71 @@ class CLIParams(TypedDict, total=False):
     task_file: Optional[str]
     task: Optional[str]
     schema_file: str
+    mcp_servers: List[str]
+    mcp_allowed_tools: List[str]
+    mcp_require_approval: str
+    mcp_headers: Optional[str]
+    code_interpreter_files: List[str]
+    code_interpreter_dirs: List[str]
+    code_interpreter_download_dir: str
+    code_interpreter_cleanup: bool
+    file_search_files: List[str]
+    file_search_dirs: List[str]
+    file_search_vector_store_name: str
+    file_search_cleanup: bool
+    file_search_retry_count: int
+    file_search_timeout: float
+    template_files: List[str]
+    template_dirs: List[str]
+    template_file_aliases: List[
+        Tuple[str, str]
+    ]  # List of (name, path) tuples from --fta
+    code_interpreter_file_aliases: List[
+        Tuple[str, str]
+    ]  # List of (name, path) tuples from --fca
+    file_search_file_aliases: List[
+        Tuple[str, str]
+    ]  # List of (name, path) tuples from --fsa
+    tool_files: List[Tuple[str, str]]  # List of (tool, path) tuples from --file-for
 
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Configure openai_structured logging based on debug flag
-openai_logger = logging.getLogger("openai_structured")
+
+def _generate_template_variable_name(file_path: str) -> str:
+    """Generate a template variable name from a file path.
+
+    Converts filename to a valid template variable name by:
+    1. Taking the full filename (with extension)
+    2. Replacing dots and other special characters with underscores
+    3. Ensuring it starts with a letter or underscore
+
+    Examples:
+        data.csv -> data_csv
+        data.json -> data_json
+        my-file.txt -> my_file_txt
+        123data.xml -> _123data_xml
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Valid template variable name
+    """
+    import re
+
+    filename = Path(file_path).name
+    # Replace special characters with underscores
+    var_name = re.sub(r"[^a-zA-Z0-9_]", "_", filename)
+    # Ensure it starts with letter or underscore
+    if var_name and var_name[0].isdigit():
+        var_name = "_" + var_name
+    return var_name
+
+
+# Configure OpenAI SDK logging
+openai_logger = logging.getLogger("openai")
 openai_logger.setLevel(logging.DEBUG)  # Allow all messages through to handlers
 openai_logger.propagate = False  # Prevent propagation to root logger
 
@@ -213,12 +346,10 @@ openai_logger.propagate = False  # Prevent propagation to root logger
 for handler in openai_logger.handlers:
     openai_logger.removeHandler(handler)
 
-# Create a file handler for openai_structured logger that captures all levels
+# Create a file handler for OpenAI SDK logger that captures all levels
 log_dir = os.path.expanduser("~/.ostruct/logs")
 os.makedirs(log_dir, exist_ok=True)
-openai_file_handler = logging.FileHandler(
-    os.path.join(log_dir, "openai_stream.log")
-)
+openai_file_handler = logging.FileHandler(os.path.join(log_dir, "openai_stream.log"))
 openai_file_handler.setLevel(logging.DEBUG)  # Always capture debug in file
 openai_file_handler.setFormatter(
     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -226,9 +357,7 @@ openai_file_handler.setFormatter(
 openai_logger.addHandler(openai_file_handler)
 
 # Create a file handler for the main logger that captures all levels
-ostruct_file_handler = logging.FileHandler(
-    os.path.join(log_dir, "ostruct.log")
-)
+ostruct_file_handler = logging.FileHandler(os.path.join(log_dir, "ostruct.log"))
 ostruct_file_handler.setLevel(logging.DEBUG)  # Always capture debug in file
 ostruct_file_handler.setFormatter(
     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -237,9 +366,7 @@ logger.addHandler(ostruct_file_handler)
 
 
 # Type aliases
-FieldType = (
-    Any  # Changed from Type[Any] to allow both concrete types and generics
-)
+FieldType = Any  # Changed from Type[Any] to allow both concrete types and generics
 FieldDefinition = Tuple[FieldType, FieldInfoType]
 ModelType = TypeVar("ModelType", bound=BaseModel)
 ItemType: TypeAlias = Type[BaseModel]
@@ -286,10 +413,7 @@ def _get_type_with_constraints(
             return (List[Any], Field(**field_kwargs))
 
         # Create nested model for object items
-        if (
-            isinstance(items_schema, dict)
-            and items_schema.get("type") == "object"
-        ):
+        if isinstance(items_schema, dict) and items_schema.get("type") == "object":
             array_item_model = create_dynamic_model(
                 items_schema,
                 base_name=f"{base_name}_{field_name}_Item",
@@ -422,7 +546,7 @@ def validate_token_limits(
     model: str, total_tokens: int, max_token_limit: Optional[int] = None
 ) -> None:
     """Validate token counts against model limits."""
-    registry = ModelRegistry()
+    registry = ModelRegistry.get_instance()
     capabilities = registry.get_capabilities(model)
     context_limit = capabilities.context_window
     output_limit = (
@@ -434,8 +558,9 @@ def validate_token_limits(
     # Check if total tokens exceed context window
     if total_tokens >= context_limit:
         raise ValueError(
-            f"Total tokens ({total_tokens:,}) exceed model's context window limit "
-            f"of {context_limit:,} tokens"
+            f"Total tokens ({total_tokens:,}) exceed {model}'s context window "
+            f"of {context_limit:,} tokens. Consider using a model with a larger "
+            f"context window or reducing input size."
         )
 
     # Check if there's enough room for output tokens
@@ -454,6 +579,7 @@ def process_system_prompt(
     template_context: Dict[str, Any],
     env: jinja2.Environment,
     ignore_task_sysprompt: bool = False,
+    template_path: Optional[str] = None,
 ) -> str:
     """Process system prompt from various sources.
 
@@ -464,6 +590,7 @@ def process_system_prompt(
         template_context: Template context for rendering
         env: Jinja2 environment
         ignore_task_sysprompt: Whether to ignore system prompt in task template
+        template_path: Optional path to template file for include_system resolution
 
     Returns:
         The final system prompt string
@@ -473,39 +600,43 @@ def process_system_prompt(
         FileNotFoundError: If a prompt file does not exist
         PathSecurityError: If a prompt file path violates security constraints
     """
-    # Default system prompt
-    default_prompt = "You are a helpful assistant."
-
     # Check for conflicting arguments
     if system_prompt is not None and system_prompt_file is not None:
         raise SystemPromptError(
             "Cannot specify both --system-prompt and --system-prompt-file"
         )
 
-    # Try to get system prompt from CLI argument first
+    # CLI system prompt takes precedence and stops further processing
     if system_prompt_file is not None:
         try:
-            name, path = validate_path_mapping(
-                f"system_prompt={system_prompt_file}"
-            )
+            name, path = validate_path_mapping(f"system_prompt={system_prompt_file}")
             with open(path, "r", encoding="utf-8") as f:
-                system_prompt = f.read().strip()
+                cli_system_prompt = f.read().strip()
         except OstructFileNotFoundError as e:
-            raise SystemPromptError(
-                f"Failed to load system prompt file: {e}"
-            ) from e
+            raise SystemPromptError(f"Failed to load system prompt file: {e}") from e
         except PathSecurityError as e:
             raise SystemPromptError(f"Invalid system prompt file: {e}") from e
 
-    if system_prompt is not None:
-        # Render system prompt with template context
         try:
-            template = env.from_string(system_prompt)
-            return cast(str, template.render(**template_context).strip())
+            template = env.from_string(cli_system_prompt)
+            return template.render(**template_context).strip()
         except jinja2.TemplateError as e:
             raise SystemPromptError(f"Error rendering system prompt: {e}")
 
-    # If not ignoring task template system prompt, try to extract it
+    elif system_prompt is not None:
+        try:
+            template = env.from_string(system_prompt)
+            return template.render(**template_context).strip()
+        except jinja2.TemplateError as e:
+            raise SystemPromptError(f"Error rendering system prompt: {e}")
+
+    # Build message parts from template in order: auto-stub, include_system, system_prompt
+    message_parts = []
+
+    # 1. Auto-stub (default system prompt)
+    message_parts.append("You are a helpful assistant.")
+
+    # 2. Template-based system prompts (include_system and system_prompt)
     if not ignore_task_sysprompt:
         try:
             # Extract YAML frontmatter
@@ -515,41 +646,48 @@ def process_system_prompt(
                     frontmatter = task_template[4:end]
                     try:
                         metadata = yaml.safe_load(frontmatter)
-                        if (
-                            isinstance(metadata, dict)
-                            and "system_prompt" in metadata
-                        ):
-                            system_prompt = str(metadata["system_prompt"])
-                            # Render system prompt with template context
-                            try:
-                                template = env.from_string(system_prompt)
-                                return cast(
-                                    str,
-                                    template.render(
-                                        **template_context
-                                    ).strip(),
-                                )
-                            except jinja2.TemplateError as e:
-                                raise SystemPromptError(
-                                    f"Error rendering system prompt: {e}"
-                                )
+                        if isinstance(metadata, dict):
+                            # 2a. include_system: from template
+                            inc = metadata.get("include_system")
+                            if inc and template_path:
+                                inc_path = (Path(template_path).parent / inc).resolve()
+                                if not inc_path.is_file():
+                                    raise click.ClickException(
+                                        f"include_system file not found: {inc}"
+                                    )
+                                include_txt = inc_path.read_text(encoding="utf-8")
+                                message_parts.append(include_txt)
+
+                            # 2b. system_prompt: from template
+                            if "system_prompt" in metadata:
+                                template_system_prompt = str(metadata["system_prompt"])
+                                try:
+                                    template = env.from_string(template_system_prompt)
+                                    message_parts.append(
+                                        template.render(**template_context).strip()
+                                    )
+                                except jinja2.TemplateError as e:
+                                    raise SystemPromptError(
+                                        f"Error rendering system prompt: {e}"
+                                    )
                     except yaml.YAMLError as e:
-                        raise SystemPromptError(
-                            f"Invalid YAML frontmatter: {e}"
-                        )
+                        raise SystemPromptError(f"Invalid YAML frontmatter: {e}")
 
         except Exception as e:
             raise SystemPromptError(
                 f"Error extracting system prompt from template: {e}"
             )
 
-    # Fall back to default
-    return default_prompt
+    # Return the combined message (remove default if we have other content)
+    if len(message_parts) > 1:
+        # Remove the default auto-stub if we have other content
+        return "\n\n".join(message_parts[1:]).strip()
+    else:
+        # Return just the default
+        return message_parts[0]
 
 
-def validate_variable_mapping(
-    mapping: str, is_json: bool = False
-) -> tuple[str, Any]:
+def validate_variable_mapping(mapping: str, is_json: bool = False) -> tuple[str, Any]:
     """Validate a variable mapping in name=value format."""
     try:
         name, value = mapping.split("=", 1)
@@ -628,9 +766,7 @@ def _validate_path_mapping_internal(
     try:
         if not mapping or "=" not in mapping:
             logger.debug("Invalid mapping format: %r", mapping)
-            raise ValueError(
-                "Invalid path mapping format. Expected format: name=path"
-            )
+            raise ValueError("Invalid path mapping format. Expected format: name=path")
 
         name, path = mapping.split("=", 1)
         logger.debug("Split mapping - name: %r, path: %r", name, path)
@@ -664,9 +800,7 @@ def _validate_path_mapping_internal(
 
         # Check for directory traversal
         try:
-            base_path = (
-                Path.cwd() if base_dir is None else Path(base_dir).resolve()
-            )
+            base_path = Path.cwd() if base_dir is None else Path(base_dir).resolve()
             if not str(resolved_path).startswith(str(base_path)):
                 raise PathSecurityError(
                     f"Path {str(path)!r} resolves to {str(resolved_path)!r} which is outside "
@@ -711,9 +845,7 @@ def _validate_path_mapping_internal(
                     original_path=str(path),
                     expanded_path=str(resolved_path),
                     base_dir=str(security_manager.base_dir),
-                    allowed_dirs=[
-                        str(d) for d in security_manager.allowed_dirs
-                    ],
+                    allowed_dirs=[str(d) for d in security_manager.allowed_dirs],
                     error_logged=True,
                 )
 
@@ -729,9 +861,7 @@ def _validate_path_mapping_internal(
         raise
 
 
-def validate_task_template(
-    task: Optional[str], task_file: Optional[str]
-) -> str:
+def validate_task_template(task: Optional[str], task_file: Optional[str]) -> str:
     """Validate and load a task template.
 
     Args:
@@ -748,14 +878,10 @@ def validate_task_template(
         PathSecurityError: If the template file path violates security constraints
     """
     if task is not None and task_file is not None:
-        raise TaskTemplateVariableError(
-            "Cannot specify both --task and --task-file"
-        )
+        raise TaskTemplateVariableError("Cannot specify both --task and --task-file")
 
     if task is None and task_file is None:
-        raise TaskTemplateVariableError(
-            "Must specify either --task or --task-file"
-        )
+        raise TaskTemplateVariableError("Must specify either --task or --task-file")
 
     template_content: str
     if task_file is not None:
@@ -771,9 +897,7 @@ def validate_task_template(
                 f"Permission denied reading task template file: {task_file}"
             )
         except Exception as e:
-            raise TaskTemplateVariableError(
-                f"Error reading task template file: {e}"
-            )
+            raise TaskTemplateVariableError(f"Error reading task template file: {e}")
     else:
         template_content = task  # type: ignore  # We know task is str here due to the checks above
 
@@ -879,9 +1003,7 @@ def validate_schema_file(
             )
         if verbose:
             logger.debug("Inner schema validated successfully")
-            logger.debug(
-                "Inner schema: %s", json.dumps(inner_schema, indent=2)
-            )
+            logger.debug("Inner schema: %s", json.dumps(inner_schema, indent=2))
     else:
         if verbose:
             logger.debug("No schema wrapper found, using schema as-is")
@@ -929,21 +1051,15 @@ def collect_template_files(
     """
     try:
         # Get files, directories, and patterns from args - they are already tuples from Click's nargs=2
-        files = list(
-            args.get("files", [])
-        )  # List of (name, path) tuples from Click
+        files = list(args.get("files", []))  # List of (name, path) tuples from Click
         dirs = args.get("dir", [])  # List of (name, dir) tuples from Click
-        patterns = args.get(
-            "patterns", []
-        )  # List of (name, pattern) tuples from Click
+        patterns = args.get("patterns", [])  # List of (name, pattern) tuples from Click
 
         # Collect files from directories and patterns
         dir_files = collect_files(
             file_mappings=cast(List[Tuple[str, Union[str, Path]]], files),
             dir_mappings=cast(List[Tuple[str, Union[str, Path]]], dirs),
-            pattern_mappings=cast(
-                List[Tuple[str, Union[str, Path]]], patterns
-            ),
+            pattern_mappings=cast(List[Tuple[str, Union[str, Path]]], patterns),
             dir_recursive=args.get("recursive", False),
             security_manager=security_manager,
         )
@@ -1032,9 +1148,7 @@ def collect_json_variables(args: CLIParams) -> Dict[str, Any]:
             try:
                 # Handle both tuple format and string format
                 if isinstance(mapping, tuple):
-                    name, value = (
-                        mapping  # Value is already parsed by Click validator
-                    )
+                    name, value = mapping  # Value is already parsed by Click validator
                 else:
                     try:
                         name, json_str = mapping.split("=", 1)
@@ -1102,6 +1216,220 @@ async def create_template_context_from_args(
 
         context = create_template_context(
             files=files,
+            variables=variables,
+            json_variables=json_variables,
+            security_manager=security_manager,
+            stdin_content=stdin_content,
+        )
+
+        # Add current model to context
+        context["current_model"] = args["model"]
+
+        return context
+
+    except PathSecurityError:
+        # Let PathSecurityError propagate without wrapping
+        raise
+    except (FileNotFoundError, DirectoryNotFoundError) as e:
+        # Convert FileNotFoundError to OstructFileNotFoundError
+        if isinstance(e, FileNotFoundError):
+            raise OstructFileNotFoundError(str(e))
+        # Let DirectoryNotFoundError propagate
+        raise
+    except Exception as e:
+        # Don't wrap InvalidJSONError
+        if isinstance(e, InvalidJSONError):
+            raise
+        # Check if this is a wrapped security error
+        if isinstance(e.__cause__, PathSecurityError):
+            raise e.__cause__
+        # Wrap other errors
+        raise ValueError(f"Error collecting files: {e}")
+
+
+async def create_template_context_from_routing(
+    args: CLIParams,
+    security_manager: SecurityManager,
+    routing_result: Any,  # ProcessingResult from explicit_file_processor
+) -> Dict[str, Any]:
+    """Create template context from explicit file routing result.
+
+    Args:
+        args: Command line arguments
+        security_manager: Security manager for path validation
+        routing_result: Result from explicit file processor
+
+    Returns:
+        Template context dictionary
+
+    Raises:
+        PathSecurityError: If any file paths violate security constraints
+        VariableError: If variable mappings are invalid
+        ValueError: If file mappings are invalid or files cannot be accessed
+    """
+    try:
+        # Get files from routing result - include ALL routed files in template context
+        template_files = routing_result.validated_files.get("template", [])
+        code_interpreter_files = routing_result.validated_files.get(
+            "code-interpreter", []
+        )
+        file_search_files = routing_result.validated_files.get("file-search", [])
+
+        # Convert to the format expected by create_template_context
+        # For legacy compatibility, we need (name, path) tuples
+        files_tuples = []
+        seen_files = set()  # Track files to avoid duplicates
+
+        # Add template files - handle both auto-naming and custom naming
+        template_file_tuples = args.get("template_files", [])
+        for name_path_tuple in template_file_tuples:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+
+                if custom_name is None:
+                    # Auto-generate name for single-arg form: -ft config.yaml
+                    file_name = _generate_template_variable_name(file_path)
+                else:
+                    # Use custom name for two-arg form: -ft code_file src/main.py
+                    file_name = custom_name
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Add template file aliases (from --fta)
+        template_file_aliases = args.get("template_file_aliases", [])
+        for name_path_tuple in template_file_aliases:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+                file_name = custom_name  # Always use custom name for aliases
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Also process template_files from routing result (for compatibility)
+        for file_path in template_files:
+            file_name = _generate_template_variable_name(file_path)
+            if file_path not in seen_files:
+                files_tuples.append((file_name, file_path))
+                seen_files.add(file_path)
+
+        # Add code interpreter files - handle both auto-naming and custom naming
+        code_interpreter_file_tuples = args.get("code_interpreter_files", [])
+        for name_path_tuple in code_interpreter_file_tuples:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+
+                if custom_name is None:
+                    # Auto-generate name: -fc data.csv
+                    file_name = _generate_template_variable_name(file_path)
+                else:
+                    # Use custom name: -fc dataset data.csv
+                    file_name = custom_name
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Add code interpreter file aliases (from --fca)
+        code_interpreter_file_aliases = args.get("code_interpreter_file_aliases", [])
+        for name_path_tuple in code_interpreter_file_aliases:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+                file_name = custom_name  # Always use custom name for aliases
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Also process code_interpreter_files from routing result (for compatibility)
+        for file_path in code_interpreter_files:
+            file_name = _generate_template_variable_name(file_path)
+            if file_path not in seen_files:
+                files_tuples.append((file_name, file_path))
+                seen_files.add(file_path)
+
+        # Add file search files - handle both auto-naming and custom naming
+        file_search_file_tuples = args.get("file_search_files", [])
+        for name_path_tuple in file_search_file_tuples:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+
+                if custom_name is None:
+                    # Auto-generate name: -fs docs.pdf
+                    file_name = _generate_template_variable_name(file_path)
+                else:
+                    # Use custom name: -fs manual docs.pdf
+                    file_name = custom_name
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Add file search file aliases (from --fsa)
+        file_search_file_aliases = args.get("file_search_file_aliases", [])
+        for name_path_tuple in file_search_file_aliases:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+                file_name = custom_name  # Always use custom name for aliases
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Also process file_search_files from routing result (for compatibility)
+        for file_path in file_search_files:
+            file_name = _generate_template_variable_name(file_path)
+            if file_path not in seen_files:
+                files_tuples.append((file_name, file_path))
+                seen_files.add(file_path)
+
+        # Process files from explicit routing
+        files_dict = collect_files(
+            file_mappings=files_tuples,
+            security_manager=security_manager,
+        )
+
+        # Handle legacy files and directories separately to preserve variable names
+        legacy_files = args.get("files", [])
+        legacy_dirs = args.get("dir", [])
+        legacy_patterns = args.get("patterns", [])
+
+        if legacy_files or legacy_dirs or legacy_patterns:
+            legacy_files_dict = collect_files(
+                file_mappings=legacy_files,
+                dir_mappings=legacy_dirs,
+                pattern_mappings=legacy_patterns,
+                dir_recursive=args.get("recursive", False),
+                security_manager=security_manager,
+            )
+            # Merge legacy results into the main template context
+            files_dict.update(legacy_files_dict)
+
+        # Collect simple variables
+        variables = collect_simple_variables(args)
+
+        # Collect JSON variables
+        json_variables = collect_json_variables(args)
+
+        # Get stdin content if available
+        stdin_content = None
+        try:
+            if not sys.stdin.isatty():
+                stdin_content = sys.stdin.read()
+        except (OSError, IOError):
+            # Skip stdin if it can't be read
+            pass
+
+        context = create_template_context(
+            files=files_dict,
             variables=variables,
             json_variables=json_variables,
             security_manager=security_manager,
@@ -1303,9 +1631,7 @@ def handle_error(e: Exception) -> None:
                         context_str += f"{key.lower()}: {value}\n"
 
             logger.debug(
-                "Error details:\n"
-                f"Type: {type(e).__name__}\n"
-                f"{context_str.rstrip()}"
+                f"Error details:\nType: {type(e).__name__}\n{context_str.rstrip()}"
             )
     elif not isinstance(e, click.UsageError):
         logger.error(msg, exc_info=True)
@@ -1328,25 +1654,26 @@ def validate_model_parameters(model: str, params: Dict[str, Any]) -> None:
         CLIError: If any parameters are not supported by the model
     """
     try:
-        capabilities = ModelRegistry().get_capabilities(model)
+        registry = ModelRegistry.get_instance()
+        capabilities = registry.get_capabilities(model)
+        # This will now raise ModelNotSupportedError for invalid models
         for param_name, value in params.items():
-            try:
-                capabilities.validate_parameter(param_name, value)
-            except OpenAIClientError as e:
-                logger.error(
-                    "Validation failed for model %s: %s", model, str(e)
-                )
-                raise CLIError(
-                    str(e),
-                    exit_code=ExitCode.VALIDATION_ERROR,
-                    context={
-                        "model": model,
-                        "param": param_name,
-                        "value": value,
-                    },
-                )
+            capabilities.validate_parameter(param_name, value)
     except (ModelNotSupportedError, ModelVersionError) as e:
+        # Convert to internal CLIError with helpful message
         logger.error("Model validation failed: %s", str(e))
+        raise CLIError(
+            f"Model validation failed: {str(e)}",
+            exit_code=ExitCode.VALIDATION_ERROR,
+            context={"model": model},
+        )
+    except (
+        ParameterNotSupportedError,
+        ParameterValidationError,
+        ModelRegistryError,
+        ValueError,
+    ) as e:
+        # Handle parameter-specific errors
         raise CLIError(
             str(e),
             exit_code=ExitCode.VALIDATION_ERROR,
@@ -1361,12 +1688,13 @@ async def stream_structured_output(
     user_prompt: str,
     output_schema: Type[BaseModel],
     output_file: Optional[str] = None,
+    tools: Optional[List[dict]] = None,
     **kwargs: Any,
 ) -> AsyncGenerator[BaseModel, None]:
-    """Stream structured output from OpenAI API.
+    """Stream structured output from OpenAI API using Responses API.
 
-    This function follows the guide's recommendation for a focused async streaming function.
-    It handles the core streaming logic and resource cleanup.
+    This function uses the OpenAI Responses API with strict mode schema validation
+    to generate structured output that matches the provided Pydantic model.
 
     Args:
         client: The OpenAI client to use
@@ -1375,6 +1703,7 @@ async def stream_structured_output(
         user_prompt: The user prompt to use
         output_schema: The Pydantic model to validate responses against
         output_file: Optional file to write output to
+        tools: Optional list of tools (e.g., MCP, Code Interpreter) to include
         **kwargs: Additional parameters to pass to the API
 
     Returns:
@@ -1386,7 +1715,7 @@ async def stream_structured_output(
         APIResponseError: If there is an API error
     """
     try:
-        # Check if model supports structured output using openai_structured's function
+        # Check if model supports structured output using our stub function
         if not supports_structured_output(model):
             raise ValueError(
                 f"Model {model} does not support structured output with json_schema response format. "
@@ -1398,7 +1727,7 @@ async def stream_structured_output(
 
         # Handle model-specific parameters
         stream_kwargs = {}
-        registry = ModelRegistry()
+        registry = ModelRegistry.get_instance()
         capabilities = registry.get_capabilities(model)
 
         # Validate and include supported parameters
@@ -1412,30 +1741,129 @@ async def stream_structured_output(
                     f"Parameter {param_name} is not supported by model {model} and will be ignored"
                 )
 
+        # Prepare schema for strict mode
+        schema = output_schema.model_json_schema()
+        strict_schema = copy.deepcopy(schema)
+        make_strict(strict_schema)
+
+        # Generate schema name from model class name
+        schema_name = output_schema.__name__.lower()
+
+        # Combine system and user prompts into a single input string
+        combined_prompt = f"{system_prompt}\n\n{user_prompt}"
+
+        # Prepare API call parameters
+        api_params = {
+            "model": model,
+            "input": combined_prompt,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": schema_name,
+                    "schema": strict_schema,
+                    "strict": True,
+                }
+            },
+            "stream": True,
+            **stream_kwargs,
+        }
+
+        # Add tools if provided
+        if tools:
+            api_params["tools"] = tools
+            logger.debug("Tools: %s", json.dumps(tools, indent=2))
+
         # Log the API request details
-        logger.debug("Making OpenAI API request with:")
+        logger.debug("Making OpenAI Responses API request with:")
         logger.debug("Model: %s", model)
-        logger.debug("System prompt: %s", system_prompt)
-        logger.debug("User prompt: %s", user_prompt)
+        logger.debug("Combined prompt: %s", combined_prompt)
         logger.debug("Parameters: %s", json.dumps(stream_kwargs, indent=2))
-        logger.debug("Schema: %s", output_schema.model_json_schema())
+        logger.debug("Schema: %s", json.dumps(strict_schema, indent=2))
 
-        # Use the async generator from openai_structured directly
-        async for chunk in async_openai_structured_stream(
-            client=client,
-            model=model,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            output_schema=output_schema,
-            on_log=on_log,  # Pass non-model parameters directly to the function
-            **stream_kwargs,  # Pass only validated model parameters
-        ):
-            yield chunk
+        # Use the Responses API with streaming
+        response = await client.responses.create(**api_params)
 
-    except APIResponseError as e:
-        if "Invalid schema for response_format" in str(
-            e
-        ) and 'type: "array"' in str(e):
+        # Process streaming response
+        accumulated_content = ""
+        async for chunk in response:
+            if on_log:
+                on_log(logging.DEBUG, f"Received chunk: {chunk}", {})
+
+            # Handle different response formats based on the chunk structure
+            content_added = False
+
+            # Try different possible response formats
+            if hasattr(chunk, "choices") and chunk.choices:
+                # Standard chat completion format
+                choice = chunk.choices[0]
+                if (
+                    hasattr(choice, "delta")
+                    and hasattr(choice.delta, "content")
+                    and choice.delta.content
+                ):
+                    accumulated_content += choice.delta.content
+                    content_added = True
+                elif (
+                    hasattr(choice, "message")
+                    and hasattr(choice.message, "content")
+                    and choice.message.content
+                ):
+                    accumulated_content += choice.message.content
+                    content_added = True
+            elif hasattr(chunk, "response") and hasattr(chunk.response, "body"):
+                # Responses API format
+                accumulated_content += chunk.response.body
+                content_added = True
+            elif hasattr(chunk, "content"):
+                # Direct content
+                accumulated_content += chunk.content
+                content_added = True
+            elif hasattr(chunk, "text"):
+                # Text content
+                accumulated_content += chunk.text
+                content_added = True
+
+            if on_log and content_added:
+                on_log(
+                    logging.DEBUG,
+                    f"Added content, total length: {len(accumulated_content)}",
+                    {},
+                )
+
+            # Try to parse and validate accumulated content as complete JSON
+            try:
+                if accumulated_content.strip():
+                    # Attempt to parse as complete JSON
+                    data = json.loads(accumulated_content.strip())
+                    validated = output_schema.model_validate(data)
+                    yield validated
+                    # Reset for next complete response (if any)
+                    accumulated_content = ""
+            except (json.JSONDecodeError, ValueError):
+                # Not yet complete JSON, continue accumulating
+                continue
+
+        # Handle any remaining content
+        if accumulated_content.strip():
+            try:
+                data = json.loads(accumulated_content.strip())
+                validated = output_schema.model_validate(data)
+                yield validated
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.error(f"Failed to parse final accumulated content: {e}")
+                raise StreamParseError(f"Failed to parse response as valid JSON: {e}")
+
+    except Exception as e:
+        # Map OpenAI errors using the error mapper (T3.1)
+        from openai import OpenAIError
+
+        if isinstance(e, OpenAIError):
+            mapped_error = APIErrorMapper.map_openai_error(e)
+            logger.error(f"OpenAI API error mapped: {mapped_error}")
+            raise mapped_error
+
+        # Handle special schema array error with detailed guidance
+        if "Invalid schema for response_format" in str(e) and 'type: "array"' in str(e):
             error_msg = (
                 "OpenAI API Schema Error: The schema must have a root type of 'object', not 'array'. "
                 "To fix this:\n"
@@ -1453,47 +1881,86 @@ async def stream_structured_output(
             )
             logger.error(error_msg)
             raise InvalidResponseFormatError(error_msg)
-        logger.error(f"API error: {e}")
-        raise
-    except (
-        StreamInterruptedError,
-        StreamBufferError,
-        StreamParseError,
-        EmptyResponseError,
-        InvalidResponseFormatError,
-    ) as e:
-        logger.error("Stream error: %s", str(e))
-        raise
+
+        # For non-OpenAI errors, try to map them as well
+        error_msg = str(e).lower()
+        if (
+            "context_length_exceeded" in error_msg
+            or "maximum context length" in error_msg
+        ):
+            mapped_error = APIErrorMapper.map_openai_error(e)
+            logger.error(f"Context length error mapped: {mapped_error}")
+            raise mapped_error
+        elif "rate_limit" in error_msg or "429" in str(e):
+            mapped_error = APIErrorMapper.map_openai_error(e)
+            logger.error(f"Rate limit error mapped: {mapped_error}")
+            raise mapped_error
+        elif "invalid_api_key" in error_msg:
+            mapped_error = APIErrorMapper.map_openai_error(e)
+            logger.error(f"Authentication error mapped: {mapped_error}")
+            raise mapped_error
+        else:
+            logger.error(f"Unmapped API error: {e}")
+            raise APIResponseError(str(e))
     finally:
-        # Always ensure client is properly closed
-        await client.close()
+        # Note: We don't close the client here as it may be reused
+        # The caller is responsible for client lifecycle management
+        pass
 
 
 @click.group()
 @click.version_option(version=__version__)
-def cli() -> None:
-    """ostruct CLI - Make structured OpenAI API calls.
+@click.option(
+    "--config",
+    type=click.Path(exists=True),
+    help="Configuration file path (default: ostruct.yaml)",
+)
+@click.pass_context
+def cli(ctx: click.Context, config: Optional[str] = None) -> None:
+    """ostruct - AI-powered structured output with multi-tool integration.
 
-    ostruct allows you to invoke OpenAI Structured Output to produce structured JSON
-    output using templates and JSON schemas. It provides support for file handling, variable
-    substitution, and output validation.
+    ostruct transforms unstructured inputs into structured JSON using OpenAI APIs,
+    Jinja2 templates, and powerful tool integrations including Code Interpreter,
+    File Search, and MCP servers.
 
-    For detailed documentation, visit: https://ostruct.readthedocs.io
+    🚀 QUICK START:
+        ostruct run template.j2 schema.json -V name=value
 
-    Examples:
+    📁 FILE ROUTING (explicit tool assignment):
+        -ft/--file-for-template          Template access only
+        -fc/--file-for-code-interpreter  Code execution & analysis
+        -fs/--file-for-file-search       Document search & retrieval
 
-        # Basic usage with a template and schema
+    ⚡ EXAMPLES:
+        # Basic usage (unchanged)
+        ostruct run template.j2 schema.json -f config.yaml
 
-        ostruct run task.j2 schema.json -V name=value
+        # Multi-tool explicit routing
+        ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf -ft config.yaml
 
-        # Process files with recursive directory scanning
+        # Advanced routing with --file-for
+        ostruct run task.j2 schema.json --file-for code-interpreter shared.json --file-for file-search shared.json
 
-        ostruct run template.j2 schema.json -f code main.py -d src ./src -R
+        # MCP server integration
+        ostruct run template.j2 schema.json --mcp-server deepwiki@https://mcp.deepwiki.com/sse
 
-        # Use JSON variables and custom model parameters
-
-        ostruct run task.j2 schema.json -J config='{"env":"prod"}' -m o3-mini
+    📖 For detailed documentation: https://ostruct.readthedocs.io
     """
+    # Load configuration
+    try:
+        app_config = OstructConfig.load(config)
+        ctx.ensure_object(dict)
+        ctx.obj["config"] = app_config
+    except Exception as e:
+        click.secho(
+            f"Warning: Failed to load configuration: {e}",
+            fg="yellow",
+            err=True,
+        )
+        # Use default configuration
+        ctx.ensure_object(dict)
+        ctx.obj["config"] = OstructConfig()
+
     # Check for registry updates in a non-intrusive way
     try:
         update_message = get_update_notification()
@@ -1507,7 +1974,7 @@ def cli() -> None:
 @cli.command()
 @click.argument("task_template", type=click.Path(exists=True))
 @click.argument("schema_file", type=click.Path(exists=True))
-@all_options
+@all_options  # type: ignore[misc]
 @click.pass_context
 def run(
     ctx: click.Context,
@@ -1515,13 +1982,50 @@ def run(
     schema_file: str,
     **kwargs: Any,
 ) -> None:
-    """Run a structured task with template and schema.
+    """Run structured output generation with multi-tool integration.
 
-    Args:
-        ctx: Click context
-        task_template: Path to task template file
-        schema_file: Path to schema file
-        **kwargs: Additional CLI options
+    \b
+    📁 FILE ROUTING OPTIONS:
+
+    Template Access Only:
+      -ft, --file-for-template FILE     Files available in template only
+      -dt, --dir-for-template DIR       Directories for template access
+
+    Code Interpreter (execution & analysis):
+      -fc, --file-for-code-interpreter FILE    Upload files for code execution
+      -dc, --dir-for-code-interpreter DIR      Upload directories for analysis
+
+    File Search (document retrieval):
+      -fs, --file-for-file-search FILE         Upload files for vector search
+      -ds, --dir-for-search DIR                Upload directories for search
+
+    Advanced Routing:
+      --file-for TOOL PATH              Route files to specific tools
+                                        Example: --file-for code-interpreter data.json
+
+    \b
+    🔧 TOOL INTEGRATION:
+
+    MCP Servers:
+      --mcp-server [LABEL@]URL          Connect to MCP server
+                                        Example: --mcp-server deepwiki@https://mcp.deepwiki.com/sse
+
+    \b
+    ⚡ EXAMPLES:
+
+    Basic usage:
+      ostruct run template.j2 schema.json -V name=value
+
+    Multi-tool explicit routing:
+      ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf -ft config.yaml
+
+    Legacy compatibility (still works):
+      ostruct run template.j2 schema.json -f config main.py -d src ./src
+
+    \b
+    Arguments:
+      TASK_TEMPLATE  Path to Jinja2 template file
+      SCHEMA_FILE    Path to JSON schema file defining output structure
     """
     try:
         # Convert Click parameters to typed dict
@@ -1536,6 +2040,17 @@ def run(
             if k in valid_keys:
                 params[k] = v  # type: ignore[literal-required]
 
+        # Apply configuration defaults if values not explicitly provided
+        # Check for command-level config option first, then group-level
+        command_config = kwargs.get("config")
+        if command_config:
+            config = OstructConfig.load(command_config)
+        else:
+            config = ctx.obj.get("config") if ctx.obj else OstructConfig()
+
+        if params.get("model") is None:
+            params["model"] = config.get_model_default()  # type: ignore[literal-required]
+
         # Run the async function synchronously
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -1546,17 +2061,13 @@ def run(
             # Log the error with full context
             logger.error("Schema validation error: %s", str(e))
             if e.context:
-                logger.debug(
-                    "Error context: %s", json.dumps(e.context, indent=2)
-                )
+                logger.debug("Error context: %s", json.dumps(e.context, indent=2))
             # Re-raise to preserve error chain and exit code
             raise
         except (CLIError, InvalidJSONError, SchemaFileError) as e:
             handle_error(e)
             sys.exit(
-                e.exit_code
-                if hasattr(e, "exit_code")
-                else ExitCode.INTERNAL_ERROR
+                e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
             )
         except click.UsageError as e:
             handle_error(e)
@@ -1569,6 +2080,53 @@ def run(
     except KeyboardInterrupt:
         logger.info("Operation cancelled by user")
         raise
+
+
+@cli.command("quick-ref")
+def quick_reference() -> None:
+    """Show quick reference for file routing and common usage patterns."""
+    quick_ref = """
+🚀 OSTRUCT QUICK REFERENCE
+
+📁 FILE ROUTING:
+  -ft FILE    📄 Template access only       (config files, small data)
+  -fc FILE    💻 Code Interpreter upload    (data files, scripts)
+  -fs FILE    🔍 File Search vector store   (documents, manuals)
+
+  -dt DIR     📁 Template directory         (config dirs, reference data)
+  -dc DIR     📂 Code execution directory   (datasets, code repos)
+  -ds DIR     📁 Search directory           (documentation, knowledge)
+
+🔄 ADVANCED ROUTING:
+  --file-for code-interpreter data.csv      Single tool, single file
+  --file-for file-search docs.pdf           Single tool, single file
+  --file-for code-interpreter shared.json --file-for file-search shared.json   Multi-tool routing
+
+🏷️  VARIABLES:
+  -V name=value                             Simple string variables
+  -J config='{"key":"value"}'               JSON structured data
+
+🔌 TOOLS:
+  --mcp-server label@https://server.com/sse MCP server integration
+  --timeout 7200                           2-hour timeout for long operations
+
+⚡ COMMON PATTERNS:
+  # Basic template rendering
+  ostruct run template.j2 schema.json -V env=prod
+
+  # Data analysis with Code Interpreter
+  ostruct run analysis.j2 schema.json -fc data.csv -V task=analyze
+
+  # Document search + processing
+  ostruct run search.j2 schema.json -fs docs/ -ft config.yaml
+
+  # Multi-tool workflow
+  ostruct run workflow.j2 schema.json -fc raw_data.csv -fs knowledge/ -ft config.json
+
+📖 Full help: ostruct run --help
+📖 Documentation: https://ostruct.readthedocs.io
+"""
+    click.echo(quick_ref)
 
 
 @cli.command("update-registry")
@@ -1594,54 +2152,151 @@ def update_registry(url: Optional[str] = None, force: bool = False) -> None:
         ostruct update-registry --url https://example.com/models.yml
     """
     try:
-        registry = ModelRegistry()
+        registry = ModelRegistry.get_instance()
 
         # Show current registry config path
-        config_path = registry._config_path
+        config_path = registry.config.registry_path
         click.echo(f"Current registry file: {config_path}")
 
         if force:
-            click.echo("Forcing registry update...")
-            success = registry.refresh_from_remote(url)
-            if success:
+            click.echo("🔄 Forcing registry update...")
+            refresh_result = registry.refresh_from_remote(url)
+            if refresh_result.success:
                 click.echo("✅ Registry successfully updated!")
             else:
-                click.echo(
-                    "❌ Failed to update registry. See logs for details."
-                )
-            sys.exit(ExitCode.SUCCESS.value)
+                click.echo(f"❌ Failed to update registry: {refresh_result.message}")
+            return
 
-        if config_path is None or not os.path.exists(config_path):
-            click.echo("Registry file not found. Creating new one...")
-            success = registry.refresh_from_remote(url)
-            if success:
-                click.echo("✅ Registry successfully created!")
-            else:
-                click.echo(
-                    "❌ Failed to create registry. See logs for details."
-                )
-            sys.exit(ExitCode.SUCCESS.value)
-
-        # Use the built-in update checking functionality
-        click.echo("Checking for updates...")
+        click.echo("🔍 Checking for registry updates...")
         update_result = registry.check_for_updates()
 
-        if update_result.status == RegistryUpdateStatus.UPDATE_AVAILABLE:
-            click.echo(
-                f"{click.style('✓', fg='green')} {update_result.message}"
-            )
-            exit_code = ExitCode.SUCCESS
-        elif update_result.status == RegistryUpdateStatus.ALREADY_CURRENT:
-            click.echo(
-                f"{click.style('✓', fg='green')} Registry is up to date"
-            )
-            exit_code = ExitCode.SUCCESS
+        if update_result.status.value == "update_available":
+            click.echo(f"📦 Update available: {update_result.message}")
+            click.echo("🔄 Updating registry...")
+            refresh_result = registry.refresh_from_remote(url)
+            if refresh_result.success:
+                click.echo("✅ Registry successfully updated!")
+            else:
+                click.echo(f"❌ Failed to update registry: {refresh_result.message}")
+        elif update_result.status.value == "already_current":
+            click.echo("✅ Registry is already up to date")
         else:
-            click.echo("❓ Unable to determine if updates are available.")
-
-        sys.exit(exit_code)
+            click.echo(f"⚠️ Registry check failed: {update_result.message}")
     except Exception as e:
         click.echo(f"❌ Error updating registry: {str(e)}")
+        sys.exit(ExitCode.API_ERROR.value)
+
+
+@cli.command("list-models")
+@click.option(
+    "--format",
+    type=click.Choice(["table", "json", "simple"]),
+    default="table",
+    help="Output format for model list",
+)
+@click.option(
+    "--show-deprecated",
+    is_flag=True,
+    help="Include deprecated models in output",
+)
+def list_models(format: str = "table", show_deprecated: bool = False) -> None:
+    """List available models from the registry."""
+    try:
+        registry = ModelRegistry.get_instance()
+        models = registry.models
+
+        # Filter models if not showing deprecated
+        if not show_deprecated:
+            # Filter out deprecated models (this depends on registry implementation)
+            filtered_models = []
+            for model_id in models:
+                try:
+                    capabilities = registry.get_capabilities(model_id)
+                    # If we can get capabilities, it's likely not deprecated
+                    filtered_models.append(
+                        {
+                            "id": model_id,
+                            "context_window": capabilities.context_window,
+                            "max_output": capabilities.max_output_tokens,
+                        }
+                    )
+                except Exception:
+                    # Skip models that can't be accessed (likely deprecated)
+                    continue
+            models_data = filtered_models
+        else:
+            # Include all models
+            models_data = []
+            for model_id in models:
+                try:
+                    capabilities = registry.get_capabilities(model_id)
+                    models_data.append(
+                        {
+                            "id": model_id,
+                            "context_window": capabilities.context_window,
+                            "max_output": capabilities.max_output_tokens,
+                            "status": "active",
+                        }
+                    )
+                except Exception:
+                    models_data.append(
+                        {
+                            "id": model_id,
+                            "context_window": "N/A",
+                            "max_output": "N/A",
+                            "status": "deprecated",
+                        }
+                    )
+
+        if format == "table":
+            # Calculate dynamic column widths based on actual data
+            max_id_width = (
+                max(len(model["id"]) for model in models_data) if models_data else 8
+            )
+            max_id_width = max(max_id_width, len("Model ID"))
+
+            max_context_width = 15  # Keep reasonable default for context window
+            max_output_width = 12  # Keep reasonable default for max output
+            status_width = 10  # Keep fixed for status
+
+            # Ensure minimum widths for readability
+            id_width = max(max_id_width, 8)
+
+            total_width = (
+                id_width + max_context_width + max_output_width + status_width + 6
+            )  # 6 for spacing
+
+            click.echo("Available Models:")
+            click.echo("-" * total_width)
+            click.echo(
+                f"{'Model ID':<{id_width}} {'Context Window':<{max_context_width}} {'Max Output':<{max_output_width}} {'Status':<{status_width}}"
+            )
+            click.echo("-" * total_width)
+            for model in models_data:
+                status = model.get("status", "active")
+                context = (
+                    f"{model['context_window']:,}"
+                    if isinstance(model["context_window"], int)
+                    else model["context_window"]
+                )
+                output = (
+                    f"{model['max_output']:,}"
+                    if isinstance(model["max_output"], int)
+                    else model["max_output"]
+                )
+                click.echo(
+                    f"{model['id']:<{id_width}} {context:<{max_context_width}} {output:<{max_output_width}} {status:<{status_width}}"
+                )
+        elif format == "json":
+            import json
+
+            click.echo(json.dumps(models_data, indent=2))
+        else:  # simple
+            for model in models_data:
+                click.echo(model["id"])
+
+    except Exception as e:
+        click.echo(f"❌ Error listing models: {str(e)}")
         sys.exit(ExitCode.API_ERROR.value)
 
 
@@ -1674,7 +2329,12 @@ async def validate_model_params(args: CLIParams) -> Dict[str, Any]:
 async def validate_inputs(
     args: CLIParams,
 ) -> Tuple[
-    SecurityManager, str, Dict[str, Any], Dict[str, Any], jinja2.Environment
+    SecurityManager,
+    str,
+    Dict[str, Any],
+    Dict[str, Any],
+    jinja2.Environment,
+    Optional[str],
 ]:
     """Validate all input parameters and return validated components.
 
@@ -1688,6 +2348,7 @@ async def validate_inputs(
         - Schema dictionary
         - Template context dictionary
         - Jinja2 environment
+        - Template file path (if from file)
 
     Raises:
         CLIError: For various validation errors
@@ -1700,31 +2361,44 @@ async def validate_inputs(
         allowed_dir_file=args.get("allowed_dir_file"),
     )
 
-    task_template = validate_task_template(
-        args.get("task"), args.get("task_file")
-    )
+    # Process explicit file routing (T2.4)
+    logger.debug("Processing explicit file routing")
+    file_processor = ExplicitFileProcessor(security_manager)
+    routing_result = await file_processor.process_file_routing(args)
+
+    # Display auto-enablement feedback to user
+    if routing_result.auto_enabled_feedback:
+        print(routing_result.auto_enabled_feedback)
+
+    # Store routing result in args for use by tool processors
+    args["_routing_result"] = routing_result  # type: ignore[typeddict-item]
+
+    task_template = validate_task_template(args.get("task"), args.get("task_file"))
 
     # Load and validate schema
     logger.debug("Validating schema from %s", args["schema_file"])
     try:
-        schema = validate_schema_file(
-            args["schema_file"], args.get("verbose", False)
-        )
+        schema = validate_schema_file(args["schema_file"], args.get("verbose", False))
 
         # Validate schema structure before any model creation
-        validate_json_schema(
-            schema
-        )  # This will raise SchemaValidationError if invalid
+        validate_json_schema(schema)  # This will raise SchemaValidationError if invalid
     except SchemaValidationError as e:
         logger.error("Schema validation error: %s", str(e))
         raise  # Re-raise the SchemaValidationError to preserve the error chain
 
-    template_context = await create_template_context_from_args(
-        args, security_manager
+    template_context = await create_template_context_from_routing(
+        args, security_manager, routing_result
     )
     env = create_jinja_env()
 
-    return security_manager, task_template, schema, template_context, env
+    return (
+        security_manager,
+        task_template,
+        schema,
+        template_context,
+        env,
+        args.get("task_file"),
+    )
 
 
 async def process_templates(
@@ -1732,6 +2406,7 @@ async def process_templates(
     task_template: str,
     template_context: Dict[str, Any],
     env: jinja2.Environment,
+    template_path: Optional[str] = None,
 ) -> Tuple[str, str]:
     """Process system prompt and user prompt templates.
 
@@ -1740,6 +2415,7 @@ async def process_templates(
         task_template: Validated task template
         template_context: Template context dictionary
         env: Jinja2 environment
+        template_path: Optional path to template file for include_system resolution
 
     Returns:
         Tuple of (system_prompt, user_prompt)
@@ -1755,9 +2431,37 @@ async def process_templates(
         template_context,
         env,
         args.get("ignore_task_sysprompt", False),
+        template_path,
     )
     user_prompt = render_template(task_template, template_context, env)
     return system_prompt, user_prompt
+
+
+def extract_template_file_paths(template_context: Dict[str, Any]) -> List[str]:
+    """Extract actual file paths from template context for token validation.
+
+    Args:
+        template_context: Template context dictionary containing FileInfoList objects
+
+    Returns:
+        List of file paths that were included in template rendering
+    """
+    file_paths = []
+
+    for key, value in template_context.items():
+        if isinstance(value, FileInfoList):
+            # Extract paths from FileInfoList
+            for file_info in value:
+                if hasattr(file_info, "path"):
+                    file_paths.append(file_info.path)
+        elif key == "stdin":
+            # Skip stdin content - it's already counted in template
+            continue
+        elif key == "current_model":
+            # Skip model name
+            continue
+
+    return file_paths
 
 
 async def validate_model_and_schema(
@@ -1765,6 +2469,7 @@ async def validate_model_and_schema(
     schema: Dict[str, Any],
     system_prompt: str,
     user_prompt: str,
+    template_context: Dict[str, Any],
 ) -> Tuple[Type[BaseModel], List[Dict[str, str]], int, ModelRegistry]:
     """Validate model compatibility and schema, and check token limits.
 
@@ -1773,6 +2478,7 @@ async def validate_model_and_schema(
         schema: Schema dictionary
         system_prompt: Processed system prompt
         user_prompt: Processed user prompt
+        template_context: Template context with file information
 
     Returns:
         Tuple of (output_model, messages, total_tokens, registry)
@@ -1781,6 +2487,7 @@ async def validate_model_and_schema(
         CLIError: For validation errors
         ModelCreationError: When model creation fails
         SchemaValidationError: When schema is invalid
+        PromptTooLargeError: When prompt exceeds context window with actionable guidance
     """
     logger.debug("=== Model & Schema Validation Phase ===")
     try:
@@ -1811,22 +2518,322 @@ async def validate_model_and_schema(
     ]
 
     total_tokens = estimate_tokens_with_encoding(messages, args["model"])
-    registry = ModelRegistry()
+    registry = ModelRegistry.get_instance()
     capabilities = registry.get_capabilities(args["model"])
     context_limit = capabilities.context_window
 
-    if total_tokens > context_limit:
-        msg = f"Total tokens ({total_tokens}) exceeds model context limit ({context_limit})"
-        logger.error(msg)
-        raise CLIError(
-            msg,
-            context={
-                "total_tokens": total_tokens,
-                "context_limit": context_limit,
-            },
-        )
+    # Enhanced token validation with actionable guidance for file routing
+    template_files = extract_template_file_paths(template_context)
+    validator = TokenLimitValidator(args["model"])
+
+    # Combine both prompts for total template content validation
+    combined_template_content = f"{system_prompt}\n\n{user_prompt}"
+    validator.validate_prompt_size(
+        combined_template_content, template_files, context_limit
+    )
 
     return output_model, messages, total_tokens, registry
+
+
+async def process_mcp_configuration(args: CLIParams) -> MCPServerManager:
+    """Process MCP configuration from CLI arguments.
+
+    Args:
+        args: CLI parameters containing MCP settings
+
+    Returns:
+        MCPServerManager: Configured manager ready for tool integration
+
+    Raises:
+        CLIError: If MCP configuration is invalid
+    """
+    logger.debug("=== MCP Configuration Processing ===")
+
+    # Parse MCP servers from CLI arguments
+    servers = []
+    for server_spec in args.get("mcp_servers", []):
+        try:
+            # Parse format: [label@]url
+            if "@" in server_spec:
+                label, url = server_spec.rsplit("@", 1)
+            else:
+                url = server_spec
+                label = None
+
+            server_config = {"url": url}
+            if label:
+                server_config["label"] = label
+
+            # Add require_approval setting from CLI
+            server_config["require_approval"] = args.get(
+                "mcp_require_approval", "never"
+            )
+
+            # Parse headers if provided
+            if args.get("mcp_headers"):
+                try:
+                    headers = json.loads(args["mcp_headers"])
+                    server_config["headers"] = headers
+                except json.JSONDecodeError as e:
+                    raise CLIError(
+                        f"Invalid JSON in --mcp-headers: {e}",
+                        exit_code=ExitCode.USAGE_ERROR,
+                    )
+
+            servers.append(server_config)
+
+        except Exception as e:
+            raise CLIError(
+                f"Failed to parse MCP server spec '{server_spec}': {e}",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+    # Process allowed tools if specified
+    allowed_tools_map = {}
+    for tools_spec in args.get("mcp_allowed_tools", []):
+        try:
+            if ":" not in tools_spec:
+                raise ValueError("Format should be server_label:tool1,tool2")
+            label, tools_str = tools_spec.split(":", 1)
+            tools_list = [tool.strip() for tool in tools_str.split(",")]
+            allowed_tools_map[label] = tools_list
+        except Exception as e:
+            raise CLIError(
+                f"Failed to parse MCP allowed tools '{tools_spec}': {e}",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+    # Apply allowed tools to server configurations
+    for server in servers:
+        server_label = server.get("label")
+        if server_label and server_label in allowed_tools_map:
+            server["allowed_tools"] = allowed_tools_map[server_label]  # type: ignore[assignment]
+
+    # Create configuration and manager
+    config = MCPConfiguration(servers)
+    manager = MCPServerManager(config)
+
+    # Pre-validate servers for CLI compatibility
+    validation_errors = await manager.pre_validate_all_servers()
+    if validation_errors:
+        error_msg = "MCP server validation failed:\n" + "\n".join(
+            f"- {error}" for error in validation_errors
+        )
+        # Map as MCP error
+        mapped_error = APIErrorMapper.map_tool_error("mcp", Exception(error_msg))
+        raise mapped_error
+
+    logger.debug(
+        "MCP configuration validated successfully with %d servers",
+        len(servers),
+    )
+    return manager
+
+
+async def process_code_interpreter_configuration(
+    args: CLIParams, client: AsyncOpenAI
+) -> Optional[Dict[str, Any]]:
+    """Process Code Interpreter configuration from CLI arguments.
+
+    Args:
+        args: CLI parameters containing Code Interpreter settings
+        client: AsyncOpenAI client for file uploads
+
+    Returns:
+        Dictionary with Code Interpreter tool config and manager, or None if no files specified
+
+    Raises:
+        CLIError: If Code Interpreter configuration is invalid
+    """
+    logger.debug("=== Code Interpreter Configuration Processing ===")
+
+    # Collect all files to upload
+    files_to_upload = []
+
+    # Add individual files
+    files_to_upload.extend(args.get("code_interpreter_files", []))
+
+    # Add files from directories
+    for directory in args.get("code_interpreter_dirs", []):
+        try:
+            dir_path = Path(directory)
+            if not dir_path.exists():
+                raise CLIError(
+                    f"Directory not found: {directory}",
+                    exit_code=ExitCode.USAGE_ERROR,
+                )
+
+            # Get all files from directory (non-recursive for safety)
+            for file_path in dir_path.iterdir():
+                if file_path.is_file():
+                    files_to_upload.append(str(file_path))
+
+        except Exception as e:
+            raise CLIError(
+                f"Failed to process directory {directory}: {e}",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+    # If no files specified, return None
+    if not files_to_upload:
+        return None
+
+    # Create Code Interpreter manager
+    manager = CodeInterpreterManager(client)
+
+    # Validate files before upload
+    validation_errors = manager.validate_files_for_upload(files_to_upload)
+    if validation_errors:
+        error_msg = "Code Interpreter file validation failed:\n" + "\n".join(
+            f"- {error}" for error in validation_errors
+        )
+        raise CLIError(error_msg, exit_code=ExitCode.USAGE_ERROR)
+
+    try:
+        # Upload files
+        logger.debug(f"Uploading {len(files_to_upload)} files for Code Interpreter")
+        file_ids = await manager.upload_files_for_code_interpreter(files_to_upload)
+
+        # Build tool configuration
+        tool_config = manager.build_tool_config(file_ids)
+
+        # Get container limits info for user awareness
+        limits_info = manager.get_container_limits_info()
+        logger.debug(f"Code Interpreter container limits: {limits_info}")
+
+        return {
+            "tool_config": tool_config,
+            "manager": manager,
+            "file_ids": file_ids,
+            "limits_info": limits_info,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to configure Code Interpreter: {e}")
+        # Clean up any uploaded files on error
+        await manager.cleanup_uploaded_files()
+        # Map tool-specific errors
+        mapped_error = APIErrorMapper.map_tool_error("code-interpreter", e)
+        raise mapped_error
+
+
+async def process_file_search_configuration(
+    args: CLIParams, client: AsyncOpenAI
+) -> Optional[Dict[str, Any]]:
+    """Process File Search configuration from CLI arguments.
+
+    Args:
+        args: CLI parameters containing File Search settings
+        client: AsyncOpenAI client for vector store operations
+
+    Returns:
+        Dictionary with File Search tool config and manager, or None if no files specified
+
+    Raises:
+        CLIError: If File Search configuration is invalid
+    """
+    logger.debug("=== File Search Configuration Processing ===")
+
+    # Collect all files to upload
+    files_to_upload = []
+
+    # Add individual files
+    files_to_upload.extend(args.get("file_search_files", []))
+
+    # Add files from directories
+    for directory in args.get("file_search_dirs", []):
+        try:
+            dir_path = Path(directory)
+            if not dir_path.exists():
+                raise CLIError(
+                    f"Directory not found: {directory}",
+                    exit_code=ExitCode.USAGE_ERROR,
+                )
+
+            # Get all files from directory (non-recursive for safety)
+            for file_path in dir_path.iterdir():
+                if file_path.is_file():
+                    files_to_upload.append(str(file_path))
+
+        except Exception as e:
+            raise CLIError(
+                f"Failed to process directory {directory}: {e}",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+    # If no files specified, return None
+    if not files_to_upload:
+        return None
+
+    # Create File Search manager
+    manager = FileSearchManager(client)
+
+    # Validate files before upload
+    validation_errors = manager.validate_files_for_file_search(files_to_upload)
+    if validation_errors:
+        error_msg = "File Search file validation failed:\n" + "\n".join(
+            f"- {error}" for error in validation_errors
+        )
+        raise CLIError(error_msg, exit_code=ExitCode.USAGE_ERROR)
+
+    try:
+        # Get configuration parameters
+        vector_store_name = args.get("file_search_vector_store_name", "ostruct_search")
+        retry_count = args.get("file_search_retry_count", 3)
+        timeout = args.get("file_search_timeout", 60.0)
+
+        # Create vector store with retry logic
+        logger.debug(
+            f"Creating vector store '{vector_store_name}' for {len(files_to_upload)} files"
+        )
+        vector_store_id = await manager.create_vector_store_with_retry(
+            name=vector_store_name, max_retries=retry_count
+        )
+
+        # Upload files to vector store
+        logger.debug(
+            f"Uploading {len(files_to_upload)} files to vector store with {retry_count} max retries"
+        )
+        file_ids = await manager.upload_files_to_vector_store(
+            vector_store_id=vector_store_id,
+            files=files_to_upload,
+            max_retries=retry_count,
+        )
+
+        # Wait for vector store to be ready
+        logger.debug(f"Waiting for vector store indexing (timeout: {timeout}s)")
+        is_ready = await manager.wait_for_vector_store_ready(
+            vector_store_id=vector_store_id, timeout=timeout
+        )
+
+        if not is_ready:
+            logger.warning(
+                f"Vector store may not be fully indexed within {timeout}s timeout"
+            )
+            # Continue anyway as indexing is typically instant
+
+        # Build tool configuration
+        tool_config = manager.build_tool_config(vector_store_id)
+
+        # Get performance info for user awareness
+        perf_info = manager.get_performance_info()
+        logger.debug(f"File Search performance info: {perf_info}")
+
+        return {
+            "tool_config": tool_config,
+            "manager": manager,
+            "vector_store_id": vector_store_id,
+            "file_ids": file_ids,
+            "perf_info": perf_info,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to configure File Search: {e}")
+        # Clean up any created resources on error
+        await manager.cleanup_resources()
+        # Map tool-specific errors
+        mapped_error = APIErrorMapper.map_tool_error("file-search", e)
+        raise mapped_error
 
 
 async def execute_model(
@@ -1850,15 +2857,35 @@ async def execute_model(
 
     Raises:
         CLIError: For execution errors
+        UnattendedOperationTimeoutError: For operation timeouts
     """
     logger.debug("=== Execution Phase ===")
+
+    # Initialize unattended operation manager
+    timeout_seconds = args.get("timeout", 3600)
+    operation_manager = UnattendedOperationManager(timeout_seconds)
+
+    # Pre-validate unattended compatibility
+    mcp_servers = args.get("mcp_servers", [])
+    if mcp_servers:
+        validator = UnattendedCompatibilityValidator()
+        validation_errors = validator.validate_mcp_servers(mcp_servers)
+        if validation_errors:
+            error_msg = "Unattended operation compatibility errors:\n" + "\n".join(
+                f"  • {err}" for err in validation_errors
+            )
+            logger.error(error_msg)
+            raise CLIError(error_msg, exit_code=ExitCode.VALIDATION_ERROR)
+
     api_key = args.get("api_key") or os.getenv("OPENAI_API_KEY")
     if not api_key:
         msg = "No API key provided. Set OPENAI_API_KEY environment variable or use --api-key"
         logger.error(msg)
         raise CLIError(msg, exit_code=ExitCode.API_ERROR)
 
-    client = AsyncOpenAI(api_key=api_key, timeout=args.get("timeout", 60.0))
+    client = AsyncOpenAI(
+        api_key=api_key, timeout=min(args.get("timeout", 60.0), 300.0)
+    )  # Cap at 5 min for client timeout
 
     # Create detailed log callback
     def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
@@ -1872,9 +2899,54 @@ async def execute_model(
             else:
                 logger.debug(message)
 
-    try:
+    async def execute_main_operation() -> ExitCode:
+        """Main execution operation wrapped for timeout handling."""
         # Create output buffer
         output_buffer = []
+
+        # Process tool configurations
+        tools = []
+        nonlocal code_interpreter_info, file_search_info
+
+        # Process MCP configuration if provided
+        if args.get("mcp_servers"):
+            mcp_config = await process_mcp_configuration(args)
+            tools.extend(mcp_config.get_tools_for_responses_api())
+
+        # Get routing result from explicit file processor
+        routing_result = args.get("_routing_result")
+
+        # Process Code Interpreter configuration if enabled
+        if routing_result and "code-interpreter" in routing_result.enabled_tools:
+            code_interpreter_files = routing_result.validated_files.get(
+                "code-interpreter", []
+            )
+            if code_interpreter_files:
+                # Override args with routed files for Code Interpreter processing
+                ci_args = dict(args)
+                ci_args["code_interpreter_files"] = code_interpreter_files
+                ci_args[
+                    "code_interpreter_dirs"
+                ] = []  # Files already expanded from dirs
+                code_interpreter_info = await process_code_interpreter_configuration(
+                    ci_args, client
+                )
+                if code_interpreter_info:
+                    tools.append(code_interpreter_info["tool_config"])
+
+        # Process File Search configuration if enabled
+        if routing_result and "file-search" in routing_result.enabled_tools:
+            file_search_files = routing_result.validated_files.get("file-search", [])
+            if file_search_files:
+                # Override args with routed files for File Search processing
+                fs_args = dict(args)
+                fs_args["file_search_files"] = file_search_files
+                fs_args["file_search_dirs"] = []  # Files already expanded from dirs
+                file_search_info = await process_file_search_configuration(
+                    fs_args, client
+                )
+                if file_search_info:
+                    tools.append(file_search_info["tool_config"])
 
         # Stream the response
         async for response in stream_structured_output(
@@ -1885,6 +2957,7 @@ async def execute_model(
             output_schema=output_model,
             output_file=args.get("output_file"),
             on_log=log_callback,
+            tools=tools,
         ):
             output_buffer.append(response)
 
@@ -1915,14 +2988,44 @@ async def execute_model(
                 for i, response in enumerate(output_buffer):
                     if i > 0:
                         json_output += ",\n"
-                    json_output += "  " + response.model_dump_json(
-                        indent=2
-                    ).replace("\n", "\n  ")
+                    json_output += "  " + response.model_dump_json(indent=2).replace(
+                        "\n", "\n  "
+                    )
                 json_output += "\n]"
                 print(json_output)
 
+        # Handle file downloads from Code Interpreter if any were generated
+        if (
+            code_interpreter_info
+            and hasattr(response, "file_ids")
+            and response.file_ids
+        ):
+            try:
+                download_dir = args.get("code_interpreter_download_dir", "./downloads")
+                manager = code_interpreter_info["manager"]
+                downloaded_files = await manager.download_generated_files(
+                    response.file_ids, download_dir
+                )
+                if downloaded_files:
+                    logger.info(
+                        f"Downloaded {len(downloaded_files)} generated files to {download_dir}"
+                    )
+                    for file_path in downloaded_files:
+                        logger.info(f"  - {file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to download generated files: {e}")
+
         return ExitCode.SUCCESS
 
+    # Execute main operation with timeout safeguards
+    code_interpreter_info = None
+    file_search_info = None
+
+    try:
+        result = await operation_manager.execute_with_safeguards(
+            execute_main_operation, "model execution"
+        )
+        return result
     except (
         StreamInterruptedError,
         StreamBufferError,
@@ -1937,6 +3040,24 @@ async def execute_model(
         logger.exception("Unexpected error during streaming")
         raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
     finally:
+        # Clean up Code Interpreter files if requested
+        if code_interpreter_info and args.get("code_interpreter_cleanup", True):
+            try:
+                manager = code_interpreter_info["manager"]
+                await manager.cleanup_uploaded_files()
+                logger.debug("Cleaned up Code Interpreter uploaded files")
+            except Exception as e:
+                logger.warning(f"Failed to clean up Code Interpreter files: {e}")
+
+        # Clean up File Search resources if requested
+        if file_search_info and args.get("file_search_cleanup", True):
+            try:
+                manager = file_search_info["manager"]
+                await manager.cleanup_resources()
+                logger.debug("Cleaned up File Search vector stores and files")
+            except Exception as e:
+                logger.warning(f"Failed to clean up File Search resources: {e}")
+
         await client.close()
 
 
@@ -1953,33 +3074,86 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         CLIError: For errors during CLI operations.
     """
     try:
+        # 0. Configure Progress Reporting
+        configure_progress_reporter(
+            verbose=args.get("verbose", False),
+            progress_level=args.get("progress_level", "basic"),
+        )
+        progress_reporter = get_progress_reporter()
+
         # 0. Model Parameter Validation
+        progress_reporter.report_phase("Validating configuration", "🔧")
         logger.debug("=== Model Parameter Validation ===")
         params = await validate_model_params(args)
 
         # 1. Input Validation Phase (includes schema validation)
-        security_manager, task_template, schema, template_context, env = (
-            await validate_inputs(args)
-        )
+        progress_reporter.report_phase("Processing input files", "📂")
+        (
+            security_manager,
+            task_template,
+            schema,
+            template_context,
+            env,
+            template_path,
+        ) = await validate_inputs(args)
+
+        # Report file routing decisions
+        routing_result = args.get("_routing_result")
+        if routing_result:
+            template_files = routing_result.validated_files.get("template", [])
+            container_files = routing_result.validated_files.get("code-interpreter", [])
+            vector_files = routing_result.validated_files.get("file-search", [])
+            progress_reporter.report_file_routing(
+                template_files, container_files, vector_files
+            )
 
         # 2. Template Processing Phase
+        progress_reporter.report_phase("Rendering template", "📝")
         system_prompt, user_prompt = await process_templates(
-            args, task_template, template_context, env
+            args, task_template, template_context, env, template_path
         )
 
         # 3. Model & Schema Validation Phase
-        output_model, messages, total_tokens, registry = (
-            await validate_model_and_schema(
-                args, schema, system_prompt, user_prompt
-            )
+        progress_reporter.report_phase("Validating model and schema", "✅")
+        (
+            output_model,
+            messages,
+            total_tokens,
+            registry,
+        ) = await validate_model_and_schema(
+            args, schema, system_prompt, user_prompt, template_context
+        )
+
+        # Report validation results
+        capabilities = registry.get_capabilities(args["model"])
+        progress_reporter.report_validation_results(
+            schema_valid=True,  # If we got here, schema is valid
+            template_valid=True,  # If we got here, template is valid
+            token_count=total_tokens,
+            token_limit=capabilities.context_window,
         )
 
         # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):
-            logger.info("\n=== Dry Run Summary ===")
-            # Only log success if we got this far (no validation errors)
-            logger.info("✓ Template rendered successfully")
-            logger.info("✓ Schema validation passed")
+            report_success("Dry run completed successfully - all validations passed")
+
+            # Calculate cost estimate
+            estimated_cost = calculate_cost_estimate(
+                model=args["model"],
+                input_tokens=total_tokens,
+                output_tokens=capabilities.max_output_tokens,
+                registry=registry,
+            )
+
+            # Enhanced dry-run output with cost estimation
+            cost_breakdown = format_cost_breakdown(
+                model=args["model"],
+                input_tokens=total_tokens,
+                output_tokens=capabilities.max_output_tokens,
+                total_cost=estimated_cost,
+                context_window=capabilities.context_window,
+            )
+            print(cost_breakdown)
 
             if args.get("verbose", False):
                 logger.info("\nSystem Prompt:")
@@ -1993,6 +3167,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             return ExitCode.SUCCESS
 
         # 5. Execution Phase
+        progress_reporter.report_phase("Generating response", "🤖")
         return await execute_model(
             args, params, output_model, system_prompt, user_prompt
         )
@@ -2031,9 +3206,7 @@ def main() -> None:
         SchemaValidationError,
     ) as e:
         handle_error(e)
-        sys.exit(
-            e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
-        )
+        sys.exit(e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR)
     except click.UsageError as e:
         handle_error(e)
         sys.exit(ExitCode.USAGE_ERROR)

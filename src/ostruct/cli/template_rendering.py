@@ -64,7 +64,12 @@ from jinja2 import Environment
 from .errors import TaskTemplateVariableError, TemplateValidationError
 from .file_utils import FileInfo
 from .progress import ProgressContext
+from .progress_reporting import get_progress_reporter
 from .template_env import create_jinja_env
+from .template_optimizer import (
+    is_optimization_beneficial,
+    optimize_template_for_llm,
+)
 from .template_schema import DotDict, StdinProxy
 
 __all__ = [
@@ -290,6 +295,68 @@ def render_template(
                         logger.debug(
                             "  %s: %s (%r)", key, type(value).__name__, value
                         )
+
+                # Apply template optimization for better LLM performance
+                try:
+                    # Get template source - use template_str for string templates or template.source for file templates
+                    if hasattr(template, "source") and template.source:
+                        original_template_source = template.source
+                    else:
+                        original_template_source = template_str
+
+                    if (
+                        original_template_source
+                        and is_optimization_beneficial(
+                            original_template_source
+                        )
+                    ):
+                        logger.debug("=== Template Optimization ===")
+                        optimization_result = optimize_template_for_llm(
+                            original_template_source
+                        )
+
+                        if optimization_result.has_optimizations:
+                            # Report optimization to user
+                            progress_reporter = get_progress_reporter()
+                            progress_reporter.report_optimization(
+                                optimization_result.transformations
+                            )
+
+                            logger.info(
+                                "Template optimized for LLM performance:"
+                            )
+                            for (
+                                transformation
+                            ) in optimization_result.transformations:
+                                logger.info(f"  • {transformation}")
+                            logger.info(
+                                f"  • Optimization time: {optimization_result.optimization_time_ms:.1f}ms"
+                            )
+
+                            # Create new template from optimized content
+                            template = env.from_string(
+                                optimization_result.optimized_template
+                            )
+                            # Re-add globals to new template
+                            template.globals["template_name"] = getattr(
+                                template, "name", "<string>"
+                            )
+                            template.globals["template_path"] = getattr(
+                                template, "filename", None
+                            )
+                        else:
+                            logger.debug("No beneficial optimizations found")
+                    else:
+                        logger.debug(
+                            "Template optimization not beneficial - skipping"
+                        )
+                except Exception as e:
+                    # If optimization fails, continue with original template
+                    logger.warning(
+                        f"Template optimization failed, using original: {e}"
+                    )
+                    # template remains unchanged
+
                 result = template.render(**wrapped_context)
                 if not isinstance(result, str):
                     raise TemplateValidationError(

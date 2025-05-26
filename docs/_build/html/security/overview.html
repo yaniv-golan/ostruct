@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Overview &mdash; ostruct-cli  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sphinx-design.min.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="CLI Reference" href="../user-guide/cli_reference.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ostruct-cli
+          </a>
+              <div class="version">
+                0.8.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">📖 User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/introduction.html">Introduction to ostruct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#file-routing-options">File Routing Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#advanced-file-routing">Advanced File Routing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#variables-and-input">Variables and Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#model-and-api-configuration">Model and API Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#system-prompts">System Prompts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#security-and-path-management">Security and Path Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#mcp-server-integration">MCP Server Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#output-and-execution-control">Output and Execution Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#file-routing-examples">File Routing Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#migration-from-legacy-syntax">Migration from Legacy Syntax</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#best-practices">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#common-workflows">Common Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">🔒 Security:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Security Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#security-architecture">Security Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#api-key-management">API Key Management</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#secure-credential-handling">Secure Credential Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-specific-keys">Environment-Specific Keys</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#file-access-control">File Access Control</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#securitymanager-architecture">SecurityManager Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#allowed-directories">Allowed Directories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#base-directory-control">Base Directory Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security-validation-process">Security Validation Process</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#path-traversal-prevention">Path Traversal Prevention</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#data-upload-and-tool-security">Data Upload and Tool Security</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#file-search-data-handling">File Search Data Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#code-interpreter-data-handling">Code Interpreter Data Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#template-file-security">Template File Security</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tool-routing-security-matrix">Tool Routing Security Matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cleanup-and-data-retention">Cleanup and Data Retention</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#mcp-server-security">MCP Server Security</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#server-validation">Server Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tool-restrictions">Tool Restrictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#approval-controls">Approval Controls</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#third-party-security-review">Third-Party Security Review</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#threat-model-and-risk-assessment">Threat Model and Risk Assessment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#data-classification">Data Classification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#common-threats-and-mitigations">Common Threats and Mitigations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#production-security-checklist">Production Security Checklist</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pre-deployment-security-review">Pre-Deployment Security Review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#runtime-security-monitoring">Runtime Security Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#incident-response">Incident Response</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#security-configuration-examples">Security Configuration Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#development-environment">Development Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#staging-environment">Staging Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#production-environment">Production Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ci-cd-pipeline-security">CI/CD Pipeline Security</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#security-resources">Security Resources</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#code-references">Code References</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#external-resources">External Resources</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#getting-security-help">Getting Security Help</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ostruct-cli</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Security Overview</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/security/overview.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="security-overview">
+<h1>Security Overview<a class="headerlink" href="#security-overview" title="Link to this heading"></a></h1>
+<p>Security is a fundamental aspect of ostruct’s design. This guide covers API key management, file access control, data handling policies, and security best practices for production deployments.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Data Privacy</strong>: When using Code Interpreter or File Search, files may be uploaded to external services, depending on the backend provider. Review your data sensitivity before processing confidential information.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For quick security configuration, see the <a class="reference internal" href="../user-guide/cli_reference.html"><span class="doc">CLI Reference</span></a> section on Path Security.</p>
+</div>
+</section>
+<section id="security-architecture">
+<h1>Security Architecture<a class="headerlink" href="#security-architecture" title="Link to this heading"></a></h1>
+<p>ostruct implements a multi-layered security model:</p>
+<ol class="arabic simple">
+<li><p><strong>API Key Management</strong> - Secure handling of OpenAI credentials</p></li>
+<li><p><strong>File Access Control</strong> - Path validation and directory restrictions</p></li>
+<li><p><strong>Data Upload Controls</strong> - Tool-specific file routing with explicit user control</p></li>
+<li><p><strong>MCP Security</strong> - Validation and approval for external server connections</p></li>
+<li><p><strong>Runtime Security</strong> - Symlink resolution and path traversal prevention</p></li>
+</ol>
+</section>
+<section id="api-key-management">
+<h1>API Key Management<a class="headerlink" href="#api-key-management" title="Link to this heading"></a></h1>
+<section id="secure-credential-handling">
+<h2>Secure Credential Handling<a class="headerlink" href="#secure-credential-handling" title="Link to this heading"></a></h2>
+<p>ostruct never logs or stores API keys. Credentials are handled through:</p>
+<p><strong>Environment Variables (Recommended):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-api-key-here&quot;</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json
+</pre></div>
+</div>
+<p><strong>Command Line (Development Only):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>--api-key<span class="w"> </span><span class="s2">&quot;your-api-key&quot;</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>CLI API Keys</strong>: Avoid using <code class="docutils literal notranslate"><span class="pre">--api-key</span></code> in production as it may be visible in process lists or shell history.</p>
+</div>
+<p><strong>Configuration Files:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># ostruct.yaml</span>
+<span class="nt">api</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${OPENAI_API_KEY}&quot;</span><span class="w">  </span><span class="c1"># Environment variable substitution</span>
+</pre></div>
+</div>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<p>✅ <strong>Do:</strong>
+- Use environment variables for API keys
+- Rotate API keys regularly
+- Use dedicated API keys for different environments
+- Set usage limits in OpenAI dashboard
+- Monitor API usage and costs</p>
+<p>❌ <strong>Don’t:</strong>
+- Commit API keys to version control
+- Share API keys in plain text
+- Use production keys in development
+- Log or print API keys in applications</p>
+</section>
+<section id="environment-specific-keys">
+<h2>Environment-Specific Keys<a class="headerlink" href="#environment-specific-keys" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Development</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-dev-...&quot;</span>
+
+<span class="c1"># Staging</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-staging-...&quot;</span>
+
+<span class="c1"># Production</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-prod-...&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="file-access-control">
+<h1>File Access Control<a class="headerlink" href="#file-access-control" title="Link to this heading"></a></h1>
+<section id="securitymanager-architecture">
+<h2>SecurityManager Architecture<a class="headerlink" href="#securitymanager-architecture" title="Link to this heading"></a></h2>
+<p>All file operations in ostruct go through a centralized SecurityManager located at <code class="docutils literal notranslate"><span class="pre">src/ostruct/cli/security/security_manager.py</span></code>. This provides:</p>
+<ul class="simple">
+<li><p><strong>Path Normalization</strong>: Resolves relative paths and symlinks safely</p></li>
+<li><p><strong>Directory Validation</strong>: Ensures files are within allowed directories</p></li>
+<li><p><strong>Symlink Protection</strong>: Prevents directory traversal attacks</p></li>
+<li><p><strong>Case-Sensitive Handling</strong>: Platform-appropriate path handling</p></li>
+</ul>
+</section>
+<section id="allowed-directories">
+<h2>Allowed Directories<a class="headerlink" href="#allowed-directories" title="Link to this heading"></a></h2>
+<p>By default, ostruct restricts file access to the current working directory. Expand access with:</p>
+<p><strong>Single Directory:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>-A<span class="w"> </span>/data<span class="w"> </span>-ft<span class="w"> </span>/data/config.yaml
+</pre></div>
+</div>
+<p><strong>Multiple Directories:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-A<span class="w"> </span>/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-A<span class="w"> </span>/configs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-A<span class="w"> </span>/tmp/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-ft<span class="w"> </span>/data/input.csv
+</pre></div>
+</div>
+<p><strong>From File:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># allowed_dirs.txt</span>
+/data
+/configs
+/tmp/workspace
+
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>--allowed-dir-file<span class="w"> </span>allowed_dirs.txt
+</pre></div>
+</div>
+</section>
+<section id="base-directory-control">
+<h2>Base Directory Control<a class="headerlink" href="#base-directory-control" title="Link to this heading"></a></h2>
+<p>Set a base directory to restrict all relative path operations:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># All relative paths resolve within /project</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--base-dir<span class="w"> </span>/project<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-ft<span class="w"> </span>config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-ft<span class="w"> </span>data/input.csv
+</pre></div>
+</div>
+</section>
+<section id="security-validation-process">
+<h2>Security Validation Process<a class="headerlink" href="#security-validation-process" title="Link to this heading"></a></h2>
+<p>For every file access, ostruct:</p>
+<ol class="arabic simple">
+<li><p><strong>Normalizes</strong> the path (resolves <code class="docutils literal notranslate"><span class="pre">.</span></code>, <code class="docutils literal notranslate"><span class="pre">..</span></code>, symlinks)</p></li>
+<li><p><strong>Validates</strong> the path is within allowed directories</p></li>
+<li><p><strong>Checks</strong> file existence and permissions</p></li>
+<li><p><strong>Resolves</strong> symlinks with depth and loop protection</p></li>
+<li><p><strong>Provides</strong> the validated absolute path to the application</p></li>
+</ol>
+</section>
+<section id="path-traversal-prevention">
+<h2>Path Traversal Prevention<a class="headerlink" href="#path-traversal-prevention" title="Link to this heading"></a></h2>
+<p>ostruct prevents common path traversal attacks:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># These are blocked by SecurityManager</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span><span class="s2">&quot;../../../etc/passwd&quot;</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span><span class="s2">&quot;config/../../../sensitive.txt&quot;</span>
+
+<span class="c1"># Use allowed directories for legitimate access outside project</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>-A<span class="w"> </span>/etc<span class="w"> </span>-ft<span class="w"> </span>/etc/config.yaml
+</pre></div>
+</div>
+</section>
+</section>
+<section id="data-upload-and-tool-security">
+<h1>Data Upload and Tool Security<a class="headerlink" href="#data-upload-and-tool-security" title="Link to this heading"></a></h1>
+<section id="file-search-data-handling">
+<h2>File Search Data Handling<a class="headerlink" href="#file-search-data-handling" title="Link to this heading"></a></h2>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>Future-Proof Policy</strong>: Files may be uploaded to external services, depending on the backend provider. The current implementation uploads files to OpenAI’s File Search service for vector processing.</p>
+</div>
+<p><strong>What happens to your files:</strong>
+- Files are uploaded to vector stores for semantic search
+- Content is processed and indexed for retrieval
+- Files are accessible during the session for search operations
+- Cleanup removes files and vector stores after completion (when enabled)</p>
+<p><strong>Security considerations:</strong>
+- Review data sensitivity before uploading documents
+- Consider redacting sensitive information from documents
+- Use cleanup options to remove data after processing
+- Monitor your OpenAI usage dashboard for uploaded files</p>
+</section>
+<section id="code-interpreter-data-handling">
+<h2>Code Interpreter Data Handling<a class="headerlink" href="#code-interpreter-data-handling" title="Link to this heading"></a></h2>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>Data Upload</strong>: Files are uploaded to OpenAI’s Code Interpreter environment for Python execution and analysis.</p>
+</div>
+<p><strong>What happens to your files:</strong>
+- Files are uploaded to an isolated execution environment
+- Code can read, process, and analyze the files
+- Generated outputs (charts, results) can be downloaded
+- Cleanup removes uploaded files after execution (when enabled)</p>
+<p><strong>Security considerations:</strong>
+- Avoid uploading confidential datasets
+- Review generated outputs before sharing
+- Use cleanup options to manage storage quotas
+- Consider data anonymization for sensitive datasets</p>
+</section>
+<section id="template-file-security">
+<h2>Template File Security<a class="headerlink" href="#template-file-security" title="Link to this heading"></a></h2>
+<p>Template files (<code class="docutils literal notranslate"><span class="pre">-ft</span></code>, <code class="docutils literal notranslate"><span class="pre">--fta</span></code>, <code class="docutils literal notranslate"><span class="pre">-dt</span></code>) are <strong>never uploaded</strong> to external services:</p>
+<ul class="simple">
+<li><p>Files remain on your local system</p></li>
+<li><p>Content is read and included in template rendering</p></li>
+<li><p>No data leaves your environment for template-only files</p></li>
+<li><p>Safe for configuration files and sensitive templates</p></li>
+</ul>
+</section>
+<section id="tool-routing-security-matrix">
+<h2>Tool Routing Security Matrix<a class="headerlink" href="#tool-routing-security-matrix" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 35%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>File Routing</p></th>
+<th class="head"><p>Local Access</p></th>
+<th class="head"><p>Data Upload</p></th>
+<th class="head"><p>Use Cases</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-ft</span></code> (Template)</p></td>
+<td><p>✅ Yes</p></td>
+<td><p>❌ No</p></td>
+<td><p>Config files, sensitive data</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-fc</span></code> (Code Interpreter)</p></td>
+<td><p>✅ Yes</p></td>
+<td><p>⚠️ Yes</p></td>
+<td><p>Data analysis, computation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-fs</span></code> (File Search)</p></td>
+<td><p>✅ Yes</p></td>
+<td><p>⚠️ Yes</p></td>
+<td><p>Document search, knowledge bases</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="cleanup-and-data-retention">
+<h2>Cleanup and Data Retention<a class="headerlink" href="#cleanup-and-data-retention" title="Link to this heading"></a></h2>
+<p>Enable cleanup to minimize data retention:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Enable cleanup (default: true)</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-fc<span class="w"> </span>data.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--code-interpreter-cleanup
+
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-fs<span class="w"> </span>docs.pdf<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--file-search-cleanup
+</pre></div>
+</div>
+</section>
+</section>
+<section id="mcp-server-security">
+<h1>MCP Server Security<a class="headerlink" href="#mcp-server-security" title="Link to this heading"></a></h1>
+<p>Model Context Protocol (MCP) servers extend ostruct with external capabilities, requiring additional security considerations.</p>
+<section id="server-validation">
+<h2>Server Validation<a class="headerlink" href="#server-validation" title="Link to this heading"></a></h2>
+<p>ostruct validates MCP connections:</p>
+<ul class="simple">
+<li><p><strong>URL Validation</strong>: Ensures proper HTTPS URLs for remote servers</p></li>
+<li><p><strong>Certificate Validation</strong>: Verifies SSL certificates for secure connections</p></li>
+<li><p><strong>Timeout Controls</strong>: Prevents hanging connections</p></li>
+<li><p><strong>Error Handling</strong>: Graceful failure for unreachable servers</p></li>
+</ul>
+<p><strong>Example secure connection:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-server<span class="w"> </span><span class="s2">&quot;deepwiki@https://mcp.deepwiki.com/sse&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-headers<span class="w"> </span><span class="s1">&#39;{&quot;Authorization&quot;: &quot;Bearer your-token&quot;}&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="tool-restrictions">
+<h2>Tool Restrictions<a class="headerlink" href="#tool-restrictions" title="Link to this heading"></a></h2>
+<p>Restrict which tools MCP servers can use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Allow only specific tools</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-server<span class="w"> </span><span class="s2">&quot;research@https://mcp.example.com&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-allowed-tools<span class="w"> </span><span class="s2">&quot;research:search,summarize&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="approval-controls">
+<h2>Approval Controls<a class="headerlink" href="#approval-controls" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Require approval for tool usage (CLI requires &#39;never&#39;)</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-server<span class="w"> </span><span class="s2">&quot;external@https://mcp.example.com&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-require-approval<span class="w"> </span>never
+</pre></div>
+</div>
+</section>
+<section id="authentication">
+<h2>Authentication<a class="headerlink" href="#authentication" title="Link to this heading"></a></h2>
+<p>Secure MCP server authentication:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Bearer token authentication</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-server<span class="w"> </span><span class="s2">&quot;secure@https://mcp.example.com&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-headers<span class="w"> </span><span class="s1">&#39;{&quot;Authorization&quot;: &quot;Bearer token123&quot;}&#39;</span>
+
+<span class="c1"># API key authentication</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-server<span class="w"> </span><span class="s2">&quot;api@https://mcp.example.com&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mcp-headers<span class="w"> </span><span class="s1">&#39;{&quot;X-API-Key&quot;: &quot;key123&quot;}&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="third-party-security-review">
+<h2>Third-Party Security Review<a class="headerlink" href="#third-party-security-review" title="Link to this heading"></a></h2>
+<p>Before connecting to MCP servers:</p>
+<ol class="arabic simple">
+<li><p><strong>Review server documentation</strong> for data handling policies</p></li>
+<li><p><strong>Verify HTTPS and certificate validity</strong></p></li>
+<li><p><strong>Understand what data may be sent</strong> to the server</p></li>
+<li><p><strong>Check authentication requirements</strong></p></li>
+<li><p><strong>Test with non-sensitive data</strong> first</p></li>
+</ol>
+</section>
+</section>
+<section id="threat-model-and-risk-assessment">
+<h1>Threat Model and Risk Assessment<a class="headerlink" href="#threat-model-and-risk-assessment" title="Link to this heading"></a></h1>
+<section id="data-classification">
+<h2>Data Classification<a class="headerlink" href="#data-classification" title="Link to this heading"></a></h2>
+<p>Classify your data before processing:</p>
+<p><strong>Public Data</strong> ✅
+- Public documentation
+- Open source code
+- Marketing materials
+- Published research</p>
+<p><strong>Internal Data</strong> ⚠️
+- Configuration files (review for secrets)
+- Development code (review for credentials)
+- Business documents (assess sensitivity)
+- Log files (may contain sensitive information)</p>
+<p><strong>Confidential Data</strong> ❌
+- Customer PII
+- Financial records
+- Authentication credentials
+- Trade secrets</p>
+<p><strong>Restricted Data</strong> 🚫
+- Government classified information
+- Healthcare PHI/PII
+- Payment card data
+- Legal privileged information</p>
+</section>
+<section id="common-threats-and-mitigations">
+<h2>Common Threats and Mitigations<a class="headerlink" href="#common-threats-and-mitigations" title="Link to this heading"></a></h2>
+<p><strong>Path Traversal Attacks</strong>
+- <em>Threat</em>: Malicious paths accessing unauthorized files
+- <em>Mitigation</em>: SecurityManager validation, allowed directories</p>
+<p><strong>Credential Exposure</strong>
+- <em>Threat</em>: API keys in logs, processes, or version control
+- <em>Mitigation</em>: Environment variables, secure handling</p>
+<p><strong>Data Exfiltration</strong>
+- <em>Threat</em>: Sensitive data uploaded to external services
+- <em>Mitigation</em>: Tool routing control, data classification</p>
+<p><strong>Injection Attacks</strong>
+- <em>Threat</em>: Malicious content in templates or file names
+- <em>Mitigation</em>: Template validation, path sanitization</p>
+<p><strong>MCP Server Compromise</strong>
+- <em>Threat</em>: Malicious or compromised external servers
+- <em>Mitigation</em>: HTTPS validation, tool restrictions, approval controls</p>
+</section>
+</section>
+<section id="production-security-checklist">
+<h1>Production Security Checklist<a class="headerlink" href="#production-security-checklist" title="Link to this heading"></a></h1>
+<section id="pre-deployment-security-review">
+<h2>Pre-Deployment Security Review<a class="headerlink" href="#pre-deployment-security-review" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>□ API keys stored in environment variables
+□ No hardcoded credentials in templates or configs
+□ Allowed directories properly configured
+□ Base directory set for path restriction
+□ File routing reviewed for data sensitivity
+□ Cleanup enabled for uploaded files
+□ MCP servers reviewed and validated
+□ Data classification completed
+□ Security policies documented
+</pre></div>
+</div>
+</section>
+<section id="runtime-security-monitoring">
+<h2>Runtime Security Monitoring<a class="headerlink" href="#runtime-security-monitoring" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>□ API usage monitoring enabled
+□ File access logging reviewed
+□ Upload cleanup verified
+□ Error handling for security failures
+□ Regular security assessment scheduled
+</pre></div>
+</div>
+</section>
+<section id="incident-response">
+<h2>Incident Response<a class="headerlink" href="#incident-response" title="Link to this heading"></a></h2>
+<p>If security issues occur:</p>
+<ol class="arabic simple">
+<li><p><strong>Immediate Actions:</strong>
+- Rotate compromised API keys
+- Remove uploaded sensitive data
+- Disconnect compromised MCP servers
+- Review logs for unauthorized access</p></li>
+<li><p><strong>Investigation:</strong>
+- Identify scope of data exposure
+- Review file access logs
+- Check API usage patterns
+- Assess impact on downstream systems</p></li>
+<li><p><strong>Recovery:</strong>
+- Implement additional controls
+- Update security documentation
+- Train team on new procedures
+- Monitor for recurring issues</p></li>
+</ol>
+</section>
+</section>
+<section id="security-configuration-examples">
+<h1>Security Configuration Examples<a class="headerlink" href="#security-configuration-examples" title="Link to this heading"></a></h1>
+<section id="development-environment">
+<h2>Development Environment<a class="headerlink" href="#development-environment" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Development: Relaxed but secure</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-dev-...&quot;</span>
+
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--base-dir<span class="w"> </span>./project<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-A<span class="w"> </span>./test_data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-ft<span class="w"> </span>config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-fc<span class="w"> </span>test_data.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--code-interpreter-cleanup<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--file-search-cleanup
+</pre></div>
+</div>
+</section>
+<section id="staging-environment">
+<h2>Staging Environment<a class="headerlink" href="#staging-environment" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Staging: Production-like security</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-staging-...&quot;</span>
+
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--base-dir<span class="w"> </span>/app<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-A<span class="w"> </span>/app/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-A<span class="w"> </span>/app/configs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--allowed-dir-file<span class="w"> </span>/app/allowed_dirs.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-ft<span class="w"> </span>configs/app.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--code-interpreter-cleanup<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--file-search-cleanup<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--verbose
+</pre></div>
+</div>
+</section>
+<section id="production-environment">
+<h2>Production Environment<a class="headerlink" href="#production-environment" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Production: Maximum security</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-prod-...&quot;</span>
+
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--base-dir<span class="w"> </span>/prod/app<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--allowed-dir-file<span class="w"> </span>/prod/security/allowed_dirs.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-ft<span class="w"> </span>configs/production.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--code-interpreter-cleanup<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--file-search-cleanup<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--timeout<span class="w"> </span><span class="m">300</span>
+</pre></div>
+</div>
+</section>
+<section id="ci-cd-pipeline-security">
+<h2>CI/CD Pipeline Security<a class="headerlink" href="#ci-cd-pipeline-security" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># .github/workflows/secure-analysis.yml</span>
+<span class="nt">steps</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Secure Analysis</span>
+<span class="w">    </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.OPENAI_API_KEY }}</span>
+<span class="w">    </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">ostruct run analysis.j2 schema.json \</span>
+<span class="w">        </span><span class="no">--base-dir ${{ github.workspace }} \</span>
+<span class="w">        </span><span class="no">-A ${{ github.workspace }}/data \</span>
+<span class="w">        </span><span class="no">-ft config.yaml \</span>
+<span class="w">        </span><span class="no">-fc data/metrics.csv \</span>
+<span class="w">        </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">        </span><span class="no">--file-search-cleanup \</span>
+<span class="w">        </span><span class="no">--output-file results.json</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="security-resources">
+<h1>Security Resources<a class="headerlink" href="#security-resources" title="Link to this heading"></a></h1>
+<section id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../user-guide/cli_reference.html"><span class="doc">CLI Reference</span></a> - Complete CLI security options</p></li>
+<li><p><a class="reference internal" href="../user-guide/quickstart.html"><span class="doc">Quick Start Guide</span></a> - Security-aware examples</p></li>
+<li><p><span class="xref std std-doc">../automate/ci_cd</span> - Secure CI/CD integration</p></li>
+</ul>
+</section>
+<section id="code-references">
+<h2>Code References<a class="headerlink" href="#code-references" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">src/ostruct/cli/security/security_manager.py</span></code> - Main security validation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/ostruct/cli/security/allowed_checker.py</span></code> - Directory validation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/ostruct/cli/security/symlink_resolver.py</span></code> - Symlink safety</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/ostruct/cli/security/normalization.py</span></code> - Path normalization</p></li>
+</ul>
+</section>
+<section id="external-resources">
+<h2>External Resources<a class="headerlink" href="#external-resources" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://platform.openai.com/docs/guides/safety-best-practices">OpenAI API Security</a></p></li>
+<li><p><a class="reference external" href="https://owasp.org/www-community/attacks/Path_Traversal">OWASP Path Traversal Prevention</a></p></li>
+<li><p><a class="reference external" href="https://cheatsheetseries.owasp.org/cheatsheets/Key_Management_Cheat_Sheet.html">Secure API Key Management</a></p></li>
+</ul>
+</section>
+</section>
+<section id="getting-security-help">
+<h1>Getting Security Help<a class="headerlink" href="#getting-security-help" title="Link to this heading"></a></h1>
+<p>If you discover security issues:</p>
+<ol class="arabic simple">
+<li><p><strong>For ostruct vulnerabilities</strong>: Report to the project maintainers</p></li>
+<li><p><strong>For OpenAI API issues</strong>: Contact OpenAI support</p></li>
+<li><p><strong>For MCP server issues</strong>: Contact the server provider</p></li>
+<li><p><strong>For general security questions</strong>: Consult your security team</p></li>
+</ol>
+<p>Remember: Security is a shared responsibility between ostruct, service providers, and your implementation.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../user-guide/cli_reference.html" class="btn btn-neutral float-left" title="CLI Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Yaniv Golan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

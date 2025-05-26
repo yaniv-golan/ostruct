@@ -1,15 +1,22 @@
 # Automated Code Review
 
-This use case demonstrates how to perform automated code reviews on multiple files using the OpenAI Structured CLI. It analyzes code for potential issues related to security, style, complexity, and more, producing a structured JSON output that can be integrated into CI/CD pipelines.
+This use case demonstrates how to perform automated code reviews using ostruct CLI with both traditional and enhanced multi-tool capabilities. It analyzes code for potential issues related to security, style, complexity, and more, producing structured JSON output that can be integrated into CI/CD pipelines.
 
 ## Features
 
+### Core Analysis
 - Multi-file code analysis in a single pass
 - Structured output following a defined schema
 - Security vulnerability detection
 - Code style and best practices checking
 - Performance issue identification
 - Documentation completeness analysis
+
+### Enhanced Multi-Tool Integration
+- **Code Interpreter**: Execute code snippets for dynamic analysis
+- **File Search**: Search documentation for context and best practices
+- **Explicit File Routing**: Optimize processing through targeted file routing
+- **Configuration System**: Persistent settings for consistent reviews
 
 ## Directory Structure
 
@@ -37,69 +44,126 @@ This use case demonstrates how to perform automated code reviews on multiple fil
 
 ## Usage
 
-1. **Basic Usage**:
+## Problem This Solves
 
-   Generic pattern:
+Manual code reviews are time-consuming and often miss subtle issues. This automated code review system provides consistent, comprehensive analysis that can catch security vulnerabilities, performance problems, and style violations before they reach production. It integrates seamlessly into CI/CD pipelines and provides structured feedback that developers can act on immediately.
 
-   ```bash
-   ostruct run prompts/task.j2 schemas/code_review.json \
-     -d code path/to/your/code \
-     -R \
-     --sys-file prompts/system.txt
-   ```
+### Traditional Usage (Unchanged)
 
-   Ready to run example:
+These commands work exactly as before:
+
+1. **Basic Directory Review**:
 
    ```bash
+   # Traditional pattern (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
      -d code examples/security \
-     -R \
+     --dir-recursive \
      --sys-file prompts/system.txt
    ```
 
-2. **With Custom Extensions**:
-
-   Generic pattern:
+2. **Pattern Matching**:
 
    ```bash
+   # Traditional pattern matching (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -d code path/to/your/code \
-     -R \
-     -p code "*.{py,js,ts}" \
-     --sys-file prompts/system.txt
-   ```
-
-   Ready to run example:
-
-   ```bash
-   ostruct run prompts/task.j2 schemas/code_review.json \
-     -d code examples/performance \
-     -R \
      -p code "*.py" \
      --sys-file prompts/system.txt
    ```
 
 3. **Output to File**:
 
-   Generic pattern:
-
    ```bash
-   ostruct run prompts/task.j2 schemas/code_review.json \
-     -d code path/to/your/code \
-     -R \
-     --sys-file prompts/system.txt \
-     --output-file review_results.json
-   ```
-
-   Ready to run example:
-
-   ```bash
+   # Traditional with output file (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
      -d code examples/style \
-     -R \
+     --dir-recursive \
      --sys-file prompts/system.txt \
      --output-file style_review.json
    ```
+
+### Enhanced Multi-Tool Usage
+
+#### Code Interpreter Integration
+Upload code for execution and dynamic analysis:
+
+```bash
+# Auto-naming (quick analysis)
+ostruct run prompts/task.j2 schemas/code_review.json \
+  -fc examples/security/ \
+  --sys-file prompts/system.txt
+
+# Equals syntax with custom names
+ostruct run prompts/task.j2 schemas/code_review.json \
+  -fc examples/security/sql_injection.py \
+  -fc perf_code=examples/performance/n_plus_one.py \
+  --sys-file prompts/system.txt
+
+# Two-argument alias syntax (best tab completion)
+ostruct run prompts/task.j2 schemas/code_review.json \
+  --file-for-code-interpreter security_code examples/security/sql_injection.py \
+  --file-for-code-interpreter performance_code examples/performance/n_plus_one.py \
+  --file-for-template system_prompt prompts/system.txt
+```
+
+#### File Search for Documentation Context
+Search documentation for best practices and context:
+
+```bash
+# Code review with documentation context
+ostruct run prompts/task.j2 schemas/code_review.json \
+  -fc examples/security/ \
+  -fs docs/ \
+  --sys-file prompts/system.txt
+
+# Template-only configuration files
+ostruct run prompts/task.j2 schemas/code_review.json \
+  -fc source_code/ \
+  -fs documentation/ \
+  -ft .eslintrc.json \
+  --sys-file prompts/system.txt
+```
+
+#### Multi-Tool Combination
+Combine Code Interpreter and File Search for comprehensive analysis:
+
+```bash
+# Full multi-tool analysis
+ostruct run prompts/task.j2 schemas/code_review.json \
+  -fc examples/security/ \
+  -fc examples/performance/ \
+  -fs docs/ \
+  -ft config.yaml \
+  --sys-file prompts/system.txt \
+  --output-file comprehensive_review.json
+```
+
+#### Configuration-Driven Workflows
+Use persistent configuration for consistent reviews:
+
+```bash
+# Create ostruct.yaml
+cat > ostruct.yaml << EOF
+models:
+  default: gpt-4o
+tools:
+  code_interpreter:
+    auto_download: true
+    output_directory: "./review_output"
+  file_search:
+    max_results: 15
+operation:
+  timeout_minutes: 30
+limits:
+  max_cost_per_run: 5.00
+EOF
+
+# Run with configuration
+ostruct --config ostruct.yaml run prompts/task.j2 schemas/code_review.json \
+  -fc src/ \
+  -fs docs/ \
+  --sys-file prompts/system.txt
+```
 
 ## Customization
 
@@ -118,31 +182,159 @@ The review results follow a structured schema defined in `schemas/code_review.js
 - Field descriptions
 - Example outputs
 
-## Integration
+## CI/CD Integration
 
 ### GitHub Actions
 
+#### Traditional Integration (Still Works)
 ```yaml
 - name: Run Code Review
   run: |
     ostruct run prompts/task.j2 schemas/code_review.json \
       -d code . \
-      -R \
+      --dir-recursive \
       -p code "*.{py,js,ts}" \
       --sys-file prompts/system.txt \
       --output-file review_results.json
 ```
 
+#### Enhanced Multi-Tool Integration
+```yaml
+- name: Enhanced Code Review
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  run: |
+    # Create configuration
+    cat > ci_config.yaml << EOF
+    models:
+      default: gpt-4o
+    tools:
+      code_interpreter:
+        auto_download: true
+      file_search:
+        max_results: 20
+    operation:
+      timeout_minutes: 20
+    limits:
+      max_cost_per_run: 3.00
+    EOF
+
+    # Run enhanced analysis
+    ostruct --config ci_config.yaml run prompts/task.j2 schemas/code_review.json \
+      -fc src/ \
+      -fc tests/ \
+      -fs docs/ \
+      -ft .github/workflows/ \
+      --sys-file prompts/system.txt \
+      --output-file enhanced_review.json
+```
+
 ### GitLab CI
 
+#### Traditional CI (Still Works)
 ```yaml
 code_review:
   script:
     - ostruct run prompts/task.j2 schemas/code_review.json \
         -d code . \
-        -R \
+        --dir-recursive \
         --sys-file prompts/system.txt
 ```
+
+#### Enhanced CI with Multi-Tool Analysis
+```yaml
+enhanced_code_review:
+  stage: analysis
+  image: python:3.11
+  before_script:
+    - pip install ostruct-cli
+  script:
+    - |
+      cat > .ostruct.yaml << EOF
+      models:
+        default: gpt-4o
+      tools:
+        code_interpreter:
+          auto_download: true
+          output_directory: "./ci_output"
+      operation:
+        timeout_minutes: 15
+      limits:
+        max_cost_per_run: 2.00
+      EOF
+    - |
+      ostruct run prompts/task.j2 schemas/code_review.json \
+        -fc src/ \
+        -fs documentation/ \
+        -ft ci/ \
+        --sys-file prompts/system.txt \
+        --output-file comprehensive_review.json
+  artifacts:
+    reports:
+      junit: comprehensive_review.json
+    paths:
+      - comprehensive_review.json
+      - ci_output/
+  variables:
+    OPENAI_API_KEY: $CI_OPENAI_API_KEY
+```
+
+### Jenkins Pipeline
+
+```groovy
+pipeline {
+    agent any
+
+    environment {
+        OPENAI_API_KEY = credentials('openai-api-key')
+    }
+
+    stages {
+        stage('Enhanced Code Review') {
+            steps {
+                script {
+                    // Create configuration
+                    writeFile file: 'jenkins_config.yaml', text: '''
+models:
+  default: gpt-4o
+tools:
+  code_interpreter:
+    auto_download: true
+    output_directory: "./jenkins_output"
+  file_search:
+    max_results: 25
+operation:
+  timeout_minutes: 25
+limits:
+  max_cost_per_run: 4.00
+'''
+                }
+
+                sh '''
+                    pip install ostruct-cli
+
+                    ostruct --config jenkins_config.yaml run prompts/task.j2 schemas/code_review.json \
+                      -fc src/ \
+                      -fc test/ \
+                      -fs docs/ \
+                      -ft Jenkinsfile \
+                      --sys-file prompts/system.txt \
+                      --output-file jenkins_review.json
+                '''
+
+                archiveArtifacts artifacts: 'jenkins_review.json,jenkins_output/**'
+
+                script {
+                    def review = readJSON file: 'jenkins_review.json'
+                    if (review.critical_issues?.size() > 0) {
+                        currentBuild.result = 'UNSTABLE'
+                        echo "Found ${review.critical_issues.size()} critical issues"
+                    }
+                }
+            }
+        }
+    }
+}
 
 ## Prerequisites
 

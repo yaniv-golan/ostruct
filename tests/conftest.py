@@ -209,7 +209,6 @@ def temp_dir() -> Generator[Path, None, None]:
 
 @pytest.fixture(autouse=True, scope="function")
 def setup_test_fs(
-    fs: FakeFilesystem,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ) -> None:
@@ -218,6 +217,7 @@ def setup_test_fs(
     This fixture:
     1. Creates common test directories only when needed by fixtures
     2. Patches the system temp directory to use a controlled location
+    3. Adds model registry files to the fake filesystem
 
     Note: These directories are created automatically only when needed:
     - /test_workspace/
@@ -239,6 +239,31 @@ def setup_test_fs(
     marker = request.node.get_closest_marker("no_fs")
     if marker is not None:
         return
+
+    # Get the fs fixture only if we need it
+    fs = request.getfixturevalue("fs")
+
+    # Add model registry files to fake filesystem
+    # This is needed because the openai-model-registry package needs to read its config files
+    try:
+        import openai_model_registry
+        from openai_model_registry import ModelRegistry
+
+        registry_path = Path(openai_model_registry.__file__).parent
+        config_dir = registry_path / "config"
+
+        # Add the entire config directory to the fake filesystem
+        if config_dir.exists():
+            fs.add_real_directory(str(config_dir))
+
+            # Reset the ModelRegistry singleton to force it to reload with the new filesystem
+            if hasattr(ModelRegistry, "_instance"):
+                ModelRegistry._instance = None
+
+    except Exception:
+        # If we can't add the registry files, continue without them
+        # Tests will need to handle the empty registry case
+        pass
 
     # Only create directories if the test uses fixtures that need them
     needs_dirs = any(
@@ -393,7 +418,7 @@ class MockSecurityManager(SecurityManager):
 
         T = TypeVar("T", bound=IO[Any])
         # Use type alias syntax that works with mypy
-        OpenFunc = Callable[..., T]  # type: ignore
+        OpenFunc = Callable[..., T]
         original_open: OpenFunc = builtins.open
 
         @wraps(original_open)
@@ -596,10 +621,28 @@ def pytest_terminal_summary(
             terminalreporter.write_line(f"  {report.nodeid}")
 
 
+class MockResponsesAPI:
+    """Mock for OpenAI Responses API."""
+
+    async def create(self, **kwargs):
+        """Mock the responses.create method."""
+
+        # Return an async iterator that yields mock response chunks
+        async def mock_stream():
+            yield {
+                "choices": [
+                    {"delta": {"content": '{"result": "Mock response"}'}}
+                ]
+            }
+
+        return mock_stream()
+
+
 class MockClient:
-    def __init__(self, api_key: Optional[str] = None, **kwargs):
+    def __init__(self, api_key: Optional[str] = None, **kwargs: Any) -> None:
         # Accept any API key for testing
         self.api_key = api_key or "test-key"
+        self.responses = MockResponsesAPI()
 
     async def chat_completions_create(self, **kwargs):
         """Simple mock that returns a basic response."""
@@ -637,7 +680,131 @@ class DummyEncoder:
 def mock_tiktoken(monkeypatch):
     """Mock tiktoken to avoid filesystem/network access."""
 
-    def mock_get_encoding(name: str):
+    def mock_get_encoding(name: str) -> DummyEncoder:
         return DummyEncoder()
 
     monkeypatch.setattr(tiktoken, "get_encoding", mock_get_encoding)
+
+
+@pytest.fixture(autouse=True)
+def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mock the ModelRegistry to provide consistent test data."""
+    from openai_model_registry import ModelRegistry  # noqa: F401
+    from openai_model_registry.registry import ModelCapabilities  # noqa: F401
+
+    class MockModelRegistry:
+        def __init__(self):
+            self._capabilities = {
+                "gpt-4o": self._create_mock_capabilities(
+                    "gpt-4o", 128000, 16384
+                ),
+                "gpt-4o-mini": self._create_mock_capabilities(
+                    "gpt-4o-mini", 128000, 16384
+                ),
+                "o1": self._create_mock_capabilities("o1", 200000, 100000),
+                "o3-mini": self._create_mock_capabilities(
+                    "o3-mini", 200000, 65536
+                ),
+                "gpt-4o-2024-05-13": self._create_mock_capabilities(
+                    "gpt-4o-2024-05-13", 128000, 16384
+                ),
+            }
+
+        def _create_mock_capabilities(
+            self, model_name: str, context_window: int, max_output_tokens: int
+        ) -> Any:
+            """Create a mock ModelCapabilities object."""
+
+            class MockCapabilities:
+                def __init__(
+                    self,
+                    model_name: str,
+                    context_window: int,
+                    max_output_tokens: int,
+                ):
+                    self.model_name = model_name
+                    self.openai_model_name = model_name
+                    self.context_window = context_window
+                    self.max_output_tokens = max_output_tokens
+                    self.supports_structured = True
+                    self.supports_streaming = True
+                    self.supports_vision = False
+                    self.supports_functions = True
+                    self.supported_parameters = [
+                        "temperature",
+                        "max_output_tokens",
+                        "top_p",
+                        "frequency_penalty",
+                        "presence_penalty",
+                    ]
+
+                def validate_parameter(
+                    self, param_name: str, value: Any
+                ) -> None:
+                    """Mock parameter validation."""
+                    pass
+
+            return MockCapabilities(
+                model_name, context_window, max_output_tokens
+            )
+
+        def get_capabilities(self, model: str) -> Any:
+            """Get model capabilities."""
+            if model in self._capabilities:
+                return self._capabilities[model]
+            # For unknown models, raise the same error as the real registry
+            from openai_model_registry.errors import ModelNotSupportedError
+
+            raise ModelNotSupportedError(
+                f"Model '{model}' not found. Available base models: {', '.join(sorted(self._capabilities.keys()))}",
+                model=model,
+                available_models=list(self._capabilities.keys()),
+            )
+
+        def check_for_updates(self) -> Any:
+            """Mock check for updates method."""
+            # Import the real types to match the API
+            try:
+                from openai_model_registry.registry import (
+                    RefreshResult,
+                    RefreshStatus,
+                )
+
+                # Return a successful "already current" result by default
+                return RefreshResult(
+                    success=True,
+                    status=RefreshStatus.ALREADY_CURRENT,
+                    message="Registry is up to date",
+                )
+            except ImportError:
+                # Fallback if the real types aren't available
+                class MockStatus:
+                    def __init__(self, value: str):
+                        self.value = value
+
+                class MockResult:
+                    def __init__(
+                        self, status: str, message: str, success: bool = True
+                    ):
+                        self.status = MockStatus(status)
+                        self.message = message
+                        self.success = success
+
+                return MockResult(
+                    status="already_current",
+                    message="Registry is up to date",
+                    success=True,
+                )
+
+        @classmethod
+        def get_instance(cls):
+            """Get singleton instance."""
+            if not hasattr(cls, "_instance"):
+                cls._instance = cls()
+            return cls._instance
+
+    # Replace the ModelRegistry class with our mock
+    monkeypatch.setattr(
+        "openai_model_registry.ModelRegistry", MockModelRegistry
+    )
+    monkeypatch.setattr("ostruct.cli.cli.ModelRegistry", MockModelRegistry)

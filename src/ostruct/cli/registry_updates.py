@@ -11,10 +11,15 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-from openai_structured.model_registry import (
-    ModelRegistry,
-    RegistryUpdateStatus,
-)
+# Model Registry Integration - Using external openai-model-registry library
+from openai_model_registry import ModelRegistry
+
+
+# For compatibility with existing code
+class RegistryUpdateStatus:
+    UPDATE_AVAILABLE = "UPDATE_AVAILABLE"
+    ALREADY_CURRENT = "ALREADY_CURRENT"
+
 
 logger = logging.getLogger(__name__)
 
@@ -122,17 +127,17 @@ def check_for_registry_updates() -> Tuple[bool, Optional[str]]:
         return False, None
 
     try:
-        registry = ModelRegistry()
+        registry = ModelRegistry.get_instance()
         result = registry.check_for_updates()
 
         # Save the check time regardless of the result
         _save_last_check_time()
 
-        if result.status == RegistryUpdateStatus.UPDATE_AVAILABLE:
+        if result.status.value == "update_available":
             return True, (
                 "A new model registry is available. "
                 "This may include support for new models or features. "
-                "The registry will be automatically updated when needed."
+                "Run 'ostruct update-registry' to update."
             )
 
         return False, None

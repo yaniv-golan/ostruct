@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Template Creation Guide &mdash; ostruct-cli  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/sphinx-design.min.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Template Filters" href="template_filters.html" />
+    <link rel="prev" title="CLI Reference" href="cli.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ostruct-cli
+          </a>
+              <div class="version">
+                0.8.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Template Creation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-syntax">Basic Syntax</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#variables">Variables</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#file-information">File Information</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#custom-variables">Custom Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#control-structures">Control Structures</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#for-loops">For Loops</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#if-statements">If Statements</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comments">Comments</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#frontmatter">Frontmatter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-templates">Example Templates</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#code-review-template">Code Review Template</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuration-validation">Configuration Validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#advanced-example-with-filters">Advanced Example with Filters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">See Also</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#filters">Filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#global-functions">Global Functions</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="template_filters.html">Template Filters</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ostruct-cli</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Template Creation Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/templates.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="template-creation-guide">
+<h1>Template Creation Guide<a class="headerlink" href="#template-creation-guide" title="Link to this heading"></a></h1>
+<p>This guide provides information on how to create templates for use with <code class="docutils literal notranslate"><span class="pre">ostruct</span></code>.</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">ostruct</span></code> prompt templates are implemented using a customized instance of Jinja2, a templating engine for Python. It allows you to combine static text with dynamic content using placeholders and logic. This guide assumes no prior knowledge of Jinja2.</p>
+</div></blockquote>
+<section id="basic-syntax">
+<h2>Basic Syntax<a class="headerlink" href="#basic-syntax" title="Link to this heading"></a></h2>
+<section id="variables">
+<h3>Variables<a class="headerlink" href="#variables" title="Link to this heading"></a></h3>
+<p>Variables in ostruct templates are enclosed in double curly braces: <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">variable_name</span> <span class="pre">}}</span></code>. <code class="docutils literal notranslate"><span class="pre">ostruct</span></code> makes various pieces of information available to the template:</p>
+<ul class="simple">
+<li><p><strong>File Information</strong>: When using <code class="docutils literal notranslate"><span class="pre">-f</span></code>, <code class="docutils literal notranslate"><span class="pre">-d</span></code>, or <code class="docutils literal notranslate"><span class="pre">-p</span></code> flags, file information is available through <code class="docutils literal notranslate"><span class="pre">FileInfo</span></code> objects</p></li>
+<li><p><strong>Custom Variables</strong>: Values defined using <code class="docutils literal notranslate"><span class="pre">-V</span></code> or <code class="docutils literal notranslate"><span class="pre">-J</span></code> flags</p></li>
+<li><p><strong>System Variables</strong>: Built-in variables and context provided by <code class="docutils literal notranslate"><span class="pre">ostruct</span></code></p></li>
+</ul>
+<section id="file-information">
+<h4>File Information<a class="headerlink" href="#file-information" title="Link to this heading"></a></h4>
+<p>When you map files using the input flags, you can access their contents and metadata through <code class="docutils literal notranslate"><span class="pre">FileInfo</span></code> objects:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-f</span> <span class="pre">NAME</span> <span class="pre">FILE</span></code>: Maps a single file to a variable. Access directly: <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">name.content</span> <span class="pre">}}</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">NAME</span> <span class="pre">DIR</span></code>: Maps a directory to a variable. Access with iteration: <code class="docutils literal notranslate"><span class="pre">{%</span> <span class="pre">for</span> <span class="pre">file</span> <span class="pre">in</span> <span class="pre">name</span> <span class="pre">%}</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">NAME</span> <span class="pre">PATTERN</span></code>: Maps files matching a glob pattern. Access with iteration: <code class="docutils literal notranslate"><span class="pre">{%</span> <span class="pre">for</span> <span class="pre">file</span> <span class="pre">in</span> <span class="pre">name</span> <span class="pre">%}</span></code></p></li>
+</ul>
+<p>For example, mapping a single file (<code class="docutils literal notranslate"><span class="pre">-f</span></code>):</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x"># Map a source file:</span>
+<span class="x">-f source input.py</span>
+
+<span class="x"># In template:</span>
+<span class="cp">{{</span> <span class="nv">source.content</span> <span class="cp">}}</span><span class="x">  # File contents</span>
+<span class="cp">{{</span> <span class="nv">source.path</span> <span class="cp">}}</span><span class="x">    # File path</span>
+</pre></div>
+</div>
+<p>For directories (<code class="docutils literal notranslate"><span class="pre">-d</span></code>) or patterns (<code class="docutils literal notranslate"><span class="pre">-p</span></code>):</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x"># Map Python files:</span>
+<span class="x">-d python_files src/</span>
+<span class="x"># or</span>
+<span class="x">-p python_files &quot;src/**/*.py&quot;</span>
+
+<span class="x"># In template:</span>
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">python_files</span> <span class="cp">%}</span>
+<span class="x">  File: </span><span class="cp">{{</span> <span class="nv">file.path</span> <span class="cp">}}</span>
+<span class="x">  Content: </span><span class="cp">{{</span> <span class="nv">file.content</span> <span class="cp">}}</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+<p>Each <code class="docutils literal notranslate"><span class="pre">FileInfo</span></code> object provides these attributes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>: File name</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code>: Path relative to the base directory (set by <code class="docutils literal notranslate"><span class="pre">--base-dir</span></code> or defaults to current working directory)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">abs_path</span></code>: Absolute filesystem path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">content</span></code>: File contents</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ext</span></code>: File extension</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">basename</span></code>: Base name without extension</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dirname</span></code>: Directory name</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">exists</span></code>: Whether file exists</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">is_file</span></code>: Whether it’s a file</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">is_dir</span></code>: Whether it’s a directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">size</span></code>: File size</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mtime</span></code>: Modification time</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">encoding</span></code>: File encoding</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hash</span></code>: File hash</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extension</span></code>: File extension (same as ext)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">parent</span></code>: Parent directory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stem</span></code>: File name without extension</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">suffix</span></code>: File extension with dot</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__html__</span></code>: HTML-safe string representation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__html_format__</span></code>: HTML formatting support</p></li>
+</ul>
+</section>
+<section id="custom-variables">
+<h4>Custom Variables<a class="headerlink" href="#custom-variables" title="Link to this heading"></a></h4>
+<p>Using the <code class="docutils literal notranslate"><span class="pre">-V</span></code> flag for string variables:</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x">-V myvar=hello</span>
+<span class="cp">{{</span> <span class="nv">myvar</span> <span class="cp">}}</span><span class="x">  # Outputs: hello</span>
+</pre></div>
+</div>
+<p>Using the <code class="docutils literal notranslate"><span class="pre">-J</span></code> flag for JSON variables:</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x">-J data=&#39;{&quot;key1&quot;: &quot;value1&quot;, &quot;key2&quot;: &quot;value2&quot;}&#39;</span>
+<span class="cp">{{</span> <span class="nv">data.key1</span> <span class="cp">}}</span><span class="x">  # Outputs: value1</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="control-structures">
+<h3>Control Structures<a class="headerlink" href="#control-structures" title="Link to this heading"></a></h3>
+<p>Jinja2 provides control structures like <code class="docutils literal notranslate"><span class="pre">for</span></code> loops and <code class="docutils literal notranslate"><span class="pre">if</span></code> statements, enclosed in <code class="docutils literal notranslate"><span class="pre">{%</span> <span class="pre">...</span> <span class="pre">%}</span></code> blocks.</p>
+<section id="for-loops">
+<h4>For Loops<a class="headerlink" href="#for-loops" title="Link to this heading"></a></h4>
+<p>When processing multiple files (using <code class="docutils literal notranslate"><span class="pre">-d</span></code> or <code class="docutils literal notranslate"><span class="pre">-p</span></code>):</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">content</span> <span class="cp">%}</span>
+<span class="x">File: </span><span class="cp">{{</span> <span class="nv">file.path</span> <span class="cp">}}</span>
+<span class="x">Content:</span>
+<span class="cp">{{</span> <span class="nv">file.content</span> <span class="cp">}}</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+<section id="if-statements">
+<h4>If Statements<a class="headerlink" href="#if-statements" title="Link to this heading"></a></h4>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="cp">{%</span> <span class="k">if</span> <span class="nv">content</span> <span class="cp">%}</span>
+<span class="x">  Content is available.</span>
+<span class="cp">{%</span> <span class="k">else</span> <span class="cp">%}</span>
+<span class="x">  No content provided.</span>
+<span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span>
+
+<span class="cp">{%</span> <span class="k">if</span> <span class="nv">myvar</span> <span class="o">==</span> <span class="s1">&#39;hello&#39;</span> <span class="cp">%}</span>
+<span class="x">  Variable equals hello.</span>
+<span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="comments">
+<h3>Comments<a class="headerlink" href="#comments" title="Link to this heading"></a></h3>
+<p>Comments in Jinja2 are enclosed in <code class="docutils literal notranslate"><span class="pre">{#</span> <span class="pre">...</span> <span class="pre">#}</span></code>. The <code class="docutils literal notranslate"><span class="pre">CommentExtension</span></code> in <code class="docutils literal notranslate"><span class="pre">ostruct</span></code> provides special handling:</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="c">{# This is a comment and will not be included in the output #}</span>
+</pre></div>
+</div>
+<p>The extension ensures that:</p>
+<ul class="simple">
+<li><p>Contents of comment blocks are completely ignored during parsing</p></li>
+<li><p>Variables inside comments are not validated or processed</p></li>
+<li><p>Comments are stripped from the output</p></li>
+<li><p>Comment validation is skipped during template processing</p></li>
+</ul>
+</section>
+</section>
+<section id="frontmatter">
+<h2>Frontmatter<a class="headerlink" href="#frontmatter" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ostruct</span></code> supports YAML frontmatter at the beginning of template files. Frontmatter is a block of YAML code at the top of a file, enclosed by triple dashes (<code class="docutils literal notranslate"><span class="pre">---</span></code>). It’s used to define metadata or settings for the template.</p>
+<p>The most common use is defining the <code class="docutils literal notranslate"><span class="pre">system_prompt</span></code>:</p>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x">---</span>
+<span class="x">system_prompt: You are an expert code reviewer.</span>
+<span class="x">---</span>
+<span class="x">Review this code: </span><span class="cp">{{</span> <span class="nv">code.content</span> <span class="cp">}}</span>
+</pre></div>
+</div>
+<p>If no system prompt is provided in frontmatter:</p>
+<ul class="simple">
+<li><p>The default <code class="docutils literal notranslate"><span class="pre">ostruct</span></code> system prompt will be used</p></li>
+<li><p>Unless overridden by command line flags (<code class="docutils literal notranslate"><span class="pre">--sys-prompt</span></code> or <code class="docutils literal notranslate"><span class="pre">--sys-file</span></code>)</p></li>
+</ul>
+</section>
+<section id="example-templates">
+<h2>Example Templates<a class="headerlink" href="#example-templates" title="Link to this heading"></a></h2>
+<section id="code-review-template">
+<h3>Code Review Template<a class="headerlink" href="#code-review-template" title="Link to this heading"></a></h3>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x">---</span>
+<span class="x">system_prompt: You are an expert code reviewer. Focus on security vulnerabilities.</span>
+<span class="x">---</span>
+<span class="x">Review the following code and identify any security vulnerabilities:</span>
+
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">source_files</span> <span class="cp">%}</span>
+<span class="x">## File: </span><span class="cp">{{</span> <span class="nv">file.path</span> <span class="cp">}}</span>
+
+<span class="cp">{{</span> <span class="nv">file.content</span> <span class="cp">}}</span>
+
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+<p>This template:</p>
+<ol class="arabic simple">
+<li><p>Sets a security-focused system prompt</p></li>
+<li><p>Iterates through files in the <code class="docutils literal notranslate"><span class="pre">source_files</span></code> variable (mapped with <code class="docutils literal notranslate"><span class="pre">-d</span></code> or <code class="docutils literal notranslate"><span class="pre">-p</span></code>)</p></li>
+<li><p>Formats each file’s content within a code block</p></li>
+</ol>
+</section>
+<section id="configuration-validation">
+<h3>Configuration Validation<a class="headerlink" href="#configuration-validation" title="Link to this heading"></a></h3>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x">---</span>
+<span class="x">system_prompt: You are an expert in configuration validation. Identify any issues or inconsistencies.</span>
+<span class="x">---</span>
+<span class="x">Validate the following configuration files:</span>
+
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">config_files</span> <span class="cp">%}</span>
+<span class="x">## Config: </span><span class="cp">{{</span> <span class="nv">file.path</span> <span class="cp">}}</span>
+
+<span class="cp">{{</span> <span class="nv">file.content</span> <span class="cp">}}</span>
+
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+<p>This example processes multiple configuration files, presenting them in a clear format for validation.</p>
+</section>
+<section id="advanced-example-with-filters">
+<h3>Advanced Example with Filters<a class="headerlink" href="#advanced-example-with-filters" title="Link to this heading"></a></h3>
+<div class="highlight-django notranslate"><div class="highlight"><pre><span></span><span class="x">---</span>
+<span class="x">system_prompt: &quot;You are an expert summarizer.&quot;</span>
+<span class="x">---</span>
+<span class="x">Summarize these files:</span>
+
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">text_files</span> <span class="cp">%}</span>
+<span class="x">  </span><span class="cp">{%</span> <span class="k">if</span> <span class="nv">file.content</span> <span class="o">|</span> <span class="nf">word_count</span> <span class="o">&gt;</span> <span class="m">10</span> <span class="cp">%}</span>
+<span class="x"># File: </span><span class="cp">{{</span> <span class="nv">file.path</span> <span class="cp">}}</span>
+<span class="x">Word Count: </span><span class="cp">{{</span> <span class="nv">file.content</span> <span class="o">|</span> <span class="nf">word_count</span> <span class="cp">}}</span>
+<span class="x">Token Estimate: </span><span class="cp">{{</span> <span class="nv">file.content</span> <span class="o">|</span> <span class="nf">estimate_tokens</span> <span class="cp">}}</span>
+
+<span class="x">Content:</span>
+<span class="cp">{{</span> <span class="nv">file.content</span> <span class="cp">}}</span>
+<span class="x">  </span><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+</pre></div>
+</div>
+<p>This example:</p>
+<ul class="simple">
+<li><p>Filters files by word count</p></li>
+<li><p>Shows word count and token estimates</p></li>
+<li><p>Demonstrates filter usage</p></li>
+</ul>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Use Frontmatter for System Prompts</strong></p>
+<ul class="simple">
+<li><p>Define your <code class="docutils literal notranslate"><span class="pre">system_prompt</span></code> in frontmatter</p></li>
+<li><p>Keep it focused and specific to the task</p></li>
+</ul>
+</li>
+<li><p><strong>Variable Naming</strong></p>
+<ul class="simple">
+<li><p>Use descriptive names that indicate content type</p></li>
+<li><p>Follow consistent naming conventions</p></li>
+<li><p>Examples: <code class="docutils literal notranslate"><span class="pre">code</span></code>, <code class="docutils literal notranslate"><span class="pre">config</span></code>, <code class="docutils literal notranslate"><span class="pre">input_files</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>Content Placement</strong></p>
+<ul class="simple">
+<li><p>Put file content last in the prompt</p></li>
+<li><p>Use clear delimiters (like markdown or xml code blocks)</p></li>
+<li><p>Models handle structured output better when content follows the prompt</p></li>
+</ul>
+</li>
+<li><p><strong>Use Filters Effectively</strong></p>
+<ul class="simple">
+<li><p>Leverage built-in and custom filters for text processing</p></li>
+<li><p>Chain filters for complex transformations</p></li>
+<li><p>See the <a class="reference internal" href="template_filters.html"><span class="std std-doc">Template Filters</span></a> guide for details</p></li>
+</ul>
+</li>
+<li><p><strong>Testing and Debugging</strong></p>
+<ul class="simple">
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> to preview prompts</p></li>
+<li><p>Use the <code class="docutils literal notranslate"><span class="pre">debug</span></code> global function for troubleshooting</p></li>
+<li><p>Test with various input types and sizes</p></li>
+</ul>
+</li>
+<li><p><strong>Security Considerations</strong></p>
+<ul class="simple">
+<li><p>Validate user input before processing</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">strip_comments</span></code> when processing code</p></li>
+<li><p>Be cautious with dynamic template content</p></li>
+</ul>
+</li>
+<li><p><strong>Performance</strong></p>
+<ul class="simple">
+<li><p>Use control structures to filter content early</p></li>
+<li><p>Estimate tokens to stay within limits</p></li>
+<li><p>Consider chunking large files</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="template_filters.html"><span class="std std-doc">Template Filters</span></a> - Detailed documentation of available filters</p></li>
+<li><p><a class="reference internal" href="cli.html"><span class="std std-doc">CLI Reference</span></a> - Complete command-line interface documentation</p></li>
+</ul>
+<section id="filters">
+<h3>Filters<a class="headerlink" href="#filters" title="Link to this heading"></a></h3>
+<p>Filters modify variables. They are applied using the pipe symbol (<code class="docutils literal notranslate"><span class="pre">|</span></code>). <code class="docutils literal notranslate"><span class="pre">ostruct</span></code> provides additional custom filters beyond the standard Jinja2 filters, organized by category:</p>
+<p><strong>Text Processing</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">extract_keywords</span></code>: Extract keywords from text</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">word_count</span></code>: Count words in text</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">char_count</span></code>: Count characters in text</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">to_json</span></code>: Convert object to JSON string</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">from_json</span></code>: Parse JSON string into object</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">remove_comments</span></code>: Remove comments from text</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wrap</span></code>: Wrap text to specified width</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">indent</span></code>: Indent text</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dedent</span></code>: Remove common leading whitespace</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">normalize</span></code>: Normalize whitespace in text</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">strip_markdown</span></code>: Remove markdown formatting</p></li>
+</ul>
+<p><strong>Data Processing</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sort_by</span></code>: Sort items by key</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">group_by</span></code>: Group items by key</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">filter_by</span></code>: Filter items by key-value pair</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extract_field</span></code>: Extract specific field from items</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">unique</span></code>: Get unique items</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">frequency</span></code>: Compute frequency distribution</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">aggregate</span></code>: Calculate aggregate statistics (count, sum, avg, min, max)</p></li>
+</ul>
+<p><strong>Table Formatting</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">table</span></code>: Format data as table</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">align_table</span></code>: Align table columns</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dict_to_table</span></code>: Convert dictionary to table</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list_to_table</span></code>: Convert list to table</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">auto_table</span></code>: Automatically format as table</p></li>
+</ul>
+<p><strong>Code Processing</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">format_code</span></code>: Format code with syntax highlighting (supports ‘terminal’, ‘html’, and ‘plain’ output)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">strip_comments</span></code>: Remove code comments (supports multiple languages)</p></li>
+</ul>
+<p><strong>Special Character Handling</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">escape_special</span></code>: Escape special characters</p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">strip_comments</span></code> filter supports these languages:</p>
+<ul class="simple">
+<li><p>Python (<code class="docutils literal notranslate"><span class="pre">#</span></code>)</p></li>
+<li><p>JavaScript/TypeScript/Java/C/C++/Go/Rust/Swift/PHP (<code class="docutils literal notranslate"><span class="pre">//</span></code> and <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">*/</span></code>)</p></li>
+<li><p>Ruby/Perl/Shell/Bash (<code class="docutils literal notranslate"><span class="pre">#</span></code>)</p></li>
+<li><p>PHP (<code class="docutils literal notranslate"><span class="pre">//</span></code> and <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">*/</span></code>)</p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">format_code</span></code> filter supports three output formats:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">terminal</span></code>: Terminal-colored output (default)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">html</span></code>: HTML-formatted output</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plain</span></code>: Plain text output</p></li>
+</ul>
+</section>
+<section id="global-functions">
+<h3>Global Functions<a class="headerlink" href="#global-functions" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">ostruct</span></code> provides these global functions for use in templates:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">estimate_tokens</span></code>: Estimate tokens using tiktoken’s o200k_base encoding (falls back to word count)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">format_json</span></code>: Format JSON with indentation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">now</span></code>: Get current datetime</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">debug</span></code>: Print debug information during template rendering</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">type_of</span></code>: Get type name of object</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dir_of</span></code>: List object attributes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">len_of</span></code>: Get object length if available</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_json</span></code>: Validate JSON against schema</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">format_error</span></code>: Format error messages</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">summarize</span></code>: Generate summary statistics for data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pivot_table</span></code>: Create pivot tables from data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">auto_table</span></code>: Auto-format data as table</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cli.html" class="btn btn-neutral float-left" title="CLI Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="template_filters.html" class="btn btn-neutral float-right" title="Template Filters" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Yaniv Golan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

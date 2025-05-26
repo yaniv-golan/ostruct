@@ -1,14 +1,25 @@
 # Test Case Generation & Optimization
 
-This use case demonstrates how to automatically generate and optimize test cases for your codebase using the OpenAI Structured CLI. It analyzes your code to create comprehensive test suites, identify coverage gaps, and suggest improvements to existing tests.
+This use case demonstrates how to automatically generate and optimize test cases for your codebase using ostruct CLI with both traditional and enhanced multi-tool capabilities. It analyzes your code to create comprehensive test suites, identify coverage gaps, and suggest improvements to existing tests.
+
+## Problem This Solves
+
+Writing comprehensive tests is time-consuming and often neglected, leading to poor test coverage and unreliable software. Manual test creation can miss edge cases and important scenarios. This automated test generation system analyzes your code to create thorough test suites, identify coverage gaps, and suggest improvements, helping maintain high-quality, well-tested codebases.
 
 ## Features
 
+### Core Test Generation
 - Automatic test case generation for untested functions
 - Coverage gap identification and reporting
 - Test suite optimization suggestions
 - Support for multiple testing frameworks (pytest, unittest)
 - Integration with existing test suites
+
+### Enhanced Multi-Tool Integration
+- **Code Interpreter**: Execute generated tests to verify functionality
+- **File Search**: Search documentation for testing best practices
+- **MCP Servers**: Access repository standards and testing guidelines
+- **Explicit File Routing**: Optimize test generation through targeted analysis
 
 ## Directory Structure
 

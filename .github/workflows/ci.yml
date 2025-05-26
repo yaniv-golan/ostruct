@@ -5,9 +5,13 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Uncomment additional OS for comprehensive testing:
+    # runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
+        # Uncomment for multi-OS testing:
+        # os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -34,7 +38,8 @@ jobs:
       run: |
         # Run all tests except live tests, with verbose output and logging
         poetry run pytest -m "not live" -vv -s --log-cli-level=DEBUG
-    - name: Build documentation
+    - name: Build docs (HTML+linkcheck)
       run: |
         cd docs
-        poetry run make html
+        poetry run sphinx-build -W source build/html
+        poetry run sphinx-build -b linkcheck source build/linkcheck

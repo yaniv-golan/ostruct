@@ -1,1 +1,1 @@
-"""Tests for the openai_structured package."""
+"""Tests for the ostruct package."""

@@ -26,6 +26,7 @@ from pydantic import (
     ConfigDict,
     EmailStr,
     Field,
+    RootModel,
     ValidationError,
     create_model,
 )
@@ -318,6 +319,50 @@ def create_dynamic_model(
         from .template_utils import validate_json_schema
 
         validate_json_schema(schema)
+
+        # Handle top-level array schemas
+        if schema.get("type") == "array":
+            items_schema = schema.get("items", {})
+            if items_schema.get("type") == "object":
+                # Create the item model first
+                item_model = create_dynamic_model(
+                    items_schema,
+                    base_name=f"{base_name}Item",
+                    show_schema=show_schema,
+                    debug_validation=debug_validation,
+                )
+
+                # Return a RootModel that validates a list of the item model
+                class ArrayModel(RootModel[List[item_model]]):
+                    model_config = ConfigDict(
+                        str_strip_whitespace=True,
+                        validate_assignment=True,
+                        use_enum_values=True,
+                    )
+
+                ArrayModel.__name__ = f"{base_name}List"
+                return ArrayModel
+            else:
+                # Handle array of primitives
+                item_type_map = {
+                    "string": str,
+                    "integer": int,
+                    "number": float,
+                    "boolean": bool,
+                }
+                item_type = item_type_map.get(
+                    items_schema.get("type", "string"), str
+                )
+
+                class ArrayModel(RootModel[List[item_type]]):
+                    model_config = ConfigDict(
+                        str_strip_whitespace=True,
+                        validate_assignment=True,
+                        use_enum_values=True,
+                    )
+
+                ArrayModel.__name__ = f"{base_name}List"
+                return ArrayModel
 
         # Process schema properties into fields
         properties = schema.get("properties", {})

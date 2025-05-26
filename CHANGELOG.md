@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-01-XX
+
+### Added
+
+- **Multi-Tool Integration**: Native support for OpenAI's Code Interpreter, File Search, and MCP servers
+- **Hybrid File Routing Syntax**: Three flexible syntax options for file routing:
+  - Auto-naming: `-ft config.yaml` → `config_yaml` variable
+  - Equals syntax: `-ft app=config.yaml` → `app` variable
+  - Two-argument alias: `--fta app config.yaml` → `app` variable (with perfect tab completion)
+- **OpenAI Responses API Integration**: Direct integration with OpenAI Python SDK v1.81.0, replacing openai-structured wrapper
+- **Enhanced CLI Interface**: New routing options (`-fc`/`--fca`, `-fs`/`--fsa`, `-ft`/`--fta`) with organized help system
+- **Configuration System**: YAML-based configuration with environment variable support
+- **Progress Reporting**: Real-time progress updates with user-friendly messaging
+- **Template Optimization**: Automatic prompt optimization for better LLM performance
+- **Shared System Prompts**: New `include_system:` feature for sharing common system prompt content across templates
+- **Unattended Operation**: Full CI/CD compatibility with timeout controls and error handling
+- **Cost Transparency**: Detailed cost reporting and token usage tracking
+
+### Changed
+
+- **Breaking**: Dropped Python 3.9 support (now requires Python 3.10+)
+- **Breaking**: Removed openai-structured dependency in favor of direct OpenAI SDK integration
+- **Enhanced**: Updated all examples with new multi-tool syntax options
+- **Enhanced**: Improved error messages with actionable file routing guidance
+- **Enhanced**: Template context now includes files from all routing options
+
+### Fixed
+
+- **Critical**: Resolved Click framework limitations for variable argument file routing
+- **Critical**: Fixed template variable collision issues with comprehensive file naming
+- **Security**: Maintained all existing path validation and security controls
+- **Performance**: Optimized file processing and template rendering
+
+### Migration
+
+- **100% Backward Compatible**: All existing `-f`, `-d`, `-p` commands work unchanged
+- **Error-Driven Migration**: Clear guidance when commands exceed context limits
+- **Progressive Enhancement**: Add new capabilities to existing workflows incrementally
+
+### Technical
+
+- **Validated Implementation**: All features validated through comprehensive probe testing
+- **Performance Baseline**: Code Interpreter (10-16s), File Search (7-8s), basic operations (1-2s)
+- **Architecture**: Explicit file routing system with tool-specific processing
+- **Testing**: Enhanced test suite with proper OpenAI SDK mocking patterns
+
 ## [0.7.2] - 2025-03-07
 
 ### Fixed

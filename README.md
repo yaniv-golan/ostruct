@@ -1,3 +1,11 @@
+## 02:07 A.M. CI Failure
+
+*"Build failed. Again. The third time this week our data extraction pipeline broke because someone changed the log format, and our regex-based parser couldn't handle the new structure. Sarah's on vacation, Mike's parsing code is unreadable, and the client wants their analytics dashboard working by morning.*
+
+*There has to be a better way to turn messy data into structured JSON without writing custom parsers for every format change..."*
+
+---
+
 ![ostruct](src/assets/ostruct-header.png)
 
 <div align="center">
@@ -7,14 +15,18 @@
 [![Documentation Status](https://readthedocs.org/projects/ostruct/badge/?version=latest)](https://ostruct.readthedocs.io/en/latest/?badge=latest)
 [![CI](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml/badge.svg)](https://github.com/yaniv-golan/ostruct/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://pepy.tech/badge/ostruct-cli)](https://pepy.tech/project/ostruct-cli)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-**ostruct** tranforms **unstructured** inputs into **structured**, usable **JSON** output using **OpenAI APIs** using dynamic **templates**
+**ostruct** transforms **unstructured** inputs into **structured**, usable **JSON** output using **OpenAI APIs** with **multi-tool integration**
+
+*The better way you've been looking for.*
 
 </div>
 
 # ostruct-cli
 
-ostruct will process a set of plain text files (data, source code, CSV, etc), input variables, a dynamic prompt template, and a JSON schema specifying the desired output format, and will produce the result in JSON format.
+ostruct processes unstructured data (text files, code, CSVs, etc.), input variables, and dynamic prompt templates to produce structured JSON output defined by a JSON schema. With enhanced multi-tool integration, ostruct now supports Code Interpreter for data analysis, File Search for document retrieval, and MCP (Model Context Protocol) servers for extended capabilities.
 
 <div align="center">
 
@@ -36,47 +48,90 @@ LLMs are powerful, but getting consistent, structured output from them can be ch
 
 ostruct can be used for various scenarios, including:
 
-### Etymology Analysis
+### Automated Code Review with Multi-Tool Analysis
 
 ```bash
-ostruct run prompts/task.j2 schemas/etymology.json -f input examples/scientific.txt --model gpt-4o
+# Traditional pattern matching
+ostruct run prompts/task.j2 schemas/code_review.json -p source "examples/security/*.py"
+
+# Enhanced with Code Interpreter for deeper analysis
+ostruct run prompts/task.j2 schemas/code_review.json -fc examples/security/ -fs documentation/
 ```
 
-Break down words into their components, showing their origins, meanings, and hierarchical relationships. Useful for linguistics, educational tools, and understanding terminology in specialized fields.
-
-### Automated Code Review
-
-```bash
-ostruct run prompts/task.j2 schemas/code_review.json -p source "examples/security/*.py" --model gpt-4o
-```
-
-Analyze code for security vulnerabilities, style issues, and performance problems, producing structured reports that can be easily integrated into CI/CD pipelines or developer workflows.
+Analyze code for security vulnerabilities, style issues, and performance problems. The enhanced version uses Code Interpreter for execution analysis and File Search for documentation context.
 
 ### Security Vulnerability Scanning
 
 ```bash
-ostruct run prompts/task.j2 schemas/scan_result.json -d examples/intermediate --model gpt-4o
+# Traditional directory scanning
+ostruct run prompts/task.j2 schemas/scan_result.json -d examples/intermediate
+
+# Enhanced multi-tool approach
+ostruct run prompts/task.j2 schemas/scan_result.json \
+  -fc source_code/ -fs security_docs/ -ft config.yaml
 ```
 
-Scan codebases for security vulnerabilities, combining static analysis with AI-powered reasoning to identify potential issues, suggest fixes, and provide detailed explanations.
+Scan codebases for security vulnerabilities, combining static analysis with AI-powered reasoning, code execution analysis, and documentation context.
+
+### Data Analysis with Code Interpreter
+
+```bash
+# Upload data for analysis and visualization
+ostruct run analysis.j2 schemas/analysis_result.json \
+  -fc sales_data.csv -fc customer_data.json \
+  -fs reports/ -ft config.yaml
+```
+
+Perform sophisticated data analysis using Python execution, generate visualizations, and create comprehensive reports with document context.
 
 ### Configuration Validation & Analysis
 
 ```bash
-ostruct run prompts/task.j2 schemas/validation_result.json -f dev examples/basic/dev.yaml -f prod examples/basic/prod.yaml
+# Traditional file comparison
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -f dev examples/basic/dev.yaml -f prod examples/basic/prod.yaml
+
+# Enhanced with environment context
+ostruct run prompts/task.j2 schemas/validation_result.json \
+  -ft dev.yaml -ft prod.yaml -fs infrastructure_docs/
 ```
 
-Validate configuration files across environments, check for inconsistencies, and provide intelligent feedback on potential issues or improvements in infrastructure setups.
+Validate configuration files across environments with documentation context for better analysis and recommendations.
+
+Oh, and also, among endless other use cases:
+
+### Etymology Analysis
+
+```bash
+ostruct run prompts/task.j2 schemas/etymology.json -ft examples/scientific.txt
+```
+
+Break down words into their components, showing their origins, meanings, and hierarchical relationships. Useful for linguistics, educational tools, and understanding terminology in specialized fields.
 
 ## Features
 
-- Generate structured JSON output from natural language using OpenAI models and a JSON schema
+### Core Capabilities
+
+- Generate structured JSON output defined by dynamic prompts using OpenAI models and JSON schemas
 - Rich template system for defining prompts (Jinja2-based)
 - Automatic token counting and context window management
 - Streaming support for real-time output
-- Secure handling of sensitive data
-- Model registry management with support for updating to the latest OpenAI models
-- Non-intrusive registry update checks with user notifications
+- Secure handling of sensitive data with comprehensive path validation
+- Automatic prompt optimization and token management
+
+### Multi-Tool Integration
+
+- **Code Interpreter**: Upload and analyze data files, execute Python code, generate visualizations
+- **File Search**: Vector-based document search and retrieval from uploaded files
+- **MCP Servers**: Connect to Model Context Protocol servers for extended functionality
+- **Explicit File Routing**: Route different files to specific tools for optimized processing
+
+### Advanced Features
+
+- **Configuration System**: YAML-based configuration with environment variable support
+- **Unattended Operation**: Designed for CI/CD and automation scenarios
+- **Progress Reporting**: Real-time progress updates with clear, user-friendly messaging
+- **Model Registry**: Dynamic model management with support for latest OpenAI models
 
 ## Requirements
 
@@ -105,8 +160,10 @@ ostruct-cli respects the following environment variables:
 - `OPENAI_API_VERSION`: API version to use (optional)
 - `OPENAI_API_TYPE`: API type (e.g., "azure") (optional)
 - `OSTRUCT_DISABLE_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
+- `MCP_<NAME>_URL`: Custom MCP server URLs (e.g., `MCP_STRIPE_URL=https://mcp.stripe.com`)
 
-## Shell Completion
+<details>
+<summary><strong>Shell Completion Setup</strong> (Click to expand)</summary>
 
 ostruct-cli supports shell completion for Bash, Zsh, and Fish shells. To enable it:
 
@@ -142,7 +199,87 @@ Shell completion will help you with:
 - Directory paths for `-d` and `--base-dir` options
 - And more!
 
-## Quick Start
+</details>
+
+## Enhanced CLI with Multi-Tool Integration
+
+### Migration Notice
+
+ostruct now includes powerful multi-tool integration while maintaining **full backward compatibility**. All existing commands continue to work exactly as before, but you can now take advantage of:
+
+- **Code Interpreter** for data analysis and visualization
+- **File Search** for document retrieval
+- **MCP Servers** for extended functionality
+- **Explicit File Routing** for optimized processing
+
+<details>
+<summary><strong>New File Routing Options</strong> (Click to expand)</summary>
+
+#### Basic File Routing (Explicit Tool Assignment)
+
+```bash
+# Template access only (config files, small data)
+ostruct run template.j2 schema.json -ft config.yaml
+
+# Code Interpreter (data analysis, code execution)
+ostruct run analysis.j2 schema.json -fc data.csv
+
+# File Search (document retrieval)
+ostruct run search.j2 schema.json -fs documentation.pdf
+
+# Multiple tools with one file
+ostruct run template.j2 schema.json --file-for code-interpreter shared.json --file-for file-search shared.json
+```
+
+#### Directory Routing
+
+```bash
+# Upload entire directories to specific tools
+ostruct run template.j2 schema.json -dc ./datasets -ds ./docs -dt ./config
+```
+
+#### MCP Server Integration
+
+```bash
+# Connect to MCP servers for extended capabilities
+ostruct run template.j2 schema.json --mcp-server deepwiki@https://mcp.deepwiki.com/sse
+```
+
+</details>
+
+### Configuration System
+
+Create an `ostruct.yaml` file for persistent settings:
+
+```yaml
+models:
+  default: gpt-4o
+
+tools:
+  code_interpreter:
+    auto_download: true
+    output_directory: "./output"
+
+mcp:
+  custom_server: "https://my-mcp-server.com"
+
+limits:
+  max_cost_per_run: 10.00
+```
+
+Load custom configuration:
+
+```bash
+ostruct --config my-config.yaml run template.j2 schema.json
+```
+
+## Get Started Quickly
+
+🚀 **New to ostruct?** Follow our [step-by-step quickstart guide](https://ostruct.readthedocs.io/en/latest/user-guide/quickstart.html) featuring Juno the beagle for a hands-on introduction.
+
+📖 **Full Documentation:** <https://ostruct.readthedocs.io/>
+
+### Quick Start
 
 1. Set your OpenAI API key:
 
@@ -150,7 +287,7 @@ Shell completion will help you with:
 export OPENAI_API_KEY=your-api-key
 ```
 
-### Example 1: Using stdin (Simplest)
+### Example 1: Basic Text Extraction (Simplest)
 
 1. Create a template file `extract_person.j2`:
 
@@ -167,18 +304,9 @@ Extract information about the person from this text: {{ stdin }}
     "person": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "The person's full name"
-        },
-        "age": {
-          "type": "integer",
-          "description": "The person's age"
-        },
-        "occupation": {
-          "type": "string",
-          "description": "The person's job or profession"
-        }
+        "name": {"type": "string", "description": "The person's full name"},
+        "age": {"type": "integer", "description": "The person's age"},
+        "occupation": {"type": "string", "description": "The person's job"}
       },
       "required": ["name", "age", "occupation"],
       "additionalProperties": false
@@ -195,70 +323,58 @@ Extract information about the person from this text: {{ stdin }}
 # Basic usage
 echo "John Smith is a 35-year-old software engineer" | ostruct run extract_person.j2 schema.json
 
-# For longer text using heredoc
-cat << EOF | ostruct run extract_person.j2 schema.json
-John Smith is a 35-year-old software engineer
-working at Tech Corp. He has been programming
-for over 10 years.
-EOF
-
-# With advanced options
+# With enhanced options
 echo "John Smith is a 35-year-old software engineer" | \
   ostruct run extract_person.j2 schema.json \
   --model gpt-4o \
-  --sys-prompt "Extract precise information about the person" \
   --temperature 0.7
 ```
 
-The command will output:
+### Example 2: Multi-Tool Data Analysis
 
-```json
-{
-  "person": {
-    "name": "John Smith",
-    "age": 35,
-    "occupation": "software engineer"
-  }
-}
-```
-
-### Example 2: Processing a Single File
-
-1. Create a template file `extract_from_file.j2`:
-
-```jinja
-Extract information about the person from this text: {{ text.content }}
-```
-
-2. Use the same schema file `schema.json` as above.
-
-3. Run the CLI:
+For more complex scenarios, use explicit file routing with flexible syntax options:
 
 ```bash
-# Basic usage
-ostruct run extract_from_file.j2 schema.json -f text input.txt
+# Auto-naming (fastest for one-off analysis)
+ostruct run analysis_template.j2 analysis_schema.json \
+  -fc sales_data.csv \
+  -fc customer_data.json \
+  -fs market_reports.pdf \
+  -ft config.yaml
 
-# With advanced options
-ostruct run extract_from_file.j2 schema.json \
-  -f text input.txt \
-  --model gpt-4o \
-  --max-output-tokens 1000 \
-  --temperature 0.7
+# Mixed syntax with custom variable names
+ostruct run analysis_template.j2 analysis_schema.json \
+  -fc sales_data.csv \
+  -fc customers=customer_data.json \
+  --fsa reports market_reports.pdf \
+  --fta app_config config.yaml
+
+# Alias syntax for reusable templates (best tab completion)
+ostruct run reusable_analysis.j2 analysis_schema.json \
+  --fca sales_data sales_data.csv \
+  --fca customer_data customer_data.json \
+  --fsa market_reports market_reports.pdf \
+  --fta config config.yaml
+
+# Code review with stable variable names
+ostruct run code_review.j2 review_schema.json \
+  --fca source_code source_code/ \
+  --fsa documentation docs/ \
+  --fta eslint_config .eslintrc.json
 ```
 
-The command will output:
+### Example 3: Legacy Compatibility
 
-```json
-{
-  "person": {
-    "name": "John Smith",
-    "age": 35,
-    "occupation": "software engineer"
-  }
-}
+All existing commands continue to work unchanged:
+
+```bash
+# Traditional usage (fully supported)
+ostruct run extract_from_file.j2 schema.json -f text input.txt -d configs
+ostruct run template.j2 schema.json -p "*.py" source -V env=prod
 ```
 
-## System Prompt Handling
+<details>
+<summary><strong>System Prompt Handling</strong> (Click to expand)</summary>
 
 ostruct-cli provides three ways to specify a system prompt, with a clear precedence order:
 
@@ -281,7 +397,17 @@ ostruct-cli provides three ways to specify a system prompt, with a clear precede
    Extract information from: {{ text }}
    ```
 
-3. Default system prompt (built into the CLI)
+3. Shared system prompts (with template frontmatter):
+
+   ```jinja
+   ---
+   include_system: shared/base_analyst.txt
+   system_prompt: Focus on financial metrics
+   ---
+   Extract information from: {{ text }}
+   ```
+
+4. Default system prompt (built into the CLI)
 
 ### Precedence Rules
 
@@ -306,6 +432,8 @@ ostruct run template.j2 schema.json --sys-prompt "Override prompt"
 # Ignore template frontmatter and use default
 ostruct run template.j2 schema.json --ignore-task-sysprompt
 ```
+
+</details>
 
 ## Model Registry Management
 
@@ -338,3 +466,11 @@ This is especially useful when:
 The registry file is stored at `~/.openai_structured/config/models.yml` and is automatically referenced when validating model parameters and token limits.
 
 The update command uses HTTP conditional requests (If-Modified-Since headers) to check if the remote registry has changed before downloading, ensuring efficient updates.
+
+<!--
+MAINTAINER NOTE: After editing this README, please test GitHub rendering by:
+1. Creating a draft PR or pushing to a test branch
+2. Verifying all HTML <details> sections expand/collapse correctly
+3. Checking badge display and links work as expected
+4. Ensuring quickstart guide link is functional
+-->

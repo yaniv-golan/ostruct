@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CI/CD Integration &mdash; ostruct-cli  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sphinx-design.min.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Security Overview" href="../security/overview.html" />
+    <link rel="prev" title="Template Authoring Guide" href="../user-guide/template_authoring.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ostruct-cli
+          </a>
+              <div class="version">
+                0.8.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">📖 User Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/introduction.html">Introduction to ostruct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#file-routing-options">File Routing Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#advanced-file-routing">Advanced File Routing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#variables-and-input">Variables and Input</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#model-and-api-configuration">Model and API Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#system-prompts">System Prompts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#security-and-path-management">Security and Path Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#mcp-server-integration">MCP Server Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#output-and-execution-control">Output and Execution Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#file-routing-examples">File Routing Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#migration-from-legacy-syntax">Migration from Legacy Syntax</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#best-practices">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#common-workflows">Common Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/cli_reference.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html">Template Authoring Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#template-basics">Template Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#variables-and-data-access">Variables and Data Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#file-variables">File Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#cli-variables">CLI Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#control-structures">Control Structures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#template-filters">Template Filters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#global-functions">Global Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#system-prompts-and-frontmatter">System Prompts and Frontmatter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#advanced-template-patterns">Advanced Template Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#tool-integration-variables">Tool Integration Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#template-organization-and-reuse">Template Organization and Reuse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#template-testing-and-debugging">Template Testing and Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#best-practices">Best Practices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/template_authoring.html#next-steps">Next Steps</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">🤖 Automation:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CI/CD Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#github-actions">GitHub Actions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-github-actions-workflow">Basic GitHub Actions Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-platform-analysis">Multi-Platform Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-github-actions-patterns">Advanced GitHub Actions Patterns</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#gitlab-ci">GitLab CI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-gitlab-ci-configuration">Basic GitLab CI Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gitlab-ci-with-security-scanning">GitLab CI with Security Scanning</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#jenkins-pipeline">Jenkins Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#declarative-pipeline">Declarative Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#scripted-pipeline-with-advanced-features">Scripted Pipeline with Advanced Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#azure-devops">Azure DevOps</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#azure-pipelines-yaml">Azure Pipelines YAML</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#security-best-practices">Security Best Practices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#api-key-management">API Key Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-variable-security">Environment Variable Security</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#file-access-controls">File Access Controls</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#network-security">Network Security</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#performance-and-cost-optimization">Performance and Cost Optimization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#parallel-execution">Parallel Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conditional-execution">Conditional Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#caching-strategies">Caching Strategies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#timeout-and-resource-management">Timeout and Resource Management</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#error-handling-and-monitoring">Error Handling and Monitoring</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#comprehensive-error-handling">Comprehensive Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notification-and-reporting">Notification and Reporting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#integration-with-external-tools">Integration with External Tools</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#template-examples-for-ci-cd">Template Examples for CI/CD</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pull-request-analysis-template">Pull Request Analysis Template</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security-scan-template">Security Scan Template</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#common-ci-cd-issues">Common CI/CD Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-monitoring">Performance Monitoring</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">🔒 Security:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html">Security Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#security-architecture">Security Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#api-key-management">API Key Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#file-access-control">File Access Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#data-upload-and-tool-security">Data Upload and Tool Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#mcp-server-security">MCP Server Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#threat-model-and-risk-assessment">Threat Model and Risk Assessment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#production-security-checklist">Production Security Checklist</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#security-configuration-examples">Security Configuration Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#security-resources">Security Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/overview.html#getting-security-help">Getting Security Help</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ostruct-cli</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">CI/CD Integration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/automate/ci_cd.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ci-cd-integration">
+<h1>CI/CD Integration<a class="headerlink" href="#ci-cd-integration" title="Link to this heading"></a></h1>
+<p>Integrate ostruct into your continuous integration and deployment pipelines for automated data processing, code analysis, and report generation. This guide covers GitHub Actions, GitLab CI, Jenkins, and security best practices.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All examples use pinned action versions for security and reproducibility. Update versions as needed for your security requirements.</p>
+</div>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<p>Basic ostruct CI/CD integration requires:</p>
+<ol class="arabic simple">
+<li><p><strong>API Key Management</strong> - Secure credential storage</p></li>
+<li><p><strong>Environment Setup</strong> - Python and ostruct installation</p></li>
+<li><p><strong>File Security</strong> - Proper path restrictions</p></li>
+<li><p><strong>Output Handling</strong> - Results processing and storage</p></li>
+</ol>
+</section>
+</section>
+<section id="github-actions">
+<h1>GitHub Actions<a class="headerlink" href="#github-actions" title="Link to this heading"></a></h1>
+<section id="basic-github-actions-workflow">
+<h2>Basic GitHub Actions Workflow<a class="headerlink" href="#basic-github-actions-workflow" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Automated Analysis</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="w"> </span><span class="nv">main</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">develop</span><span class="w"> </span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="w"> </span><span class="nv">main</span><span class="w"> </span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">analyze</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python</span>
+<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v5</span>
+<span class="w">      </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.11&#39;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install ostruct</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">pip install ostruct-cli</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run Code Analysis</span>
+<span class="w">      </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.OPENAI_API_KEY }}</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">ostruct run templates/code_review.j2 schemas/review.json \</span>
+<span class="w">          </span><span class="no">--base-dir ${{ github.workspace }} \</span>
+<span class="w">          </span><span class="no">-A ${{ github.workspace }}/src \</span>
+<span class="w">          </span><span class="no">-fc src/ \</span>
+<span class="w">          </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">          </span><span class="no">--output-file analysis_results.json</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Upload Results</span>
+<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/upload-artifact@v4</span>
+<span class="w">      </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis-results</span>
+<span class="w">        </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis_results.json</span>
+</pre></div>
+</div>
+</section>
+<section id="multi-platform-analysis">
+<h2>Multi-Platform Analysis<a class="headerlink" href="#multi-platform-analysis" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cross-Platform Analysis</span>
+
+<span class="nt">on</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">push</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">pull_request</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">analyze</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">strategy</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">matrix</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">os</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ubuntu-latest</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;3.10&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;3.11&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;3.12&#39;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="c1"># Windows and macOS support available but commented for cost optimization</span>
+<span class="w">        </span><span class="c1"># Uncomment and test thoroughly before enabling in production</span>
+<span class="w">        </span><span class="c1"># os: [ubuntu-latest, windows-latest, macos-latest]</span>
+
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ matrix.os }}</span>
+
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python ${{ matrix.python-version }}</span>
+<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v5</span>
+<span class="w">      </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ matrix.python-version }}</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install dependencies</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">pip install ostruct-cli</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Configure analysis environment</span>
+<span class="w">      </span><span class="nt">shell</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bash</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no"># Platform-specific path handling</span>
+<span class="w">        </span><span class="no">if [ &quot;${{ runner.os }}&quot; == &quot;Windows&quot; ]; then</span>
+<span class="w">          </span><span class="no">echo &quot;ANALYSIS_BASE=${{ github.workspace }}&quot; &gt;&gt; $GITHUB_ENV</span>
+<span class="w">        </span><span class="no">else</span>
+<span class="w">          </span><span class="no">echo &quot;ANALYSIS_BASE=${{ github.workspace }}&quot; &gt;&gt; $GITHUB_ENV</span>
+<span class="w">        </span><span class="no">fi</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run Security Scan</span>
+<span class="w">      </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.OPENAI_API_KEY }}</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">ostruct run templates/security_scan.j2 schemas/security.json \</span>
+<span class="w">          </span><span class="no">--base-dir &quot;${{ env.ANALYSIS_BASE }}&quot; \</span>
+<span class="w">          </span><span class="no">-A &quot;${{ env.ANALYSIS_BASE }}/src&quot; \</span>
+<span class="w">          </span><span class="no">-A &quot;${{ env.ANALYSIS_BASE }}/tests&quot; \</span>
+<span class="w">          </span><span class="no">-fc src/ \</span>
+<span class="w">          </span><span class="no">-ft config.yaml \</span>
+<span class="w">          </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">          </span><span class="no">--timeout 600 \</span>
+<span class="w">          </span><span class="no">--output-file security_results.json</span>
+</pre></div>
+</div>
+</section>
+<section id="advanced-github-actions-patterns">
+<h2>Advanced GitHub Actions Patterns<a class="headerlink" href="#advanced-github-actions-patterns" title="Link to this heading"></a></h2>
+<p><strong>Conditional Analysis:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Analyze Changed Files</span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github.event_name == &#39;pull_request&#39;</span>
+<span class="w">  </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.OPENAI_API_KEY }}</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no"># Get changed files</span>
+<span class="w">    </span><span class="no">git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD &gt; changed_files.txt</span>
+
+<span class="w">    </span><span class="no"># Only analyze if Python files changed</span>
+<span class="w">    </span><span class="no">if grep -q &quot;\.py$&quot; changed_files.txt; then</span>
+<span class="w">      </span><span class="no">ostruct run templates/pr_review.j2 schemas/pr_analysis.json \</span>
+<span class="w">        </span><span class="no">--base-dir ${{ github.workspace }} \</span>
+<span class="w">        </span><span class="no">-A ${{ github.workspace }}/src \</span>
+<span class="w">        </span><span class="no">-ft changed_files.txt \</span>
+<span class="w">        </span><span class="no">-fc src/ \</span>
+<span class="w">        </span><span class="no">--output-file pr_analysis.json</span>
+<span class="w">    </span><span class="no">fi</span>
+</pre></div>
+</div>
+<p><strong>Matrix Strategy with File Types:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">strategy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">matrix</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">analysis-type</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;security&quot;</span><span class="p p-Indicator">,</span><span class="nt"> template</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;security_scan.j2&quot;</span><span class="p p-Indicator">,</span><span class="nt"> schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;security.json&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;performance&quot;</span><span class="p p-Indicator">,</span><span class="nt"> template</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;perf_analysis.j2&quot;</span><span class="p p-Indicator">,</span><span class="nt"> schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;performance.json&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;quality&quot;</span><span class="p p-Indicator">,</span><span class="nt"> template</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;code_quality.j2&quot;</span><span class="p p-Indicator">,</span><span class="nt"> schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;quality.json&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+
+<span class="nt">steps</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run ${{ matrix.analysis-type.name }} Analysis</span>
+<span class="w">  </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.OPENAI_API_KEY }}</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">ostruct run templates/${{ matrix.analysis-type.template }} \</span>
+<span class="w">      </span><span class="no">schemas/${{ matrix.analysis-type.schema }} \</span>
+<span class="w">      </span><span class="no">-fc src/ -ft config.yaml \</span>
+<span class="w">      </span><span class="no">--output-file ${{ matrix.analysis-type.name }}_results.json</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="gitlab-ci">
+<h1>GitLab CI<a class="headerlink" href="#gitlab-ci" title="Link to this heading"></a></h1>
+<section id="basic-gitlab-ci-configuration">
+<h2>Basic GitLab CI Configuration<a class="headerlink" href="#basic-gitlab-ci-configuration" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># .gitlab-ci.yml</span>
+<span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python:3.11-slim</span>
+
+<span class="nt">variables</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">PIP_CACHE_DIR</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$CI_PROJECT_DIR/.cache/pip&quot;</span>
+
+<span class="nt">cache</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.cache/pip/</span>
+
+<span class="nt">before_script</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip install ostruct-cli</span>
+
+<span class="nt">stages</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analyze</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report</span>
+
+<span class="nt">code_analysis</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analyze</span>
+<span class="w">  </span><span class="nt">script</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">ostruct run templates/gitlab_analysis.j2 schemas/analysis.json \</span>
+<span class="w">        </span><span class="no">--base-dir $CI_PROJECT_DIR \</span>
+<span class="w">        </span><span class="no">-A $CI_PROJECT_DIR/src \</span>
+<span class="w">        </span><span class="no">-A $CI_PROJECT_DIR/tests \</span>
+<span class="w">        </span><span class="no">-fc src/ \</span>
+<span class="w">        </span><span class="no">-ft .gitlab-ci.yml \</span>
+<span class="w">        </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">        </span><span class="no">--output-file analysis_results.json</span>
+<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">reports</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">junit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis_results.json</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis_results.json</span>
+<span class="w">    </span><span class="nt">expire_in</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1 week</span>
+<span class="w">  </span><span class="nt">only</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge_requests</span>
+</pre></div>
+</div>
+</section>
+<section id="gitlab-ci-with-security-scanning">
+<h2>GitLab CI with Security Scanning<a class="headerlink" href="#gitlab-ci-with-security-scanning" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">security_scan</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analyze</span>
+<span class="w">  </span><span class="nt">variables</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ANALYSIS_TYPE</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;security&quot;</span>
+<span class="w">  </span><span class="nt">script</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no"># Create secure analysis environment</span>
+<span class="w">      </span><span class="no">export ANALYSIS_DIR=&quot;$CI_PROJECT_DIR/analysis&quot;</span>
+<span class="w">      </span><span class="no">mkdir -p $ANALYSIS_DIR</span>
+
+<span class="w">      </span><span class="no">ostruct run templates/security_deep_scan.j2 schemas/security_detailed.json \</span>
+<span class="w">        </span><span class="no">--base-dir $CI_PROJECT_DIR \</span>
+<span class="w">        </span><span class="no">-A $CI_PROJECT_DIR/src \</span>
+<span class="w">        </span><span class="no">-A $CI_PROJECT_DIR/config \</span>
+<span class="w">        </span><span class="no">-fc src/ \</span>
+<span class="w">        </span><span class="no">-fc config/ \</span>
+<span class="w">        </span><span class="no">-fs documentation/ \</span>
+<span class="w">        </span><span class="no">--file-search-cleanup \</span>
+<span class="w">        </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">        </span><span class="no">--timeout 900 \</span>
+<span class="w">        </span><span class="no">--output-file $ANALYSIS_DIR/security_report.json</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no"># Generate summary for merge request</span>
+<span class="w">      </span><span class="no">if [ &quot;$CI_PIPELINE_SOURCE&quot; = &quot;merge_request_event&quot; ]; then</span>
+<span class="w">        </span><span class="no">ostruct run templates/mr_security_summary.j2 schemas/summary.json \</span>
+<span class="w">          </span><span class="no">--base-dir $ANALYSIS_DIR \</span>
+<span class="w">          </span><span class="no">-ft security_report.json \</span>
+<span class="w">          </span><span class="no">--output-file mr_security_summary.md</span>
+<span class="w">      </span><span class="no">fi</span>
+<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">reports</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">security</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis/security_report.json</span>
+<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis/</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mr_security_summary.md</span>
+<span class="w">  </span><span class="nt">only</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge_requests</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="jenkins-pipeline">
+<h1>Jenkins Pipeline<a class="headerlink" href="#jenkins-pipeline" title="Link to this heading"></a></h1>
+<section id="declarative-pipeline">
+<h2>Declarative Pipeline<a class="headerlink" href="#declarative-pipeline" title="Link to this heading"></a></h2>
+<div class="highlight-groovy notranslate"><div class="highlight"><pre><span></span><span class="n">pipeline</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">agent</span><span class="w"> </span><span class="n">any</span>
+
+<span class="w">    </span><span class="n">environment</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">PYTHON_VERSION</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;3.11&#39;</span>
+<span class="w">        </span><span class="n">ANALYSIS_WORKSPACE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;${WORKSPACE}/analysis&quot;</span>
+<span class="w">    </span><span class="o">}</span>
+
+<span class="w">    </span><span class="n">stages</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Setup&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">steps</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">script</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="c1">// Install Python and ostruct</span>
+<span class="w">                    </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                        python3 -m venv venv</span>
+<span class="s1">                        source venv/bin/activate</span>
+<span class="s1">                        pip install ostruct-cli</span>
+<span class="s1">                    &#39;&#39;&#39;</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Code Analysis&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">environment</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">OPENAI_API_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">credentials</span><span class="o">(</span><span class="s1">&#39;openai-api-key&#39;</span><span class="o">)</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">            </span><span class="n">steps</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">script</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                        source venv/bin/activate</span>
+<span class="s1">                        mkdir -p ${ANALYSIS_WORKSPACE}</span>
+
+<span class="s1">                        ostruct run templates/jenkins_analysis.j2 schemas/ci_analysis.json \</span>
+<span class="s1">                            --base-dir ${WORKSPACE} \</span>
+<span class="s1">                            -A ${WORKSPACE}/src \</span>
+<span class="s1">                            -A ${WORKSPACE}/tests \</span>
+<span class="s1">                            -fc src/ \</span>
+<span class="s1">                            -ft Jenkinsfile \</span>
+<span class="s1">                            -ft config.yaml \</span>
+<span class="s1">                            --code-interpreter-cleanup \</span>
+<span class="s1">                            --timeout 600 \</span>
+<span class="s1">                            --output-file ${ANALYSIS_WORKSPACE}/results.json</span>
+<span class="s1">                    &#39;&#39;&#39;</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">            </span><span class="n">post</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">always</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="n">archiveArtifacts</span><span class="w"> </span><span class="nl">artifacts:</span><span class="w"> </span><span class="s1">&#39;analysis/**/*&#39;</span><span class="o">,</span><span class="w"> </span><span class="nl">allowEmptyArchive:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">                    </span><span class="n">publishHTML</span><span class="o">([</span>
+<span class="w">                        </span><span class="nl">allowMissing:</span><span class="w"> </span><span class="kc">false</span><span class="o">,</span>
+<span class="w">                        </span><span class="nl">alwaysLinkToLastBuild:</span><span class="w"> </span><span class="kc">true</span><span class="o">,</span>
+<span class="w">                        </span><span class="nl">keepAll:</span><span class="w"> </span><span class="kc">true</span><span class="o">,</span>
+<span class="w">                        </span><span class="nl">reportDir:</span><span class="w"> </span><span class="s1">&#39;analysis&#39;</span><span class="o">,</span>
+<span class="w">                        </span><span class="nl">reportFiles:</span><span class="w"> </span><span class="s1">&#39;*.json&#39;</span><span class="o">,</span>
+<span class="w">                        </span><span class="nl">reportName:</span><span class="w"> </span><span class="s1">&#39;Analysis Report&#39;</span>
+<span class="w">                    </span><span class="o">])</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Security Validation&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">when</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">anyOf</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="n">branch</span><span class="w"> </span><span class="s1">&#39;main&#39;</span>
+<span class="w">                    </span><span class="n">changeRequest</span><span class="o">()</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">            </span><span class="n">environment</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">OPENAI_API_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">credentials</span><span class="o">(</span><span class="s1">&#39;openai-api-key&#39;</span><span class="o">)</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">            </span><span class="n">steps</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">script</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                        source venv/bin/activate</span>
+
+<span class="s1">                        ostruct run templates/security_validation.j2 schemas/security_check.json \</span>
+<span class="s1">                            --base-dir ${WORKSPACE} \</span>
+<span class="s1">                            -A ${WORKSPACE}/src \</span>
+<span class="s1">                            -fc src/ \</span>
+<span class="s1">                            -fs documentation/ \</span>
+<span class="s1">                            --file-search-cleanup \</span>
+<span class="s1">                            --code-interpreter-cleanup \</span>
+<span class="s1">                            --output-file ${ANALYSIS_WORKSPACE}/security_validation.json</span>
+<span class="s1">                    &#39;&#39;&#39;</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+
+<span class="w">    </span><span class="n">post</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">cleanup</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">cleanWs</span><span class="o">()</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+</section>
+<section id="scripted-pipeline-with-advanced-features">
+<h2>Scripted Pipeline with Advanced Features<a class="headerlink" href="#scripted-pipeline-with-advanced-features" title="Link to this heading"></a></h2>
+<div class="highlight-groovy notranslate"><div class="highlight"><pre><span></span><span class="n">node</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="kt">def</span><span class="w"> </span><span class="n">analysisResults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[:]</span>
+
+<span class="w">    </span><span class="k">try</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Checkout&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">checkout</span><span class="w"> </span><span class="n">scm</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Setup Environment&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                python3 -m venv venv</span>
+<span class="s1">                source venv/bin/activate</span>
+<span class="s1">                pip install ostruct-cli</span>
+<span class="s1">            &#39;&#39;&#39;</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Parallel Analysis&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">parallel</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="s1">&#39;Security Analysis&#39;</span><span class="o">:</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="n">withCredentials</span><span class="o">([</span><span class="n">string</span><span class="o">(</span><span class="nl">credentialsId:</span><span class="w"> </span><span class="s1">&#39;openai-api-key&#39;</span><span class="o">,</span><span class="w"> </span><span class="nl">variable:</span><span class="w"> </span><span class="s1">&#39;OPENAI_API_KEY&#39;</span><span class="o">)])</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                            source venv/bin/activate</span>
+<span class="s1">                            ostruct run templates/security.j2 schemas/security.json \</span>
+<span class="s1">                                --base-dir ${WORKSPACE} \</span>
+<span class="s1">                                -A ${WORKSPACE}/src \</span>
+<span class="s1">                                -fc src/ \</span>
+<span class="s1">                                --timeout 300 \</span>
+<span class="s1">                                --output-file security_results.json</span>
+<span class="s1">                        &#39;&#39;&#39;</span>
+<span class="w">                        </span><span class="n">analysisResults</span><span class="o">.</span><span class="na">security</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">readJSON</span><span class="w"> </span><span class="nl">file:</span><span class="w"> </span><span class="s1">&#39;security_results.json&#39;</span>
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">},</span>
+<span class="w">                </span><span class="s1">&#39;Performance Analysis&#39;</span><span class="o">:</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                    </span><span class="n">withCredentials</span><span class="o">([</span><span class="n">string</span><span class="o">(</span><span class="nl">credentialsId:</span><span class="w"> </span><span class="s1">&#39;openai-api-key&#39;</span><span class="o">,</span><span class="w"> </span><span class="nl">variable:</span><span class="w"> </span><span class="s1">&#39;OPENAI_API_KEY&#39;</span><span class="o">)])</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                        </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                            source venv/bin/activate</span>
+<span class="s1">                            ostruct run templates/performance.j2 schemas/performance.json \</span>
+<span class="s1">                                --base-dir ${WORKSPACE} \</span>
+<span class="s1">                                -A ${WORKSPACE}/src \</span>
+<span class="s1">                                -fc src/ \</span>
+<span class="s1">                                --timeout 300 \</span>
+<span class="s1">                                --output-file performance_results.json</span>
+<span class="s1">                        &#39;&#39;&#39;</span>
+<span class="w">                        </span><span class="n">analysisResults</span><span class="o">.</span><span class="na">performance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">readJSON</span><span class="w"> </span><span class="nl">file:</span><span class="w"> </span><span class="s1">&#39;performance_results.json&#39;</span>
+<span class="w">                    </span><span class="o">}</span>
+<span class="w">                </span><span class="o">}</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Generate Report&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">writeJSON</span><span class="w"> </span><span class="nl">file:</span><span class="w"> </span><span class="s1">&#39;combined_results.json&#39;</span><span class="o">,</span><span class="w"> </span><span class="nl">json:</span><span class="w"> </span><span class="n">analysisResults</span>
+
+<span class="w">            </span><span class="n">withCredentials</span><span class="o">([</span><span class="n">string</span><span class="o">(</span><span class="nl">credentialsId:</span><span class="w"> </span><span class="s1">&#39;openai-api-key&#39;</span><span class="o">,</span><span class="w"> </span><span class="nl">variable:</span><span class="w"> </span><span class="s1">&#39;OPENAI_API_KEY&#39;</span><span class="o">)])</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                    source venv/bin/activate</span>
+<span class="s1">                    ostruct run templates/final_report.j2 schemas/report.json \</span>
+<span class="s1">                        --base-dir ${WORKSPACE} \</span>
+<span class="s1">                        -ft combined_results.json \</span>
+<span class="s1">                        -V build_number=${BUILD_NUMBER} \</span>
+<span class="s1">                        -V git_commit=${GIT_COMMIT} \</span>
+<span class="s1">                        --output-file final_report.json</span>
+<span class="s1">                &#39;&#39;&#39;</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">    </span><span class="o">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="o">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">e</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">currentBuild</span><span class="o">.</span><span class="na">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;FAILURE&#39;</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="n">e</span>
+<span class="w">    </span><span class="o">}</span><span class="w"> </span><span class="k">finally</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">archiveArtifacts</span><span class="w"> </span><span class="nl">artifacts:</span><span class="w"> </span><span class="s1">&#39;**/*_results.json&#39;</span><span class="o">,</span><span class="w"> </span><span class="nl">allowEmptyArchive:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="azure-devops">
+<h1>Azure DevOps<a class="headerlink" href="#azure-devops" title="Link to this heading"></a></h1>
+<section id="azure-pipelines-yaml">
+<h2>Azure Pipelines YAML<a class="headerlink" href="#azure-pipelines-yaml" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># azure-pipelines.yml</span>
+<span class="nt">trigger</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">branches</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">include</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">develop</span>
+
+<span class="nt">pr</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">branches</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">include</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+
+<span class="nt">pool</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">vmImage</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;ubuntu-latest&#39;</span>
+
+<span class="nt">variables</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pythonVersion</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.11&#39;</span>
+
+<span class="nt">stages</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Analysis</span>
+<span class="w">  </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Code</span><span class="nv"> </span><span class="s">Analysis&#39;</span>
+<span class="w">  </span><span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AnalyzeCode</span>
+<span class="w">    </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Run</span><span class="nv"> </span><span class="s">ostruct</span><span class="nv"> </span><span class="s">Analysis&#39;</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">UsePythonVersion@0</span>
+<span class="w">      </span><span class="nt">inputs</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">versionSpec</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;$(pythonVersion)&#39;</span>
+<span class="w">      </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Use</span><span class="nv"> </span><span class="s">Python</span><span class="nv"> </span><span class="s">$(pythonVersion)&#39;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">pip install ostruct-cli</span>
+<span class="w">      </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Install</span><span class="nv"> </span><span class="s">ostruct&#39;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AzureKeyVault@2</span>
+<span class="w">      </span><span class="nt">inputs</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">azureSubscription</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;your-service-connection&#39;</span>
+<span class="w">        </span><span class="nt">KeyVaultName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;your-keyvault&#39;</span>
+<span class="w">        </span><span class="nt">SecretsFilter</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;openai-api-key&#39;</span>
+<span class="w">      </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Get</span><span class="nv"> </span><span class="s">API</span><span class="nv"> </span><span class="s">Key</span><span class="nv"> </span><span class="s">from</span><span class="nv"> </span><span class="s">KeyVault&#39;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">ostruct run templates/azure_analysis.j2 schemas/analysis.json \</span>
+<span class="w">          </span><span class="no">--base-dir $(Build.SourcesDirectory) \</span>
+<span class="w">          </span><span class="no">-A $(Build.SourcesDirectory)/src \</span>
+<span class="w">          </span><span class="no">-fc src/ \</span>
+<span class="w">          </span><span class="no">-ft azure-pipelines.yml \</span>
+<span class="w">          </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">          </span><span class="no">--output-file $(Build.ArtifactStagingDirectory)/analysis_results.json</span>
+<span class="w">      </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$(openai-api-key)</span>
+<span class="w">      </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Run</span><span class="nv"> </span><span class="s">Analysis&#39;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PublishBuildArtifacts@1</span>
+<span class="w">      </span><span class="nt">inputs</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">pathToPublish</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;$(Build.ArtifactStagingDirectory)&#39;</span>
+<span class="w">        </span><span class="nt">artifactName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;analysis-results&#39;</span>
+<span class="w">      </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Publish</span><span class="nv"> </span><span class="s">Results&#39;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="security-best-practices">
+<h1>Security Best Practices<a class="headerlink" href="#security-best-practices" title="Link to this heading"></a></h1>
+<section id="api-key-management">
+<h2>API Key Management<a class="headerlink" href="#api-key-management" title="Link to this heading"></a></h2>
+<p><strong>GitHub Actions:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Store in repository secrets</span>
+<span class="nt">env</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.OPENAI_API_KEY }}</span>
+</pre></div>
+</div>
+<p><strong>GitLab CI:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Store in GitLab CI/CD variables (masked)</span>
+<span class="nt">variables</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">OPENAI_API_KEY</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</pre></div>
+</div>
+<p><strong>Jenkins:</strong></p>
+<div class="highlight-groovy notranslate"><div class="highlight"><pre><span></span><span class="c1">// Use Jenkins credentials</span>
+<span class="n">environment</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">OPENAI_API_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">credentials</span><span class="o">(</span><span class="s1">&#39;openai-api-key&#39;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div>
+</div>
+<p><strong>Azure DevOps:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use Azure Key Vault</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AzureKeyVault@2</span>
+<span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">azureSubscription</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;service-connection&#39;</span>
+<span class="w">    </span><span class="nt">KeyVaultName</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;keyvault-name&#39;</span>
+<span class="w">    </span><span class="nt">SecretsFilter</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;openai-api-key&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="environment-variable-security">
+<h2>Environment Variable Security<a class="headerlink" href="#environment-variable-security" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Validate API key is set</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OPENAI_API_KEY</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Error: OPENAI_API_KEY not set&quot;</span>
+<span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
+
+<span class="c1"># Mask sensitive values in logs</span>
+<span class="nb">set</span><span class="w"> </span>+x<span class="w">  </span><span class="c1"># Disable command echoing for sensitive operations</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>--api-key<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OPENAI_API_KEY</span><span class="s2">&quot;</span>
+<span class="nb">set</span><span class="w"> </span>-x<span class="w">  </span><span class="c1"># Re-enable command echoing</span>
+</pre></div>
+</div>
+</section>
+<section id="file-access-controls">
+<h2>File Access Controls<a class="headerlink" href="#file-access-controls" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Restrict file access with explicit allowed directories</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Secure Analysis</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">ostruct run template.j2 schema.json \</span>
+<span class="w">      </span><span class="no">--base-dir ${{ github.workspace }} \</span>
+<span class="w">      </span><span class="no">-A ${{ github.workspace }}/src \</span>
+<span class="w">      </span><span class="no">-A ${{ github.workspace }}/tests \</span>
+<span class="w">      </span><span class="no">-A ${{ github.workspace }}/config \</span>
+<span class="w">      </span><span class="no">-fc src/ \</span>
+<span class="w">      </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">      </span><span class="no">--file-search-cleanup</span>
+</pre></div>
+</div>
+</section>
+<section id="network-security">
+<h2>Network Security<a class="headerlink" href="#network-security" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># For self-hosted runners, consider network restrictions</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Configure Network Security</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no"># Example: Configure firewall rules for outbound HTTPS only</span>
+<span class="w">    </span><span class="no"># This is environment-specific configuration</span>
+<span class="w">    </span><span class="no">echo &quot;Configuring secure network access...&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-and-cost-optimization">
+<h1>Performance and Cost Optimization<a class="headerlink" href="#performance-and-cost-optimization" title="Link to this heading"></a></h1>
+<section id="parallel-execution">
+<h2>Parallel Execution<a class="headerlink" href="#parallel-execution" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># GitHub Actions parallel jobs</span>
+<span class="nt">strategy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">matrix</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">analysis</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">security</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">performance</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">quality</span><span class="p p-Indicator">]</span>
+
+<span class="nt">steps</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run ${{ matrix.analysis }} Analysis</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">ostruct run templates/${{ matrix.analysis }}.j2 \</span>
+<span class="w">      </span><span class="no">schemas/${{ matrix.analysis }}.json \</span>
+<span class="w">      </span><span class="no">-fc src/ --timeout 300</span>
+</pre></div>
+</div>
+</section>
+<section id="conditional-execution">
+<h2>Conditional Execution<a class="headerlink" href="#conditional-execution" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Only run expensive analysis on main branch</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deep Analysis</span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github.ref == &#39;refs/heads/main&#39;</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">ostruct run templates/comprehensive.j2 schema.json \</span>
+<span class="w">      </span><span class="no">-fc src/ -fs docs/ --timeout 900</span>
+</pre></div>
+</div>
+</section>
+<section id="caching-strategies">
+<h2>Caching Strategies<a class="headerlink" href="#caching-strategies" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Cache ostruct installation</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cache Python packages</span>
+<span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/cache@v4</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.cache/pip</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ runner.os }}-pip-${{ hashFiles(&#39;**/requirements.txt&#39;) }}</span>
+
+<span class="c1"># Cache analysis results for unchanged files</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cache Analysis Results</span>
+<span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/cache@v4</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis_cache/</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analysis-${{ hashFiles(&#39;src/**/*.py&#39;) }}</span>
+</pre></div>
+</div>
+</section>
+<section id="timeout-and-resource-management">
+<h2>Timeout and Resource Management<a class="headerlink" href="#timeout-and-resource-management" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Set appropriate timeouts</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Resource-Controlled Analysis</span>
+<span class="w">  </span><span class="nt">timeout-minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">ostruct run template.j2 schema.json \</span>
+<span class="w">      </span><span class="no">-fc src/ \</span>
+<span class="w">      </span><span class="no">--timeout 300 \</span>
+<span class="w">      </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">      </span><span class="no">--file-search-cleanup</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="error-handling-and-monitoring">
+<h1>Error Handling and Monitoring<a class="headerlink" href="#error-handling-and-monitoring" title="Link to this heading"></a></h1>
+<section id="comprehensive-error-handling">
+<h2>Comprehensive Error Handling<a class="headerlink" href="#comprehensive-error-handling" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Analysis with Error Handling</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">set -e  # Exit on error</span>
+
+<span class="w">    </span><span class="no"># Validate environment</span>
+<span class="w">    </span><span class="no">if [ -z &quot;$OPENAI_API_KEY&quot; ]; then</span>
+<span class="w">      </span><span class="no">echo &quot;::error::OpenAI API key not configured&quot;</span>
+<span class="w">      </span><span class="no">exit 1</span>
+<span class="w">    </span><span class="no">fi</span>
+
+<span class="w">    </span><span class="no"># Run analysis with error capture</span>
+<span class="w">    </span><span class="no">if ! ostruct run template.j2 schema.json \</span>
+<span class="w">      </span><span class="no">-fc src/ \</span>
+<span class="w">      </span><span class="no">--timeout 300 \</span>
+<span class="w">      </span><span class="no">--output-file results.json; then</span>
+<span class="w">      </span><span class="no">echo &quot;::error::Analysis failed&quot;</span>
+
+<span class="w">      </span><span class="no"># Generate fallback report</span>
+<span class="w">      </span><span class="no">echo &#39;{&quot;status&quot;: &quot;failed&quot;, &quot;timestamp&quot;: &quot;&#39;$(date -Iseconds)&#39;&quot;}&#39; &gt; results.json</span>
+<span class="w">      </span><span class="no">exit 1</span>
+<span class="w">    </span><span class="no">fi</span>
+
+<span class="w">    </span><span class="no"># Validate output</span>
+<span class="w">    </span><span class="no">if [ ! -f results.json ] || [ ! -s results.json ]; then</span>
+<span class="w">      </span><span class="no">echo &quot;::error::No analysis results generated&quot;</span>
+<span class="w">      </span><span class="no">exit 1</span>
+<span class="w">    </span><span class="no">fi</span>
+</pre></div>
+</div>
+</section>
+<section id="notification-and-reporting">
+<h2>Notification and Reporting<a class="headerlink" href="#notification-and-reporting" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Notify on Failure</span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">failure()</span>
+<span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/github-script@v7</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">github.rest.issues.createComment({</span>
+<span class="w">        </span><span class="no">issue_number: context.issue.number,</span>
+<span class="w">        </span><span class="no">owner: context.repo.owner,</span>
+<span class="w">        </span><span class="no">repo: context.repo.repo,</span>
+<span class="w">        </span><span class="no">body: &#39;⚠️ Analysis failed. Please check the workflow logs.&#39;</span>
+<span class="w">      </span><span class="no">})</span>
+</pre></div>
+</div>
+</section>
+<section id="integration-with-external-tools">
+<h2>Integration with External Tools<a class="headerlink" href="#integration-with-external-tools" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Slack notification</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Slack Notification</span>
+<span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always()</span>
+<span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8398a7/action-slack@v3</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ job.status }}</span>
+<span class="w">    </span><span class="nt">channel</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;#ci-notifications&#39;</span>
+<span class="w">    </span><span class="nt">webhook_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.SLACK_WEBHOOK }}</span>
+
+<span class="c1"># Upload to cloud storage</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Upload Results to S3</span>
+<span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aws-actions/configure-aws-credentials@v4</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">aws-access-key-id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.AWS_ACCESS_KEY_ID }}</span>
+<span class="w">    </span><span class="nt">aws-secret-access-key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.AWS_SECRET_ACCESS_KEY }}</span>
+<span class="w">    </span><span class="nt">aws-region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">us-east-1</span>
+
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">aws s3 cp results.json s3://analysis-results-bucket/$(date +%Y%m%d)/</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="template-examples-for-ci-cd">
+<h1>Template Examples for CI/CD<a class="headerlink" href="#template-examples-for-ci-cd" title="Link to this heading"></a></h1>
+<section id="pull-request-analysis-template">
+<h2>Pull Request Analysis Template<a class="headerlink" href="#pull-request-analysis-template" title="Link to this heading"></a></h2>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span class="x">---</span>
+<span class="x">system_prompt: |</span>
+<span class="x">  You are a senior code reviewer analyzing a pull request.</span>
+<span class="x">  Focus on security, performance, and maintainability issues.</span>
+<span class="x">---</span>
+<span class="x"># Pull Request Analysis</span>
+
+<span class="x">**PR**: #</span><span class="cp">{{</span> <span class="nv">pr_number</span> <span class="cp">}}</span><span class="x"> - </span><span class="cp">{{</span> <span class="nv">pr_title</span> <span class="cp">}}</span>
+<span class="x">**Author**: </span><span class="cp">{{</span> <span class="nv">pr_author</span> <span class="cp">}}</span>
+<span class="x">**Files Changed**: </span><span class="cp">{{</span> <span class="nv">changed_files</span> <span class="o">|</span> <span class="nf">length</span> <span class="cp">}}</span>
+
+<span class="x">## Changed Files</span>
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">changed_files</span> <span class="cp">%}</span>
+<span class="x">### </span><span class="cp">{{</span> <span class="nv">file.name</span> <span class="cp">}}</span>
+<span class="cp">{%</span> <span class="k">if</span> <span class="nv">file.ext</span> <span class="o">==</span> <span class="s2">&quot;py&quot;</span> <span class="cp">%}</span>
+<span class="x">**Language**: Python</span>
+<span class="x">**Lines**: </span><span class="cp">{{</span> <span class="nv">file.content</span> <span class="o">|</span> <span class="nf">word_count</span> <span class="cp">}}</span>
+<span class="x">```python</span>
+<span class="cp">{{</span> <span class="nv">file.content</span> <span class="cp">}}</span>
+<span class="x">```</span>
+<span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+
+<span class="x">## Analysis Request</span>
+<span class="x">Please review this pull request and provide:</span>
+<span class="x">1. **Security Issues**: Any potential vulnerabilities</span>
+<span class="x">2. **Performance Concerns**: Inefficient code patterns</span>
+<span class="x">3. **Code Quality**: Style and maintainability issues</span>
+<span class="x">4. **Test Coverage**: Missing test scenarios</span>
+</pre></div>
+</div>
+</section>
+<section id="security-scan-template">
+<h2>Security Scan Template<a class="headerlink" href="#security-scan-template" title="Link to this heading"></a></h2>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span class="x">---</span>
+<span class="x">system_prompt: |</span>
+<span class="x">  You are a cybersecurity expert performing automated security analysis.</span>
+<span class="x">  Focus on identifying vulnerabilities, insecure patterns, and compliance issues.</span>
+<span class="x">---</span>
+<span class="x"># Automated Security Scan</span>
+
+<span class="x">**Scan Date**: </span><span class="cp">{{</span> <span class="nv">now</span><span class="o">()</span> <span class="cp">}}</span>
+<span class="x">**Repository**: </span><span class="cp">{{</span> <span class="nv">repo_name</span> <span class="cp">}}</span>
+<span class="x">**Branch**: </span><span class="cp">{{</span> <span class="nv">branch_name</span> <span class="cp">}}</span>
+<span class="x">**Commit**: </span><span class="cp">{{</span> <span class="nv">commit_hash</span> <span class="cp">}}</span>
+
+<span class="x">## Scanned Files</span>
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">source_files</span> <span class="cp">%}</span>
+<span class="x">- **</span><span class="cp">{{</span> <span class="nv">file.name</span> <span class="cp">}}</span><span class="x">**: </span><span class="cp">{{</span> <span class="nv">file.size</span> <span class="cp">}}</span><span class="x"> bytes</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+
+<span class="x">## Configuration Files</span>
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">config</span> <span class="k">in</span> <span class="nv">config_files</span> <span class="cp">%}</span>
+<span class="x">### </span><span class="cp">{{</span> <span class="nv">config.name</span> <span class="cp">}}</span>
+<span class="x">```yaml</span>
+<span class="cp">{{</span> <span class="nv">config.content</span> <span class="cp">}}</span>
+<span class="x">```</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+
+<span class="x">## Source Code Analysis</span>
+<span class="cp">{%</span> <span class="k">for</span> <span class="nv">file</span> <span class="k">in</span> <span class="nv">source_files</span> <span class="k">if</span> <span class="nv">file.ext</span> <span class="k">in</span> <span class="o">[</span><span class="s1">&#39;py&#39;</span><span class="o">,</span> <span class="s1">&#39;js&#39;</span><span class="o">,</span> <span class="s1">&#39;ts&#39;</span><span class="o">,</span> <span class="s1">&#39;java&#39;</span><span class="o">,</span> <span class="s1">&#39;go&#39;</span><span class="o">]</span> <span class="cp">%}</span>
+<span class="x">### </span><span class="cp">{{</span> <span class="nv">file.name</span> <span class="cp">}}</span>
+<span class="x">```</span><span class="cp">{{</span> <span class="nv">file.ext</span> <span class="cp">}}</span>
+<span class="cp">{{</span> <span class="nv">file.content</span> <span class="cp">}}</span>
+<span class="x">```</span>
+<span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span>
+
+<span class="x">Please perform a comprehensive security analysis focusing on:</span>
+<span class="x">1. **Injection vulnerabilities** (SQL, XSS, Command injection)</span>
+<span class="x">2. **Authentication and authorization** flaws</span>
+<span class="x">3. **Cryptographic issues** and weak implementations</span>
+<span class="x">4. **Input validation** and sanitization</span>
+<span class="x">5. **Configuration security** and hardening</span>
+<span class="x">6. **Dependency vulnerabilities** and supply chain risks</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting">
+<h1>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h1>
+<section id="common-ci-cd-issues">
+<h2>Common CI/CD Issues<a class="headerlink" href="#common-ci-cd-issues" title="Link to this heading"></a></h2>
+<p><strong>API Key Not Found:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Debug: Check if API key is available</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;API key status: </span><span class="si">${</span><span class="nv">OPENAI_API_KEY</span><span class="p">:+SET</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="c1"># Solution: Verify secret configuration in CI platform</span>
+</pre></div>
+</div>
+<p><strong>File Access Errors:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Debug: List accessible files</span>
+find<span class="w"> </span>.<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.py&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-10
+
+<span class="c1"># Solution: Check base-dir and allowed directory settings</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--base-dir<span class="w"> </span><span class="nv">$PWD</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-A<span class="w"> </span><span class="nv">$PWD</span>/src<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--verbose
+</pre></div>
+</div>
+<p><strong>Timeout Issues:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Debug: Test with shorter timeout</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-fc<span class="w"> </span>src/
+
+<span class="c1"># Solution: Increase timeout or reduce file size</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-fc<span class="w"> </span>src/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--timeout<span class="w"> </span><span class="m">900</span>
+</pre></div>
+</div>
+<p><strong>Memory/Resource Limits:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Solution: Use cleanup and resource limits</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Memory-Controlled Analysis</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">ostruct run template.j2 schema.json \</span>
+<span class="w">      </span><span class="no">-fc src/ \</span>
+<span class="w">      </span><span class="no">--code-interpreter-cleanup \</span>
+<span class="w">      </span><span class="no">--file-search-cleanup \</span>
+<span class="w">      </span><span class="no">--timeout 600</span>
+</pre></div>
+</div>
+</section>
+<section id="performance-monitoring">
+<h2>Performance Monitoring<a class="headerlink" href="#performance-monitoring" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Monitor execution time</span>
+<span class="nb">time</span><span class="w"> </span>ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>-fc<span class="w"> </span>src/
+
+<span class="c1"># Monitor token usage with dry run</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span>--dry-run<span class="w"> </span>-fc<span class="w"> </span>src/
+</pre></div>
+</div>
+</section>
+</section>
+<section id="next-steps">
+<h1>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><span class="xref std std-doc">containers</span> - Docker and Kubernetes deployment</p></li>
+<li><p><span class="xref std std-doc">scripting_patterns</span> - Advanced automation patterns</p></li>
+<li><p><span class="xref std std-doc">cost_control</span> - Cost optimization strategies</p></li>
+<li><p><a class="reference internal" href="../security/overview.html"><span class="doc">Security Overview</span></a> - Security considerations for CI/CD</p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../user-guide/template_authoring.html" class="btn btn-neutral float-left" title="Template Authoring Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../security/overview.html" class="btn btn-neutral float-right" title="Security Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Yaniv Golan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

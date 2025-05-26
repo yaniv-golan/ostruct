@@ -188,3 +188,100 @@ Test task"""
                 env=env,
             )
         assert "Cannot specify both" in str(exc.value)
+
+    def test_include_system_order(self, fs: Any) -> None:
+        """Test include_system ordering and template-relative path resolution."""
+        # Create template file and include file in same directory
+        fs.create_dir("/project/templates")
+
+        # Create include_system file
+        include_content = "You are an expert in data analysis."
+        fs.create_file(
+            "/project/templates/shared_prompt.txt", contents=include_content
+        )
+
+        # Create template with include_system
+        template_content = """---
+model: gpt-4o
+include_system: shared_prompt.txt
+system_prompt: Additional instructions for this specific task.
+---
+## File: output.txt
+Test task"""
+
+        template_path = "/project/templates/task.j2"
+        fs.create_file(template_path, contents=template_content)
+
+        env = create_jinja_env()
+
+        # Test include_system resolution
+        prompt = process_system_prompt(
+            task_template=template_content,
+            system_prompt=None,
+            system_prompt_file=None,
+            template_context={},
+            env=env,
+            template_path=template_path,
+        )
+
+        # Should contain include_system content and template system_prompt
+        assert include_content in prompt
+        assert "Additional instructions for this specific task." in prompt
+
+        # Check ordering: include_system should come before system_prompt
+        include_pos = prompt.find(include_content)
+        system_pos = prompt.find(
+            "Additional instructions for this specific task."
+        )
+        assert include_pos < system_pos
+
+    def test_include_system_file_not_found(self, fs: Any) -> None:
+        """Test error handling when include_system file is not found."""
+        template_content = """---
+model: gpt-4o
+include_system: nonexistent.txt
+---
+## File: output.txt
+Test task"""
+
+        template_path = "/project/task.j2"
+        fs.create_file(template_path, contents=template_content)
+
+        env = create_jinja_env()
+
+        with pytest.raises(Exception) as exc_info:
+            process_system_prompt(
+                task_template=template_content,
+                system_prompt=None,
+                system_prompt_file=None,
+                template_context={},
+                env=env,
+                template_path=template_path,
+            )
+        assert "include_system file not found" in str(exc_info.value)
+
+    def test_include_system_without_template_path(self, fs: Any) -> None:
+        """Test include_system is ignored when template_path is None."""
+        template_content = """---
+model: gpt-4o
+include_system: shared_prompt.txt
+system_prompt: Only this should appear.
+---
+## File: output.txt
+Test task"""
+
+        env = create_jinja_env()
+
+        # Call without template_path - include_system should be ignored
+        prompt = process_system_prompt(
+            task_template=template_content,
+            system_prompt=None,
+            system_prompt_file=None,
+            template_context={},
+            env=env,
+            template_path=None,  # No template path
+        )
+
+        # Should only contain system_prompt, not include_system
+        assert "Only this should appear." in prompt
+        assert "shared_prompt" not in prompt

@@ -8,7 +8,7 @@ This document describes the template filters and globals available in the Jinja2
 
 Counts the number of words in a text string.
 
-```jinja2
+```django
 {% set count = text | word_count %}
 ```
 
@@ -16,7 +16,7 @@ Counts the number of words in a text string.
 
 Counts the number of characters in a text string.
 
-```jinja2
+```django
 {% set count = text | char_count %}
 ```
 
@@ -24,7 +24,7 @@ Counts the number of characters in a text string.
 
 Converts an object to a JSON string.
 
-```jinja2
+```django
 {% set json_str = data | to_json %}
 ```
 
@@ -32,7 +32,7 @@ Converts an object to a JSON string.
 
 Parses a JSON string into an object.
 
-```jinja2
+```django
 {% set obj = json_str | from_json %}
 ```
 
@@ -40,7 +40,7 @@ Parses a JSON string into an object.
 
 Removes comments from text (supports #, //, and /**/ style comments).
 
-```jinja2
+```django
 {% set clean_text = code | remove_comments %}
 ```
 
@@ -48,7 +48,7 @@ Removes comments from text (supports #, //, and /**/ style comments).
 
 Normalizes whitespace in text.
 
-```jinja2
+```django
 {% set normalized = text | normalize %}
 ```
 
@@ -56,7 +56,7 @@ Normalizes whitespace in text.
 
 Removes markdown formatting characters.
 
-```jinja2
+```django
 {% set plain_text = markdown | strip_markdown %}
 ```
 
@@ -64,7 +64,7 @@ Removes markdown formatting characters.
 
 Wraps text to a specified width.
 
-```jinja2
+```django
 {% set wrapped = text | wrap(width=80) %}
 ```
 
@@ -72,7 +72,7 @@ Wraps text to a specified width.
 
 Indents text by a specified amount.
 
-```jinja2
+```django
 {% set indented = text | indent(4) %}
 ```
 
@@ -80,7 +80,7 @@ Indents text by a specified amount.
 
 Removes common leading whitespace from every line.
 
-```jinja2
+```django
 {% set dedented = text | dedent %}
 ```
 
@@ -90,7 +90,7 @@ Removes common leading whitespace from every line.
 
 Sorts a sequence of items by a specified key.
 
-```jinja2
+```django
 {% set sorted_items = items | sort_by('name') %}
 ```
 
@@ -98,7 +98,7 @@ Sorts a sequence of items by a specified key.
 
 Groups items by a specified key.
 
-```jinja2
+```django
 {% set grouped = items | group_by('category') %}
 ```
 
@@ -106,7 +106,7 @@ Groups items by a specified key.
 
 Filters items by matching a key to a value.
 
-```jinja2
+```django
 {% set filtered = items | filter_by('status', 'active') %}
 ```
 
@@ -114,7 +114,7 @@ Filters items by matching a key to a value.
 
 Extracts a specific field from each item in a sequence.
 
-```jinja2
+```django
 {% set names = items | extract_field('name') %}
 ```
 
@@ -122,7 +122,7 @@ Extracts a specific field from each item in a sequence.
 
 Returns unique items from a sequence.
 
-```jinja2
+```django
 {% set unique_items = items | unique %}
 ```
 
@@ -130,7 +130,7 @@ Returns unique items from a sequence.
 
 Computes frequency distribution of items.
 
-```jinja2
+```django
 {% set freq = items | frequency %}
 ```
 
@@ -138,7 +138,7 @@ Computes frequency distribution of items.
 
 Computes aggregate statistics (count, sum, avg, min, max) for numeric values.
 
-```jinja2
+```django
 {% set stats = numbers | aggregate %}
 ```
 
@@ -148,7 +148,7 @@ Computes aggregate statistics (count, sum, avg, min, max) for numeric values.
 
 Formats data as a table.
 
-```jinja2
+```django
 {% set table = data | table %}
 ```
 
@@ -156,7 +156,7 @@ Formats data as a table.
 
 Aligns columns in a table.
 
-```jinja2
+```django
 {% set aligned = table | align_table %}
 ```
 
@@ -164,7 +164,7 @@ Aligns columns in a table.
 
 Converts a dictionary to a table format.
 
-```jinja2
+```django
 {% set table = dict_data | dict_to_table %}
 ```
 
@@ -172,7 +172,7 @@ Converts a dictionary to a table format.
 
 Converts a list to a table format.
 
-```jinja2
+```django
 {% set table = list_data | list_to_table %}
 ```
 
@@ -180,7 +180,7 @@ Converts a list to a table format.
 
 Automatically formats data as a table based on its type.
 
-```jinja2
+```django
 {% set table = data | auto_table %}
 ```
 
@@ -190,7 +190,7 @@ Automatically formats data as a table based on its type.
 
 Formats code with syntax highlighting.
 
-```jinja2
+```django
 {% set formatted = code | format_code('python') %}
 ```
 
@@ -198,7 +198,7 @@ Formats code with syntax highlighting.
 
 Removes comments from code.
 
-```jinja2
+```django
 {% set clean_code = code | strip_comments %}
 ```
 
@@ -208,7 +208,7 @@ Removes comments from code.
 
 Escapes special characters in text.
 
-```jinja2
+```django
 {% set escaped = text | escape_special %}
 ```
 
@@ -218,7 +218,7 @@ Escapes special characters in text.
 
 Estimates the number of tokens in text using model-specific encodings.
 
-```jinja2
+```django
 {% set token_count = estimate_tokens(text) %}
 ```
 
@@ -236,7 +236,7 @@ It includes:
 
 Formats JSON with indentation and proper string conversion.
 
-```jinja2
+```django
 {% set formatted = format_json(data) %}
 ```
 
@@ -244,7 +244,7 @@ Formats JSON with indentation and proper string conversion.
 
 Returns the current datetime.
 
-```jinja2
+```django
 {% set current_time = now() %}
 ```
 
@@ -252,7 +252,7 @@ Returns the current datetime.
 
 Prints debug information during template rendering.
 
-```jinja2
+```django
 {{ debug(variable) }}
 ```
 
@@ -260,7 +260,7 @@ Prints debug information during template rendering.
 
 Returns the type name of an object.
 
-```jinja2
+```django
 {% set type_name = type_of(variable) %}
 ```
 
@@ -268,7 +268,7 @@ Returns the type name of an object.
 
 Returns a list of attributes for an object.
 
-```jinja2
+```django
 {% set attributes = dir_of(object) %}
 ```
 
@@ -276,7 +276,7 @@ Returns a list of attributes for an object.
 
 Returns the length of an object if available.
 
-```jinja2
+```django
 {% set length = len_of(sequence) %}
 ```
 
@@ -284,7 +284,7 @@ Returns the length of an object if available.
 
 Validates JSON data against a schema.
 
-```jinja2
+```django
 {% set is_valid = validate_json(data, schema) %}
 ```
 
@@ -292,6 +292,6 @@ Validates JSON data against a schema.
 
 Formats error messages consistently.
 
-```jinja2
+```django
 {% set error_msg = format_error(error) %}
 ```

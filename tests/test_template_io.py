@@ -12,7 +12,7 @@ from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_io import extract_template_metadata, read_file
 
 # Set up logging for tests
-logger = logging.getLogger("openai_structured.cli")
+logger = logging.getLogger("ostruct.cli")
 logger.setLevel(logging.DEBUG)
 
 # Add console handler if not already present

@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
+from openai import OpenAIError
+
 from .base_errors import CLIError, OstructFileNotFoundError
 from .exit_codes import ExitCode
 from .security.base import SecurityErrorBase
@@ -426,12 +428,11 @@ class InvalidResponseFormatError(CLIError):
         )
 
 
-class OpenAIClientError(CLIError):
-    """Exception raised when there's an error with the OpenAI client.
+# Tool-specific error classes (T3.1)
 
-    This is a wrapper around openai_structured's OpenAIClientError to maintain
-    compatibility with our CLI error handling.
-    """
+
+class FileSearchError(CLIError):
+    """File Search tool failures with retry guidance."""
 
     def __init__(
         self,
@@ -440,6 +441,211 @@ class OpenAIClientError(CLIError):
         context: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, exit_code=exit_code, context=context)
+
+
+class FileSearchUploadError(FileSearchError):
+    """File upload to vector store failed."""
+
+    pass
+
+
+class MCPConnectionError(CLIError):
+    """MCP server connection failures."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.API_ERROR,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
+
+
+class ContainerExpiredError(CLIError):
+    """Code Interpreter container expired (20-minute limit)."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.API_ERROR,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
+
+
+class UnattendedOperationTimeoutError(CLIError):
+    """Operation timed out during unattended execution."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.OPERATION_TIMEOUT,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
+
+
+class PromptTooLargeError(CLIError):
+    """Prompt exceeds context window limits."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.VALIDATION_ERROR,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
+
+
+class AuthenticationError(CLIError):
+    """API authentication failures."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.API_ERROR,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
+
+
+class RateLimitError(CLIError):
+    """API rate limiting errors."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.API_ERROR,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
+
+
+class APIError(CLIError):
+    """Generic API errors."""
+
+    def __init__(
+        self,
+        message: str,
+        exit_code: ExitCode = ExitCode.API_ERROR,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, exit_code=exit_code, context=context)
+
+
+# API Error Mapping (T3.1)
+
+
+class APIErrorMapper:
+    """Maps OpenAI SDK errors to ostruct-specific errors with actionable guidance."""
+
+    @staticmethod
+    def map_openai_error(error: OpenAIError) -> CLIError:
+        """Map OpenAI SDK errors to ostruct errors (validated patterns).
+
+        Args:
+            error: OpenAI SDK error to map
+
+        Returns:
+            Appropriate ostruct error with actionable guidance
+        """
+        error_msg = str(error).lower()
+
+        # Context window errors (confirmed pattern)
+        if (
+            "context_length_exceeded" in error_msg
+            or "maximum context length" in error_msg
+        ):
+            return PromptTooLargeError(
+                f"Prompt exceeds model context window (128,000 token limit). "
+                f"Tip: Use explicit file routing (-fc for code, -fs for docs, -ft for config). "
+                f"Original error: {error}"
+            )
+
+        # Authentication errors (confirmed pattern)
+        if "invalid_api_key" in error_msg or "incorrect api key" in error_msg:
+            return AuthenticationError(
+                f"Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable. "
+                f"Original error: {error}"
+            )
+
+        # Rate limiting (standard pattern)
+        if "rate_limit" in error_msg:
+            return RateLimitError(
+                f"OpenAI API rate limit exceeded. Please wait and try again. "
+                f"Original error: {error}"
+            )
+
+        # Schema validation errors (Responses API specific)
+        if "invalid schema for response_format" in error_msg:
+            return SchemaValidationError(
+                f"Schema validation failed for Responses API. "
+                f"Ensure your schema is compatible with strict mode. "
+                f"Original error: {error}"
+            )
+
+        # Container expiration errors (Code Interpreter specific)
+        if "container" in error_msg and (
+            "expired" in error_msg or "timeout" in error_msg
+        ):
+            return ContainerExpiredError(
+                f"Code Interpreter container expired (20-minute runtime limit, 2-minute idle timeout). "
+                f"Please retry your request. Original error: {error}"
+            )
+
+        # File Search errors
+        if "vector_store" in error_msg or "file_search" in error_msg:
+            return FileSearchError(
+                f"File Search operation failed. This can be intermittent - consider retrying. "
+                f"Original error: {error}"
+            )
+
+        # MCP connection errors
+        if "mcp" in error_msg or "model context protocol" in error_msg:
+            return MCPConnectionError(
+                f"MCP server connection failed. Check server URL and network connectivity. "
+                f"Original error: {error}"
+            )
+
+        # Generic API error
+        return APIError(f"OpenAI API error: {error}")
+
+    @staticmethod
+    def map_tool_error(tool_name: str, error: Exception) -> CLIError:
+        """Map tool-specific errors to ostruct errors.
+
+        Args:
+            tool_name: Name of the tool that failed
+            error: The original error
+
+        Returns:
+            Appropriate ostruct error with tool-specific guidance
+        """
+        error_msg = str(error).lower()
+
+        if tool_name == "file-search":
+            if "upload" in error_msg or "vector_store" in error_msg:
+                return FileSearchUploadError(
+                    f"File Search upload failed: {error}. "
+                    f"This can be intermittent - retry with --file-search-retry-count option."
+                )
+            return FileSearchError(f"File Search error: {error}")
+
+        elif tool_name == "code-interpreter":
+            if "container" in error_msg:
+                return ContainerExpiredError(
+                    f"Code Interpreter container error: {error}. "
+                    f"Container has 20-minute runtime and 2-minute idle limits."
+                )
+            return APIError(f"Code Interpreter error: {error}")
+
+        elif tool_name == "mcp":
+            return MCPConnectionError(
+                f"MCP server error: {error}. "
+                f"Check server connectivity and require_approval='never' setting."
+            )
+
+        return APIError(f"{tool_name} error: {error}")
 
 
 class SchemaValidationError(ModelCreationError):
@@ -522,5 +728,4 @@ __all__ = [
     "APIResponseError",
     "EmptyResponseError",
     "InvalidResponseFormatError",
-    "OpenAIClientError",
 ]

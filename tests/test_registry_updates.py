@@ -1,15 +1,11 @@
-"""Tests for the registry_updates module."""
+"""Tests for registry update functionality."""
 
 import os
 import time
-from unittest.mock import patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
-from openai_structured.model_registry import (
-    ModelRegistry,
-    RegistryUpdateResult,
-    RegistryUpdateStatus,
-)
 
 from ostruct.cli.registry_updates import (
     UPDATE_CHECK_ENV_VAR,
@@ -18,6 +14,31 @@ from ostruct.cli.registry_updates import (
     get_update_notification,
     should_check_for_updates,
 )
+
+
+# Mock classes that match the real openai-model-registry API
+class MockRegistryUpdateStatus:
+    def __init__(self, value: str):
+        self.value = value
+
+
+class RegistryUpdateResult:
+    def __init__(self, status: str, message: str, success: bool = True):
+        self.status = MockRegistryUpdateStatus(status)
+        self.message = message
+        self.success = success
+
+
+class ModelRegistry:
+    def check_for_updates(self) -> Any:
+        return RegistryUpdateResult(
+            status="ALREADY_CURRENT", message="Registry is up to date"
+        )
+
+
+class RegistryUpdateStatus:
+    UPDATE_AVAILABLE = "update_available"
+    ALREADY_CURRENT = "already_current"
 
 
 @pytest.fixture
@@ -98,14 +119,19 @@ def test_check_for_registry_updates():
         with patch(
             "ostruct.cli.registry_updates._save_last_check_time"
         ) as mock_save:
-            with patch.object(
-                ModelRegistry, "check_for_updates"
-            ) as mock_check:
-                mock_check.return_value = RegistryUpdateResult(
-                    status=RegistryUpdateStatus.UPDATE_AVAILABLE,
-                    message="Update available",
-                    success=True,
+            with patch(
+                "ostruct.cli.registry_updates.ModelRegistry.get_instance"
+            ) as mock_get_instance:
+                mock_registry = MagicMock()
+                mock_registry.check_for_updates.return_value = (
+                    RegistryUpdateResult(
+                        status=RegistryUpdateStatus.UPDATE_AVAILABLE,
+                        message="Update available",
+                        success=True,
+                    )
                 )
+                mock_get_instance.return_value = mock_registry
+
                 update_available, message = check_for_registry_updates()
                 assert update_available
                 assert message is not None
@@ -120,14 +146,19 @@ def test_check_for_registry_updates():
         with patch(
             "ostruct.cli.registry_updates._save_last_check_time"
         ) as mock_save:
-            with patch.object(
-                ModelRegistry, "check_for_updates"
-            ) as mock_check:
-                mock_check.return_value = RegistryUpdateResult(
-                    status=RegistryUpdateStatus.ALREADY_CURRENT,
-                    message="Up to date",
-                    success=True,
+            with patch(
+                "ostruct.cli.registry_updates.ModelRegistry.get_instance"
+            ) as mock_get_instance:
+                mock_registry = MagicMock()
+                mock_registry.check_for_updates.return_value = (
+                    RegistryUpdateResult(
+                        status=RegistryUpdateStatus.ALREADY_CURRENT,
+                        message="Up to date",
+                        success=True,
+                    )
                 )
+                mock_get_instance.return_value = mock_registry
+
                 update_available, message = check_for_registry_updates()
                 assert not update_available
                 assert message is None
@@ -138,8 +169,10 @@ def test_check_for_registry_updates():
         "ostruct.cli.registry_updates.should_check_for_updates"
     ) as mock_should_check:
         mock_should_check.return_value = True
-        with patch.object(ModelRegistry, "check_for_updates") as mock_check:
-            mock_check.side_effect = Exception("Test error")
+        with patch(
+            "ostruct.cli.registry_updates.ModelRegistry.get_instance"
+        ) as mock_get_instance:
+            mock_get_instance.side_effect = Exception("Test error")
             update_available, message = check_for_registry_updates()
             assert not update_available
             assert message is None

@@ -17,7 +17,7 @@ pyproject_path = root_dir / "pyproject.toml"
 
 with open(pyproject_path, "rb") as f:
     pyproject_data = tomllib.load(f)
-    version = pyproject_data["tool"]["poetry"]["version"]
+    version = pyproject_data["project"]["version"]
 
 project = "ostruct-cli"
 copyright = "2025, Yaniv Golan"
@@ -30,6 +30,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_rtd_theme",
     "myst_parser",
+    "sphinx_design",
 ]
 
 html_theme = "sphinx_rtd_theme"

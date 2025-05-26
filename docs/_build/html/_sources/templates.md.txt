@@ -24,7 +24,7 @@ When you map files using the input flags, you can access their contents and meta
 
 For example, mapping a single file (`-f`):
 
-```jinja2
+```django
 # Map a source file:
 -f source input.py
 
@@ -35,7 +35,7 @@ For example, mapping a single file (`-f`):
 
 For directories (`-d`) or patterns (`-p`):
 
-```jinja2
+```django
 # Map Python files:
 -d python_files src/
 # or
@@ -75,14 +75,14 @@ Each `FileInfo` object provides these attributes:
 
 Using the `-V` flag for string variables:
 
-```jinja2
+```django
 -V myvar=hello
 {{ myvar }}  # Outputs: hello
 ```
 
 Using the `-J` flag for JSON variables:
 
-```jinja2
+```django
 -J data='{"key1": "value1", "key2": "value2"}'
 {{ data.key1 }}  # Outputs: value1
 ```
@@ -95,7 +95,7 @@ Jinja2 provides control structures like `for` loops and `if` statements, enclose
 
 When processing multiple files (using `-d` or `-p`):
 
-```jinja2
+```django
 {% for file in content %}
 File: {{ file.path }}
 Content:
@@ -105,7 +105,7 @@ Content:
 
 #### If Statements
 
-```jinja2
+```django
 {% if content %}
   Content is available.
 {% else %}
@@ -121,7 +121,7 @@ Content:
 
 Comments in Jinja2 are enclosed in `{# ... #}`. The `CommentExtension` in `ostruct` provides special handling:
 
-```jinja2
+```django
 {# This is a comment and will not be included in the output #}
 ```
 
@@ -138,7 +138,7 @@ The extension ensures that:
 
 The most common use is defining the `system_prompt`:
 
-```jinja2
+```django
 ---
 system_prompt: You are an expert code reviewer.
 ---
@@ -154,7 +154,7 @@ If no system prompt is provided in frontmatter:
 
 ### Code Review Template
 
-```jinja2
+```django
 ---
 system_prompt: You are an expert code reviewer. Focus on security vulnerabilities.
 ---
@@ -177,7 +177,7 @@ This template:
 
 ### Configuration Validation
 
-```jinja2
+```django
 ---
 system_prompt: You are an expert in configuration validation. Identify any issues or inconsistencies.
 ---
@@ -196,7 +196,7 @@ This example processes multiple configuration files, presenting them in a clear 
 
 ### Advanced Example with Filters
 
-```jinja2
+```django
 ---
 system_prompt: "You are an expert summarizer."
 ---

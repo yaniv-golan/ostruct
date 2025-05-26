@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLI Reference &mdash; ostruct-cli  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sphinx-design.min.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Quick Start Guide" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ostruct-cli
+          </a>
+              <div class="version">
+                0.8.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">📖 User Guides:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction to ostruct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CLI Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-reference-commands">Quick Reference Commands</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#file-routing-options">File Routing Options</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#template-files-local-access-only">Template Files (📄 Local Access Only)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#auto-naming-syntax">Auto-Naming Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#equals-syntax">Equals Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#two-argument-alias-syntax">Two-Argument Alias Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#directory-template-access">Directory Template Access</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#code-interpreter-files-execution-analysis">Code Interpreter Files (💻 Execution + Analysis)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Auto-Naming Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Equals Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Two-Argument Alias Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#directory-code-interpreter-access">Directory Code Interpreter Access</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#code-interpreter-options">Code Interpreter Options</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#file-search-files-vector-search-retrieval">File Search Files (🔍 Vector Search + Retrieval)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id4">Auto-Naming Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">Equals Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">Two-Argument Alias Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#directory-file-search-access">Directory File Search Access</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#file-search-options">File Search Options</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#advanced-file-routing">Advanced File Routing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#multi-tool-routing">Multi-Tool Routing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#legacy-file-options">Legacy File Options</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#variables-and-input">Variables and Input</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#string-variables">String Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#json-variables">JSON Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#model-and-api-configuration">Model and API Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#model-selection">Model Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#model-parameters">Model Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-configuration">API Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#system-prompts">System Prompts</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-system-prompts">Command-Line System Prompts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#template-frontmatter">Template Frontmatter</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#security-and-path-management">Security and Path Management</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#path-security">Path Security</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#directory-processing">Directory Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#mcp-server-integration">MCP Server Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-mcp-usage">Basic MCP Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mcp-configuration">MCP Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#output-and-execution-control">Output and Execution Control</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#output-options">Output Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#progress-and-debugging">Progress and Debugging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#timeout-control">Timeout Control</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#file-routing-examples">File Routing Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#single-tool-examples">Single Tool Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-tool-examples">Multi-Tool Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">Directory Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#migration-from-legacy-syntax">Migration from Legacy Syntax</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#legacy-vs-enhanced-syntax">Legacy vs Enhanced Syntax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#variable-naming-patterns">Variable Naming Patterns</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#best-practices">Best Practices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#file-organization">File Organization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security-considerations">Security Considerations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-tips">Performance Tips</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#common-workflows">Common Workflows</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#data-analysis-pipeline">Data Analysis Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-validation">Configuration Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#code-review-automation">Code Review Automation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#common-issues">Common Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-help">Getting Help</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ostruct-cli</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">CLI Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/user-guide/cli_reference.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cli-reference">
+<h1>CLI Reference<a class="headerlink" href="#cli-reference" title="Link to this heading"></a></h1>
+<p>Complete reference for the <code class="docutils literal notranslate"><span class="pre">ostruct</span></code> command-line interface. This guide covers all options, file routing syntaxes, and advanced features with verified flag names and examples.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>New to ostruct?</strong> Start with the <a class="reference internal" href="quickstart.html"><span class="doc">Quick Start Guide</span></a> guide for a hands-on introduction.</p>
+</div>
+<section id="basic-usage">
+<h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ostruct<span class="w"> </span>run<span class="w"> </span>TEMPLATE_FILE<span class="w"> </span>SCHEMA_FILE<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+<p><strong>Required Arguments:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">TEMPLATE_FILE</span></code>: Path to Jinja2 template file (typically with <code class="docutils literal notranslate"><span class="pre">.j2</span></code> extension)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SCHEMA_FILE</span></code>: JSON Schema file that defines the structure of the output</p></li>
+</ul>
+</section>
+<section id="quick-reference-commands">
+<h2>Quick Reference Commands<a class="headerlink" href="#quick-reference-commands" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Show complete help</span>
+ostruct<span class="w"> </span>--help
+ostruct<span class="w"> </span>run<span class="w"> </span>--help
+
+<span class="c1"># Show quick reference for file routing</span>
+ostruct<span class="w"> </span>quick-ref
+
+<span class="c1"># Update model registry</span>
+ostruct<span class="w"> </span>update-registry
+</pre></div>
+</div>
+</section>
+</section>
+<section id="file-routing-options">
+<h1>File Routing Options<a class="headerlink" href="#file-routing-options" title="Link to this heading"></a></h1>
+<p>ostruct provides three syntaxes for routing files to different tools, giving you flexibility for various use cases.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Security Note</strong>: All file access is validated through the SecurityManager. Files must be within allowed directories for access.</p>
+</div>
+<section id="template-files-local-access-only">
+<h2>Template Files (📄 Local Access Only)<a class="headerlink" href="#template-files-local-access-only" title="Link to this heading"></a></h2>
+<p>Files routed to template access are available in your Jinja2 template but are <strong>not uploaded</strong> to any external services.</p>
+<p><strong>Use cases:</strong> Configuration files, small reference data, prompt templates</p>
+<section id="auto-naming-syntax">
+<h3>Auto-Naming Syntax<a class="headerlink" href="#auto-naming-syntax" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-ft,<span class="w"> </span>--file-for-template<span class="w"> </span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span>config.yaml<span class="w">      </span><span class="c1"># → config_yaml variable</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span>my-file.txt<span class="w">      </span><span class="c1"># → my_file_txt variable</span>
+</pre></div>
+</div>
+</section>
+<section id="equals-syntax">
+<h3>Equals Syntax<a class="headerlink" href="#equals-syntax" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-ft,<span class="w"> </span>--file-for-template<span class="w"> </span><span class="nv">NAME</span><span class="o">=</span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span><span class="nv">config</span><span class="o">=</span>settings.yaml<span class="w">    </span><span class="c1"># → config variable</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span><span class="nv">data</span><span class="o">=</span>input.json<span class="w">        </span><span class="c1"># → data variable</span>
+</pre></div>
+</div>
+</section>
+<section id="two-argument-alias-syntax">
+<h3>Two-Argument Alias Syntax<a class="headerlink" href="#two-argument-alias-syntax" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--fta,<span class="w"> </span>--file-for-template-alias<span class="w"> </span>NAME<span class="w"> </span>PATH
+
+<span class="c1"># Examples (supports tab completion for paths)</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--fta<span class="w"> </span>config<span class="w"> </span>settings.yaml
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--fta<span class="w"> </span>data<span class="w"> </span>input.json
+</pre></div>
+</div>
+</section>
+<section id="directory-template-access">
+<h3>Directory Template Access<a class="headerlink" href="#directory-template-access" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-dt,<span class="w"> </span>--dir-for-template<span class="w"> </span>DIRECTORY
+
+<span class="c1"># Example</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-dt<span class="w"> </span>./config_files
+</pre></div>
+</div>
+</section>
+</section>
+<section id="code-interpreter-files-execution-analysis">
+<h2>Code Interpreter Files (💻 Execution + Analysis)<a class="headerlink" href="#code-interpreter-files-execution-analysis" title="Link to this heading"></a></h2>
+<p>Files routed to Code Interpreter are <strong>uploaded to OpenAI</strong> for Python execution, data analysis, and visualization generation.</p>
+<p><strong>Use cases:</strong> CSV data, Python scripts, data analysis, computational tasks</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Data Upload</strong>: Files are uploaded to OpenAI’s Code Interpreter environment.</p>
+</div>
+<section id="id1">
+<h3>Auto-Naming Syntax<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-fc,<span class="w"> </span>--file-for-code-interpreter<span class="w"> </span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>analyze.j2<span class="w"> </span>schema.json<span class="w"> </span>-fc<span class="w"> </span>data.csv<span class="w">         </span><span class="c1"># → data_csv variable</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>analyze.j2<span class="w"> </span>schema.json<span class="w"> </span>-fc<span class="w"> </span>sales_data.xlsx<span class="w">  </span><span class="c1"># → sales_data_xlsx variable</span>
+</pre></div>
+</div>
+</section>
+<section id="id2">
+<h3>Equals Syntax<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-fc,<span class="w"> </span>--file-for-code-interpreter<span class="w"> </span><span class="nv">NAME</span><span class="o">=</span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>analyze.j2<span class="w"> </span>schema.json<span class="w"> </span>-fc<span class="w"> </span><span class="nv">dataset</span><span class="o">=</span>data.csv
+ostruct<span class="w"> </span>run<span class="w"> </span>analyze.j2<span class="w"> </span>schema.json<span class="w"> </span>-fc<span class="w"> </span><span class="nv">sales</span><span class="o">=</span>sales_data.xlsx
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h3>Two-Argument Alias Syntax<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--fca,<span class="w"> </span>--file-for-code-interpreter-alias<span class="w"> </span>NAME<span class="w"> </span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>analyze.j2<span class="w"> </span>schema.json<span class="w"> </span>--fca<span class="w"> </span>dataset<span class="w"> </span>data.csv
+ostruct<span class="w"> </span>run<span class="w"> </span>analyze.j2<span class="w"> </span>schema.json<span class="w"> </span>--fca<span class="w"> </span>sales<span class="w"> </span>sales_data.xlsx
+</pre></div>
+</div>
+</section>
+<section id="directory-code-interpreter-access">
+<h3>Directory Code Interpreter Access<a class="headerlink" href="#directory-code-interpreter-access" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-dc,<span class="w"> </span>--dir-for-code-interpreter<span class="w"> </span>DIRECTORY
+
+<span class="c1"># Example</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>analyze.j2<span class="w"> </span>schema.json<span class="w"> </span>-dc<span class="w"> </span>./datasets
+</pre></div>
+</div>
+</section>
+<section id="code-interpreter-options">
+<h3>Code Interpreter Options<a class="headerlink" href="#code-interpreter-options" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--code-interpreter-download-dir<span class="w"> </span>DIRECTORY<span class="w">    </span><span class="c1"># Where to save generated files (default: ./downloads)</span>
+--code-interpreter-cleanup<span class="w">                   </span><span class="c1"># Clean up uploaded files after execution (default: true)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="file-search-files-vector-search-retrieval">
+<h2>File Search Files (🔍 Vector Search + Retrieval)<a class="headerlink" href="#file-search-files-vector-search-retrieval" title="Link to this heading"></a></h2>
+<p>Files routed to File Search are <strong>uploaded to OpenAI</strong> and processed into a vector store for semantic search and retrieval.</p>
+<p><strong>Use cases:</strong> Documentation, PDFs, knowledge bases, searchable content</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Data Upload</strong>: Files are uploaded to OpenAI’s File Search service and processed into vector stores.</p>
+</div>
+<section id="id4">
+<h3>Auto-Naming Syntax<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-fs,<span class="w"> </span>--file-for-search<span class="w"> </span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>search.j2<span class="w"> </span>schema.json<span class="w"> </span>-fs<span class="w"> </span>docs.pdf<span class="w">          </span><span class="c1"># → docs_pdf variable</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>search.j2<span class="w"> </span>schema.json<span class="w"> </span>-fs<span class="w"> </span>manual.txt<span class="w">        </span><span class="c1"># → manual_txt variable</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h3>Equals Syntax<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-fs,<span class="w"> </span>--file-for-search<span class="w"> </span><span class="nv">NAME</span><span class="o">=</span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>search.j2<span class="w"> </span>schema.json<span class="w"> </span>-fs<span class="w"> </span><span class="nv">manual</span><span class="o">=</span>docs.pdf
+ostruct<span class="w"> </span>run<span class="w"> </span>search.j2<span class="w"> </span>schema.json<span class="w"> </span>-fs<span class="w"> </span><span class="nv">knowledge</span><span class="o">=</span>kb.txt
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>Two-Argument Alias Syntax<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--fsa,<span class="w"> </span>--file-for-search-alias<span class="w"> </span>NAME<span class="w"> </span>PATH
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>search.j2<span class="w"> </span>schema.json<span class="w"> </span>--fsa<span class="w"> </span>manual<span class="w"> </span>docs.pdf
+ostruct<span class="w"> </span>run<span class="w"> </span>search.j2<span class="w"> </span>schema.json<span class="w"> </span>--fsa<span class="w"> </span>knowledge<span class="w"> </span>kb.txt
+</pre></div>
+</div>
+</section>
+<section id="directory-file-search-access">
+<h3>Directory File Search Access<a class="headerlink" href="#directory-file-search-access" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-ds,<span class="w"> </span>--dir-for-search<span class="w"> </span>DIRECTORY
+
+<span class="c1"># Example</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>search.j2<span class="w"> </span>schema.json<span class="w"> </span>-ds<span class="w"> </span>./documentation
+</pre></div>
+</div>
+</section>
+<section id="file-search-options">
+<h3>File Search Options<a class="headerlink" href="#file-search-options" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--file-search-vector-store-name<span class="w"> </span>NAME<span class="w">         </span><span class="c1"># Name for vector store (default: ostruct_search)</span>
+--file-search-cleanup<span class="w">                        </span><span class="c1"># Clean up vector stores after use (default: true)</span>
+--file-search-retry-count<span class="w"> </span>COUNT<span class="w">              </span><span class="c1"># Retry attempts for operations (default: 3)</span>
+--file-search-timeout<span class="w"> </span>SECONDS<span class="w">               </span><span class="c1"># Timeout for indexing (default: 60.0)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="advanced-file-routing">
+<h1>Advanced File Routing<a class="headerlink" href="#advanced-file-routing" title="Link to this heading"></a></h1>
+<section id="multi-tool-routing">
+<h2>Multi-Tool Routing<a class="headerlink" href="#multi-tool-routing" title="Link to this heading"></a></h2>
+<p>Route files to multiple tools simultaneously using the <code class="docutils literal notranslate"><span class="pre">--file-for</span></code> option:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--file-for<span class="w"> </span>TOOLS:FILES
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--file-for<span class="w"> </span><span class="s1">&#39;code-interpreter,file-search:data.json&#39;</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--file-for<span class="w"> </span><span class="s1">&#39;template,code-interpreter:config.yaml&#39;</span>
+</pre></div>
+</div>
+<p><strong>Valid tools:</strong> <code class="docutils literal notranslate"><span class="pre">template</span></code>, <code class="docutils literal notranslate"><span class="pre">code-interpreter</span></code>, <code class="docutils literal notranslate"><span class="pre">file-search</span></code></p>
+</section>
+<section id="legacy-file-options">
+<h2>Legacy File Options<a class="headerlink" href="#legacy-file-options" title="Link to this heading"></a></h2>
+<p>Traditional file routing options continue to work for backward compatibility:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-f,<span class="w"> </span>--file<span class="w"> </span>NAME<span class="w"> </span>PATH<span class="w">                         </span><span class="c1"># Map file to template variable</span>
+-d,<span class="w"> </span>--dir<span class="w"> </span>NAME<span class="w"> </span>PATH<span class="w">                          </span><span class="c1"># Map directory to template variable</span>
+-p,<span class="w"> </span>--pattern<span class="w"> </span>NAME<span class="w"> </span>PATTERN<span class="w">                   </span><span class="c1"># Map glob pattern to template variable</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="variables-and-input">
+<h1>Variables and Input<a class="headerlink" href="#variables-and-input" title="Link to this heading"></a></h1>
+<section id="string-variables">
+<h2>String Variables<a class="headerlink" href="#string-variables" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-V,<span class="w"> </span>--var<span class="w"> </span><span class="nv">NAME</span><span class="o">=</span>VALUE
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-V<span class="w"> </span><span class="nv">env</span><span class="o">=</span>production<span class="w"> </span>-V<span class="w"> </span><span class="nv">debug</span><span class="o">=</span><span class="nb">false</span>
+</pre></div>
+</div>
+</section>
+<section id="json-variables">
+<h2>JSON Variables<a class="headerlink" href="#json-variables" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-J,<span class="w"> </span>--json-var<span class="w"> </span><span class="nv">NAME</span><span class="o">=</span><span class="s1">&#39;JSON_STRING&#39;</span>
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-J<span class="w"> </span><span class="nv">config</span><span class="o">=</span><span class="s1">&#39;{&quot;env&quot;:&quot;prod&quot;,&quot;debug&quot;:true}&#39;</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-J<span class="w"> </span><span class="nv">settings</span><span class="o">=</span><span class="s1">&#39;{&quot;timeout&quot;:30,&quot;retries&quot;:3}&#39;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="model-and-api-configuration">
+<h1>Model and API Configuration<a class="headerlink" href="#model-and-api-configuration" title="Link to this heading"></a></h1>
+<section id="model-selection">
+<h2>Model Selection<a class="headerlink" href="#model-selection" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-m,<span class="w"> </span>--model<span class="w"> </span>MODEL_NAME<span class="w">                       </span><span class="c1"># OpenAI model to use (default: gpt-4o)</span>
+</pre></div>
+</div>
+<p><strong>Supported models:</strong>
+- <code class="docutils literal notranslate"><span class="pre">gpt-4o</span></code> - 128k context window (default)
+- <code class="docutils literal notranslate"><span class="pre">o1</span></code> - 200k context window
+- <code class="docutils literal notranslate"><span class="pre">o3-mini</span></code> - 200k context window</p>
+</section>
+<section id="model-parameters">
+<h2>Model Parameters<a class="headerlink" href="#model-parameters" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--temperature<span class="w"> </span>FLOAT<span class="w">                          </span><span class="c1"># Sampling temperature (0.0-2.0)</span>
+--max-output-tokens<span class="w"> </span>INT<span class="w">                      </span><span class="c1"># Maximum output tokens</span>
+--top-p<span class="w"> </span>FLOAT<span class="w">                                </span><span class="c1"># Top-p sampling (0.0-1.0)</span>
+--frequency-penalty<span class="w"> </span>FLOAT<span class="w">                    </span><span class="c1"># Frequency penalty (-2.0-2.0)</span>
+--presence-penalty<span class="w"> </span>FLOAT<span class="w">                     </span><span class="c1"># Presence penalty (-2.0-2.0)</span>
+--reasoning-effort<span class="w"> </span>LEVEL<span class="w">                     </span><span class="c1"># Reasoning effort (low|medium|high)</span>
+</pre></div>
+</div>
+</section>
+<section id="api-configuration">
+<h2>API Configuration<a class="headerlink" href="#api-configuration" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--api-key<span class="w"> </span>KEY<span class="w">                                </span><span class="c1"># OpenAI API key (or use OPENAI_API_KEY env var)</span>
+--timeout<span class="w"> </span>SECONDS<span class="w">                            </span><span class="c1"># API timeout (default: 60.0)</span>
+--config<span class="w"> </span>PATH<span class="w">                                </span><span class="c1"># Configuration file (default: ostruct.yaml)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="system-prompts">
+<h1>System Prompts<a class="headerlink" href="#system-prompts" title="Link to this heading"></a></h1>
+<p>ostruct provides multiple ways to specify system prompts with clear precedence rules.</p>
+<section id="command-line-system-prompts">
+<h2>Command-Line System Prompts<a class="headerlink" href="#command-line-system-prompts" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--sys-prompt<span class="w"> </span>TEXT<span class="w">                            </span><span class="c1"># Provide system prompt directly</span>
+--sys-file<span class="w"> </span>PATH<span class="w">                              </span><span class="c1"># Load system prompt from file</span>
+--ignore-task-sysprompt<span class="w">                      </span><span class="c1"># Ignore system prompt in template frontmatter</span>
+</pre></div>
+</div>
+<p><strong>Examples:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Direct system prompt</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--sys-prompt<span class="w"> </span><span class="s2">&quot;You are an expert data analyst&quot;</span>
+
+<span class="c1"># From file</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--sys-file<span class="w"> </span>prompts/analyst.txt
+
+<span class="c1"># Ignore template frontmatter</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--ignore-task-sysprompt
+</pre></div>
+</div>
+</section>
+<section id="template-frontmatter">
+<h2>Template Frontmatter<a class="headerlink" href="#template-frontmatter" title="Link to this heading"></a></h2>
+<p>Add system prompts directly in your template:</p>
+<div class="highlight-jinja notranslate"><div class="highlight"><pre><span></span><span class="x">---</span>
+<span class="x">system_prompt: You are an expert analyst specializing in financial data.</span>
+<span class="x">---</span>
+<span class="x">Analyze this data: </span><span class="cp">{{</span> <span class="nv">data.content</span> <span class="cp">}}</span>
+</pre></div>
+</div>
+<p><strong>Precedence Order:</strong>
+1. <code class="docutils literal notranslate"><span class="pre">--sys-prompt</span></code> (highest priority)
+2. <code class="docutils literal notranslate"><span class="pre">--sys-file</span></code>
+3. Template frontmatter
+4. Default system prompt (lowest priority)</p>
+</section>
+</section>
+<section id="security-and-path-management">
+<h1>Security and Path Management<a class="headerlink" href="#security-and-path-management" title="Link to this heading"></a></h1>
+<section id="path-security">
+<h2>Path Security<a class="headerlink" href="#path-security" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--base-dir<span class="w"> </span>DIRECTORY<span class="w">                         </span><span class="c1"># Base directory for relative paths</span>
+-A,<span class="w"> </span>--allow<span class="w"> </span>DIRECTORY<span class="w">                        </span><span class="c1"># Add allowed directory (repeatable)</span>
+--allowed-dir-file<span class="w"> </span>FILE<span class="w">                      </span><span class="c1"># File containing allowed directory paths</span>
+</pre></div>
+</div>
+<p><strong>Examples:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Set base directory</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--base-dir<span class="w"> </span>/project<span class="w"> </span>-ft<span class="w"> </span>config.yaml
+
+<span class="c1"># Allow specific directories</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-A<span class="w"> </span>/data<span class="w"> </span>-A<span class="w"> </span>/configs<span class="w"> </span>-ft<span class="w"> </span>file.txt
+
+<span class="c1"># Load allowed directories from file</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--allowed-dir-file<span class="w"> </span>allowed_dirs.txt
+</pre></div>
+</div>
+</section>
+<section id="directory-processing">
+<h2>Directory Processing<a class="headerlink" href="#directory-processing" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>-R,<span class="w"> </span>--recursive<span class="w">                              </span><span class="c1"># Process directories recursively</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="mcp-server-integration">
+<h1>MCP Server Integration<a class="headerlink" href="#mcp-server-integration" title="Link to this heading"></a></h1>
+<p>Model Context Protocol (MCP) servers extend ostruct’s capabilities with external services.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>External Services</strong>: MCP servers may upload data to external services. Review server documentation for data handling policies.</p>
+</div>
+<section id="basic-mcp-usage">
+<h2>Basic MCP Usage<a class="headerlink" href="#basic-mcp-usage" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--mcp-server<span class="w"> </span><span class="o">[</span>LABEL@<span class="o">]</span>URL<span class="w">                     </span><span class="c1"># Connect to MCP server</span>
+
+<span class="c1"># Examples</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--mcp-server<span class="w"> </span>https://mcp.example.com/sse
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>--mcp-server<span class="w"> </span>deepwiki@https://mcp.deepwiki.com/sse
+</pre></div>
+</div>
+</section>
+<section id="mcp-configuration">
+<h2>MCP Configuration<a class="headerlink" href="#mcp-configuration" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--mcp-allowed-tools<span class="w"> </span>SERVER:TOOL1,TOOL2<span class="w">      </span><span class="c1"># Restrict tools per server</span>
+--mcp-require-approval<span class="w"> </span>LEVEL<span class="w">                </span><span class="c1"># Approval level (always|never, default: never)</span>
+--mcp-headers<span class="w"> </span>JSON_STRING<span class="w">                    </span><span class="c1"># Headers for MCP servers</span>
+</pre></div>
+</div>
+<p><strong>Examples:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Restrict tools</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--mcp-server<span class="w"> </span>deepwiki@https://mcp.deepwiki.com/sse<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--mcp-allowed-tools<span class="w"> </span>deepwiki:search,summary
+
+<span class="c1"># Add headers</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--mcp-server<span class="w"> </span>secure@https://mcp.example.com<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--mcp-headers<span class="w"> </span><span class="s1">&#39;{&quot;Authorization&quot;: &quot;Bearer token123&quot;}&#39;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="output-and-execution-control">
+<h1>Output and Execution Control<a class="headerlink" href="#output-and-execution-control" title="Link to this heading"></a></h1>
+<section id="output-options">
+<h2>Output Options<a class="headerlink" href="#output-options" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--output-file<span class="w"> </span>FILE<span class="w">                           </span><span class="c1"># Write output to file instead of stdout</span>
+--dry-run<span class="w">                                    </span><span class="c1"># Validate without making API calls</span>
+</pre></div>
+</div>
+<p><strong>Examples:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Save to file</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span>data.txt<span class="w"> </span>--output-file<span class="w"> </span>result.json
+
+<span class="c1"># Test without API call</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span>data.txt<span class="w"> </span>--dry-run
+</pre></div>
+</div>
+</section>
+<section id="progress-and-debugging">
+<h2>Progress and Debugging<a class="headerlink" href="#progress-and-debugging" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--verbose<span class="w">                                    </span><span class="c1"># Enable verbose logging</span>
+--no-progress<span class="w">                                </span><span class="c1"># Disable progress indicators</span>
+--progress-level<span class="w"> </span>LEVEL<span class="w">                       </span><span class="c1"># Progress verbosity (none|basic|detailed)</span>
+--debug-validation<span class="w">                           </span><span class="c1"># Show detailed validation errors</span>
+--debug-openai-stream<span class="w">                        </span><span class="c1"># Debug OpenAI streaming</span>
+--show-model-schema<span class="w">                          </span><span class="c1"># Show generated Pydantic model schema</span>
+</pre></div>
+</div>
+<p><strong>Examples:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Detailed debugging</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span>data.txt<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--verbose<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--debug-validation<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--progress-level<span class="w"> </span>detailed
+</pre></div>
+</div>
+</section>
+<section id="timeout-control">
+<h2>Timeout Control<a class="headerlink" href="#timeout-control" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>--timeout<span class="w"> </span>SECONDS<span class="w">                            </span><span class="c1"># Operation timeout (default: 3600)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="file-routing-examples">
+<h1>File Routing Examples<a class="headerlink" href="#file-routing-examples" title="Link to this heading"></a></h1>
+<section id="single-tool-examples">
+<h2>Single Tool Examples<a class="headerlink" href="#single-tool-examples" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Template-only access (no uploads)</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>config_analysis.j2<span class="w"> </span>schema.json<span class="w"> </span>-ft<span class="w"> </span>config.yaml
+
+<span class="c1"># Code Interpreter for data analysis</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>data_analysis.j2<span class="w"> </span>schema.json<span class="w"> </span>-fc<span class="w"> </span>sales_data.csv
+
+<span class="c1"># File Search for document retrieval</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>doc_search.j2<span class="w"> </span>schema.json<span class="w"> </span>-fs<span class="w"> </span>documentation.pdf
+</pre></div>
+</div>
+</section>
+<section id="multi-tool-examples">
+<h2>Multi-Tool Examples<a class="headerlink" href="#multi-tool-examples" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Combined analysis with all tools</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>comprehensive.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-ft<span class="w"> </span>config.yaml<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fc<span class="w"> </span>data.csv<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fs<span class="w"> </span>docs.pdf
+
+<span class="c1"># Custom variable names</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>analysis.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--fta<span class="w"> </span>app_config<span class="w"> </span>config.yaml<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--fca<span class="w"> </span>sales_data<span class="w"> </span>data.csv<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--fsa<span class="w"> </span>manual<span class="w"> </span>docs.pdf
+
+<span class="c1"># Multi-tool routing</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>task.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--file-for<span class="w"> </span><span class="s1">&#39;code-interpreter,file-search:shared_data.json&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h2>Directory Processing<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Process directories with different tools</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>batch_analysis.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-dt<span class="w"> </span>./config<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-dc<span class="w"> </span>./datasets<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-ds<span class="w"> </span>./documentation
+
+<span class="c1"># Recursive processing</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>deep_analysis.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-dt<span class="w"> </span>./config<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--recursive
+</pre></div>
+</div>
+</section>
+</section>
+<section id="migration-from-legacy-syntax">
+<h1>Migration from Legacy Syntax<a class="headerlink" href="#migration-from-legacy-syntax" title="Link to this heading"></a></h1>
+<p>The enhanced CLI maintains full backward compatibility while offering improved file routing options.</p>
+<section id="legacy-vs-enhanced-syntax">
+<h2>Legacy vs Enhanced Syntax<a class="headerlink" href="#legacy-vs-enhanced-syntax" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Before (still works)</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-f<span class="w"> </span>config<span class="w"> </span>config.yaml<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-f<span class="w"> </span>data<span class="w"> </span>input.csv
+
+<span class="c1"># After (enhanced)</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>template.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-ft<span class="w"> </span><span class="nv">config</span><span class="o">=</span>config.yaml<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fc<span class="w"> </span><span class="nv">data</span><span class="o">=</span>input.csv
+</pre></div>
+</div>
+</section>
+<section id="variable-naming-patterns">
+<h2>Variable Naming Patterns<a class="headerlink" href="#variable-naming-patterns" title="Link to this heading"></a></h2>
+<p>Understanding how auto-naming works:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 30%" />
+<col style="width: 30%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>File Path</p></th>
+<th class="head"><p>Auto Variable Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">config.yaml</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">config_yaml</span></code></p></td>
+<td><p>Replace non-alphanumeric with underscores</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">my-file.txt</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">my_file_txt</span></code></p></td>
+<td><p>Hyphens become underscores</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">123data.csv</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">_123data_csv</span></code></p></td>
+<td><p>Prepend underscore if starts with digit</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hello.world.json</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">hello_world_json</span></code></p></td>
+<td><p>Multiple dots become underscores</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="best-practices">
+<h1>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h1>
+<section id="file-organization">
+<h2>File Organization<a class="headerlink" href="#file-organization" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Template files</strong>: Keep configuration and small reference files</p></li>
+<li><p><strong>Code Interpreter</strong>: Use for computational data, analysis, visualizations</p></li>
+<li><p><strong>File Search</strong>: Use for documents, manuals, knowledge bases</p></li>
+</ol>
+</section>
+<section id="security-considerations">
+<h2>Security Considerations<a class="headerlink" href="#security-considerations" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Review data sensitivity</strong> before uploading to Code Interpreter or File Search</p></li>
+<li><p><strong>Use allowed directories</strong> (<code class="docutils literal notranslate"><span class="pre">-A</span></code>) to restrict file access</p></li>
+<li><p><strong>Set base directory</strong> (<code class="docutils literal notranslate"><span class="pre">--base-dir</span></code>) for consistent path resolution</p></li>
+<li><p><strong>Review MCP server policies</strong> before connecting to external services</p></li>
+</ol>
+</section>
+<section id="performance-tips">
+<h2>Performance Tips<a class="headerlink" href="#performance-tips" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Use dry-run</strong> (<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>) to validate templates and estimate tokens</p></li>
+<li><p><strong>Enable cleanup</strong> for Code Interpreter and File Search to manage quotas</p></li>
+<li><p><strong>Set appropriate timeouts</strong> for large file processing</p></li>
+<li><p><strong>Use progress reporting</strong> (<code class="docutils literal notranslate"><span class="pre">--progress-level</span> <span class="pre">detailed</span></code>) for long operations</p></li>
+</ol>
+</section>
+</section>
+<section id="common-workflows">
+<h1>Common Workflows<a class="headerlink" href="#common-workflows" title="Link to this heading"></a></h1>
+<section id="data-analysis-pipeline">
+<h2>Data Analysis Pipeline<a class="headerlink" href="#data-analysis-pipeline" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. Upload data for analysis</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>analysis.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fc<span class="w"> </span>sales_data.csv<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fc<span class="w"> </span>customer_data.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>--code-interpreter-download-dir<span class="w"> </span>./results
+
+<span class="c1"># 2. Search documentation for context</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>research.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fs<span class="w"> </span>business_rules.pdf<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fs<span class="w"> </span>process_docs.md
+
+<span class="c1"># 3. Generate comprehensive report</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>report.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-ft<span class="w"> </span>config.yaml<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fc<span class="w"> </span>analysis_results.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fs<span class="w"> </span>documentation.pdf
+</pre></div>
+</div>
+</section>
+<section id="configuration-validation">
+<h2>Configuration Validation<a class="headerlink" href="#configuration-validation" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compare environments</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>validate.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-ft<span class="w"> </span><span class="nv">dev</span><span class="o">=</span>dev.yaml<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-ft<span class="w"> </span><span class="nv">prod</span><span class="o">=</span>prod.yaml<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fs<span class="w"> </span>infrastructure_docs.pdf
+</pre></div>
+</div>
+</section>
+<section id="code-review-automation">
+<h2>Code Review Automation<a class="headerlink" href="#code-review-automation" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Analyze code with documentation context</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>code_review.j2<span class="w"> </span>schema.json<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fc<span class="w"> </span>source_code/<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-fs<span class="w"> </span>coding_standards.md<span class="w"> </span><span class="se">\\</span>
+<span class="w">  </span>-ft<span class="w"> </span>.eslintrc.json
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting">
+<h1>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h1>
+<section id="common-issues">
+<h2>Common Issues<a class="headerlink" href="#common-issues" title="Link to this heading"></a></h2>
+<p><strong>File not found errors:</strong>
+- Verify file paths are correct
+- Check that files are within allowed directories
+- Use absolute paths or set <code class="docutils literal notranslate"><span class="pre">--base-dir</span></code></p>
+<p><strong>Template rendering errors:</strong>
+- Use <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> to test template without API calls
+- Check variable names match file routing expectations
+- Verify Jinja2 syntax in templates</p>
+<p><strong>API timeout errors:</strong>
+- Increase <code class="docutils literal notranslate"><span class="pre">--timeout</span></code> for large files
+- Use File Search for large documents instead of template access
+- Consider breaking large tasks into smaller chunks</p>
+<p><strong>Token limit exceeded:</strong>
+- Use <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> to estimate token usage
+- Reduce file sizes or use File Search for large documents
+- Consider using models with larger context windows</p>
+</section>
+<section id="getting-help">
+<h2>Getting Help<a class="headerlink" href="#getting-help" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># General help</span>
+ostruct<span class="w"> </span>--help
+
+<span class="c1"># Command-specific help</span>
+ostruct<span class="w"> </span>run<span class="w"> </span>--help
+
+<span class="c1"># Quick reference</span>
+ostruct<span class="w"> </span>quick-ref
+
+<span class="c1"># Update model information</span>
+ostruct<span class="w"> </span>update-registry
+</pre></div>
+</div>
+<p>For more information, see:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="quickstart.html"><span class="doc">Quick Start Guide</span></a> - Hands-on tutorial</p></li>
+<li><p><span class="xref std std-doc">template_authoring</span> - Template creation guide</p></li>
+<li><p><span class="xref std std-doc">../security/overview</span> - Security considerations</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quick Start Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Yaniv Golan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

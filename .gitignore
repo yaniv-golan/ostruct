@@ -110,3 +110,11 @@ poetry.toml
 
 # Local history
 .history/*
+repomix-output.txt
+.claude/settings.local.json
+CLAUDE.md
+MIGRATION_PLAN.md
+MIGRATION_TASKS.md
+migration_plan_tests/
+docs/dev/
+docs_migration_tasks.md

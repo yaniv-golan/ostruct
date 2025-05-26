@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Introduction to ostruct &mdash; ostruct-cli  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/sphinx-design.min.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="ostruct-cli" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ostruct-cli
+          </a>
+              <div class="version">
+                0.8.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">📖 User Guides:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction to ostruct</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-ostruct">What is ostruct?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-ostruct">Why ostruct?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core-concepts">Core Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ostruct-cli</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Introduction to ostruct</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/user-guide/introduction.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="introduction-to-ostruct">
+<h1>Introduction to ostruct<a class="headerlink" href="#introduction-to-ostruct" title="Link to this heading"></a></h1>
+<p>This documentation covers <code class="docutils literal notranslate"><span class="pre">ostruct-cli</span></code> version 0.8.0.</p>
+<section id="what-is-ostruct">
+<h2>What is ostruct?<a class="headerlink" href="#what-is-ostruct" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ostruct-cli</span></code> is a command-line tool that transforms unstructured inputs into structured JSON output using OpenAI APIs and Jinja2 templates. It enables AI-powered data processing with validation, security controls, and streaming support.</p>
+<p>The tool bridges the gap between unstructured data (text files, documents, code) and structured output (JSON) by leveraging OpenAI’s language models with the reliability of JSON Schema validation.</p>
+</section>
+<section id="key-features">
+<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Schema-First Approach</strong>: Define your output structure using JSON Schema with automatic validation</p></li>
+<li><p><strong>Template-Based Input</strong>: Use Jinja2 templates with support for YAML frontmatter and system prompts</p></li>
+<li><p><strong>Multi-Tool Integration</strong>: Seamless integration with Code Interpreter, File Search, and MCP servers</p></li>
+<li><p><strong>File Processing</strong>: Handle single files, multiple files, or entire directories with thread-safe operations</p></li>
+<li><p><strong>Cross-Platform</strong>: Robust support for Windows, macOS, and Linux with consistent path handling</p></li>
+<li><p><strong>Security-Focused</strong>: Safe file access with explicit directory permissions and enhanced error handling</p></li>
+<li><p><strong>Structured Output</strong>: Guaranteed valid JSON output matching your schema</p></li>
+<li><p><strong>Token Management</strong>: Automatic token limit validation and handling</p></li>
+<li><p><strong>Model Support</strong>: Optimized handling for both streaming and non-streaming models</p></li>
+</ul>
+</section>
+<section id="why-ostruct">
+<h2>Why ostruct?<a class="headerlink" href="#why-ostruct" title="Link to this heading"></a></h2>
+<p>Modern development workflows often involve processing unstructured data and extracting meaningful information. Traditional approaches typically require:</p>
+<ol class="arabic simple">
+<li><p><strong>Manual parsing</strong> of documents, logs, or code</p></li>
+<li><p><strong>Custom scripts</strong> for each data format</p></li>
+<li><p><strong>Inconsistent output</strong> that’s hard to integrate</p></li>
+<li><p><strong>No validation</strong> of extracted data</p></li>
+<li><p><strong>Security concerns</strong> when processing files</p></li>
+</ol>
+<p>ostruct solves these problems by providing:</p>
+<dl class="simple">
+<dt><strong>Consistent Structure</strong></dt><dd><p>Every output follows your predefined JSON schema, making integration predictable and reliable.</p>
+</dd>
+<dt><strong>AI-Powered Intelligence</strong></dt><dd><p>Leverage OpenAI’s advanced language models to understand context, extract insights, and handle complex data.</p>
+</dd>
+<dt><strong>Template Flexibility</strong></dt><dd><p>Use Jinja2 templates to customize how your data is processed and presented to the AI model.</p>
+</dd>
+<dt><strong>Built-in Security</strong></dt><dd><p>Path validation, symlink resolution, and directory restrictions protect against unauthorized file access.</p>
+</dd>
+<dt><strong>Tool Integration</strong></dt><dd><p>Native support for Code Interpreter (data analysis), File Search (document retrieval), and MCP servers (external services).</p>
+</dd>
+<dt><strong>Developer Experience</strong></dt><dd><p>Simple CLI interface with comprehensive options for various use cases, from quick scripts to production pipelines.</p>
+</dd>
+</dl>
+</section>
+<section id="core-concepts">
+<h2>Core Concepts<a class="headerlink" href="#core-concepts" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Templates</strong></dt><dd><p>Jinja2 templates that define how to present your data to the AI model. They can include system prompts, file content, and variables.</p>
+</dd>
+<dt><strong>Schemas</strong></dt><dd><p>JSON Schema definitions that specify the exact structure and validation rules for your output.</p>
+</dd>
+<dt><strong>File Routing</strong></dt><dd><p>Explicit control over which files go to which tools (template access, code execution, or document search).</p>
+</dd>
+<dt><strong>Security Manager</strong></dt><dd><p>Centralized security validation ensuring all file operations are safe and authorized.</p>
+</dd>
+<dt><strong>Model Integration</strong></dt><dd><p>Direct integration with OpenAI’s structured output API for reliable JSON generation.</p>
+</dd>
+</dl>
+</section>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
+<p>The quickest way to understand ostruct is through a simple example:</p>
+<ol class="arabic">
+<li><p><strong>Create a schema</strong> (<code class="docutils literal notranslate"><span class="pre">summary.json</span></code>):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;object&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Brief summary of the content&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;key_points&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;array&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Main points or topics&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;required&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;key_points&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Create a template</strong> (<code class="docutils literal notranslate"><span class="pre">summarize.j2</span></code>):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>---
+system_prompt: You are an expert content analyst.
+---
+Please analyze this document and provide a summary:
+
+{{ document.content }}
+</pre></div>
+</div>
+</li>
+<li><p><strong>Run the analysis</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ostruct<span class="w"> </span>run<span class="w"> </span>summarize.j2<span class="w"> </span>summary.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-ft<span class="w"> </span>document.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-m<span class="w"> </span>gpt-4o
+</pre></div>
+</div>
+</li>
+</ol>
+<p>The result will be valid JSON matching your schema, ready for further processing or integration.</p>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><span class="xref std std-doc">quickstart</span> - Follow the step-by-step tutorial</p></li>
+<li><p><span class="xref std std-doc">cli_reference</span> - Explore all CLI options and features</p></li>
+<li><p><span class="xref std std-doc">template_authoring</span> - Learn advanced template techniques</p></li>
+<li><p><span class="xref std std-doc">../security/overview</span> - Understand security considerations</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="ostruct-cli" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Yaniv Golan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

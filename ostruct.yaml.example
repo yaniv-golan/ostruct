@@ -1,0 +1,41 @@
+# ostruct Configuration File Example
+# Copy this file to 'ostruct.yaml' in your project directory or ~/.ostruct/config.yaml
+# All settings are optional - ostruct works with smart defaults.
+
+# Model configuration
+models:
+  default: gpt-4o  # Default model to use
+
+# Tool-specific settings  
+tools:
+  code_interpreter:
+    auto_download: true
+    output_directory: "./output"
+    
+  file_search:
+    max_results: 10
+
+# MCP (Model Context Protocol) server configurations
+# You can define shortcuts to commonly used MCP servers
+mcp:
+  # Built-in server shortcuts (uncomment to use)
+  # stripe: "https://mcp.stripe.com"
+  # shopify: "https://mcp.shopify.com"
+  
+  # Custom servers
+  # my_server: "https://my-mcp-server.com"
+
+# Operation settings
+operation:
+  timeout_minutes: 60
+  retry_attempts: 3
+  require_approval: never  # Options: never, always, expensive
+  
+# Cost and safety limits
+limits:
+  max_cost_per_run: 10.00
+  warn_expensive_operations: true
+
+# Environment Variables for Secrets:
+# OPENAI_API_KEY - Your OpenAI API key
+# MCP_<NAME>_URL - URL for custom MCP servers (e.g., MCP_STRIPE_URL)
