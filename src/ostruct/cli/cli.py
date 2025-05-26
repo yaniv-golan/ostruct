@@ -116,7 +116,9 @@ def main() -> None:
         SchemaValidationError,
     ) as e:
         handle_error(e)
-        sys.exit(e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR)
+        sys.exit(
+            e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
+        )
     except click.UsageError as e:
         handle_error(e)
         sys.exit(ExitCode.USAGE_ERROR)

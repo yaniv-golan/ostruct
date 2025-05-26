@@ -91,7 +91,9 @@ class TestBackwardCompatibility:
         ]
 
         for i, template in enumerate(legacy_templates):
-            fs.create_file(f"{TEST_BASE_DIR}/template_{i}.j2", contents=template)
+            fs.create_file(
+                f"{TEST_BASE_DIR}/template_{i}.j2", contents=template
+            )
 
             # Change to test base directory
             os.chdir(TEST_BASE_DIR)
@@ -133,7 +135,9 @@ class TestBackwardCompatibility:
                 ],
             )
 
-            assert result.exit_code == 0, f"Legacy template {i} failed: {template}"
+            assert (
+                result.exit_code == 0
+            ), f"Legacy template {i} failed: {template}"
 
     def test_legacy_schema_formats(
         self, cli_runner: CliRunner, fs: FakeFilesystem
@@ -166,13 +170,17 @@ class TestBackwardCompatibility:
             # Schema with array
             {
                 "type": "object",
-                "properties": {"items": {"type": "array", "items": {"type": "string"}}},
+                "properties": {
+                    "items": {"type": "array", "items": {"type": "string"}}
+                },
                 "required": ["items"],
                 "additionalProperties": False,
             },
         ]
 
-        fs.create_file(f"{TEST_BASE_DIR}/task.j2", contents="Legacy schema test")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/task.j2", contents="Legacy schema test"
+        )
 
         for i, schema in enumerate(legacy_schemas):
             # Test both wrapped and unwrapped formats
@@ -236,7 +244,9 @@ class TestErrorMessageCompatibility:
         )
 
         # Test invalid JSON
-        fs.create_file(f"{TEST_BASE_DIR}/invalid.json", contents="{ invalid json }")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/invalid.json", contents="{ invalid json }"
+        )
         fs.create_file(f"{TEST_BASE_DIR}/task.j2", contents="test")
 
         result = cli_runner.invoke(
@@ -250,7 +260,10 @@ class TestErrorMessageCompatibility:
         # Test missing required arguments
         result = cli_runner.invoke(create_cli(), ["run"])
         assert result.exit_code == 2
-        assert "argument" in result.output.lower() or "usage:" in result.output.lower()
+        assert (
+            "argument" in result.output.lower()
+            or "usage:" in result.output.lower()
+        )
 
     def test_legacy_warning_messages(
         self,
@@ -576,4 +589,7 @@ openai:
 
         # Should still work but show warnings
         assert result.exit_code == 0
-        assert "deprecated" in caplog.text.lower() or "warning" in caplog.text.lower()
+        assert (
+            "deprecated" in caplog.text.lower()
+            or "warning" in caplog.text.lower()
+        )
