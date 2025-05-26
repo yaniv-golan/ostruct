@@ -4,8 +4,11 @@ from typing import Any
 
 import pytest
 
-from ostruct.cli.cli import DEFAULT_SYSTEM_PROMPT, process_system_prompt
 from ostruct.cli.errors import SystemPromptError
+from ostruct.cli.template_processor import (
+    DEFAULT_SYSTEM_PROMPT,
+    process_system_prompt,
+)
 from ostruct.cli.template_rendering import create_jinja_env
 
 

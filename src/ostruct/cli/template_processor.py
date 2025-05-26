@@ -1,0 +1,721 @@
+"""Template processing functions for ostruct CLI."""
+
+import json
+import logging
+import re
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+
+import click
+import jinja2
+import yaml
+
+DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+from .errors import (
+    DirectoryNotFoundError,
+    InvalidJSONError,
+    OstructFileNotFoundError,
+    PathSecurityError,
+    SystemPromptError,
+    TaskTemplateSyntaxError,
+    TaskTemplateVariableError,
+    VariableNameError,
+)
+from .file_utils import FileInfoList, collect_files
+from .path_utils import validate_path_mapping
+from .security import SecurityManager
+from .template_utils import render_template
+from .types import CLIParams
+
+logger = logging.getLogger(__name__)
+
+# Type alias for CLI parameters
+CLIParams = Dict[str, Any]
+
+
+def process_system_prompt(
+    task_template: str,
+    system_prompt: Optional[str],
+    system_prompt_file: Optional[str],
+    template_context: Dict[str, Any],
+    env: jinja2.Environment,
+    ignore_task_sysprompt: bool = False,
+    template_path: Optional[str] = None,
+) -> str:
+    """Process system prompt from various sources.
+
+    Args:
+        task_template: The task template string
+        system_prompt: Optional system prompt string
+        system_prompt_file: Optional path to system prompt file
+        template_context: Template context for rendering
+        env: Jinja2 environment
+        ignore_task_sysprompt: Whether to ignore system prompt in task template
+        template_path: Optional path to template file for include_system resolution
+
+    Returns:
+        The final system prompt string
+
+    Raises:
+        SystemPromptError: If the system prompt cannot be loaded or rendered
+        FileNotFoundError: If a prompt file does not exist
+        PathSecurityError: If a prompt file path violates security constraints
+    """
+    # Check for conflicting arguments
+    if system_prompt is not None and system_prompt_file is not None:
+        raise SystemPromptError(
+            "Cannot specify both --system-prompt and --system-prompt-file"
+        )
+
+    # CLI system prompt takes precedence and stops further processing
+    if system_prompt_file is not None:
+        try:
+            name, path = validate_path_mapping(
+                f"system_prompt={system_prompt_file}"
+            )
+            with open(path, "r", encoding="utf-8") as f:
+                cli_system_prompt = f.read().strip()
+        except OstructFileNotFoundError as e:
+            raise SystemPromptError(
+                f"Failed to load system prompt file: {e}"
+            ) from e
+        except PathSecurityError as e:
+            raise SystemPromptError(f"Invalid system prompt file: {e}") from e
+
+        try:
+            template = env.from_string(cli_system_prompt)
+            return template.render(**template_context).strip()
+        except jinja2.TemplateError as e:
+            raise SystemPromptError(f"Error rendering system prompt: {e}")
+
+    elif system_prompt is not None:
+        try:
+            template = env.from_string(system_prompt)
+            return template.render(**template_context).strip()
+        except jinja2.TemplateError as e:
+            raise SystemPromptError(f"Error rendering system prompt: {e}")
+
+    # Build message parts from template in order: auto-stub, include_system, system_prompt
+    message_parts = []
+
+    # 1. Auto-stub (default system prompt)
+    message_parts.append("You are a helpful assistant.")
+
+    # 2. Template-based system prompts (include_system and system_prompt)
+    if not ignore_task_sysprompt:
+        try:
+            # Extract YAML frontmatter
+            if task_template.startswith("---\n"):
+                end = task_template.find("\n---\n", 4)
+                if end != -1:
+                    frontmatter = task_template[4:end]
+                    try:
+                        metadata = yaml.safe_load(frontmatter)
+                        if isinstance(metadata, dict):
+                            # 2a. include_system: from template
+                            inc = metadata.get("include_system")
+                            if inc and template_path:
+                                inc_path = (
+                                    Path(template_path).parent / inc
+                                ).resolve()
+                                if not inc_path.is_file():
+                                    raise click.ClickException(
+                                        f"include_system file not found: {inc}"
+                                    )
+                                include_txt = inc_path.read_text(
+                                    encoding="utf-8"
+                                )
+                                message_parts.append(include_txt)
+
+                            # 2b. system_prompt: from template
+                            if "system_prompt" in metadata:
+                                template_system_prompt = str(
+                                    metadata["system_prompt"]
+                                )
+                                try:
+                                    template = env.from_string(
+                                        template_system_prompt
+                                    )
+                                    message_parts.append(
+                                        template.render(
+                                            **template_context
+                                        ).strip()
+                                    )
+                                except jinja2.TemplateError as e:
+                                    raise SystemPromptError(
+                                        f"Error rendering system prompt: {e}"
+                                    )
+                    except yaml.YAMLError as e:
+                        raise SystemPromptError(
+                            f"Invalid YAML frontmatter: {e}"
+                        )
+
+        except Exception as e:
+            raise SystemPromptError(
+                f"Error extracting system prompt from template: {e}"
+            )
+
+    # Return the combined message (remove default if we have other content)
+    if len(message_parts) > 1:
+        # Remove the default auto-stub if we have other content
+        return "\n\n".join(message_parts[1:]).strip()
+    else:
+        # Return just the default
+        return message_parts[0]
+
+
+def validate_task_template(
+    task: Optional[str], task_file: Optional[str]
+) -> str:
+    """Validate and load a task template.
+
+    Args:
+        task: The task template string
+        task_file: Path to task template file
+
+    Returns:
+        The task template string
+
+    Raises:
+        TaskTemplateVariableError: If neither task nor task_file is provided, or if both are provided
+        TaskTemplateSyntaxError: If the template has invalid syntax
+        FileNotFoundError: If the template file does not exist
+        PathSecurityError: If the template file path violates security constraints
+    """
+    if task is not None and task_file is not None:
+        raise TaskTemplateVariableError(
+            "Cannot specify both --task and --task-file"
+        )
+
+    if task is None and task_file is None:
+        raise TaskTemplateVariableError(
+            "Must specify either --task or --task-file"
+        )
+
+    template_content: str
+    if task_file is not None:
+        try:
+            with open(task_file, "r", encoding="utf-8") as f:
+                template_content = f.read()
+        except FileNotFoundError:
+            raise TaskTemplateVariableError(
+                f"Task template file not found: {task_file}"
+            )
+        except PermissionError:
+            raise TaskTemplateVariableError(
+                f"Permission denied reading task template file: {task_file}"
+            )
+        except Exception as e:
+            raise TaskTemplateVariableError(
+                f"Error reading task template file: {e}"
+            )
+    else:
+        template_content = task  # type: ignore  # We know task is str here due to the checks above
+
+    try:
+        env = jinja2.Environment(undefined=jinja2.StrictUndefined)
+        env.parse(template_content)
+        return template_content
+    except jinja2.TemplateSyntaxError as e:
+        raise TaskTemplateSyntaxError(
+            f"Invalid Jinja2 template syntax: {e.message}",
+            context={
+                "line": e.lineno,
+                "template_file": task_file,
+                "template_preview": template_content[:200],
+            },
+        )
+
+
+async def process_templates(
+    args: Dict[str, Any],
+    task_template: str,
+    template_context: Dict[str, Any],
+    env: jinja2.Environment,
+    template_path: Optional[str] = None,
+) -> Tuple[str, str]:
+    """Process system prompt and user prompt templates.
+
+    Args:
+        args: Command line arguments
+        task_template: Validated task template
+        template_context: Template context dictionary
+        env: Jinja2 environment
+
+    Returns:
+        Tuple of (system_prompt, user_prompt)
+
+    Raises:
+        CLIError: For template processing errors
+    """
+    logger.debug("=== Template Processing Phase ===")
+    system_prompt = process_system_prompt(
+        task_template,
+        args.get("system_prompt"),
+        args.get("system_prompt_file"),
+        template_context,
+        env,
+        args.get("ignore_task_sysprompt", False),
+        template_path,
+    )
+    user_prompt = render_template(task_template, template_context, env)
+    return system_prompt, user_prompt
+
+
+def collect_simple_variables(args: CLIParams) -> Dict[str, str]:
+    """Collect simple string variables from --var arguments.
+
+    Args:
+        args: Command line arguments
+
+    Returns:
+        Dictionary mapping variable names to string values
+
+    Raises:
+        VariableNameError: If a variable name is invalid or duplicate
+    """
+    variables: Dict[str, str] = {}
+    all_names: Set[str] = set()
+
+    if args.get("var"):
+        for mapping in args["var"]:
+            try:
+                # Handle both tuple format and string format
+                if isinstance(mapping, tuple):
+                    name, value = mapping
+                else:
+                    name, value = mapping.split("=", 1)
+
+                if not name.isidentifier():
+                    raise VariableNameError(f"Invalid variable name: {name}")
+                if name in all_names:
+                    raise VariableNameError(f"Duplicate variable name: {name}")
+                variables[name] = value
+                all_names.add(name)
+            except ValueError:
+                raise VariableNameError(
+                    f"Invalid variable mapping (expected name=value format): {mapping!r}"
+                )
+
+    return variables
+
+
+def collect_json_variables(args: CLIParams) -> Dict[str, Any]:
+    """Collect JSON variables from --json-var arguments.
+
+    Args:
+        args: Command line arguments
+
+    Returns:
+        Dictionary mapping variable names to parsed JSON values
+
+    Raises:
+        VariableNameError: If a variable name is invalid or duplicate
+        InvalidJSONError: If a JSON value is invalid
+    """
+    variables: Dict[str, Any] = {}
+    all_names: Set[str] = set()
+
+    if args.get("json_var"):
+        for mapping in args["json_var"]:
+            try:
+                # Handle both tuple format and string format
+                if isinstance(mapping, tuple):
+                    name, value = (
+                        mapping  # Value is already parsed by Click validator
+                    )
+                else:
+                    try:
+                        name, json_str = mapping.split("=", 1)
+                    except ValueError:
+                        raise VariableNameError(
+                            f"Invalid JSON variable mapping format: {mapping}. Expected name=json"
+                        )
+                    try:
+                        value = json.loads(json_str)
+                    except json.JSONDecodeError as e:
+                        raise InvalidJSONError(
+                            f"Invalid JSON value for variable '{name}': {json_str}",
+                            context={"variable_name": name},
+                        ) from e
+
+                if not name.isidentifier():
+                    raise VariableNameError(f"Invalid variable name: {name}")
+                if name in all_names:
+                    raise VariableNameError(f"Duplicate variable name: {name}")
+
+                variables[name] = value
+                all_names.add(name)
+            except (VariableNameError, InvalidJSONError):
+                raise
+
+    return variables
+
+
+def collect_template_files(
+    args: CLIParams,
+    security_manager: SecurityManager,
+) -> Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]:
+    """Collect files from command line arguments.
+
+    Args:
+        args: Command line arguments
+        security_manager: Security manager for path validation
+
+    Returns:
+        Dictionary mapping variable names to file info objects
+
+    Raises:
+        PathSecurityError: If any file paths violate security constraints
+        ValueError: If file mappings are invalid or files cannot be accessed
+    """
+    try:
+        # Get files, directories, and patterns from args - they are already tuples from Click's nargs=2
+        files = list(
+            args.get("files", [])
+        )  # List of (name, path) tuples from Click
+        dirs = args.get("dir", [])  # List of (name, dir) tuples from Click
+        patterns = args.get(
+            "patterns", []
+        )  # List of (name, pattern) tuples from Click
+
+        # Collect files from directories and patterns
+        dir_files = collect_files(
+            file_mappings=cast(List[Tuple[str, Union[str, Path]]], files),
+            dir_mappings=cast(List[Tuple[str, Union[str, Path]]], dirs),
+            pattern_mappings=cast(
+                List[Tuple[str, Union[str, Path]]], patterns
+            ),
+            dir_recursive=args.get("recursive", False),
+            security_manager=security_manager,
+        )
+
+        # Combine results
+        return cast(
+            Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+            dir_files,
+        )
+
+    except Exception as e:
+        # Check for nested security errors
+        if hasattr(e, "__cause__") and hasattr(e.__cause__, "__class__"):
+            if "SecurityError" in str(e.__cause__.__class__):
+                raise e.__cause__
+            if "PathSecurityError" in str(e.__cause__.__class__):
+                raise e.__cause__
+        # Check if this is a wrapped security error
+        if isinstance(e.__cause__, PathSecurityError):
+            raise e.__cause__
+        # Catch broader exceptions and re-raise
+        logger.error(
+            "Error collecting template files: %s", str(e), exc_info=True
+        )
+        raise
+
+
+def extract_template_file_paths(template_context: Dict[str, Any]) -> List[str]:
+    """Extract actual file paths from template context for token validation.
+
+    Args:
+        template_context: Template context dictionary containing FileInfoList objects
+
+    Returns:
+        List of file paths that were included in template rendering
+    """
+    file_paths = []
+
+    for key, value in template_context.items():
+        if isinstance(value, FileInfoList):
+            # Extract paths from FileInfoList
+            for file_info in value:
+                if hasattr(file_info, "path"):
+                    file_paths.append(file_info.path)
+        elif key == "stdin":
+            # Skip stdin content - it's already counted in template
+            continue
+        elif key == "current_model":
+            # Skip model name
+            continue
+
+    return file_paths
+
+
+def create_template_context(
+    files: Optional[
+        Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]
+    ] = None,
+    variables: Optional[Dict[str, str]] = None,
+    json_variables: Optional[Dict[str, Any]] = None,
+    security_manager: Optional[SecurityManager] = None,
+    stdin_content: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create template context from files and variables."""
+    context: Dict[str, Any] = {}
+
+    # Add file variables
+    if files:
+        for name, file_list in files.items():
+            context[name] = file_list  # Always keep FileInfoList wrapper
+
+    # Add simple variables
+    if variables:
+        context.update(variables)
+
+    # Add JSON variables
+    if json_variables:
+        context.update(json_variables)
+
+    # Add stdin if provided
+    if stdin_content is not None:
+        context["stdin"] = stdin_content
+
+    return context
+
+
+def _generate_template_variable_name(file_path: str) -> str:
+    """Generate a template variable name from a file path.
+
+    Converts filename to a valid template variable name by:
+    1. Taking the full filename (with extension)
+    2. Replacing dots and other special characters with underscores
+    3. Ensuring it starts with a letter or underscore
+
+    Examples:
+        data.csv -> data_csv
+        data.json -> data_json
+        my-file.txt -> my_file_txt
+        123data.xml -> _123data_xml
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Valid template variable name
+    """
+    filename = Path(file_path).name
+    # Replace special characters with underscores
+    var_name = re.sub(r"[^a-zA-Z0-9_]", "_", filename)
+    # Ensure it starts with letter or underscore
+    if var_name and var_name[0].isdigit():
+        var_name = "_" + var_name
+    return var_name
+
+
+async def create_template_context_from_routing(
+    args: CLIParams,
+    security_manager: SecurityManager,
+    routing_result: Any,  # ProcessingResult from explicit_file_processor
+) -> Dict[str, Any]:
+    """Create template context from explicit file routing result.
+
+    Args:
+        args: Command line arguments
+        security_manager: Security manager for path validation
+        routing_result: Result from explicit file processor
+
+    Returns:
+        Template context dictionary
+
+    Raises:
+        PathSecurityError: If any file paths violate security constraints
+        VariableError: If variable mappings are invalid
+        ValueError: If file mappings are invalid or files cannot be accessed
+    """
+    try:
+        # Get files from routing result - include ALL routed files in template context
+        template_files = routing_result.validated_files.get("template", [])
+        code_interpreter_files = routing_result.validated_files.get(
+            "code-interpreter", []
+        )
+        file_search_files = routing_result.validated_files.get(
+            "file-search", []
+        )
+
+        # Convert to the format expected by create_template_context
+        # For legacy compatibility, we need (name, path) tuples
+        files_tuples = []
+        seen_files = set()  # Track files to avoid duplicates
+
+        # Add template files - handle both auto-naming and custom naming
+        template_file_tuples = args.get("template_files", [])
+        for name_path_tuple in template_file_tuples:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+
+                if custom_name is None:
+                    # Auto-generate name for single-arg form: -ft config.yaml
+                    file_name = _generate_template_variable_name(file_path)
+                else:
+                    # Use custom name for two-arg form: -ft code_file src/main.py
+                    file_name = custom_name
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Add template file aliases (from --fta)
+        template_file_aliases = args.get("template_file_aliases", [])
+        for name_path_tuple in template_file_aliases:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+                file_name = custom_name  # Always use custom name for aliases
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Also process template_files from routing result (for compatibility)
+        for file_path in template_files:
+            file_name = _generate_template_variable_name(file_path)
+            if file_path not in seen_files:
+                files_tuples.append((file_name, file_path))
+                seen_files.add(file_path)
+
+        # Add code interpreter files - handle both auto-naming and custom naming
+        code_interpreter_file_tuples = args.get("code_interpreter_files", [])
+        for name_path_tuple in code_interpreter_file_tuples:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+
+                if custom_name is None:
+                    # Auto-generate name: -fc data.csv
+                    file_name = _generate_template_variable_name(file_path)
+                else:
+                    # Use custom name: -fc dataset data.csv
+                    file_name = custom_name
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Add code interpreter file aliases (from --fca)
+        code_interpreter_file_aliases = args.get(
+            "code_interpreter_file_aliases", []
+        )
+        for name_path_tuple in code_interpreter_file_aliases:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+                file_name = custom_name  # Always use custom name for aliases
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Also process code_interpreter_files from routing result (for compatibility)
+        for file_path in code_interpreter_files:
+            file_name = _generate_template_variable_name(file_path)
+            if file_path not in seen_files:
+                files_tuples.append((file_name, file_path))
+                seen_files.add(file_path)
+
+        # Add file search files - handle both auto-naming and custom naming
+        file_search_file_tuples = args.get("file_search_files", [])
+        for name_path_tuple in file_search_file_tuples:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+
+                if custom_name is None:
+                    # Auto-generate name: -fs docs.pdf
+                    file_name = _generate_template_variable_name(file_path)
+                else:
+                    # Use custom name: -fs manual docs.pdf
+                    file_name = custom_name
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Add file search file aliases (from --fsa)
+        file_search_file_aliases = args.get("file_search_file_aliases", [])
+        for name_path_tuple in file_search_file_aliases:
+            if isinstance(name_path_tuple, tuple):
+                custom_name, file_path = name_path_tuple
+                file_path = str(file_path)
+                file_name = custom_name  # Always use custom name for aliases
+
+                if file_path not in seen_files:
+                    files_tuples.append((file_name, file_path))
+                    seen_files.add(file_path)
+
+        # Also process file_search_files from routing result (for compatibility)
+        for file_path in file_search_files:
+            file_name = _generate_template_variable_name(file_path)
+            if file_path not in seen_files:
+                files_tuples.append((file_name, file_path))
+                seen_files.add(file_path)
+
+        # Process files from explicit routing
+        files_dict = collect_files(
+            file_mappings=files_tuples,
+            security_manager=security_manager,
+        )
+
+        # Handle legacy files and directories separately to preserve variable names
+        legacy_files = args.get("files", [])
+        legacy_dirs = args.get("dir", [])
+        legacy_patterns = args.get("patterns", [])
+
+        if legacy_files or legacy_dirs or legacy_patterns:
+            legacy_files_dict = collect_files(
+                file_mappings=legacy_files,
+                dir_mappings=legacy_dirs,
+                pattern_mappings=legacy_patterns,
+                dir_recursive=args.get("recursive", False),
+                security_manager=security_manager,
+            )
+            # Merge legacy results into the main template context
+            files_dict.update(legacy_files_dict)
+
+        # Collect simple variables
+        variables = collect_simple_variables(args)
+
+        # Collect JSON variables
+        json_variables = collect_json_variables(args)
+
+        # Get stdin content if available
+        stdin_content = None
+        try:
+            if not sys.stdin.isatty():
+                stdin_content = sys.stdin.read()
+        except (OSError, IOError):
+            # Skip stdin if it can't be read
+            pass
+
+        context = create_template_context(
+            files=files_dict,
+            variables=variables,
+            json_variables=json_variables,
+            security_manager=security_manager,
+            stdin_content=stdin_content,
+        )
+
+        # Add current model to context
+        context["current_model"] = args["model"]
+
+        return context
+
+    except PathSecurityError:
+        # Let PathSecurityError propagate without wrapping
+        raise
+    except (FileNotFoundError, DirectoryNotFoundError) as e:
+        # Convert FileNotFoundError to OstructFileNotFoundError
+        if isinstance(e, FileNotFoundError):
+            raise OstructFileNotFoundError(str(e))
+        # Let DirectoryNotFoundError propagate
+        raise
+    except Exception as e:
+        # Don't wrap InvalidJSONError
+        if isinstance(e, InvalidJSONError):
+            raise
+        # Check if this is a wrapped security error
+        if isinstance(e.__cause__, PathSecurityError):
+            raise e.__cause__
+        # Wrap other errors
+        raise ValueError(f"Error collecting files: {e}")

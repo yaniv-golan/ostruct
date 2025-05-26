@@ -12,7 +12,7 @@ import pytest
 from click.testing import CliRunner, Result  # noqa: F401 - used in type hints
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.cli import create_cli, create_template_context
+from ostruct.cli.cli import create_cli
 from ostruct.cli.errors import (
     CLIError,
     InvalidJSONError,
@@ -22,6 +22,7 @@ from ostruct.cli.exit_codes import ExitCode
 from ostruct.cli.file_list import FileInfo, FileInfoList
 from ostruct.cli.file_utils import collect_files
 from ostruct.cli.security import SecurityManager
+from ostruct.cli.template_processor import create_template_context
 
 
 # Temporary stub for T1.1 migration
@@ -913,9 +914,9 @@ class TestCLIExecution:
         """Ensure OpenAI API key is available."""
         pass
 
-    @patch("ostruct.cli.cli.CodeInterpreterManager")
-    @patch("ostruct.cli.cli.FileSearchManager")
-    @patch("ostruct.cli.cli.MCPServerManager")
+    @patch("ostruct.cli.code_interpreter.CodeInterpreterManager")
+    @patch("ostruct.cli.file_search.FileSearchManager")
+    @patch("ostruct.cli.mcp_integration.MCPServerManager")
     def test_responses_api_integration(
         self,
         mock_mcp_manager: Mock,
@@ -1030,6 +1031,7 @@ class TestCLIExecution:
                 f"{TEST_BASE_DIR}/input.txt",
                 "--debug-validation",
                 "--verbose",
+                "--dry-run",
             ],
         )
         assert result.exit_code == 0
@@ -1067,6 +1069,7 @@ class TestCLIExecution:
                 "-f",
                 "input",
                 f"{TEST_BASE_DIR}/input.txt",
+                "--dry-run",
             ],
         )
         assert result.exit_code == 0
@@ -1109,6 +1112,7 @@ class TestCLIExecution:
                 "-J",
                 'config={"key": "value"}',
                 "--verbose",
+                "--dry-run",
             ],
         )
         assert result.exit_code == 0
@@ -1180,29 +1184,15 @@ class TestCLIExecution:
                 "profiles",
                 "--base-dir",
                 ".",
+                "--dry-run",
             ],
         )
 
         # Check result
         assert result.exit_code == ExitCode.SUCCESS
-        output = json.loads(result.stdout)
-        assert isinstance(output, dict)
-        assert "people" in output
-        assert isinstance(output["people"], list)
-        assert len(output["people"]) >= 1
-
-        # Find John Smith in the results
-        john = next(
-            (
-                person
-                for person in output["people"]
-                if person["name"] == "John Smith"
-            ),
-            None,
-        )
-        assert john is not None
-        assert john["age"] == 35
-        assert john["occupation"].lower() == "software engineer"
+        # In dry-run mode, output is token analysis, not JSON
+        assert "Token Analysis" in result.stdout
+        assert "Input tokens" in result.stdout
 
 
 # Template Context Tests

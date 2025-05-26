@@ -709,6 +709,74 @@ class SchemaValidationError(ModelCreationError):
         super().__init__(final_message, context=context, exit_code=exit_code)
 
 
+def handle_error(e: Exception) -> None:
+    """Handle CLI errors and display appropriate messages.
+
+    Maintains specific error type handling while reducing duplication.
+    Provides enhanced debug logging for CLI errors.
+    """
+    import sys
+
+    import click
+
+    # 1. Determine error type and message
+    if isinstance(e, SchemaValidationError):
+        msg = str(e)  # Already formatted in SchemaValidationError
+        exit_code = e.exit_code
+    elif isinstance(e, ModelCreationError):
+        # Unwrap ModelCreationError that might wrap SchemaValidationError
+        if isinstance(e.__cause__, SchemaValidationError):
+            return handle_error(e.__cause__)
+        msg = f"Model creation error: {str(e)}"
+        exit_code = ExitCode.SCHEMA_ERROR
+    elif isinstance(e, click.UsageError):
+        msg = f"Usage error: {str(e)}"
+        exit_code = ExitCode.USAGE_ERROR
+    elif isinstance(e, SchemaFileError):
+        msg = str(e)  # Use existing __str__ formatting
+        exit_code = ExitCode.SCHEMA_ERROR
+    elif isinstance(e, (InvalidJSONError, json.JSONDecodeError)):
+        msg = f"Invalid JSON error: {str(e)}"
+        exit_code = ExitCode.DATA_ERROR
+    elif isinstance(e, CLIError):
+        msg = str(e)  # Use existing __str__ formatting
+        exit_code = ExitCode(e.exit_code)  # Convert int to ExitCode
+    else:
+        msg = f"Unexpected error: {str(e)}"
+        exit_code = ExitCode.INTERNAL_ERROR
+
+    # 2. Debug logging
+    if isinstance(e, CLIError) and logger.isEnabledFor(logging.DEBUG):
+        # Format context fields with lowercase keys and simple values
+        context_str = ""
+        if hasattr(e, "context") and e.context:
+            for key, value in sorted(e.context.items()):
+                if key not in {
+                    "timestamp",
+                    "host",
+                    "version",
+                    "python_version",
+                }:
+                    if isinstance(value, dict):
+                        context_str += (
+                            f"{key.lower()}:\n{json.dumps(value, indent=2)}\n"
+                        )
+                    else:
+                        context_str += f"{key.lower()}: {value}\n"
+
+            logger.debug(
+                f"Error details:\nType: {type(e).__name__}\n{context_str.rstrip()}"
+            )
+    elif not isinstance(e, click.UsageError):
+        logger.error(msg, exc_info=True)
+    else:
+        logger.error(msg)
+
+    # 3. User output
+    click.secho(msg, fg="red", err=True)
+    sys.exit(exit_code)
+
+
 # Export public API
 __all__ = [
     "VariableError",
@@ -728,4 +796,5 @@ __all__ = [
     "APIResponseError",
     "EmptyResponseError",
     "InvalidResponseFormatError",
+    "handle_error",
 ]

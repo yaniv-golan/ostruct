@@ -159,7 +159,7 @@ def get_update_notification() -> Optional[str]:
     try:
         update_available, message = check_for_registry_updates()
         if update_available and message:
-            return message
+            return str(message)  # Explicit cast to ensure str type
         return None
     except Exception as e:
         # Ensure any errors don't affect normal operation

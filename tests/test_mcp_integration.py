@@ -1,11 +1,13 @@
 """Tests for MCP (Model Context Protocol) integration."""
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
-import asyncio
-from typing import Dict, Any
 
-from ostruct.cli.mcp_integration import MCPConfiguration, MCPServerManager, MCPClient
+import pytest
+
+from ostruct.cli.mcp_integration import (
+    MCPClient,
+    MCPConfiguration,
+    MCPServerManager,
+)
 
 
 class TestMCPConfiguration:
@@ -13,7 +15,9 @@ class TestMCPConfiguration:
 
     def test_mcp_configuration_creation(self):
         """Test creating MCP configuration."""
-        servers = [{"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}]
+        servers = [
+            {"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}
+        ]
         config = MCPConfiguration(servers)
 
         assert config.servers == servers
@@ -148,7 +152,9 @@ class TestMCPServerManager:
 
     def test_manager_initialization_success(self):
         """Test successful manager initialization."""
-        servers = [{"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}]
+        servers = [
+            {"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}
+        ]
         manager = MCPServerManager(servers)
 
         assert isinstance(manager, MCPServerManager)
@@ -183,7 +189,9 @@ class TestMCPServerManager:
     @pytest.mark.asyncio
     async def test_validate_server_connectivity_success(self):
         """Test successful server connectivity validation."""
-        servers = [{"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}]
+        servers = [
+            {"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}
+        ]
         manager = MCPServerManager(servers)
 
         # The current implementation returns True for basic implementation
@@ -287,18 +295,9 @@ class TestMCPClient:
         with pytest.raises(ValueError, match="Request too large"):
             client.validate_request_size(large_data)
 
-    @pytest.mark.asyncio
-    async def test_send_request_async(self):
-        """Test async request sending."""
-        client = MCPClient("https://mcp.deepwiki.com/sse")
-
-        data = {"query": "test query", "context": "test context"}
-
-        # Current implementation returns mock response
-        response = await client.send_request_async(data)
-
-        assert response["status"] == "success"
-        assert "data" in response
+    # Note: Async request functionality was removed as it's not needed.
+    # The synchronous send_request() method provides all required MCP functionality.
+    # See MCPClient class documentation for details on the working implementation.
 
 
 class TestMCPIntegration:
@@ -380,7 +379,9 @@ class TestMCPIntegration:
     def test_security_url_validation(self):
         """Test security aspects of URL validation."""
         # Valid HTTPS URLs should work
-        valid_servers = [{"url": "https://mcp.deepwiki.com/sse", "label": "secure"}]
+        valid_servers = [
+            {"url": "https://mcp.deepwiki.com/sse", "label": "secure"}
+        ]
 
         # Should not raise exception
         manager = MCPServerManager(valid_servers)
@@ -427,7 +428,9 @@ class TestMCPErrorScenarios:
     @pytest.mark.asyncio
     async def test_connectivity_validation_edge_cases(self):
         """Test connectivity validation edge cases."""
-        servers = [{"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}]
+        servers = [
+            {"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"}
+        ]
 
         manager = MCPServerManager(servers)
 

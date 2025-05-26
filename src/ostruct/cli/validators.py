@@ -1,12 +1,33 @@
 """Validators for CLI options and arguments."""
 
 import json
+import logging
+import os
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
+import jinja2
 
-from .errors import InvalidJSONError, VariableNameError
+from .errors import (
+    DirectoryNotFoundError,
+    InvalidJSONError,
+    SchemaFileError,
+    SchemaValidationError,
+    VariableNameError,
+    VariableValueError,
+)
+from .explicit_file_processor import ExplicitFileProcessor
+from .security import SecurityManager
+from .template_env import create_jinja_env
+from .template_processor import (
+    create_template_context_from_routing,
+    validate_task_template,
+)
+from .template_utils import validate_json_schema
+from .types import CLIParams
+
+logger = logging.getLogger(__name__)
 
 
 def validate_name_path_pair(
@@ -173,3 +194,300 @@ def validate_json_variable(
                 context={"variable_name": name},
             ) from e
     return result
+
+
+def parse_var(var_str: str) -> Tuple[str, str]:
+    """Parse a simple variable string in the format 'name=value'.
+
+    Args:
+        var_str: Variable string in format 'name=value'
+
+    Returns:
+        Tuple of (name, value)
+
+    Raises:
+        VariableNameError: If variable name is empty or invalid
+        VariableValueError: If variable format is invalid
+    """
+    try:
+        name, value = var_str.split("=", 1)
+        if not name:
+            raise VariableNameError("Empty name in variable mapping")
+        if not name.isidentifier():
+            raise VariableNameError(
+                f"Invalid variable name: {name}. Must be a valid Python identifier"
+            )
+        return name, value
+    except ValueError as e:
+        if "not enough values to unpack" in str(e):
+            raise VariableValueError(
+                f"Invalid variable mapping (expected name=value format): {var_str!r}"
+            )
+        raise
+
+
+def parse_json_var(var_str: str) -> Tuple[str, Any]:
+    """Parse a JSON variable string in the format 'name=json_value'.
+
+    Args:
+        var_str: Variable string in format 'name=json_value'
+
+    Returns:
+        Tuple of (name, parsed_value)
+
+    Raises:
+        VariableNameError: If variable name is empty or invalid
+        VariableValueError: If variable format is invalid
+        InvalidJSONError: If JSON value is invalid
+    """
+    try:
+        name, json_str = var_str.split("=", 1)
+        if not name:
+            raise VariableNameError("Empty name in JSON variable mapping")
+        if not name.isidentifier():
+            raise VariableNameError(
+                f"Invalid variable name: {name}. Must be a valid Python identifier"
+            )
+
+        try:
+            value = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise InvalidJSONError(
+                f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}",
+                context={"variable_name": name},
+            )
+
+        return name, value
+
+    except ValueError as e:
+        if "not enough values to unpack" in str(e):
+            raise VariableValueError(
+                f"Invalid JSON variable mapping (expected name=json format): {var_str!r}"
+            )
+        raise
+
+
+def validate_variable_mapping(
+    mapping: str, is_json: bool = False
+) -> tuple[str, Any]:
+    """Validate a variable mapping in name=value format."""
+    try:
+        name, value = mapping.split("=", 1)
+        if not name:
+            raise VariableNameError(
+                f"Empty name in {'JSON ' if is_json else ''}variable mapping"
+            )
+
+        if is_json:
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError as e:
+                raise InvalidJSONError(
+                    f"Invalid JSON value for variable {name!r}: {value!r}",
+                    context={"variable_name": name},
+                ) from e
+
+        return name, value
+
+    except ValueError as e:
+        if "not enough values to unpack" in str(e):
+            raise VariableValueError(
+                f"Invalid {'JSON ' if is_json else ''}variable mapping "
+                f"(expected name=value format): {mapping!r}"
+            )
+        raise
+
+
+def validate_schema_file(
+    path: str,
+    verbose: bool = False,
+) -> Dict[str, Any]:
+    """Validate and load a JSON schema file.
+
+    Args:
+        path: Path to the schema file
+        verbose: Whether to log additional information
+
+    Returns:
+        Dictionary containing the schema data
+
+    Raises:
+        SchemaFileError: If the schema file is invalid
+    """
+    try:
+        with Path(path).open("r") as f:
+            schema_data = json.load(f)
+
+        # Validate basic schema structure
+        if not isinstance(schema_data, dict):
+            raise SchemaFileError(
+                f"Schema file must contain a JSON object, got {type(schema_data).__name__}",
+                schema_path=path,
+            )
+
+        # Must have either "schema" key or be a direct schema
+        if "schema" in schema_data:
+            # Wrapped schema format
+            actual_schema = schema_data["schema"]
+        else:
+            # Direct schema format
+            actual_schema = schema_data
+
+        if not isinstance(actual_schema, dict):
+            raise SchemaFileError(
+                f"Schema must be a JSON object, got {type(actual_schema).__name__}",
+                schema_path=path,
+            )
+
+        # Validate that root type is object for structured output
+        if actual_schema.get("type") != "object":
+            raise SchemaFileError(
+                f"Schema root type must be 'object', got '{actual_schema.get('type')}'",
+                schema_path=path,
+            )
+
+        return schema_data
+
+    except json.JSONDecodeError as e:
+        raise InvalidJSONError(
+            f"Invalid JSON in schema file: {e}",
+            source=path,
+        ) from e
+    except FileNotFoundError as e:
+        raise SchemaFileError(
+            f"Schema file not found: {path}",
+            schema_path=path,
+        ) from e
+    except Exception as e:
+        raise SchemaFileError(
+            f"Error reading schema file: {e}",
+            schema_path=path,
+        ) from e
+
+
+def validate_security_manager(
+    base_dir: Optional[str] = None,
+    allowed_dirs: Optional[List[str]] = None,
+    allowed_dir_file: Optional[str] = None,
+) -> SecurityManager:
+    """Validate and create security manager.
+
+    Args:
+        base_dir: Base directory for file access. Defaults to current working directory.
+        allowed_dirs: Optional list of additional allowed directories
+        allowed_dir_file: Optional file containing allowed directories
+
+    Returns:
+        Configured SecurityManager instance
+
+    Raises:
+        PathSecurityError: If any paths violate security constraints
+        DirectoryNotFoundError: If any directories do not exist
+    """
+    # Use current working directory if base_dir is None
+    if base_dir is None:
+        base_dir = os.getcwd()
+
+    # Create security manager with base directory
+    security_manager = SecurityManager(base_dir)
+
+    # Add explicitly allowed directories
+    if allowed_dirs:
+        for dir_path in allowed_dirs:
+            security_manager.add_allowed_directory(dir_path)
+
+    # Add directories from file if specified
+    if allowed_dir_file:
+        try:
+            with open(allowed_dir_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        security_manager.add_allowed_directory(line)
+        except OSError as e:
+            raise DirectoryNotFoundError(
+                f"Failed to read allowed directories file: {e}"
+            )
+
+    return security_manager
+
+
+async def validate_inputs(
+    args: CLIParams,
+) -> Tuple[
+    SecurityManager,
+    str,
+    Dict[str, Any],
+    Dict[str, Any],
+    jinja2.Environment,
+    Optional[str],
+]:
+    """Validate all input parameters and return validated components.
+
+    Args:
+        args: Command line arguments
+
+    Returns:
+        Tuple containing:
+        - SecurityManager instance
+        - Task template string
+        - Schema dictionary
+        - Template context dictionary
+        - Jinja2 environment
+        - Template file path (if from file)
+
+    Raises:
+        CLIError: For various validation errors
+        SchemaValidationError: When schema is invalid
+    """
+    logger.debug("=== Input Validation Phase ===")
+    security_manager = validate_security_manager(
+        base_dir=args.get("base_dir"),
+        allowed_dirs=args.get("allowed_dirs"),
+        allowed_dir_file=args.get("allowed_dir_file"),
+    )
+
+    # Process explicit file routing (T2.4)
+    logger.debug("Processing explicit file routing")
+    file_processor = ExplicitFileProcessor(security_manager)
+    routing_result = await file_processor.process_file_routing(args)
+
+    # Display auto-enablement feedback to user
+    if routing_result.auto_enabled_feedback:
+        print(routing_result.auto_enabled_feedback)
+
+    # Store routing result in args for use by tool processors
+    args["_routing_result"] = routing_result  # type: ignore[typeddict-item]
+
+    task_template = validate_task_template(
+        args.get("task"), args.get("task_file")
+    )
+
+    # Load and validate schema
+    logger.debug("Validating schema from %s", args["schema_file"])
+    try:
+        schema = validate_schema_file(
+            args["schema_file"], args.get("verbose", False)
+        )
+
+        # Validate schema structure before any model creation
+        validate_json_schema(
+            schema
+        )  # This will raise SchemaValidationError if invalid
+    except SchemaValidationError as e:
+        logger.error("Schema validation error: %s", str(e))
+        raise  # Re-raise the SchemaValidationError to preserve the error chain
+
+    template_context = await create_template_context_from_routing(
+        args, security_manager, routing_result
+    )
+    env = create_jinja_env()
+
+    return (
+        security_manager,
+        task_template,
+        schema,
+        template_context,
+        env,
+        args.get("task_file"),
+    )

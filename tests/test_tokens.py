@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from ostruct.cli.cli import validate_token_limits
+from ostruct.cli.token_validation import validate_token_limits
 
 
 # Temporary stub for T1.1 migration
@@ -52,24 +52,32 @@ class TestTokenLimits:
 
     def test_validate_token_limits_success(self) -> None:
         """Test successful token limit validation."""
-        # Test with default limit
-        validate_token_limits("gpt-4o", total_tokens=1000)
+        # Test with default limit - using small template content
+        validate_token_limits("small template", [], "gpt-4o")
 
         # Test with custom limit
         validate_token_limits(
-            "gpt-4o", total_tokens=1000, max_token_limit=5000
+            "small template", [], "gpt-4o", context_limit=5000
         )
 
     def test_validate_token_limits_exceed_context(self) -> None:
         """Test validation when exceeding context window."""
-        with pytest.raises(ValueError) as exc_info:
-            validate_token_limits("gpt-4o", total_tokens=130_000)
+        from ostruct.cli.errors import PromptTooLargeError
+
+        # Create a very large template content to exceed limits
+        large_template = "x" * 500000  # Should be enough to exceed context
+        with pytest.raises(PromptTooLargeError) as exc_info:
+            validate_token_limits(large_template, [], "gpt-4o")
         assert "exceed" in str(exc_info.value) and "context window" in str(
             exc_info.value
         )
 
     def test_validate_token_limits_insufficient_room(self) -> None:
         """Test validation when insufficient room for output."""
-        with pytest.raises(ValueError) as exc_info:
-            validate_token_limits("gpt-4o", total_tokens=127_000)
-        assert "remaining in context window" in str(exc_info.value)
+        from ostruct.cli.errors import PromptTooLargeError
+
+        # Create template that's close to but doesn't exceed limit
+        large_template = "x" * 400000  # Close to context limit
+        with pytest.raises(PromptTooLargeError) as exc_info:
+            validate_token_limits(large_template, [], "gpt-4o")
+        assert "exceed" in str(exc_info.value)

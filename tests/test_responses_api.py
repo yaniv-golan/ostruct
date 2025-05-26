@@ -2,10 +2,8 @@
 
 import json
 import os
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
-from click.testing import CliRunner
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from ostruct.cli.cli import create_cli
@@ -40,7 +38,9 @@ class MockResponsesAPIHelper:
         return MockStreamingResponse(chunks)
 
     @staticmethod
-    def create_mock_chunk(output_text=None, finish_reason=None, tool_call=None):
+    def create_mock_chunk(
+        output_text=None, finish_reason=None, tool_call=None
+    ):
         """Create a mock response chunk with proper Responses API structure."""
         chunk = Mock()
 
@@ -85,11 +85,29 @@ class MockResponsesAPIHelper:
 class TestResponsesAPIIntegration:
     """Test OpenAI Responses API integration and streaming."""
 
-    @patch("ostruct.cli.cli.AsyncOpenAI")
+    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.runner.ModelRegistry")
     def test_responses_api_basic_call(
-        self, mock_openai_class: Mock, fs: FakeFilesystem
+        self,
+        mock_registry_class: Mock,
+        mock_openai_class: Mock,
+        fs: FakeFilesystem,
     ) -> None:
         """Test basic Responses API call."""
+        # Mock model registry and capabilities
+        mock_registry = Mock()
+        mock_capabilities = Mock()
+        mock_capabilities.context_window = 128000
+        mock_capabilities.max_output_tokens = 4096
+        mock_capabilities.supported_parameters = {
+            "temperature",
+            "max_tokens",
+            "max_output_tokens",
+        }
+        mock_capabilities.validate_parameter = Mock()
+        mock_registry.get_capabilities.return_value = mock_capabilities
+        mock_registry_class.get_instance.return_value = mock_registry
+
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper
@@ -136,14 +154,34 @@ class TestResponsesAPIIntegration:
         # Verify API call parameters
         call_args = mock_client.responses.create.call_args
         assert call_args[1]["model"] == "gpt-4o"
-        assert "input" in call_args[1]  # Responses API uses 'input' not 'messages'
+        assert (
+            "input" in call_args[1]
+        )  # Responses API uses 'input' not 'messages'
         assert "text" in call_args[1]  # Responses API uses 'text' format
 
-    @patch("ostruct.cli.cli.AsyncOpenAI")
+    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.runner.ModelRegistry")
     def test_responses_api_streaming(
-        self, mock_openai_class: Mock, fs: FakeFilesystem
+        self,
+        mock_registry_class: Mock,
+        mock_openai_class: Mock,
+        fs: FakeFilesystem,
     ) -> None:
         """Test streaming responses work correctly."""
+        # Mock model registry and capabilities
+        mock_registry = Mock()
+        mock_capabilities = Mock()
+        mock_capabilities.context_window = 128000
+        mock_capabilities.max_output_tokens = 4096
+        mock_capabilities.supported_parameters = {
+            "temperature",
+            "max_tokens",
+            "max_output_tokens",
+        }
+        mock_capabilities.validate_parameter = Mock()
+        mock_registry.get_capabilities.return_value = mock_capabilities
+        mock_registry_class.get_instance.return_value = mock_registry
+
         cli_runner = CliTestRunner()
 
         # Setup mock client
@@ -152,7 +190,9 @@ class TestResponsesAPIIntegration:
 
         # Mock streaming response with multiple chunks using Responses API format
         mock_chunks = [
-            MockResponsesAPIHelper.create_mock_chunk(output_text='{"result": "'),
+            MockResponsesAPIHelper.create_mock_chunk(
+                output_text='{"result": "'
+            ),
             MockResponsesAPIHelper.create_mock_chunk(output_text="streaming "),
             MockResponsesAPIHelper.create_mock_chunk(output_text='response"}'),
         ]
@@ -210,11 +250,29 @@ class TestResponsesAPIIntegration:
         assert result.exit_code == 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.cli.AsyncOpenAI")
+    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.runner.ModelRegistry")
     def test_responses_api_with_tools(
-        self, mock_openai_class: Mock, fs: FakeFilesystem
+        self,
+        mock_registry_class: Mock,
+        mock_openai_class: Mock,
+        fs: FakeFilesystem,
     ) -> None:
         """Test Responses API call with tools integration."""
+        # Mock model registry and capabilities
+        mock_registry = Mock()
+        mock_capabilities = Mock()
+        mock_capabilities.context_window = 128000
+        mock_capabilities.max_output_tokens = 4096
+        mock_capabilities.supported_parameters = {
+            "temperature",
+            "max_tokens",
+            "max_output_tokens",
+        }
+        mock_capabilities.validate_parameter = Mock()
+        mock_registry.get_capabilities.return_value = mock_capabilities
+        mock_registry_class.get_instance.return_value = mock_registry
+
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper
@@ -239,7 +297,9 @@ class TestResponsesAPIIntegration:
         fs.create_file(
             f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
-        fs.create_file(f"{TEST_BASE_DIR}/task.j2", contents="Analyze test data")
+        fs.create_file(
+            f"{TEST_BASE_DIR}/task.j2", contents="Analyze test data"
+        )
 
         # Change to test base directory
         os.chdir(TEST_BASE_DIR)
@@ -262,18 +322,35 @@ class TestResponsesAPIIntegration:
         call_args = mock_client.responses.create.call_args
         assert call_args is not None
 
-    @patch("ostruct.cli.cli.AsyncOpenAI")
+    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.runner.ModelRegistry")
     def test_responses_api_error_handling(
-        self, mock_openai_class: Mock, fs: FakeFilesystem
+        self,
+        mock_registry_class: Mock,
+        mock_openai_class: Mock,
+        fs: FakeFilesystem,
     ) -> None:
         """Test error handling in Responses API calls."""
+        # Mock model registry and capabilities
+        mock_registry = Mock()
+        mock_capabilities = Mock()
+        mock_capabilities.context_window = 128000
+        mock_capabilities.max_output_tokens = 4096
+        mock_capabilities.supported_parameters = {
+            "temperature",
+            "max_tokens",
+            "max_output_tokens",
+        }
+        mock_capabilities.validate_parameter = Mock()
+        mock_registry.get_capabilities.return_value = mock_capabilities
+        mock_registry_class.get_instance.return_value = mock_registry
+
         cli_runner = CliTestRunner()
 
         # Setup mock client that raises an error
         mock_client = AsyncMock()
         mock_openai_class.return_value = mock_client
 
-        from ostruct.cli.errors import APIError
 
         mock_client.responses.create.side_effect = Exception("API Error")
 
@@ -308,11 +385,29 @@ class TestResponsesAPIIntegration:
         assert result.exit_code != 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.cli.AsyncOpenAI")
+    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.runner.ModelRegistry")
     def test_responses_api_token_optimization(
-        self, mock_openai_class: Mock, fs: FakeFilesystem
+        self,
+        mock_registry_class: Mock,
+        mock_openai_class: Mock,
+        fs: FakeFilesystem,
     ) -> None:
         """Test token optimization in API calls."""
+        # Mock model registry and capabilities
+        mock_registry = Mock()
+        mock_capabilities = Mock()
+        mock_capabilities.context_window = 128000
+        mock_capabilities.max_output_tokens = 4096
+        mock_capabilities.supported_parameters = {
+            "temperature",
+            "max_tokens",
+            "max_output_tokens",
+        }
+        mock_capabilities.validate_parameter = Mock()
+        mock_registry.get_capabilities.return_value = mock_capabilities
+        mock_registry_class.get_instance.return_value = mock_registry
+
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper
@@ -360,11 +455,29 @@ class TestResponsesAPIIntegration:
         assert result.exit_code == 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.cli.AsyncOpenAI")
+    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.runner.ModelRegistry")
     def test_responses_api_model_parameters(
-        self, mock_openai_class: Mock, fs: FakeFilesystem
+        self,
+        mock_registry_class: Mock,
+        mock_openai_class: Mock,
+        fs: FakeFilesystem,
     ) -> None:
         """Test model parameters are passed correctly."""
+        # Mock model registry and capabilities
+        mock_registry = Mock()
+        mock_capabilities = Mock()
+        mock_capabilities.context_window = 128000
+        mock_capabilities.max_output_tokens = 4096
+        mock_capabilities.supported_parameters = {
+            "temperature",
+            "max_tokens",
+            "max_output_tokens",
+        }
+        mock_capabilities.validate_parameter = Mock()
+        mock_registry.get_capabilities.return_value = mock_capabilities
+        mock_registry_class.get_instance.return_value = mock_registry
+
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper

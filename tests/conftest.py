@@ -93,19 +93,49 @@ def env_setup(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Set up environment variables for testing."""
-    # Load .env file for live tests
+    # Set up model registry config paths FIRST before anything else
+    try:
+        import openai_model_registry
+
+        registry_path = Path(openai_model_registry.__file__).parent
+        config_dir = registry_path / "config"
+
+        if config_dir.exists():
+            models_yml = config_dir / "models.yml"
+            constraints_yml = config_dir / "parameter_constraints.yml"
+
+            if models_yml.exists():
+                monkeypatch.setenv("MODEL_REGISTRY_PATH", str(models_yml))
+            if constraints_yml.exists():
+                monkeypatch.setenv(
+                    "PARAMETER_CONSTRAINTS_PATH", str(constraints_yml)
+                )
+    except Exception:
+        pass
+
+    # Always try to load .env file first to get real API key
+    load_dotenv()
+
+    # Check if we have a real API key
+    real_api_key = os.environ.get("OPENAI_API_KEY")
+    has_real_key = (
+        real_api_key
+        and not real_api_key.startswith("test-")
+        and len(real_api_key) > 10
+    )
+
     if "live" in request.keywords:
-        load_dotenv()
-        # Verify we have a real API key for live tests
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key or api_key == "test-key":
+        # Live tests require a real API key
+        if not has_real_key:
             pytest.skip("No valid OpenAI API key found for live test")
-    # For tests that require OpenAI, ensure no test key is set
     elif "requires_openai" in request.keywords:
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    # For all other tests, set test key
+        # Don't set test key for these tests - use real key if available
+        if not has_real_key:
+            pytest.skip("OpenAI API key required but not found")
     else:
-        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+        # For CLI execution tests, use real API key if available, otherwise use test key
+        if not has_real_key:
+            monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
 
 @pytest.fixture
@@ -243,27 +273,8 @@ def setup_test_fs(
     # Get the fs fixture only if we need it
     fs = request.getfixturevalue("fs")
 
-    # Add model registry files to fake filesystem
-    # This is needed because the openai-model-registry package needs to read its config files
-    try:
-        import openai_model_registry
-        from openai_model_registry import ModelRegistry
-
-        registry_path = Path(openai_model_registry.__file__).parent
-        config_dir = registry_path / "config"
-
-        # Add the entire config directory to the fake filesystem
-        if config_dir.exists():
-            fs.add_real_directory(str(config_dir))
-
-            # Reset the ModelRegistry singleton to force it to reload with the new filesystem
-            if hasattr(ModelRegistry, "_instance"):
-                ModelRegistry._instance = None
-
-    except Exception:
-        # If we can't add the registry files, continue without them
-        # Tests will need to handle the empty registry case
-        pass
+    # Model registry configuration is handled in env_setup fixture
+    # No additional setup needed here
 
     # Only create directories if the test uses fixtures that need them
     needs_dirs = any(
@@ -807,4 +818,3 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "openai_model_registry.ModelRegistry", MockModelRegistry
     )
-    monkeypatch.setattr("ostruct.cli.cli.ModelRegistry", MockModelRegistry)
