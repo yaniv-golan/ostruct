@@ -63,7 +63,7 @@ def validate_file_routing_spec(
     ctx: click.Context,
     param: click.Parameter,
     value: List[str],
-) -> List[Tuple[str, Union[str, Path]]]:
+) -> List[Tuple[Optional[str], Union[str, Path]]]:
     """Validate file routing specifications supporting multiple syntaxes.
 
     Supports two syntaxes currently:
@@ -87,7 +87,7 @@ def validate_file_routing_spec(
     if not value:
         return []
 
-    result: List[Tuple[str, Union[str, Path]]] = []
+    result: List[Tuple[Optional[str], Union[str, Path]]] = []
 
     for spec in value:
         if "=" in spec:
@@ -143,9 +143,7 @@ def validate_variable(
     result = []
     for var in value:
         if "=" not in var:
-            raise click.BadParameter(
-                f"Variable must be in format name=value: {var}"
-            )
+            raise click.BadParameter(f"Variable must be in format name=value: {var}")
         name, val = var.split("=", 1)
         name = name.strip()
         val = val.strip()
@@ -267,9 +265,7 @@ def parse_json_var(var_str: str) -> Tuple[str, Any]:
         raise
 
 
-def validate_variable_mapping(
-    mapping: str, is_json: bool = False
-) -> tuple[str, Any]:
+def validate_variable_mapping(mapping: str, is_json: bool = False) -> tuple[str, Any]:
     """Validate a variable mapping in name=value format."""
     try:
         name, value = mapping.split("=", 1)
@@ -459,21 +455,15 @@ async def validate_inputs(
     # Store routing result in args for use by tool processors
     args["_routing_result"] = routing_result
 
-    task_template = validate_task_template(
-        args.get("task"), args.get("task_file")
-    )
+    task_template = validate_task_template(args.get("task"), args.get("task_file"))
 
     # Load and validate schema
     logger.debug("Validating schema from %s", args["schema_file"])
     try:
-        schema = validate_schema_file(
-            args["schema_file"], args.get("verbose", False)
-        )
+        schema = validate_schema_file(args["schema_file"], args.get("verbose", False))
 
         # Validate schema structure before any model creation
-        validate_json_schema(
-            schema
-        )  # This will raise SchemaValidationError if invalid
+        validate_json_schema(schema)  # This will raise SchemaValidationError if invalid
     except SchemaValidationError as e:
         logger.error("Schema validation error: %s", str(e))
         raise  # Re-raise the SchemaValidationError to preserve the error chain
