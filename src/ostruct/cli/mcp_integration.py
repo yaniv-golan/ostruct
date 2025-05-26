@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 try:
     import requests
 except ImportError:
-    requests = None
+    requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +91,7 @@ class MCPClient:
         # Check for dangerous schemes
         dangerous_schemes = ["ftp", "file", "javascript", "data"]
         if parsed.scheme in dangerous_schemes:
-            raise ValueError(
-                f"Dangerous URL scheme not allowed: {parsed.scheme}"
-            )
+            raise ValueError(f"Dangerous URL scheme not allowed: {parsed.scheme}")
 
         # Require HTTP/HTTPS
         if parsed.scheme not in ["http", "https"]:
@@ -102,13 +100,9 @@ class MCPClient:
         # Enforce HTTPS except for localhost
         if parsed.scheme != "https":
             if parsed.hostname not in ["localhost", "127.0.0.1", "::1"]:
-                raise ValueError(
-                    f"HTTPS required for non-localhost URLs: {url}"
-                )
+                raise ValueError(f"HTTPS required for non-localhost URLs: {url}")
 
-    def _validate_input(
-        self, query: str, context: Optional[str] = None
-    ) -> None:
+    def _validate_input(self, query: str, context: Optional[str] = None) -> None:
         """Validate and sanitize input parameters.
 
         Args:
@@ -171,18 +165,14 @@ class MCPClient:
             text = re.sub(r"javascript:", "", text, flags=re.IGNORECASE)
 
             # Remove other dangerous patterns
-            text = re.sub(
-                r"on\w+\s*=", "", text, flags=re.IGNORECASE
-            )  # Event handlers
+            text = re.sub(r"on\w+\s*=", "", text, flags=re.IGNORECASE)  # Event handlers
 
             return text
 
         def sanitize_dict(data: Any) -> Any:
             """Recursively sanitize dictionary values."""
             if isinstance(data, dict):
-                return {
-                    key: sanitize_dict(value) for key, value in data.items()
-                }
+                return {key: sanitize_dict(value) for key, value in data.items()}
             elif isinstance(data, list):
                 return [sanitize_dict(item) for item in data]
             elif isinstance(data, str):
@@ -190,7 +180,7 @@ class MCPClient:
             else:
                 return data
 
-        return sanitize_dict(response)
+        return sanitize_dict(response)  # type: ignore[return-value]
 
     def _check_rate_limit(self) -> None:
         """Check and enforce rate limiting."""
@@ -249,9 +239,7 @@ class MCPClient:
         self.validate_request_size(request_data)
 
         # Make actual HTTP request with security headers
-        logger.debug(
-            f"Sending secure request to MCP server: {self.server_url}"
-        )
+        logger.debug(f"Sending secure request to MCP server: {self.server_url}")
 
         if requests is None:
             # Fallback for when requests is not available
@@ -284,8 +272,7 @@ class MCPClient:
             # Ensure error messages don't leak sensitive information
             error_msg = str(e).lower()
             if any(
-                word in error_msg
-                for word in ["password", "token", "key", "secret"]
+                word in error_msg for word in ["password", "token", "key", "secret"]
             ):
                 raise Exception("Connection error occurred")
             raise
@@ -375,9 +362,7 @@ class MCPConfiguration:
         for server in self.servers:
             # Validate required fields first
             if not server.get("url"):
-                errors.append(
-                    "Server configuration missing required 'url' field"
-                )
+                errors.append("Server configuration missing required 'url' field")
                 continue  # Skip other checks if no URL
 
             # Check for CLI-incompatible settings
@@ -473,9 +458,7 @@ class MCPServerManager:
         for server in self.config.servers:
             server_url = server.get("url")
             if server_url:
-                is_reachable = await self.validate_server_connectivity(
-                    server_url
-                )
+                is_reachable = await self.validate_server_connectivity(server_url)
                 if not is_reachable:
                     errors.append(f"MCP server {server_url} is not reachable")
 

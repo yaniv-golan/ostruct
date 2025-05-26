@@ -1,6 +1,7 @@
 """Tests for configuration management."""
 
 import os
+from typing import Any, Dict
 from unittest.mock import Mock, patch
 
 import pytest
@@ -33,9 +34,7 @@ class TestOstructConfig:
         assert config.operation.require_approval == "never"
 
         # Invalid approval setting
-        with pytest.raises(
-            ValueError, match="require_approval must be one of"
-        ):
+        with pytest.raises(ValueError, match="require_approval must be one of"):
             OstructConfig(operation={"require_approval": "invalid"})
 
     @pytest.mark.no_fs
@@ -80,7 +79,7 @@ class TestOstructConfig:
     def test_environment_variable_override(self):
         """Test environment variable overrides."""
         # Test the _apply_env_overrides method directly to avoid filesystem issues
-        config_data = {}
+        config_data: Dict[str, Any] = {}
         result = OstructConfig._apply_env_overrides(config_data)
 
         assert "mcp" in result
@@ -90,7 +89,7 @@ class TestOstructConfig:
     def test_mcp_environment_variables(self):
         """Test MCP environment variable processing."""
         # Test the _apply_env_overrides method directly to avoid filesystem issues
-        config_data = {}
+        config_data: Dict[str, Any] = {}
         result = OstructConfig._apply_env_overrides(config_data)
 
         assert "mcp" in result
