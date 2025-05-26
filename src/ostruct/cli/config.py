@@ -20,7 +20,9 @@ class ToolsConfig(BaseModel):
             "output_directory": "./output",
         }
     )
-    file_search: Dict[str, Any] = Field(default_factory=lambda: {"max_results": 10})
+    file_search: Dict[str, Any] = Field(
+        default_factory=lambda: {"max_results": 10}
+    )
 
 
 class ModelsConfig(BaseModel):
@@ -62,7 +64,9 @@ class OstructConfig(BaseModel):
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
 
     @classmethod
-    def load(cls, config_path: Optional[Union[str, Path]] = None) -> "OstructConfig":
+    def load(
+        cls, config_path: Optional[Union[str, Path]] = None
+    ) -> "OstructConfig":
         """Load configuration from YAML file with smart defaults.
 
         Args:
@@ -98,7 +102,9 @@ class OstructConfig(BaseModel):
                     config_data = yaml.safe_load(f) or {}
                 logger.info(f"Loaded configuration from {config_path}")
             except Exception as e:
-                logger.warning(f"Failed to load configuration from {config_path}: {e}")
+                logger.warning(
+                    f"Failed to load configuration from {config_path}: {e}"
+                )
                 logger.info("Using default configuration")
                 config_data = {}
 
@@ -123,7 +129,9 @@ class OstructConfig(BaseModel):
         # Look for MCP_* environment variables
         for key, value in os.environ.items():
             if key.startswith("MCP_") and key.endswith("_URL"):
-                server_name = key[4:-4].lower()  # Remove MCP_ prefix and _URL suffix
+                server_name = key[
+                    4:-4
+                ].lower()  # Remove MCP_ prefix and _URL suffix
                 mcp_config[server_name] = value
 
         # Built-in MCP server shortcuts

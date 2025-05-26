@@ -114,13 +114,17 @@ def run(
             # Log the error with full context
             logger.error("Schema validation error: %s", str(e))
             if e.context:
-                logger.debug("Error context: %s", json.dumps(e.context, indent=2))
+                logger.debug(
+                    "Error context: %s", json.dumps(e.context, indent=2)
+                )
             # Re-raise to preserve error chain and exit code
             raise
         except (CLIError, InvalidJSONError, SchemaFileError) as e:
             handle_error(e)
             sys.exit(
-                e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
+                e.exit_code
+                if hasattr(e, "exit_code")
+                else ExitCode.INTERNAL_ERROR
             )
         except click.UsageError as e:
             handle_error(e)

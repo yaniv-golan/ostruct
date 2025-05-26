@@ -106,7 +106,9 @@ class EnhancedProgressReporter:
         if not self.should_report:
             return
 
-        total_files = len(template_files) + len(container_files) + len(vector_files)
+        total_files = (
+            len(template_files) + len(container_files) + len(vector_files)
+        )
         if total_files == 0:
             return
 
@@ -130,16 +132,22 @@ class EnhancedProgressReporter:
         else:
             tools_used = []
             if container_files:
-                tools_used.append(f"Code Interpreter ({len(container_files)} files)")
+                tools_used.append(
+                    f"Code Interpreter ({len(container_files)} files)"
+                )
             if vector_files:
                 tools_used.append(f"File Search ({len(vector_files)} files)")
             if template_files:
                 tools_used.append(f"Template ({len(template_files)} files)")
 
             tools_str = ", ".join(tools_used)
-            click.echo(f"📂 Routed {total_files} files to: {tools_str}", err=True)
+            click.echo(
+                f"📂 Routed {total_files} files to: {tools_str}", err=True
+            )
 
-    def report_processing_start(self, model: str, tools_used: List[str]) -> None:
+    def report_processing_start(
+        self, model: str, tools_used: List[str]
+    ) -> None:
         """Report the start of AI processing with clear context.
 
         Args:
@@ -150,7 +158,9 @@ class EnhancedProgressReporter:
             return
 
         tools_str = ", ".join(tools_used) if tools_used else "template only"
-        click.echo(f"🤖 Processing with {model} using {tools_str}...", err=True)
+        click.echo(
+            f"🤖 Processing with {model} using {tools_str}...", err=True
+        )
 
     def report_processing_results(self, result: ProcessingResult) -> None:
         """Report AI processing outcomes in a user-friendly way.
@@ -165,9 +175,13 @@ class EnhancedProgressReporter:
             click.echo("📦 Processing results:", err=True)
             click.echo(f"├── Model: {result.model}", err=True)
             if result.files_processed > 0:
-                click.echo(f"├── Files processed: {result.files_processed}", err=True)
+                click.echo(
+                    f"├── Files processed: {result.files_processed}", err=True
+                )
             if result.tools_used:
-                click.echo(f"├── Tools used: {', '.join(result.tools_used)}", err=True)
+                click.echo(
+                    f"├── Tools used: {', '.join(result.tools_used)}", err=True
+                )
             if result.search_summary:
                 click.echo(f"├── 🔍 {result.search_summary}", err=True)
             click.echo(f"└── ✅ {result.completion_summary}", err=True)
@@ -184,7 +198,9 @@ class EnhancedProgressReporter:
             return
 
         if self.detailed:
-            click.echo(f"💰 Cost breakdown: ${cost_info.total:.4f} total", err=True)
+            click.echo(
+                f"💰 Cost breakdown: ${cost_info.total:.4f} total", err=True
+            )
             click.echo(
                 f"  ├── Input tokens ({cost_info.input_tokens:,}): ${cost_info.input_cost:.4f}",
                 err=True,
@@ -211,7 +227,9 @@ class EnhancedProgressReporter:
                         err=True,
                     )
                 else:
-                    click.echo(f"💰 Total cost: ${cost_info.total:.3f}", err=True)
+                    click.echo(
+                        f"💰 Total cost: ${cost_info.total:.3f}", err=True
+                    )
 
     def report_file_downloads(
         self, downloaded_files: List[str], download_dir: str
@@ -318,12 +336,16 @@ class EnhancedProgressReporter:
             "moved" in technical_message.lower()
             and "appendix" in technical_message.lower()
         ):
-            file_name = technical_message.split("Moved ")[-1].split(" to appendix")[0]
+            file_name = technical_message.split("Moved ")[-1].split(
+                " to appendix"
+            )[0]
             return f"Moved large file '{file_name}' to organized appendix"
         elif "built structured appendix" in technical_message.lower():
             return "Organized file content into structured appendix for better AI processing"
         elif "moved directory" in technical_message.lower():
-            return technical_message.replace("Moved directory", "Organized directory")
+            return technical_message.replace(
+                "Moved directory", "Organized directory"
+            )
         else:
             return technical_message
 

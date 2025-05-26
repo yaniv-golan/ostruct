@@ -88,9 +88,7 @@ class UnattendedOperationManager:
             return result
 
         except asyncio.TimeoutError:
-            error_msg = (
-                f"Unattended {operation_name} timed out after {self.timeout} seconds"
-            )
+            error_msg = f"Unattended {operation_name} timed out after {self.timeout} seconds"
             logger.error(error_msg)
             raise UnattendedOperationTimeoutError(
                 error_msg,
@@ -100,7 +98,9 @@ class UnattendedOperationManager:
 
         except ContainerExpiredError:
             # Fail fast for container expiration - these are unrecoverable
-            logger.error(f"Container expired during {operation_name} - failing fast")
+            logger.error(
+                f"Container expired during {operation_name} - failing fast"
+            )
             raise
 
         except CLIError:
@@ -109,7 +109,9 @@ class UnattendedOperationManager:
 
         except Exception as e:
             # Wrap unexpected errors for better automation handling
-            error_msg = f"Unexpected error during unattended {operation_name}: {e}"
+            error_msg = (
+                f"Unexpected error during unattended {operation_name}: {e}"
+            )
             logger.error(error_msg)
             raise CLIError(
                 error_msg,

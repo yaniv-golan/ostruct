@@ -174,7 +174,9 @@ async def process_mcp_configuration(args: CLIParams) -> MCPServerManager:
             f"- {error}" for error in validation_errors
         )
         # Map as MCP error
-        mapped_error = APIErrorMapper.map_tool_error("mcp", Exception(error_msg))
+        mapped_error = APIErrorMapper.map_tool_error(
+            "mcp", Exception(error_msg)
+        )
         raise mapped_error
 
     logger.debug(
@@ -245,8 +247,12 @@ async def process_code_interpreter_configuration(
 
     try:
         # Upload files
-        logger.debug(f"Uploading {len(files_to_upload)} files for Code Interpreter")
-        file_ids = await manager.upload_files_for_code_interpreter(files_to_upload)
+        logger.debug(
+            f"Uploading {len(files_to_upload)} files for Code Interpreter"
+        )
+        file_ids = await manager.upload_files_for_code_interpreter(
+            files_to_upload
+        )
 
         # Build tool configuration
         tool_config = manager.build_tool_config(file_ids)
@@ -332,7 +338,9 @@ async def process_file_search_configuration(
 
     try:
         # Get configuration parameters
-        vector_store_name = args.get("file_search_vector_store_name", "ostruct_search")
+        vector_store_name = args.get(
+            "file_search_vector_store_name", "ostruct_search"
+        )
         retry_count = args.get("file_search_retry_count", 3)
         timeout = args.get("file_search_timeout", 60.0)
 
@@ -355,7 +363,9 @@ async def process_file_search_configuration(
         )
 
         # Wait for vector store to be ready
-        logger.debug(f"Waiting for vector store indexing (timeout: {timeout}s)")
+        logger.debug(
+            f"Waiting for vector store indexing (timeout: {timeout}s)"
+        )
         is_ready = await manager.wait_for_vector_store_ready(
             vector_store_id=vector_store_id, timeout=timeout
         )
@@ -519,7 +529,9 @@ async def stream_structured_output(
                 ):
                     accumulated_content += choice.message.content
                     content_added = True
-            elif hasattr(chunk, "response") and hasattr(chunk.response, "body"):
+            elif hasattr(chunk, "response") and hasattr(
+                chunk.response, "body"
+            ):
                 # Responses API format
                 accumulated_content += chunk.response.body
                 content_added = True
@@ -560,7 +572,9 @@ async def stream_structured_output(
                 yield validated
             except (json.JSONDecodeError, ValueError) as e:
                 logger.error(f"Failed to parse final accumulated content: {e}")
-                raise StreamParseError(f"Failed to parse response as valid JSON: {e}")
+                raise StreamParseError(
+                    f"Failed to parse response as valid JSON: {e}"
+                )
 
     except Exception as e:
         # Map OpenAI errors using the error mapper
@@ -571,7 +585,9 @@ async def stream_structured_output(
             raise mapped_error
 
         # Handle special schema array error with detailed guidance
-        if "Invalid schema for response_format" in str(e) and 'type: "array"' in str(e):
+        if "Invalid schema for response_format" in str(
+            e
+        ) and 'type: "array"' in str(e):
             error_msg = (
                 "OpenAI API Schema Error: The schema must have a root type of 'object', not 'array'. "
                 "To fix this:\n"
@@ -674,8 +690,9 @@ async def execute_model(
         validator = UnattendedCompatibilityValidator()
         validation_errors = validator.validate_mcp_servers(mcp_servers)
         if validation_errors:
-            error_msg = "Unattended operation compatibility errors:\n" + "\n".join(
-                f"  • {err}" for err in validation_errors
+            error_msg = (
+                "Unattended operation compatibility errors:\n"
+                + "\n".join(f"  • {err}" for err in validation_errors)
             )
             logger.error(error_msg)
             raise CLIError(error_msg, exit_code=ExitCode.VALIDATION_ERROR)
@@ -724,7 +741,10 @@ async def execute_model(
         routing_result = args.get("_routing_result")
 
         # Process Code Interpreter configuration if enabled
-        if routing_result and "code-interpreter" in routing_result.enabled_tools:
+        if (
+            routing_result
+            and "code-interpreter" in routing_result.enabled_tools
+        ):
             code_interpreter_files = routing_result.validated_files.get(
                 "code-interpreter", []
             )
@@ -732,10 +752,12 @@ async def execute_model(
                 # Override args with routed files for Code Interpreter processing
                 ci_args = dict(args)
                 ci_args["code_interpreter_files"] = code_interpreter_files
-                ci_args[
-                    "code_interpreter_dirs"
-                ] = []  # Files already expanded from dirs
-                ci_args["code_interpreter"] = True  # Enable for service container
+                ci_args["code_interpreter_dirs"] = (
+                    []
+                )  # Files already expanded from dirs
+                ci_args["code_interpreter"] = (
+                    True  # Enable for service container
+                )
 
                 # Create temporary service container with updated args
                 ci_services = ServiceContainer(client, ci_args)
@@ -754,22 +776,30 @@ async def execute_model(
 
         # Process File Search configuration if enabled
         if routing_result and "file-search" in routing_result.enabled_tools:
-            file_search_files = routing_result.validated_files.get("file-search", [])
+            file_search_files = routing_result.validated_files.get(
+                "file-search", []
+            )
             if file_search_files:
                 # Override args with routed files for File Search processing
                 fs_args = dict(args)
                 fs_args["file_search_files"] = file_search_files
-                fs_args["file_search_dirs"] = []  # Files already expanded from dirs
+                fs_args["file_search_dirs"] = (
+                    []
+                )  # Files already expanded from dirs
                 fs_args["file_search"] = True  # Enable for service container
 
                 # Create temporary service container with updated args
                 fs_services = ServiceContainer(client, fs_args)
-                file_search_manager = await fs_services.get_file_search_manager()
+                file_search_manager = (
+                    await fs_services.get_file_search_manager()
+                )
                 if file_search_manager:
                     # Get tool config from manager
                     file_search_info = {
                         "manager": file_search_manager,
-                        "tool_config": {"type": "file_search"},  # Basic tool config
+                        "tool_config": {
+                            "type": "file_search"
+                        },  # Basic tool config
                     }
                     tools.append(file_search_info["tool_config"])
 
@@ -813,9 +843,9 @@ async def execute_model(
                 for i, response in enumerate(output_buffer):
                     if i > 0:
                         json_output += ",\n"
-                    json_output += "  " + response.model_dump_json(indent=2).replace(
-                        "\n", "\n  "
-                    )
+                    json_output += "  " + response.model_dump_json(
+                        indent=2
+                    ).replace("\n", "\n  ")
                 json_output += "\n]"
                 print(json_output)
 
@@ -826,7 +856,9 @@ async def execute_model(
             and response.file_ids
         ):
             try:
-                download_dir = args.get("code_interpreter_download_dir", "./downloads")
+                download_dir = args.get(
+                    "code_interpreter_download_dir", "./downloads"
+                )
                 manager = code_interpreter_info["manager"]
                 downloaded_files = await manager.download_generated_files(
                     response.file_ids, download_dir
@@ -866,13 +898,17 @@ async def execute_model(
         raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
     finally:
         # Clean up Code Interpreter files if requested
-        if code_interpreter_info and args.get("code_interpreter_cleanup", True):
+        if code_interpreter_info and args.get(
+            "code_interpreter_cleanup", True
+        ):
             try:
                 manager = code_interpreter_info["manager"]
                 await manager.cleanup_uploaded_files()
                 logger.debug("Cleaned up Code Interpreter uploaded files")
             except Exception as e:
-                logger.warning(f"Failed to clean up Code Interpreter files: {e}")
+                logger.warning(
+                    f"Failed to clean up Code Interpreter files: {e}"
+                )
 
         # Clean up File Search resources if requested
         if file_search_info and args.get("file_search_cleanup", True):
@@ -881,7 +917,9 @@ async def execute_model(
                 await manager.cleanup_resources()
                 logger.debug("Cleaned up File Search vector stores and files")
             except Exception as e:
-                logger.warning(f"Failed to clean up File Search resources: {e}")
+                logger.warning(
+                    f"Failed to clean up File Search resources: {e}"
+                )
 
         # Clean up service container
         try:
@@ -939,8 +977,12 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         routing_result = args.get("_routing_result")
         if routing_result:
             template_files = routing_result.validated_files.get("template", [])
-            container_files = routing_result.validated_files.get("code-interpreter", [])
-            vector_files = routing_result.validated_files.get("file-search", [])
+            container_files = routing_result.validated_files.get(
+                "code-interpreter", []
+            )
+            vector_files = routing_result.validated_files.get(
+                "file-search", []
+            )
             progress_reporter.report_file_routing(
                 template_files, container_files, vector_files
             )
@@ -976,7 +1018,9 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
 
         # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):
-            report_success("Dry run completed successfully - all validations passed")
+            report_success(
+                "Dry run completed successfully - all validations passed"
+            )
 
             # Calculate cost estimate
             estimated_cost = calculate_cost_estimate(
@@ -1097,8 +1141,13 @@ class OstructRunner:
                 or self.args.get("code_interpreter_dirs")
             ),
             "file_search_enabled": bool(
-                self.args.get("file_search_files") or self.args.get("file_search_dirs")
+                self.args.get("file_search_files")
+                or self.args.get("file_search_dirs")
             ),
-            "template_source": ("file" if self.args.get("task_file") else "string"),
-            "schema_source": ("file" if self.args.get("schema_file") else "inline"),
+            "template_source": (
+                "file" if self.args.get("task_file") else "string"
+            ),
+            "schema_source": (
+                "file" if self.args.get("schema_file") else "inline"
+            ),
         }

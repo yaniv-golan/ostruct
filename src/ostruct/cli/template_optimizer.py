@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Match
+from typing import Dict, List, Match, Optional
 
 
 @dataclass
@@ -37,8 +37,12 @@ class TemplateOptimizer:
         self.file_references: Dict[str, str] = {}
         self.dir_references: Dict[str, str] = {}
         self.optimization_log: List[str] = []
-        self.inline_threshold = 200  # Characters threshold for inline vs appendix
-        self.small_value_threshold = 50  # Very small values stay inline regardless
+        self.inline_threshold = (
+            200  # Characters threshold for inline vs appendix
+        )
+        self.small_value_threshold = (
+            50  # Very small values stay inline regardless
+        )
 
     def optimize_for_llm(self, template_content: str) -> OptimizationResult:
         """Apply prompt engineering best practices for files and directories.
@@ -92,13 +96,17 @@ class TemplateOptimizer:
         optimized = re.sub(file_pattern, replace_file_reference, optimized)
 
         # Step 2: Optimize directory content references
-        dir_pattern = r"{{\s*([^}]*\.(files|content)|[^}]*\.files\[[^]]*\])\s*}}"
+        dir_pattern = (
+            r"{{\s*([^}]*\.(files|content)|[^}]*\.files\[[^]]*\])\s*}}"
+        )
         optimized = re.sub(dir_pattern, self._replace_dir_reference, optimized)
 
         # Step 3: Build comprehensive appendix if we moved files
         if self.file_references or self.dir_references:
             optimized += "\n\n" + self._build_complete_appendix()
-            self.optimization_log.append("Built structured appendix with moved content")
+            self.optimization_log.append(
+                "Built structured appendix with moved content"
+            )
 
         optimization_time = (time.time() - start_time) * 1000
 
@@ -136,7 +144,9 @@ class TemplateOptimizer:
                 return f"${var_name}"  # Use variable name as placeholder
 
         # Pattern 3: files['filename'].content
-        match = re.search(r'files\[["\']([^"\']+)["\']\]\.content', content_expr)
+        match = re.search(
+            r'files\[["\']([^"\']+)["\']\]\.content', content_expr
+        )
         if match:
             return match.group(1)
 
@@ -236,7 +246,9 @@ class TemplateOptimizer:
         dir_var = dir_match.group(1)
         reference = f"the files and subdirectories in <dir:{dir_var}>"
         self.dir_references[dir_var] = reference
-        self.optimization_log.append(f"Moved directory {dir_var} content to appendix")
+        self.optimization_log.append(
+            f"Moved directory {dir_var} content to appendix"
+        )
 
         return reference
 
@@ -258,7 +270,9 @@ class TemplateOptimizer:
                 appendix_lines.append(f"  <file:{file_path}>")
                 appendix_lines.append(f"    Referenced as: {reference}")
                 # Note: Actual file content would be injected here during template rendering
-                appendix_lines.append(f"    {{{{ file_content('{file_path}') }}}}")
+                appendix_lines.append(
+                    f"    {{{{ file_content('{file_path}') }}}}"
+                )
                 appendix_lines.append("")
 
         if self.dir_references:
