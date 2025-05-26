@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.argument("task_template", type=click.Path(exists=True))
 @click.argument("schema_file", type=click.Path(exists=True))
-@all_options  # type: ignore[misc]
+@all_options
 @click.pass_context
 def run(
     ctx: click.Context,
@@ -91,7 +91,7 @@ def run(
         valid_keys = set(CLIParams.__annotations__.keys())
         for k, v in kwargs.items():
             if k in valid_keys:
-                params[k] = v  # type: ignore[literal-required]
+                params[k] = v
 
         # Apply configuration defaults if values not explicitly provided
         # Check for command-level config option first, then group-level
@@ -102,7 +102,7 @@ def run(
             config = ctx.obj.get("config") if ctx.obj else OstructConfig()
 
         if params.get("model") is None:
-            params["model"] = config.get_model_default()  # type: ignore[literal-required]
+            params["model"] = config.get_model_default()
 
         # Run the async function synchronously
         loop = asyncio.new_event_loop()
@@ -114,17 +114,13 @@ def run(
             # Log the error with full context
             logger.error("Schema validation error: %s", str(e))
             if e.context:
-                logger.debug(
-                    "Error context: %s", json.dumps(e.context, indent=2)
-                )
+                logger.debug("Error context: %s", json.dumps(e.context, indent=2))
             # Re-raise to preserve error chain and exit code
             raise
         except (CLIError, InvalidJSONError, SchemaFileError) as e:
             handle_error(e)
             sys.exit(
-                e.exit_code
-                if hasattr(e, "exit_code")
-                else ExitCode.INTERNAL_ERROR
+                e.exit_code if hasattr(e, "exit_code") else ExitCode.INTERNAL_ERROR
             )
         except click.UsageError as e:
             handle_error(e)

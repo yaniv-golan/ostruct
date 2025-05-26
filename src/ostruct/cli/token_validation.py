@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import tiktoken
 
@@ -34,7 +34,7 @@ class TokenLimitValidator:
         self,
         template_content: str,
         template_files: List[str],
-        context_limit: int = None,
+        context_limit: Optional[int] = None,
     ) -> None:
         """Check if prompt will exceed context window and provide actionable guidance.
 
@@ -177,7 +177,9 @@ class TokenLimitValidator:
                     error_msg += f"   📊 Data file: ostruct -fc {file_name} <template> <schema>\n"
                     error_msg += f"       (Moves {file_name} to Code Interpreter for data processing)\n\n"
                 elif self._is_document_file(file_path):
-                    error_msg += f"   📄 Document: ostruct -fs {file_name} <template> <schema>\n"
+                    error_msg += (
+                        f"   📄 Document: ostruct -fs {file_name} <template> <schema>\n"
+                    )
                     error_msg += f"       (Moves {file_name} to File Search for semantic retrieval)\n\n"
                 elif self._is_code_file(file_path):
                     error_msg += f"   💻 Code file: ostruct -fc {file_name} <template> <schema>\n"
@@ -186,13 +188,9 @@ class TokenLimitValidator:
                     error_msg += f"   📁 Large file: ostruct -fc {file_name} OR -fs {file_name} <template> <schema>\n"
                     error_msg += "       (Choose based on usage: -fc for processing, -fs for retrieval)\n\n"
 
-                error_msg += (
-                    f"       Size: {tokens:,} tokens ({file_path})\n\n"
-                )
+                error_msg += f"       Size: {tokens:,} tokens ({file_path})\n\n"
 
-            error_msg += (
-                "🔧 Alternative: Use --file-for for specific tool routing:\n"
-            )
+            error_msg += "🔧 Alternative: Use --file-for for specific tool routing:\n"
             error_msg += f"    ostruct --file-for code-interpreter {oversized_files[0][0]} <template> <schema>\n\n"
 
         else:
@@ -206,9 +204,7 @@ class TokenLimitValidator:
             context={
                 "total_tokens": total_tokens,
                 "context_limit": limit,
-                "oversized_files": [
-                    (path, tokens) for path, tokens in oversized_files
-                ],
+                "oversized_files": [(path, tokens) for path, tokens in oversized_files],
                 "suggested_routing": self._generate_routing_suggestions(
                     oversized_files
                 ),
@@ -255,7 +251,7 @@ def validate_token_limits(
     template_content: str,
     template_files: List[str],
     model: str,
-    context_limit: int = None,
+    context_limit: Optional[int] = None,
 ) -> None:
     """Convenience function for token limit validation.
 
@@ -269,6 +265,4 @@ def validate_token_limits(
         PromptTooLargeError: If prompt exceeds context window
     """
     validator = TokenLimitValidator(model)
-    validator.validate_prompt_size(
-        template_content, template_files, context_limit
-    )
+    validator.validate_prompt_size(template_content, template_files, context_limit)
