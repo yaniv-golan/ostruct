@@ -1,6 +1,7 @@
 """Service container for ostruct CLI tool managers."""
 
 import logging
+from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Protocol
@@ -150,7 +151,7 @@ class ServiceConfigurationValidator:
 
     @staticmethod
     def validate_code_interpreter_config(
-        config: Dict[str, Any]
+        config: Dict[str, Any],
     ) -> CodeInterpreterServiceConfiguration:
         """Validate Code Interpreter service configuration."""
         try:
@@ -169,7 +170,7 @@ class ServiceConfigurationValidator:
 
     @staticmethod
     def validate_file_search_config(
-        config: Dict[str, Any]
+        config: Dict[str, Any],
     ) -> FileSearchServiceConfiguration:
         """Validate File Search service configuration."""
         try:
@@ -188,10 +189,12 @@ class ServiceConfigurationValidator:
 class ToolManagerProtocol(Protocol):
     """Protocol defining the interface for tool managers."""
 
+    @abstractmethod
     async def cleanup(self) -> None:
         """Clean up resources used by the tool manager."""
         ...
 
+    @abstractmethod
     async def health_check(self) -> ServiceHealth:
         """Check the health status of the tool manager."""
         ...
@@ -200,6 +203,7 @@ class ToolManagerProtocol(Protocol):
 class MCPManagerProtocol(ToolManagerProtocol):
     """Protocol for MCP server managers."""
 
+    @abstractmethod
     def get_tools_for_responses_api(self) -> List[dict]:
         """Get tools configured for OpenAI Responses API."""
         ...
@@ -208,12 +212,14 @@ class MCPManagerProtocol(ToolManagerProtocol):
 class CodeInterpreterManagerProtocol(ToolManagerProtocol):
     """Protocol for code interpreter managers."""
 
+    @abstractmethod
     async def upload_files_for_code_interpreter(
         self, files: List[str]
     ) -> List[str]:
         """Upload files for code interpreter access."""
         ...
 
+    @abstractmethod
     async def cleanup_uploaded_files(self) -> None:
         """Clean up uploaded files."""
         ...
@@ -222,12 +228,14 @@ class CodeInterpreterManagerProtocol(ToolManagerProtocol):
 class FileSearchManagerProtocol(ToolManagerProtocol):
     """Protocol for file search managers."""
 
+    @abstractmethod
     async def upload_files_to_vector_store(
         self, files: List[str], vector_store_id: str
     ) -> Dict[str, Any]:
         """Upload files to vector store."""
         ...
 
+    @abstractmethod
     async def cleanup_resources(self) -> None:
         """Clean up vector store resources."""
         ...
@@ -266,7 +274,9 @@ class DefaultServiceFactory:
             return None
         from .runner import process_mcp_configuration
 
-        return await process_mcp_configuration(args)
+        manager = await process_mcp_configuration(args)
+        # The manager implements MCPManagerProtocol interface
+        return manager  # type: ignore[return-value]
 
     async def create_code_interpreter_manager(
         self, args: CLIParams, client: AsyncOpenAI
@@ -319,7 +329,9 @@ class ServiceContainer:
         self._file_search_manager: Optional[FileSearchManagerProtocol] = None
 
         # Validate configurations at initialization
-        self._validated_configs = {}
+        self._validated_configs: Dict[
+            str, Optional[ServiceConfigurationBase]
+        ] = {}
         self._validate_service_configurations()
 
     async def get_mcp_manager(self) -> Optional[MCPManagerProtocol]:
@@ -514,30 +526,30 @@ class ServiceContainer:
             ServiceHealth with status and details
         """
         if service_name == "mcp":
-            manager = await self.get_mcp_manager()
-            if manager and hasattr(manager, "health_check"):
-                return await manager.health_check()
-            elif manager:
+            mcp_manager = await self.get_mcp_manager()
+            if mcp_manager and hasattr(mcp_manager, "health_check"):
+                return await mcp_manager.health_check()
+            elif mcp_manager:
                 return ServiceHealth(
                     status=ServiceStatus.HEALTHY,
                     message="MCP manager is running",
                     details={"has_health_check": False},
                 )
         elif service_name == "code_interpreter":
-            manager = await self.get_code_interpreter_manager()
-            if manager and hasattr(manager, "health_check"):
-                return await manager.health_check()
-            elif manager:
+            ci_manager = await self.get_code_interpreter_manager()
+            if ci_manager and hasattr(ci_manager, "health_check"):
+                return await ci_manager.health_check()
+            elif ci_manager:
                 return ServiceHealth(
                     status=ServiceStatus.HEALTHY,
                     message="Code Interpreter manager is running",
                     details={"has_health_check": False},
                 )
         elif service_name == "file_search":
-            manager = await self.get_file_search_manager()
-            if manager and hasattr(manager, "health_check"):
-                return await manager.health_check()
-            elif manager:
+            fs_manager = await self.get_file_search_manager()
+            if fs_manager and hasattr(fs_manager, "health_check"):
+                return await fs_manager.health_check()
+            elif fs_manager:
                 return ServiceHealth(
                     status=ServiceStatus.HEALTHY,
                     message="File Search manager is running",

@@ -26,12 +26,18 @@ class FileForSpec:
 class ExplicitRouting:
     """Explicit routing configuration for files to tools."""
 
-    template_files: List[str] = field(default_factory=list)  # Template access only
+    template_files: List[str] = field(
+        default_factory=list
+    )  # Template access only
     code_interpreter_files: List[str] = field(
         default_factory=list
     )  # Code Interpreter uploads
-    file_search_files: List[str] = field(default_factory=list)  # File Search uploads
-    template_dirs: List[str] = field(default_factory=list)  # Template directory access
+    file_search_files: List[str] = field(
+        default_factory=list
+    )  # File Search uploads
+    template_dirs: List[str] = field(
+        default_factory=list
+    )  # Template directory access
     code_interpreter_dirs: List[str] = field(
         default_factory=list
     )  # Code Interpreter directory uploads
@@ -82,15 +88,21 @@ class ExplicitFileProcessor:
         routing = self._parse_file_routing_from_args(args)
 
         # Phase 2: Auto-detect and enable tools based on file routing
-        enabled_tools, auto_feedback = self._resolve_tools(routing, explicit_tools)
+        enabled_tools, auto_feedback = self._resolve_tools(
+            routing, explicit_tools
+        )
 
         # Phase 3: Security validation for all files
         validated_routing = await self._validate_routing_security(routing)
 
         # Phase 4: Create validated file mappings
-        validated_files = self._create_validated_file_mappings(validated_routing)
+        validated_files = self._create_validated_file_mappings(
+            validated_routing
+        )
 
-        logger.debug(f"File routing processed: {len(enabled_tools)} tools enabled")
+        logger.debug(
+            f"File routing processed: {len(enabled_tools)} tools enabled"
+        )
 
         return ProcessingResult(
             routing=validated_routing,
@@ -99,7 +111,9 @@ class ExplicitFileProcessor:
             auto_enabled_feedback=auto_feedback,
         )
 
-    def _parse_file_routing_from_args(self, args: Dict[str, Any]) -> ExplicitRouting:
+    def _parse_file_routing_from_args(
+        self, args: Dict[str, Any]
+    ) -> ExplicitRouting:
         """Parse file routing specifications from CLI arguments.
 
         Args:
@@ -156,7 +170,9 @@ class ExplicitFileProcessor:
                 routing.code_interpreter_files.append(str(name_path_tuple))
 
         # Code interpreter file aliases (from --fca)
-        code_interpreter_file_aliases = args.get("code_interpreter_file_aliases", [])
+        code_interpreter_file_aliases = args.get(
+            "code_interpreter_file_aliases", []
+        )
         for name_path_tuple in code_interpreter_file_aliases:
             if isinstance(name_path_tuple, tuple):
                 name, path = name_path_tuple
@@ -184,7 +200,9 @@ class ExplicitFileProcessor:
 
         # Directory options remain unchanged (no aliasing needed for dirs)
         routing.template_dirs.extend(args.get("template_dirs", []))
-        routing.code_interpreter_dirs.extend(args.get("code_interpreter_dirs", []))
+        routing.code_interpreter_dirs.extend(
+            args.get("code_interpreter_dirs", [])
+        )
         routing.file_search_dirs.extend(args.get("file_search_dirs", []))
 
         # Handle tool-specific file routing
@@ -281,7 +299,9 @@ class ExplicitFileProcessor:
                 if not validated_path.is_file():
                     raise ValueError(f"Path is not a file: {file_path}")
             except Exception as e:
-                logger.error(f"Security validation failed for file {file_path}: {e}")
+                logger.error(
+                    f"Security validation failed for file {file_path}: {e}"
+                )
                 raise
 
         # Validate directories through security manager
@@ -321,18 +341,26 @@ class ExplicitFileProcessor:
 
         # Add files for each tool
         validated_files["template"].extend(routing.template_files)
-        validated_files["code-interpreter"].extend(routing.code_interpreter_files)
+        validated_files["code-interpreter"].extend(
+            routing.code_interpreter_files
+        )
         validated_files["file-search"].extend(routing.file_search_files)
 
         # Expand directories to individual files
         for dir_path in routing.template_dirs:
-            validated_files["template"].extend(self._expand_directory(dir_path))
+            validated_files["template"].extend(
+                self._expand_directory(dir_path)
+            )
 
         for dir_path in routing.code_interpreter_dirs:
-            validated_files["code-interpreter"].extend(self._expand_directory(dir_path))
+            validated_files["code-interpreter"].extend(
+                self._expand_directory(dir_path)
+            )
 
         for dir_path in routing.file_search_dirs:
-            validated_files["file-search"].extend(self._expand_directory(dir_path))
+            validated_files["file-search"].extend(
+                self._expand_directory(dir_path)
+            )
 
         # Remove duplicates while preserving order
         for tool in validated_files:
@@ -352,7 +380,9 @@ class ExplicitFileProcessor:
         try:
             path = Path(dir_path)
             if not path.exists() or not path.is_dir():
-                logger.warning(f"Directory not found or not a directory: {dir_path}")
+                logger.warning(
+                    f"Directory not found or not a directory: {dir_path}"
+                )
                 return []
 
             files = []
@@ -360,7 +390,9 @@ class ExplicitFileProcessor:
                 if file_path.is_file():
                     files.append(str(file_path))
 
-            logger.debug(f"Expanded directory {dir_path} to {len(files)} files")
+            logger.debug(
+                f"Expanded directory {dir_path} to {len(files)} files"
+            )
             return files
 
         except Exception as e:
@@ -390,13 +422,17 @@ class ExplicitFileProcessor:
                 "code_interpreter": len(routing.code_interpreter_dirs),
                 "file_search": len(routing.file_search_dirs),
             },
-            "total_files": sum(len(files) for files in result.validated_files.values()),
+            "total_files": sum(
+                len(files) for files in result.validated_files.values()
+            ),
             "auto_enabled_feedback": result.auto_enabled_feedback,
         }
 
         return summary
 
-    def validate_routing_consistency(self, routing: ExplicitRouting) -> List[str]:
+    def validate_routing_consistency(
+        self, routing: ExplicitRouting
+    ) -> List[str]:
         """Validate routing configuration for consistency issues.
 
         Args:

@@ -1,5 +1,7 @@
 """Tests for MCP (Model Context Protocol) integration."""
 
+from typing import Any, Dict, List
+
 import pytest
 
 from ostruct.cli.mcp_integration import (
@@ -38,7 +40,7 @@ class TestMCPConfiguration:
 
     def test_build_tools_array(self):
         """Test building tools array for Responses API."""
-        servers = [
+        servers: List[Dict[str, Any]] = [
             {"url": "https://mcp.deepwiki.com/sse", "label": "deepwiki"},
             {
                 "url": "https://api.example.com/mcp",
@@ -305,7 +307,7 @@ class TestMCPIntegration:
     def test_full_configuration_workflow(self):
         """Test complete configuration workflow."""
         # Create server configurations
-        servers = [
+        servers: List[Dict[str, Any]] = [
             {
                 "url": "https://mcp.deepwiki.com/sse",
                 "label": "deepwiki",

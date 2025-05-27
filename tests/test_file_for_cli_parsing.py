@@ -52,7 +52,9 @@ class TestFileForCLIParsing:
         # Verify Windows paths are preserved correctly
         assert "C:\\Users\\admin\\config.yaml" in routing.template_files
         assert "D:\\data\\analysis.csv" in routing.code_interpreter_files
-        assert "C:\\Program Files\\docs\\manual.pdf" in routing.file_search_files
+        assert (
+            "C:\\Program Files\\docs\\manual.pdf" in routing.file_search_files
+        )
 
     def test_old_syntax_would_have_failed(self):
         """Demonstrate that the old syntax would have been problematic."""
@@ -145,7 +147,7 @@ class TestFileForCLIParsing:
         """Test handling empty tool_files list."""
         processor = ExplicitFileProcessor(Mock())
 
-        args = {"tool_files": []}
+        args: Dict[str, Any] = {"tool_files": []}
         routing = processor._parse_file_routing_from_args(args)
 
         # Should create empty routing without errors

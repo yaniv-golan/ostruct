@@ -74,7 +74,7 @@ def list_models(format: str = "table", show_deprecated: bool = False) -> None:
             # Calculate dynamic column widths based on actual data
             max_id_width = (
                 max(len(model["id"]) for model in models_data)
-                if models_data
+                if len(models_data) > 0
                 else 8
             )
             max_id_width = max(max_id_width, len("Model ID"))

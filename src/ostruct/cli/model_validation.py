@@ -1,7 +1,7 @@
 """Model validation utilities for ostruct CLI."""
 
 import logging
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from openai_model_registry import (
     ModelNotSupportedError,
@@ -100,7 +100,9 @@ async def validate_model_and_schema(
     system_prompt: str,
     user_prompt: str,
     template_context: Dict[str, Any],
-) -> Tuple[Type[BaseModel], List[Dict[str, str]], int, ModelRegistry]:
+) -> Tuple[
+    Type[BaseModel], List[Dict[str, str]], int, Optional[ModelRegistry]
+]:
     """Validate model compatibility and schema, and check token limits.
 
     Args:

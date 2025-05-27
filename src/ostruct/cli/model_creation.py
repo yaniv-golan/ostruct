@@ -333,12 +333,22 @@ def create_dynamic_model(
                 )
 
                 # Return a RootModel that validates a list of the item model
-                class ArrayModel(RootModel[List[item_model]]):
+                class ArrayModel(RootModel[List[Any]]):
                     model_config = ConfigDict(
                         str_strip_whitespace=True,
                         validate_assignment=True,
                         use_enum_values=True,
                     )
+
+                    def __init__(self, root: List[Any]) -> None:
+                        # Validate each item against the item model
+                        validated_items = []
+                        for item in root:
+                            if isinstance(item, dict):
+                                validated_items.append(item_model(**item))
+                            else:
+                                validated_items.append(item_model(item))
+                        super().__init__(validated_items)
 
                 ArrayModel.__name__ = f"{base_name}List"
                 return ArrayModel
@@ -350,11 +360,11 @@ def create_dynamic_model(
                     "number": float,
                     "boolean": bool,
                 }
-                item_type = item_type_map.get(
-                    items_schema.get("type", "string"), str
-                )
+                # Get item type (not used in generic due to MyPy limitations)
+                item_type_map.get(items_schema.get("type", "string"), str)
 
-                class ArrayModel(RootModel[List[item_type]]):
+                # Use Any for the generic type to avoid MyPy issues with dynamic types
+                class ArrayModel(RootModel[List[Any]]):
                     model_config = ConfigDict(
                         str_strip_whitespace=True,
                         validate_assignment=True,

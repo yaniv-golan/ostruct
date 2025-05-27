@@ -91,7 +91,7 @@ class TestExplicitFileProcessor:
 
     def test_empty_tool_files(self):
         """Test handling of empty tool_files list."""
-        args = {"tool_files": []}
+        args: Dict[str, Any] = {"tool_files": []}
 
         routing = self.processor._parse_file_routing_from_args(args)
 
@@ -128,7 +128,9 @@ class TestExplicitFileProcessor:
 
         # Mock the validation methods
         with patch.object(
-            self.processor, "_validate_routing_security", new_callable=AsyncMock
+            self.processor,
+            "_validate_routing_security",
+            new_callable=AsyncMock,
         ) as mock_validate:
             mock_validate.return_value = ExplicitRouting(
                 template_files=["/test/config.yaml"],
@@ -225,7 +227,9 @@ class TestFileRoutingPerformance:
         processor = ExplicitFileProcessor(Mock())
 
         # Create a large list of files
-        large_file_list = [("template", f"/test/file_{i}.py") for i in range(100)]
+        large_file_list = [
+            ("template", f"/test/file_{i}.py") for i in range(100)
+        ]
 
         args = {"tool_files": large_file_list}
 

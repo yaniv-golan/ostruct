@@ -704,6 +704,8 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     from openai_model_registry.registry import ModelCapabilities  # noqa: F401
 
     class MockModelRegistry:
+        _instance: Optional["MockModelRegistry"] = None
+
         def __init__(self):
             self._capabilities = {
                 "gpt-4o": self._create_mock_capabilities(

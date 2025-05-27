@@ -164,8 +164,8 @@ async def process_mcp_configuration(args: CLIParams) -> MCPServerManager:
             server["allowed_tools"] = allowed_tools_map[server_label]
 
     # Create configuration and manager
-    config = MCPConfiguration(servers)
-    manager = MCPServerManager(config)
+    MCPConfiguration(servers)  # Validate configuration
+    manager = MCPServerManager(servers)
 
     # Pre-validate servers for CLI compatibility
     validation_errors = await manager.pre_validate_all_servers()
@@ -606,23 +606,24 @@ async def stream_structured_output(
             logger.error(error_msg)
             raise InvalidResponseFormatError(error_msg)
 
-        # For non-OpenAI errors, try to map them as well
+        # For non-OpenAI errors, create appropriate CLIErrors
         error_msg = str(e).lower()
         if (
             "context_length_exceeded" in error_msg
             or "maximum context length" in error_msg
         ):
-            mapped_error = APIErrorMapper.map_openai_error(e)
-            logger.error(f"Context length error mapped: {mapped_error}")
-            raise mapped_error
+            raise CLIError(
+                f"Context length exceeded: {str(e)}",
+                exit_code=ExitCode.API_ERROR,
+            )
         elif "rate_limit" in error_msg or "429" in str(e):
-            mapped_error = APIErrorMapper.map_openai_error(e)
-            logger.error(f"Rate limit error mapped: {mapped_error}")
-            raise mapped_error
+            raise CLIError(
+                f"Rate limit exceeded: {str(e)}", exit_code=ExitCode.API_ERROR
+            )
         elif "invalid_api_key" in error_msg:
-            mapped_error = APIErrorMapper.map_openai_error(e)
-            logger.error(f"Authentication error mapped: {mapped_error}")
-            raise mapped_error
+            raise CLIError(
+                f"Invalid API key: {str(e)}", exit_code=ExitCode.API_ERROR
+            )
         else:
             logger.error(f"Unmapped API error: {e}")
             raise APIResponseError(str(e))
@@ -770,13 +771,14 @@ async def execute_model(
                 )
                 if code_interpreter_manager:
                     # Get tool config from manager
+                    tool_config: Dict[str, Any] = {
+                        "type": "code_interpreter"
+                    }  # Basic tool config
                     code_interpreter_info = {
                         "manager": code_interpreter_manager,
-                        "tool_config": {
-                            "type": "code_interpreter"
-                        },  # Basic tool config
+                        "tool_config": tool_config,
                     }
-                    tools.append(code_interpreter_info["tool_config"])
+                    tools.append(tool_config)
 
         # Process File Search configuration if enabled
         if routing_result and "file-search" in routing_result.enabled_tools:
@@ -799,13 +801,14 @@ async def execute_model(
                 )
                 if file_search_manager:
                     # Get tool config from manager
+                    fs_tool_config: Dict[str, Any] = {
+                        "type": "file_search"
+                    }  # Basic tool config
                     file_search_info = {
                         "manager": file_search_manager,
-                        "tool_config": {
-                            "type": "file_search"
-                        },  # Basic tool config
+                        "tool_config": fs_tool_config,
                     }
-                    tools.append(file_search_info["tool_config"])
+                    tools.append(fs_tool_config)
 
         # Stream the response
         async for response in stream_structured_output(
@@ -864,7 +867,8 @@ async def execute_model(
                     "code_interpreter_download_dir", "./downloads"
                 )
                 manager = code_interpreter_info["manager"]
-                downloaded_files = await manager.download_generated_files(
+                # Type ignore since we know this is a CodeInterpreterManager
+                downloaded_files = await manager.download_generated_files(  # type: ignore[attr-defined]
                     response.file_ids, download_dir
                 )
                 if downloaded_files:
@@ -883,6 +887,7 @@ async def execute_model(
         result = await operation_manager.execute_with_safeguards(
             execute_main_operation, "model execution"
         )
+        # The result should be an ExitCode from execute_main_operation
         return result
     except (
         StreamInterruptedError,
@@ -904,7 +909,8 @@ async def execute_model(
         ):
             try:
                 manager = code_interpreter_info["manager"]
-                await manager.cleanup_uploaded_files()
+                # Type ignore since we know this is a CodeInterpreterManager
+                await manager.cleanup_uploaded_files()  # type: ignore[attr-defined]
                 logger.debug("Cleaned up Code Interpreter uploaded files")
             except Exception as e:
                 logger.warning(
@@ -915,7 +921,8 @@ async def execute_model(
         if file_search_info and args.get("file_search_cleanup", True):
             try:
                 manager = file_search_info["manager"]
-                await manager.cleanup_resources()
+                # Type ignore since we know this is a FileSearchManager
+                await manager.cleanup_resources()  # type: ignore[attr-defined]
                 logger.debug("Cleaned up File Search vector stores and files")
             except Exception as e:
                 logger.warning(
@@ -1009,13 +1016,22 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         )
 
         # Report validation results
-        capabilities = registry.get_capabilities(args["model"])
-        progress_reporter.report_validation_results(
-            schema_valid=True,  # If we got here, schema is valid
-            template_valid=True,  # If we got here, template is valid
-            token_count=total_tokens,
-            token_limit=capabilities.context_window,
-        )
+        if registry is not None:
+            capabilities = registry.get_capabilities(args["model"])
+            progress_reporter.report_validation_results(
+                schema_valid=True,  # If we got here, schema is valid
+                template_valid=True,  # If we got here, template is valid
+                token_count=total_tokens,
+                token_limit=capabilities.context_window,
+            )
+        else:
+            # Fallback for test environments where registry might be None
+            progress_reporter.report_validation_results(
+                schema_valid=True,  # If we got here, schema is valid
+                template_valid=True,  # If we got here, template is valid
+                token_count=total_tokens,
+                token_limit=128000,  # Default fallback
+            )
 
         # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):
@@ -1024,21 +1040,26 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             )
 
             # Calculate cost estimate
-            estimated_cost = calculate_cost_estimate(
-                model=args["model"],
-                input_tokens=total_tokens,
-                output_tokens=capabilities.max_output_tokens,
-                registry=registry,
-            )
+            if registry is not None:
+                capabilities = registry.get_capabilities(args["model"])
+                estimated_cost = calculate_cost_estimate(
+                    model=args["model"],
+                    input_tokens=total_tokens,
+                    output_tokens=capabilities.max_output_tokens,
+                    registry=registry,
+                )
 
-            # Enhanced dry-run output with cost estimation
-            cost_breakdown = format_cost_breakdown(
-                model=args["model"],
-                input_tokens=total_tokens,
-                output_tokens=capabilities.max_output_tokens,
-                total_cost=estimated_cost,
-                context_window=capabilities.context_window,
-            )
+                # Enhanced dry-run output with cost estimation
+                cost_breakdown = format_cost_breakdown(
+                    model=args["model"],
+                    input_tokens=total_tokens,
+                    output_tokens=capabilities.max_output_tokens,
+                    total_cost=estimated_cost,
+                    context_window=capabilities.context_window,
+                )
+            else:
+                # Fallback for test environments
+                cost_breakdown = f"Token Analysis\nModel: {args['model']}\nInput tokens: {total_tokens}\nRegistry not available in test environment"
             print(cost_breakdown)
 
             if args.get("verbose", False):

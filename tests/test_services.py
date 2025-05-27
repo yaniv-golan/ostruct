@@ -21,11 +21,14 @@ from ostruct.cli.services import (
 )
 
 
-class MockMCPManager:
+class MockMCPManager(MCPManagerProtocol):
     """Mock MCP manager for testing."""
 
     def get_tools_for_responses_api(self) -> List[dict]:
         return [{"type": "function", "function": {"name": "test_tool"}}]
+
+    async def cleanup(self) -> None:
+        pass
 
     async def health_check(self) -> ServiceHealth:
         return ServiceHealth(
@@ -35,13 +38,16 @@ class MockMCPManager:
         )
 
 
-class MockCodeInterpreterManager:
+class MockCodeInterpreterManager(CodeInterpreterManagerProtocol):
     """Mock code interpreter manager for testing."""
 
     async def upload_files_for_code_interpreter(
         self, files: List[str]
     ) -> List[str]:
         return ["file_id_1", "file_id_2"]
+
+    async def cleanup(self) -> None:
+        pass
 
     async def cleanup_uploaded_files(self) -> None:
         pass
@@ -53,7 +59,7 @@ class MockCodeInterpreterManager:
         )
 
 
-class MockFileSearchManager:
+class MockFileSearchManager(FileSearchManagerProtocol):
     """Mock file search manager for testing."""
 
     async def upload_files_to_vector_store(
@@ -63,6 +69,9 @@ class MockFileSearchManager:
             "vector_store_id": vector_store_id,
             "file_ids": ["file_1", "file_2"],
         }
+
+    async def cleanup(self) -> None:
+        pass
 
     async def cleanup_resources(self) -> None:
         pass
@@ -184,7 +193,7 @@ class TestServiceContainer:
     @pytest.mark.asyncio
     async def test_service_not_configured(self, mock_client, mock_factory):
         """Test behavior when services are not configured."""
-        args = {}  # No services configured
+        args: Dict[str, Any] = {}  # No services configured
         container = ServiceContainer(mock_client, args, mock_factory)
 
         mcp_manager = await container.get_mcp_manager()
@@ -270,7 +279,7 @@ class TestDefaultServiceFactory:
         assert hasattr(default_factory, "create_file_search_manager")
 
         # Test method signatures (they should be callable)
-        args = {}
+        args: Dict[str, Any] = {}
 
         # These will import process_*_configuration functions, but won't create managers
         # since the args don't have the required configuration
@@ -315,6 +324,10 @@ async def test_service_container_integration():
     fs_manager = await container.get_file_search_manager()
 
     # 3. Verify managers work
+    assert mcp_manager is not None
+    assert ci_manager is not None
+    assert fs_manager is not None
+
     assert (
         mcp_manager.get_tools_for_responses_api()[0]["function"]["name"]
         == "test_tool"

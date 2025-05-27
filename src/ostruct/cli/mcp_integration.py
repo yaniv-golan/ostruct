@@ -7,7 +7,7 @@ with the OpenAI Responses API for enhanced functionality in ostruct.
 import logging
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 # Import requests for HTTP functionality (used in production)
@@ -15,6 +15,9 @@ try:
     import requests
 except ImportError:
     requests = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    from .services import ServiceHealth
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +94,9 @@ class MCPClient:
         # Check for dangerous schemes
         dangerous_schemes = ["ftp", "file", "javascript", "data"]
         if parsed.scheme in dangerous_schemes:
-            raise ValueError(f"Dangerous URL scheme not allowed: {parsed.scheme}")
+            raise ValueError(
+                f"Dangerous URL scheme not allowed: {parsed.scheme}"
+            )
 
         # Require HTTP/HTTPS
         if parsed.scheme not in ["http", "https"]:
@@ -100,9 +105,13 @@ class MCPClient:
         # Enforce HTTPS except for localhost
         if parsed.scheme != "https":
             if parsed.hostname not in ["localhost", "127.0.0.1", "::1"]:
-                raise ValueError(f"HTTPS required for non-localhost URLs: {url}")
+                raise ValueError(
+                    f"HTTPS required for non-localhost URLs: {url}"
+                )
 
-    def _validate_input(self, query: str, context: Optional[str] = None) -> None:
+    def _validate_input(
+        self, query: str, context: Optional[str] = None
+    ) -> None:
         """Validate and sanitize input parameters.
 
         Args:
@@ -165,14 +174,18 @@ class MCPClient:
             text = re.sub(r"javascript:", "", text, flags=re.IGNORECASE)
 
             # Remove other dangerous patterns
-            text = re.sub(r"on\w+\s*=", "", text, flags=re.IGNORECASE)  # Event handlers
+            text = re.sub(
+                r"on\w+\s*=", "", text, flags=re.IGNORECASE
+            )  # Event handlers
 
             return text
 
         def sanitize_dict(data: Any) -> Any:
             """Recursively sanitize dictionary values."""
             if isinstance(data, dict):
-                return {key: sanitize_dict(value) for key, value in data.items()}
+                return {
+                    key: sanitize_dict(value) for key, value in data.items()
+                }
             elif isinstance(data, list):
                 return [sanitize_dict(item) for item in data]
             elif isinstance(data, str):
@@ -239,7 +252,9 @@ class MCPClient:
         self.validate_request_size(request_data)
 
         # Make actual HTTP request with security headers
-        logger.debug(f"Sending secure request to MCP server: {self.server_url}")
+        logger.debug(
+            f"Sending secure request to MCP server: {self.server_url}"
+        )
 
         if requests is None:
             # Fallback for when requests is not available
@@ -272,7 +287,8 @@ class MCPClient:
             # Ensure error messages don't leak sensitive information
             error_msg = str(e).lower()
             if any(
-                word in error_msg for word in ["password", "token", "key", "secret"]
+                word in error_msg
+                for word in ["password", "token", "key", "secret"]
             ):
                 raise Exception("Connection error occurred")
             raise
@@ -362,7 +378,9 @@ class MCPConfiguration:
         for server in self.servers:
             # Validate required fields first
             if not server.get("url"):
-                errors.append("Server configuration missing required 'url' field")
+                errors.append(
+                    "Server configuration missing required 'url' field"
+                )
                 continue  # Skip other checks if no URL
 
             # Check for CLI-incompatible settings
@@ -458,7 +476,9 @@ class MCPServerManager:
         for server in self.config.servers:
             server_url = server.get("url")
             if server_url:
-                is_reachable = await self.validate_server_connectivity(server_url)
+                is_reachable = await self.validate_server_connectivity(
+                    server_url
+                )
                 if not is_reachable:
                     errors.append(f"MCP server {server_url} is not reachable")
 
@@ -471,3 +491,51 @@ class MCPServerManager:
             List of tool configurations ready for Responses API
         """
         return self.config.build_tools_array()
+
+    async def cleanup(self) -> None:
+        """Clean up MCP server connections and resources."""
+        # Clear connected servers list
+        self.connected_servers.clear()
+        logger.debug("MCP server manager cleanup completed")
+
+    async def health_check(self) -> "ServiceHealth":
+        """Check health status of MCP server manager.
+
+        Returns:
+            ServiceHealth with status and details
+        """
+        from .services import ServiceHealth, ServiceStatus
+
+        try:
+            # Basic health check - validate configuration
+            config_errors = self.config.validate_servers()
+            if config_errors:
+                return ServiceHealth(
+                    status=ServiceStatus.UNHEALTHY,
+                    message=f"MCP configuration errors: {'; '.join(config_errors)}",
+                    details={"config_errors": config_errors},
+                )
+
+            # Check server connectivity
+            connectivity_errors = await self.pre_validate_all_servers()
+            if connectivity_errors:
+                return ServiceHealth(
+                    status=ServiceStatus.DEGRADED,
+                    message=f"Some MCP servers unreachable: {'; '.join(connectivity_errors)}",
+                    details={"connectivity_errors": connectivity_errors},
+                )
+
+            return ServiceHealth(
+                status=ServiceStatus.HEALTHY,
+                message="MCP manager is healthy",
+                details={
+                    "servers_configured": len(self.servers),
+                    "servers_connected": len(self.connected_servers),
+                },
+            )
+        except Exception as e:
+            return ServiceHealth(
+                status=ServiceStatus.UNHEALTHY,
+                message=f"MCP health check failed: {e}",
+                details={"error": str(e)},
+            )

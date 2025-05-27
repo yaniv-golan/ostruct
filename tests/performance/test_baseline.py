@@ -1,7 +1,9 @@
 """Performance baseline tests for ostruct functionality."""
 
 import asyncio
+import queue
 import time
+from typing import Any, Dict, Tuple
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -348,7 +350,7 @@ class TestPerformanceRegression:
         for path in test_paths:
             try:
                 # Simulate path validation
-                security_manager.is_path_safe(path)
+                security_manager.is_path_allowed(path)
             except Exception:
                 # Some validation might fail in test environment
                 pass
@@ -421,10 +423,9 @@ class TestScalabilityBaselines:
 
     def test_concurrent_request_handling(self):
         """Test handling of concurrent requests."""
-        import queue
         import threading
 
-        results = queue.Queue()
+        results: queue.Queue[Tuple[int, float]] = queue.Queue()
 
         def simulate_request(request_id):
             start = time.time()
@@ -445,7 +446,7 @@ class TestScalabilityBaselines:
             thread.join()
 
         # Check results
-        total_time = 0
+        total_time = 0.0
         completed_requests = 0
 
         while not results.empty():
@@ -472,7 +473,7 @@ class TestStressBaselines:
         """Test memory usage baseline."""
         import os
 
-        import psutil
+        import psutil  # type: ignore[import-untyped]
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -524,7 +525,7 @@ class TestStressBaselines:
     def test_large_schema_processing(self):
         """Test processing of large schemas."""
         # Create a large schema
-        large_schema = {"type": "object", "properties": {}}
+        large_schema: Dict[str, Any] = {"type": "object", "properties": {}}
 
         # Add many properties
         for i in range(100):

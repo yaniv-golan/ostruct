@@ -34,7 +34,9 @@ class TestOstructConfig:
         assert config.operation.require_approval == "never"
 
         # Invalid approval setting
-        with pytest.raises(ValueError, match="require_approval must be one of"):
+        with pytest.raises(
+            ValueError, match="require_approval must be one of"
+        ):
             OstructConfig(operation={"require_approval": "invalid"})
 
     @pytest.mark.no_fs
