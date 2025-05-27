@@ -36,7 +36,6 @@ dev = [
     "flake8>=6.0,<7.0",
     "flake8-pyproject>=1.2.3,<2.0",
     "black==24.8.0",
-    "isort>=5.13,<6.0",
     "mypy>=1.0,<2.0",
     "pytest-asyncio>=0.25.2,<1.0",
     "pytest-mock>=3.14.0,<4.0",
@@ -107,11 +106,6 @@ include = ["py.typed"]
     preview = false
     required-version = "24.8.0"
 
-    [tool.isort]
-    profile = "black"
-    multi_line_output = 3
-    line_length = 79
-
     [tool.pytest.ini_options]
     asyncio_mode = "strict"
     testpaths = ["tests"]
@@ -126,3 +120,22 @@ include = ["py.typed"]
 
     [tool.ruff]
     target-version = "py310"
+    fix = true
+    line-length = 79  # Match Black's setting
+
+    [tool.ruff.lint]
+    select = [
+        "E",   # pycodestyle errors
+        "W",   # pycodestyle warnings
+        "F",   # Pyflakes
+        "I",   # isort (import sorting)
+    ]
+    ignore = [
+        "E501",  # Line too long (handled by Black)
+    ]
+
+    [tool.ruff.lint.isort]
+    # Black-compatible settings
+    force-single-line = false
+    combine-as-imports = true
+    split-on-trailing-comma = true

@@ -18,13 +18,6 @@ repos:
         types: [python]
         exclude: ^examples/
 
--   repo: https://github.com/pycqa/isort
-    rev: 6.0.1
-    hooks:
-    -   id: isort
-        name: isort (python)
-        exclude: ^examples/
-
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.3.4
     hooks:
