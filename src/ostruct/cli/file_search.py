@@ -57,7 +57,7 @@ class FileSearchManager:
                     f"Creating vector store '{name}' (attempt {attempt + 1}/{max_retries + 1})"
                 )
 
-                vector_store = await self.client.beta.vector_stores.create(
+                vector_store = await self.client.beta.vector_stores.create(  # type: ignore[attr-defined]
                     name=name,
                     expires_after={
                         "anchor": "last_active_at",
@@ -69,7 +69,7 @@ class FileSearchManager:
                 logger.debug(
                     f"Successfully created vector store: {vector_store.id}"
                 )
-                return vector_store.id
+                return vector_store.id  # type: ignore[no-any-return]
 
             except Exception as e:
                 last_exception = e
@@ -226,7 +226,7 @@ class FileSearchManager:
                     f"Adding {len(file_ids)} files to vector store - attempt {attempt + 1}/{max_retries + 1}"
                 )
 
-                await self.client.beta.vector_stores.file_batches.create(
+                await self.client.beta.vector_stores.file_batches.create(  # type: ignore[attr-defined]
                     vector_store_id=vector_store_id, file_ids=file_ids
                 )
 
@@ -277,7 +277,7 @@ class FileSearchManager:
 
         while time.time() - start_time < timeout:
             try:
-                vector_store = await self.client.beta.vector_stores.retrieve(
+                vector_store = await self.client.beta.vector_stores.retrieve(  # type: ignore[attr-defined]
                     vector_store_id
                 )
 
@@ -358,7 +358,7 @@ class FileSearchManager:
         """
         for vs_id in vector_store_ids:
             try:
-                await self.client.beta.vector_stores.delete(vs_id)
+                await self.client.beta.vector_stores.delete(vs_id)  # type: ignore[attr-defined]
                 logger.debug(f"Cleaned up vector store: {vs_id}")
             except Exception as e:
                 logger.warning(f"Failed to clean up vector store {vs_id}: {e}")

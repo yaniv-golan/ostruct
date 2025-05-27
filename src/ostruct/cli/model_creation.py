@@ -345,9 +345,13 @@ def create_dynamic_model(
                         validated_items = []
                         for item in root:
                             if isinstance(item, dict):
-                                validated_items.append(item_model(**item))
+                                validated_items.append(
+                                    item_model.model_validate(item)
+                                )
                             else:
-                                validated_items.append(item_model(item))
+                                validated_items.append(
+                                    item_model.model_validate(item)
+                                )
                         super().__init__(validated_items)
 
                 ArrayModel.__name__ = f"{base_name}List"
@@ -364,15 +368,15 @@ def create_dynamic_model(
                 item_type_map.get(items_schema.get("type", "string"), str)
 
                 # Use Any for the generic type to avoid MyPy issues with dynamic types
-                class ArrayModel(RootModel[List[Any]]):
+                class PrimitiveArrayModel(RootModel[List[Any]]):
                     model_config = ConfigDict(
                         str_strip_whitespace=True,
                         validate_assignment=True,
                         use_enum_values=True,
                     )
 
-                ArrayModel.__name__ = f"{base_name}List"
-                return ArrayModel
+                PrimitiveArrayModel.__name__ = f"{base_name}List"
+                return PrimitiveArrayModel
 
         # Process schema properties into fields
         properties = schema.get("properties", {})

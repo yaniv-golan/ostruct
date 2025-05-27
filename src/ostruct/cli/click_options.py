@@ -41,14 +41,12 @@ class FileRouteOption(Option):
     3. Equals alias: -ft code_file=config.yaml (name=path format)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.multiple = True
         self.nargs = 1  # We'll manually handle the variable args
 
-    def full_process_value(
-        self, ctx: Context, param: Parameter, value: Any
-    ) -> Any:
+    def full_process_value(self, ctx: Context, param: Parameter, value: Any) -> Any:  # type: ignore[override]
         """Override the main value processing to handle our custom logic."""
         if value is None:
             return []
@@ -104,19 +102,17 @@ def file_route_option(
     name: str,
     help_text: str,
     route_type: str = "template",
-):
+) -> Callable[[Any], Any]:
     """Helper to create a FileRouteOption with consistent settings."""
 
-    def decorator(f):
+    def decorator(f: Any) -> Any:
         return click.option(
             *param_decls,
             cls=FileRouteOption,
             multiple=True,
             metavar="[NAME] PATH",
             help=help_text,
-            shell_complete=click.Path(
-                exists=True, file_okay=True, dir_okay=False
-            ).shell_complete,
+            # Remove shell_complete as it's not available on Path objects
         )(f)
 
     return decorator

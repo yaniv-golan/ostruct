@@ -87,11 +87,9 @@ def run(
             "task": None,
             "schema_file": schema_file,
         }
-        # Add only valid keys from kwargs
-        valid_keys = set(CLIParams.__annotations__.keys())
+        # Add all kwargs to params (type ignore for dynamic key assignment)
         for k, v in kwargs.items():
-            if k in valid_keys:
-                params[k] = v
+            params[k] = v  # type: ignore[literal-required]
 
         # Apply configuration defaults if values not explicitly provided
         # Check for command-level config option first, then group-level
@@ -108,7 +106,7 @@ def run(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            exit_code = loop.run_until_complete(run_cli_async(params))
+            exit_code = loop.run_until_complete(run_cli_async(params))  # type: ignore[arg-type]
             sys.exit(int(exit_code))
         except SchemaValidationError as e:
             # Log the error with full context

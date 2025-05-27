@@ -453,14 +453,14 @@ async def validate_inputs(
     # Process explicit file routing (T2.4)
     logger.debug("Processing explicit file routing")
     file_processor = ExplicitFileProcessor(security_manager)
-    routing_result = await file_processor.process_file_routing(args)
+    routing_result = await file_processor.process_file_routing(args)  # type: ignore[arg-type]
 
     # Display auto-enablement feedback to user
     if routing_result.auto_enabled_feedback:
         print(routing_result.auto_enabled_feedback)
 
     # Store routing result in args for use by tool processors
-    args["_routing_result"] = routing_result
+    args["_routing_result"] = routing_result  # type: ignore[typeddict-unknown-key]
 
     task_template = validate_task_template(
         args.get("task"), args.get("task_file")

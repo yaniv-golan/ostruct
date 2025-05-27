@@ -1,6 +1,10 @@
 """Type definitions for ostruct CLI."""
 
-from typing import List, Optional, Tuple, TypedDict
+from pathlib import Path
+from typing import List, Optional, Tuple, TypedDict, Union
+
+# Import FileRoutingResult from validators
+FileRoutingResult = List[Tuple[Optional[str], Union[str, Path]]]
 
 
 class CLIParams(TypedDict, total=False):
@@ -48,27 +52,27 @@ class CLIParams(TypedDict, total=False):
     mcp_allowed_tools: List[str]
     mcp_require_approval: str
     mcp_headers: Optional[str]
-    code_interpreter_files: List[str]
+    code_interpreter_files: FileRoutingResult  # Fixed: was List[str]
     code_interpreter_dirs: List[str]
     code_interpreter_download_dir: str
     code_interpreter_cleanup: bool
-    file_search_files: List[str]
+    file_search_files: FileRoutingResult  # Fixed: was List[str]
     file_search_dirs: List[str]
     file_search_vector_store_name: str
     file_search_cleanup: bool
     file_search_retry_count: int
     file_search_timeout: float
-    template_files: List[str]
+    template_files: FileRoutingResult  # Fixed: was List[str]
     template_dirs: List[str]
     template_file_aliases: List[
-        Tuple[str, str]
-    ]  # List of (name, path) tuples from --fta
+        Tuple[str, Union[str, Path]]
+    ]  # Fixed: was List[Tuple[str, str]]
     code_interpreter_file_aliases: List[
-        Tuple[str, str]
-    ]  # List of (name, path) tuples from --fca
+        Tuple[str, Union[str, Path]]
+    ]  # Fixed: was List[Tuple[str, str]]
     file_search_file_aliases: List[
-        Tuple[str, str]
-    ]  # List of (name, path) tuples from --fsa
+        Tuple[str, Union[str, Path]]
+    ]  # Fixed: was List[Tuple[str, str]]
     tool_files: List[
         Tuple[str, str]
     ]  # List of (tool, path) tuples from --file-for

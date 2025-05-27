@@ -68,7 +68,7 @@ class TestPublicAPICompatibility:
         try:
             # This will likely raise an exception due to missing file,
             # but we're testing the signature exists
-            validate_schema_file("nonexistent.json", None)
+            validate_schema_file("nonexistent.json", False)
         except Exception:
             # Function exists and has expected signature
             pass

@@ -398,9 +398,13 @@ def collect_template_files(
     except Exception as e:
         # Check for nested security errors
         if hasattr(e, "__cause__") and hasattr(e.__cause__, "__class__"):
-            if "SecurityError" in str(e.__cause__.__class__):
+            if "SecurityError" in str(e.__cause__.__class__) and isinstance(
+                e.__cause__, BaseException
+            ):
                 raise e.__cause__
-            if "PathSecurityError" in str(e.__cause__.__class__):
+            if "PathSecurityError" in str(
+                e.__cause__.__class__
+            ) and isinstance(e.__cause__, BaseException):
                 raise e.__cause__
         # Check if this is a wrapped security error
         if isinstance(e.__cause__, PathSecurityError):
@@ -539,15 +543,15 @@ async def create_template_context_from_routing(
         template_file_tuples = args.get("template_files", [])
         for name_path_tuple in template_file_tuples:
             if isinstance(name_path_tuple, tuple):
-                custom_name, file_path = name_path_tuple
-                file_path = str(file_path)
+                custom_name, file_path_raw = name_path_tuple
+                file_path = str(file_path_raw)
 
                 if custom_name is None:
                     # Auto-generate name for single-arg form: -ft config.yaml
                     file_name = _generate_template_variable_name(file_path)
                 else:
                     # Use custom name for two-arg form: -ft code_file src/main.py
-                    file_name = custom_name
+                    file_name = str(custom_name)
 
                 if file_path not in seen_files:
                     files_tuples.append((file_name, file_path))
@@ -557,9 +561,11 @@ async def create_template_context_from_routing(
         template_file_aliases = args.get("template_file_aliases", [])
         for name_path_tuple in template_file_aliases:
             if isinstance(name_path_tuple, tuple):
-                custom_name, file_path = name_path_tuple
-                file_path = str(file_path)
-                file_name = custom_name  # Always use custom name for aliases
+                custom_name, file_path_raw = name_path_tuple
+                file_path = str(file_path_raw)
+                file_name = str(
+                    custom_name
+                )  # Always use custom name for aliases
 
                 if file_path not in seen_files:
                     files_tuples.append((file_name, file_path))
@@ -576,15 +582,15 @@ async def create_template_context_from_routing(
         code_interpreter_file_tuples = args.get("code_interpreter_files", [])
         for name_path_tuple in code_interpreter_file_tuples:
             if isinstance(name_path_tuple, tuple):
-                custom_name, file_path = name_path_tuple
-                file_path = str(file_path)
+                custom_name, file_path_raw = name_path_tuple
+                file_path = str(file_path_raw)
 
                 if custom_name is None:
                     # Auto-generate name: -fc data.csv
                     file_name = _generate_template_variable_name(file_path)
                 else:
                     # Use custom name: -fc dataset data.csv
-                    file_name = custom_name
+                    file_name = str(custom_name)
 
                 if file_path not in seen_files:
                     files_tuples.append((file_name, file_path))
@@ -596,9 +602,11 @@ async def create_template_context_from_routing(
         )
         for name_path_tuple in code_interpreter_file_aliases:
             if isinstance(name_path_tuple, tuple):
-                custom_name, file_path = name_path_tuple
-                file_path = str(file_path)
-                file_name = custom_name  # Always use custom name for aliases
+                custom_name, file_path_raw = name_path_tuple
+                file_path = str(file_path_raw)
+                file_name = str(
+                    custom_name
+                )  # Always use custom name for aliases
 
                 if file_path not in seen_files:
                     files_tuples.append((file_name, file_path))
@@ -615,15 +623,15 @@ async def create_template_context_from_routing(
         file_search_file_tuples = args.get("file_search_files", [])
         for name_path_tuple in file_search_file_tuples:
             if isinstance(name_path_tuple, tuple):
-                custom_name, file_path = name_path_tuple
-                file_path = str(file_path)
+                custom_name, file_path_raw = name_path_tuple
+                file_path = str(file_path_raw)
 
                 if custom_name is None:
                     # Auto-generate name: -fs docs.pdf
                     file_name = _generate_template_variable_name(file_path)
                 else:
                     # Use custom name: -fs manual docs.pdf
-                    file_name = custom_name
+                    file_name = str(custom_name)
 
                 if file_path not in seen_files:
                     files_tuples.append((file_name, file_path))
@@ -633,9 +641,11 @@ async def create_template_context_from_routing(
         file_search_file_aliases = args.get("file_search_file_aliases", [])
         for name_path_tuple in file_search_file_aliases:
             if isinstance(name_path_tuple, tuple):
-                custom_name, file_path = name_path_tuple
-                file_path = str(file_path)
-                file_name = custom_name  # Always use custom name for aliases
+                custom_name, file_path_raw = name_path_tuple
+                file_path = str(file_path_raw)
+                file_name = str(
+                    custom_name
+                )  # Always use custom name for aliases
 
                 if file_path not in seen_files:
                     files_tuples.append((file_name, file_path))
@@ -650,7 +660,9 @@ async def create_template_context_from_routing(
 
         # Process files from explicit routing
         files_dict = collect_files(
-            file_mappings=files_tuples,
+            file_mappings=cast(
+                List[Tuple[str, Union[str, Path]]], files_tuples
+            ),
             security_manager=security_manager,
         )
 
@@ -661,9 +673,15 @@ async def create_template_context_from_routing(
 
         if legacy_files or legacy_dirs or legacy_patterns:
             legacy_files_dict = collect_files(
-                file_mappings=legacy_files,
-                dir_mappings=legacy_dirs,
-                pattern_mappings=legacy_patterns,
+                file_mappings=cast(
+                    List[Tuple[str, Union[str, Path]]], legacy_files
+                ),
+                dir_mappings=cast(
+                    List[Tuple[str, Union[str, Path]]], legacy_dirs
+                ),
+                pattern_mappings=cast(
+                    List[Tuple[str, Union[str, Path]]], legacy_patterns
+                ),
                 dir_recursive=args.get("recursive", False),
                 security_manager=security_manager,
             )
@@ -686,7 +704,10 @@ async def create_template_context_from_routing(
             pass
 
         context = create_template_context(
-            files=files_dict,
+            files=cast(
+                Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
+                files_dict,
+            ),
             variables=variables,
             json_variables=json_variables,
             security_manager=security_manager,
