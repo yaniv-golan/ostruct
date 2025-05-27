@@ -4,9 +4,9 @@ import json
 import os
 from unittest.mock import AsyncMock, Mock, patch
 
+from ostruct.cli.cli import create_cli
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from ostruct.cli.cli import create_cli
 from tests.test_cli import CliTestRunner
 
 # Test workspace base directory

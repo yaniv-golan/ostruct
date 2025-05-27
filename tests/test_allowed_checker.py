@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from ostruct.cli.security import is_path_in_allowed_dirs
 
 

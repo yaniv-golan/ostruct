@@ -6,7 +6,6 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from ostruct.cli.registry_updates import (
     UPDATE_CHECK_ENV_VAR,
     UPDATE_CHECK_INTERVAL_SECONDS,

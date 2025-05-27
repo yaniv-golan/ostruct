@@ -5,8 +5,6 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.mcp_integration import MCPClient, MCPServerManager
 from ostruct.cli.security import (
     DirectoryNotFoundError,
@@ -14,6 +12,7 @@ from ostruct.cli.security import (
     SecurityErrorReasons,
     SecurityManager,
 )
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 def test_security_manager_init(fs: FakeFilesystem) -> None:

@@ -40,11 +40,10 @@ import tiktoken
 from _pytest.config import Config
 from _pytest.terminal import TerminalReporter
 from dotenv import load_dotenv
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.base_errors import OstructFileNotFoundError
 from ostruct.cli.errors import PathSecurityError
 from ostruct.cli.security import SecurityManager
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 pytest_plugins = ["pytest_asyncio"]
 

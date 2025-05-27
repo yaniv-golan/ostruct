@@ -6,8 +6,6 @@ from typing import Any, Dict, List, Set, TypedDict, Union, cast
 import jinja2
 import pytest
 from jinja2 import Environment
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.errors import TaskTemplateError
 from ostruct.cli.file_utils import FileInfo
 from ostruct.cli.security import SecurityManager
@@ -16,6 +14,7 @@ from ostruct.cli.template_validation import (
     SafeUndefined,
     validate_template_placeholders,
 )
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 class FileMapping(TypedDict, total=False):

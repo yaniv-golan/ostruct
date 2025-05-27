@@ -3,9 +3,8 @@
 from io import StringIO
 from unittest.mock import patch
 
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.progress import ProgressContext
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 def test_stdout_output() -> None:

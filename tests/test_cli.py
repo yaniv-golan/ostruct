@@ -10,8 +10,6 @@ from unittest.mock import Mock, patch
 import click
 import pytest
 from click.testing import CliRunner, Result  # noqa: F401 - used in type hints
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.cli import create_cli
 from ostruct.cli.errors import (
     CLIError,
@@ -23,6 +21,7 @@ from ostruct.cli.file_list import FileInfo, FileInfoList
 from ostruct.cli.file_utils import collect_files
 from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_processor import create_template_context
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 # Temporary stub for T1.1 migration

@@ -89,7 +89,7 @@ class TestPublicAPICompatibility:
         """Test that OstructRunner has the expected interface."""
         # Test class instantiation
         args = {"model": "gpt-4o", "task": "test"}
-        runner = OstructRunner(args)
+        runner = OstructRunner(args)  # type: ignore[arg-type]
         assert runner is not None
 
         # Test expected methods exist

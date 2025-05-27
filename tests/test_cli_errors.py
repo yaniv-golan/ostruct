@@ -5,8 +5,6 @@ import os
 from typing import Type, TypedDict
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.cli import handle_error
 from ostruct.cli.errors import (
     CLIError,
@@ -29,6 +27,8 @@ from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_utils import collect_files_from_directory
 from ostruct.cli.path_utils import validate_path_mapping
 from ostruct.cli.security.errors import PathSecurityError, SecurityErrorReasons
+from pyfakefs.fake_filesystem import FakeFilesystem
+
 from tests.conftest import MockSecurityManager
 
 

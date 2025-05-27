@@ -4,8 +4,8 @@ import sys
 from unittest.mock import MagicMock, patch
 
 from openai_model_registry import ModelRegistry
-
 from ostruct.cli.registry_updates import check_for_registry_updates
+
 from tests.test_registry_updates import (
     RegistryUpdateResult,
     RegistryUpdateStatus,

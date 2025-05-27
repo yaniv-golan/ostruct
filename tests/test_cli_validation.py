@@ -4,8 +4,6 @@ import json
 from typing import Any, Dict, List, Literal, Optional, Type, Union, cast
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli import (
     validate_path_mapping,
     validate_schema_file,
@@ -25,6 +23,7 @@ from ostruct.cli.errors import (
 )
 from ostruct.cli.schema_validation import validate_openai_schema
 from ostruct.cli.template_validation import validate_template_placeholders
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 # Variable mapping tests

@@ -3,7 +3,6 @@
 from typing import Any, Dict, List
 
 import pytest
-
 from ostruct.cli.mcp_integration import (
     MCPClient,
     MCPConfiguration,

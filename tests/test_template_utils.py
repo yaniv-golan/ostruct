@@ -4,14 +4,13 @@ import os
 from typing import Any, Dict, Generator, List, TypedDict, Union, cast
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-from pyfakefs.fake_filesystem_unittest import Patcher
-
 from ostruct.cli.errors import TaskTemplateError
 from ostruct.cli.file_utils import FileInfo
 from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_utils import render_template
 from ostruct.cli.template_validation import validate_template_placeholders
+from pyfakefs.fake_filesystem import FakeFilesystem
+from pyfakefs.fake_filesystem_unittest import Patcher
 
 
 class ConfigDict(TypedDict, total=False):

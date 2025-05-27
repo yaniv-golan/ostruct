@@ -6,11 +6,10 @@ import time
 from typing import Generator
 
 import pytest
+from ostruct.cli.cache_manager import CacheEntry, FileCache
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pyfakefs.fake_filesystem_unittest import Patcher
 from typing_extensions import TypeAlias
-
-from ostruct.cli.cache_manager import CacheEntry, FileCache
 
 # Type alias for the fixture
 FSFixture: TypeAlias = Generator[FakeFilesystem, None, None]

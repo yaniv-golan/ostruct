@@ -18,7 +18,7 @@ class TestOstructRunner:
             "dry_run": True,
         }
 
-        runner = OstructRunner(args)
+        runner = OstructRunner(args)  # type: ignore[arg-type]
         assert runner is not None
         assert runner.args == args
 
@@ -35,7 +35,7 @@ class TestOstructRunner:
             "file_search_dirs": ["./docs"],
         }
 
-        runner = OstructRunner(args)
+        runner = OstructRunner(args)  # type: ignore[arg-type]
         summary = runner.get_configuration_summary()
 
         assert summary["model"] == "gpt-4o"
@@ -56,7 +56,7 @@ class TestOstructRunner:
             "dry_run": False,
         }
 
-        runner = OstructRunner(args)
+        runner = OstructRunner(args)  # type: ignore[arg-type]
         summary = runner.get_configuration_summary()
 
         assert summary["model"] == "gpt-3.5-turbo"
@@ -70,7 +70,7 @@ class TestOstructRunner:
     def test_runner_interface_exists(self):
         """Test that all expected methods exist on OstructRunner."""
         args = {"model": "gpt-4o", "task": "test"}
-        runner = OstructRunner(args)
+        runner = OstructRunner(args)  # type: ignore[arg-type]
 
         # Check that all expected async methods exist
         assert hasattr(runner, "run")

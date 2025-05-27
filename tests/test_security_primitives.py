@@ -8,10 +8,9 @@ internal error handling.
 from pathlib import Path
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.security import PathSecurityError, SecurityErrorReasons
 from ostruct.cli.security.symlink_resolver import _resolve_symlink
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 def test_internal_broken_symlink(fs: FakeFilesystem) -> None:

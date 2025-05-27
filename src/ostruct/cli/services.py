@@ -9,10 +9,12 @@ from typing import Any, Dict, List, Optional, Protocol
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from .types import CLIParams
+
 logger = logging.getLogger(__name__)
 
 # Type alias for CLI parameters
-CLIParams = Dict[str, Any]
+# CLIParams imported from types module
 
 
 class ServiceStatus(Enum):

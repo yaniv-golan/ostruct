@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from openai import AsyncOpenAI
-
 from ostruct.cli.services import (
     CodeInterpreterManagerProtocol,
     CodeInterpreterServiceConfiguration,
@@ -19,6 +18,7 @@ from ostruct.cli.services import (
     ServiceHealth,
     ServiceStatus,
 )
+from ostruct.cli.types import CLIParams
 
 
 class MockMCPManager(MCPManagerProtocol):
@@ -92,12 +92,12 @@ class MockServiceFactory:
         self.file_search_manager = MockFileSearchManager()
 
     async def create_mcp_manager(
-        self, args: Dict[str, Any]
+        self, args: CLIParams
     ) -> Optional[MCPManagerProtocol]:
         return self.mcp_manager if args.get("mcp_servers") else None
 
     async def create_code_interpreter_manager(
-        self, args: Dict[str, Any], client: AsyncOpenAI
+        self, args: CLIParams, client: AsyncOpenAI
     ) -> Optional[CodeInterpreterManagerProtocol]:
         return (
             self.code_interpreter_manager
@@ -106,7 +106,7 @@ class MockServiceFactory:
         )
 
     async def create_file_search_manager(
-        self, args: Dict[str, Any], client: AsyncOpenAI
+        self, args: CLIParams, client: AsyncOpenAI
     ) -> Optional[FileSearchManagerProtocol]:
         return self.file_search_manager if args.get("file_search") else None
 
@@ -132,7 +132,7 @@ class TestServiceContainer:
             "code_interpreter": True,
             "file_search": True,
         }
-        return ServiceContainer(mock_client, args, mock_factory)
+        return ServiceContainer(mock_client, args, mock_factory)  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_mcp_manager_creation(self, service_container):
@@ -174,7 +174,7 @@ class TestServiceContainer:
     async def test_lazy_loading(self, mock_client, mock_factory):
         """Test that managers are only created when requested."""
         args = {"mcp_servers": ["server1"]}
-        container = ServiceContainer(mock_client, args, mock_factory)
+        container = ServiceContainer(mock_client, args, mock_factory)  # type: ignore[arg-type]
 
         # Initially no managers should be created
         assert container._mcp_manager is None
@@ -194,7 +194,7 @@ class TestServiceContainer:
     async def test_service_not_configured(self, mock_client, mock_factory):
         """Test behavior when services are not configured."""
         args: Dict[str, Any] = {}  # No services configured
-        container = ServiceContainer(mock_client, args, mock_factory)
+        container = ServiceContainer(mock_client, args, mock_factory)  # type: ignore[arg-type]
 
         mcp_manager = await container.get_mcp_manager()
         assert mcp_manager is None
@@ -283,17 +283,16 @@ class TestDefaultServiceFactory:
 
         # These will import process_*_configuration functions, but won't create managers
         # since the args don't have the required configuration
-        mcp_manager = await default_factory.create_mcp_manager(args)
+        mcp_manager = await default_factory.create_mcp_manager(args)  # type: ignore[arg-type]
         assert mcp_manager is None  # No mcp_servers configured
 
         ci_manager = await default_factory.create_code_interpreter_manager(
-            args, mock_client
+            args,
+            mock_client,  # type: ignore[arg-type]
         )
         assert ci_manager is None  # No code_interpreter configured
 
-        fs_manager = await default_factory.create_file_search_manager(
-            args, mock_client
-        )
+        fs_manager = await default_factory.create_file_search_manager(args, mock_client)  # type: ignore[arg-type]
         assert fs_manager is None  # No file_search configured
 
 
@@ -310,7 +309,7 @@ async def test_service_container_integration():
     }
 
     # Create service container
-    container = ServiceContainer(mock_client, args, mock_factory)
+    container = ServiceContainer(mock_client, args, mock_factory)  # type: ignore[arg-type]
 
     # Test the complete workflow
     # 1. Check configuration
@@ -441,7 +440,7 @@ class TestServiceContainerConfiguration:
             "file_search": True,
         }
 
-        container = ServiceContainer(mock_client, args)
+        container = ServiceContainer(mock_client, args)  # type: ignore[arg-type]
 
         # Check that configurations were validated
         mcp_config = container.get_validated_config("mcp")
@@ -463,7 +462,7 @@ class TestServiceContainerConfiguration:
         }
 
         # Should not raise exception, but log warning
-        container = ServiceContainer(mock_client, args)
+        container = ServiceContainer(mock_client, args)  # type: ignore[arg-type]
 
         # Configuration should be None for invalid config
         mcp_config = container.get_validated_config("mcp")
@@ -482,7 +481,7 @@ class TestServiceContainerConfiguration:
             "file_search": True,
         }
 
-        container = ServiceContainer(mock_client, args, mock_factory)
+        container = ServiceContainer(mock_client, args, mock_factory)  # type: ignore[arg-type]
 
         # Test individual health checks
         mcp_health = await container.check_service_health("mcp")
@@ -522,7 +521,7 @@ class TestServiceContainerConfiguration:
             # file_search not configured
         }
 
-        container = ServiceContainer(mock_client, args, mock_factory)
+        container = ServiceContainer(mock_client, args, mock_factory)  # type: ignore[arg-type]
 
         # Get service info before creating managers
         service_info = container.get_service_info()

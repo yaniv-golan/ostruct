@@ -227,7 +227,7 @@ def validate_task_template(
 
 
 async def process_templates(
-    args: Dict[str, Any],
+    args: CLIParams,
     task_template: str,
     template_context: Dict[str, Any],
     env: jinja2.Environment,

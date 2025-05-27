@@ -4,8 +4,6 @@ import logging
 import os
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.errors import OstructFileNotFoundError, PathSecurityError
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
@@ -15,6 +13,8 @@ from ostruct.cli.file_utils import (
     collect_files_from_pattern,
 )
 from ostruct.cli.security.errors import SecurityErrorReasons
+from pyfakefs.fake_filesystem import FakeFilesystem
+
 from tests.conftest import MockSecurityManager
 
 

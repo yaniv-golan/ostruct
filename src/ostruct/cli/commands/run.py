@@ -106,7 +106,7 @@ def run(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            exit_code = loop.run_until_complete(run_cli_async(params))  # type: ignore[arg-type]
+            exit_code = loop.run_until_complete(run_cli_async(params))
             sys.exit(int(exit_code))
         except SchemaValidationError as e:
             # Log the error with full context

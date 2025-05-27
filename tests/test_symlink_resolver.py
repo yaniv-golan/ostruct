@@ -4,14 +4,13 @@ import os
 from pathlib import Path
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.base_errors import OstructFileNotFoundError
 from ostruct.cli.security import (
     PathSecurityError,
     SecurityErrorReasons,
     SecurityManager,
 )
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 def test_resolve_symlink_basic(fs: FakeFilesystem) -> None:

@@ -5,7 +5,6 @@ import tempfile
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
 from ostruct.cli.code_interpreter import CodeInterpreterManager
 
 

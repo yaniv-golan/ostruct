@@ -6,7 +6,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 import yaml
-
 from ostruct.cli.config import OstructConfig, get_config
 
 

@@ -6,9 +6,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 from click.testing import CliRunner
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.cli import create_cli
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 @pytest.fixture

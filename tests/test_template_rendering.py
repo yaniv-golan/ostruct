@@ -5,8 +5,6 @@ from typing import Any, Dict
 
 import pytest
 from jinja2 import Environment, StrictUndefined
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.errors import TaskTemplateError
 from ostruct.cli.file_utils import FileInfo
 from ostruct.cli.security import SecurityManager
@@ -15,6 +13,7 @@ from ostruct.cli.template_io import read_file
 from ostruct.cli.template_rendering import render_template
 from ostruct.cli.template_schema import DotDict
 from ostruct.cli.template_validation import validate_template_placeholders
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 def test_create_jinja_env() -> None:

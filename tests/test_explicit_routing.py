@@ -4,7 +4,6 @@ from typing import Any, Dict
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
 from ostruct.cli.explicit_file_processor import (
     ExplicitFileProcessor,
     ExplicitRouting,

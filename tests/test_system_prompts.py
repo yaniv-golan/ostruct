@@ -3,7 +3,6 @@
 from typing import Any
 
 import pytest
-
 from ostruct.cli.errors import SystemPromptError
 from ostruct.cli.template_processor import (
     DEFAULT_SYSTEM_PROMPT,

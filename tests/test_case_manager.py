@@ -4,7 +4,6 @@ import threading
 from pathlib import Path
 
 import pytest
-
 from ostruct.cli.security import CaseManager
 
 

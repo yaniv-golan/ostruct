@@ -5,11 +5,10 @@ import os
 from typing import Dict, List, Union
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.security import SecurityManager
 from ostruct.cli.template_io import extract_template_metadata, read_file
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 # Set up logging for tests
 logger = logging.getLogger("ostruct.cli")

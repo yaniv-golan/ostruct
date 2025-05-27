@@ -3,11 +3,10 @@
 import threading
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
 from ostruct.cli.security import SecurityManager
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 @pytest.fixture

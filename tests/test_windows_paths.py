@@ -3,7 +3,6 @@
 import os
 
 import pytest
-
 from ostruct.cli.security.windows_paths import (
     is_windows_path,
     resolve_windows_symlink,

@@ -10,12 +10,11 @@ scenarios are correctly classified with the appropriate error types:
 from pathlib import Path
 
 import pytest
-from pyfakefs.fake_filesystem import FakeFilesystem
-
 from ostruct.cli.security import PathSecurityError, SecurityErrorReasons
 from ostruct.cli.security.symlink_resolver import (
     _resolve_symlink as resolve_symlink,
 )
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 
 def verify_error_type(

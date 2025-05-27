@@ -7,7 +7,6 @@ from typing import Any, Dict, Tuple
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
 from ostruct.cli.config import OstructConfig
 
 

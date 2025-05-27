@@ -13,7 +13,6 @@ on tiktoken's encoding functionality.
 from typing import Any
 
 import pytest
-
 from ostruct.cli.token_validation import validate_token_limits
 
 
