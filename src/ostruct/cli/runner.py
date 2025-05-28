@@ -21,6 +21,7 @@ from .errors import (
     StreamParseError,
 )
 from .exit_codes import ExitCode
+from .explicit_file_processor import ProcessingResult
 from .file_search import FileSearchManager
 from .mcp_integration import MCPConfiguration, MCPServerManager
 from .progress_reporting import (
@@ -262,18 +263,21 @@ async def process_code_interpreter_configuration(
         )
 
         # Build tool configuration
-        tool_config = manager.build_tool_config(file_ids)
-
-        # Get container limits info for user awareness
-        limits_info = manager.get_container_limits_info()
-        logger.debug(f"Code Interpreter container limits: {limits_info}")
-
-        return {
-            "tool_config": tool_config,
-            "manager": manager,
-            "file_ids": file_ids,
-            "limits_info": limits_info,
-        }
+        # Cast to concrete CodeInterpreterManager to access build_tool_config
+        concrete_ci_manager = manager
+        if hasattr(concrete_ci_manager, "build_tool_config"):
+            ci_tool_config = concrete_ci_manager.build_tool_config(file_ids)
+            logger.debug(f"Code Interpreter tool config: {ci_tool_config}")
+            return {
+                "tool_config": ci_tool_config,
+                "manager": manager,
+                "file_ids": file_ids,
+            }
+        else:
+            logger.warning(
+                "Code Interpreter manager does not have build_tool_config method"
+            )
+            return None
 
     except Exception as e:
         logger.error(f"Failed to configure Code Interpreter: {e}")
@@ -513,6 +517,10 @@ async def stream_structured_output(
         logger.debug("Combined prompt: %s", combined_prompt)
         logger.debug("Parameters: %s", json.dumps(stream_kwargs, indent=2))
         logger.debug("Schema: %s", json.dumps(strict_schema, indent=2))
+        logger.debug("Tools being passed to API: %s", tools)
+        print(
+            f"DEBUG: Complete API params: {json.dumps(api_params, indent=2, default=str)}"
+        )
 
         # Use the Responses API with streaming
         response = await client.responses.create(**api_params)
@@ -759,10 +767,18 @@ async def execute_model(
 
         # Get routing result from explicit file processor
         routing_result = args.get("_routing_result")
+        if routing_result is not None and not isinstance(
+            routing_result, ProcessingResult
+        ):
+            routing_result = None  # Invalid type, treat as None
+        routing_result_typed: Optional[ProcessingResult] = routing_result
 
         # Process Code Interpreter configuration if enabled
-        if routing_result and "code-interpreter" in routing_result.enabled_tools:  # type: ignore[attr-defined]
-            code_interpreter_files = routing_result.validated_files.get(  # type: ignore[attr-defined]
+        if (
+            routing_result_typed
+            and "code-interpreter" in routing_result_typed.enabled_tools
+        ):
+            code_interpreter_files = routing_result_typed.validated_files.get(
                 "code-interpreter", []
             )
             if code_interpreter_files:
@@ -782,19 +798,39 @@ async def execute_model(
                     await ci_services.get_code_interpreter_manager()
                 )
                 if code_interpreter_manager:
-                    # Get tool config from manager
-                    tool_config: Dict[str, Any] = {
-                        "type": "code_interpreter"
-                    }  # Basic tool config
-                    code_interpreter_info = {
-                        "manager": code_interpreter_manager,
-                        "tool_config": tool_config,
-                    }
-                    tools.append(tool_config)
+                    # Get the uploaded file IDs from the manager
+                    if (
+                        hasattr(code_interpreter_manager, "uploaded_file_ids")
+                        and code_interpreter_manager.uploaded_file_ids
+                    ):
+                        file_ids = code_interpreter_manager.uploaded_file_ids
+                        # Cast to concrete CodeInterpreterManager to access build_tool_config
+                        concrete_ci_manager = code_interpreter_manager
+                        if hasattr(concrete_ci_manager, "build_tool_config"):
+                            ci_tool_config = (
+                                concrete_ci_manager.build_tool_config(file_ids)
+                            )
+                            logger.debug(
+                                f"Code Interpreter tool config: {ci_tool_config}"
+                            )
+                            code_interpreter_info = {
+                                "manager": code_interpreter_manager,
+                                "tool_config": ci_tool_config,
+                            }
+                            tools.append(ci_tool_config)
+                    else:
+                        logger.warning(
+                            "Code Interpreter manager has no uploaded file IDs"
+                        )
 
         # Process File Search configuration if enabled
-        if routing_result and "file-search" in routing_result.enabled_tools:  # type: ignore[attr-defined]
-            file_search_files = routing_result.validated_files.get("file-search", [])  # type: ignore[attr-defined]
+        if (
+            routing_result_typed
+            and "file-search" in routing_result_typed.enabled_tools
+        ):
+            file_search_files = routing_result_typed.validated_files.get(
+                "file-search", []
+            )
             if file_search_files:
                 # Override args with routed files for File Search processing
                 fs_args = dict(args)
@@ -810,17 +846,41 @@ async def execute_model(
                     await fs_services.get_file_search_manager()
                 )
                 if file_search_manager:
-                    # Get tool config from manager
-                    fs_tool_config: Dict[str, Any] = {
-                        "type": "file_search"
-                    }  # Basic tool config
-                    file_search_info = {
-                        "manager": file_search_manager,
-                        "tool_config": fs_tool_config,
-                    }
-                    tools.append(fs_tool_config)
+                    # Get the vector store ID from the manager's created vector stores
+                    # The most recent one should be the one we need
+                    if (
+                        hasattr(file_search_manager, "created_vector_stores")
+                        and file_search_manager.created_vector_stores
+                    ):
+                        vector_store_id = (
+                            file_search_manager.created_vector_stores[-1]
+                        )
+                        # Cast to concrete FileSearchManager to access build_tool_config
+                        concrete_fs_manager = file_search_manager
+                        if hasattr(concrete_fs_manager, "build_tool_config"):
+                            fs_tool_config = (
+                                concrete_fs_manager.build_tool_config(
+                                    vector_store_id
+                                )
+                            )
+                            logger.debug(
+                                f"File Search tool config: {fs_tool_config}"
+                            )
+                            file_search_info = {
+                                "manager": file_search_manager,
+                                "tool_config": fs_tool_config,
+                            }
+                            tools.append(fs_tool_config)
+                    else:
+                        logger.warning(
+                            "File Search manager has no created vector stores"
+                        )
+
+        # Debug log the final tools array
+        print(f"DEBUG: Final tools array being passed to API: {tools}")
 
         # Stream the response
+        logger.debug(f"Tools being passed to API: {tools}")
         async for response in stream_structured_output(
             client=client,
             model=args["model"],
@@ -993,10 +1053,21 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
 
         # Report file routing decisions
         routing_result = args.get("_routing_result")
-        if routing_result:
-            template_files = routing_result.validated_files.get("template", [])  # type: ignore[attr-defined]
-            container_files = routing_result.validated_files.get("code-interpreter", [])  # type: ignore[attr-defined]
-            vector_files = routing_result.validated_files.get("file-search", [])  # type: ignore[attr-defined]
+        if routing_result is not None and not isinstance(
+            routing_result, ProcessingResult
+        ):
+            routing_result = None  # Invalid type, treat as None
+        routing_result_typed: Optional[ProcessingResult] = routing_result
+        if routing_result_typed:
+            template_files = routing_result_typed.validated_files.get(
+                "template", []
+            )
+            container_files = routing_result_typed.validated_files.get(
+                "code-interpreter", []
+            )
+            vector_files = routing_result_typed.validated_files.get(
+                "file-search", []
+            )
             progress_reporter.report_file_routing(
                 template_files, container_files, vector_files
             )

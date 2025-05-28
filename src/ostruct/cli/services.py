@@ -226,6 +226,11 @@ class CodeInterpreterManagerProtocol(ToolManagerProtocol):
         """Clean up uploaded files."""
         ...
 
+    @abstractmethod
+    def build_tool_config(self, file_ids: List[str]) -> Dict[str, Any]:
+        """Build Code Interpreter tool configuration."""
+        ...
+
 
 class FileSearchManagerProtocol(ToolManagerProtocol):
     """Protocol for file search managers."""
@@ -240,6 +245,11 @@ class FileSearchManagerProtocol(ToolManagerProtocol):
     @abstractmethod
     async def cleanup_resources(self) -> None:
         """Clean up vector store resources."""
+        ...
+
+    @abstractmethod
+    def build_tool_config(self, vector_store_id: str) -> Dict[str, Any]:
+        """Build File Search tool configuration."""
         ...
 
 

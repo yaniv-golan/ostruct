@@ -146,9 +146,7 @@ class TestPerformanceBaselines:
             # Mock vector store operations
             mock_vector_store = Mock()
             mock_vector_store.id = "vs-123"
-            mock_client.beta.vector_stores.create.return_value = (
-                mock_vector_store
-            )
+            mock_client.vector_stores.create.return_value = mock_vector_store
 
             # Mock file upload to vector store
             mock_file = Mock()

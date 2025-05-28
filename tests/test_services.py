@@ -44,15 +44,29 @@ class MockCodeInterpreterManager(CodeInterpreterManagerProtocol):
     async def upload_files_for_code_interpreter(
         self, files: List[str]
     ) -> List[str]:
+        """Mock file upload."""
         return ["file_id_1", "file_id_2"]
 
     async def cleanup(self) -> None:
+        """Mock cleanup."""
         pass
 
     async def cleanup_uploaded_files(self) -> None:
+        """Mock cleanup uploaded files."""
         pass
 
+    def build_tool_config(self, file_ids: List[str]) -> Dict[str, Any]:
+        """Mock build tool config."""
+        return {
+            "type": "code_interpreter",
+            "container": {
+                "type": "auto",
+                "file_ids": file_ids,
+            },
+        }
+
     async def health_check(self) -> ServiceHealth:
+        """Mock health check."""
         return ServiceHealth(
             status=ServiceStatus.HEALTHY,
             message="Code Interpreter manager is healthy",
@@ -65,18 +79,29 @@ class MockFileSearchManager(FileSearchManagerProtocol):
     async def upload_files_to_vector_store(
         self, files: List[str], vector_store_id: str
     ) -> Dict[str, Any]:
+        """Mock file upload to vector store."""
         return {
             "vector_store_id": vector_store_id,
             "file_ids": ["file_1", "file_2"],
         }
 
     async def cleanup(self) -> None:
+        """Mock cleanup."""
         pass
 
     async def cleanup_resources(self) -> None:
+        """Mock cleanup resources."""
         pass
 
+    def build_tool_config(self, vector_store_id: str) -> Dict[str, Any]:
+        """Mock build tool config."""
+        return {
+            "type": "file_search",
+            "vector_store_ids": [vector_store_id],
+        }
+
     async def health_check(self) -> ServiceHealth:
+        """Mock health check."""
         return ServiceHealth(
             status=ServiceStatus.HEALTHY,
             message="File Search manager is healthy",
@@ -292,7 +317,9 @@ class TestDefaultServiceFactory:
         )
         assert ci_manager is None  # No code_interpreter configured
 
-        fs_manager = await default_factory.create_file_search_manager(args, mock_client)  # type: ignore[arg-type]
+        fs_manager = await default_factory.create_file_search_manager(
+            args, mock_client
+        )  # type: ignore[arg-type]
         assert fs_manager is None  # No file_search configured
 
 
