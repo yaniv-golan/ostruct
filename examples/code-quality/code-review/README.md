@@ -5,6 +5,7 @@ This use case demonstrates how to perform automated code reviews using ostruct C
 ## Features
 
 ### Core Analysis
+
 - Multi-file code analysis in a single pass
 - Structured output following a defined schema
 - Security vulnerability detection
@@ -13,6 +14,7 @@ This use case demonstrates how to perform automated code reviews using ostruct C
 - Documentation completeness analysis
 
 ### Enhanced Multi-Tool Integration
+
 - **Code Interpreter**: Execute code snippets for dynamic analysis
 - **File Search**: Search documentation for context and best practices
 - **Explicit File Routing**: Optimize processing through targeted file routing
@@ -58,7 +60,7 @@ These commands work exactly as before:
    # Traditional pattern (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
      -d code examples/security \
-     --dir-recursive \
+     -R \
      --sys-file prompts/system.txt
    ```
 
@@ -77,7 +79,7 @@ These commands work exactly as before:
    # Traditional with output file (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
      -d code examples/style \
-     --dir-recursive \
+     -R \
      --sys-file prompts/system.txt \
      --output-file style_review.json
    ```
@@ -85,6 +87,7 @@ These commands work exactly as before:
 ### Enhanced Multi-Tool Usage
 
 #### Code Interpreter Integration
+
 Upload code for execution and dynamic analysis:
 
 ```bash
@@ -107,6 +110,7 @@ ostruct run prompts/task.j2 schemas/code_review.json \
 ```
 
 #### File Search for Documentation Context
+
 Search documentation for best practices and context:
 
 ```bash
@@ -125,6 +129,7 @@ ostruct run prompts/task.j2 schemas/code_review.json \
 ```
 
 #### Multi-Tool Combination
+
 Combine Code Interpreter and File Search for comprehensive analysis:
 
 ```bash
@@ -139,6 +144,7 @@ ostruct run prompts/task.j2 schemas/code_review.json \
 ```
 
 #### Configuration-Driven Workflows
+
 Use persistent configuration for consistent reviews:
 
 ```bash
@@ -187,18 +193,20 @@ The review results follow a structured schema defined in `schemas/code_review.js
 ### GitHub Actions
 
 #### Traditional Integration (Still Works)
+
 ```yaml
 - name: Run Code Review
   run: |
     ostruct run prompts/task.j2 schemas/code_review.json \
       -d code . \
-      --dir-recursive \
+      -R \
       -p code "*.{py,js,ts}" \
       --sys-file prompts/system.txt \
       --output-file review_results.json
 ```
 
 #### Enhanced Multi-Tool Integration
+
 ```yaml
 - name: Enhanced Code Review
   env:
@@ -232,16 +240,18 @@ The review results follow a structured schema defined in `schemas/code_review.js
 ### GitLab CI
 
 #### Traditional CI (Still Works)
+
 ```yaml
 code_review:
   script:
     - ostruct run prompts/task.j2 schemas/code_review.json \
         -d code . \
-        --dir-recursive \
+        -R \
         --sys-file prompts/system.txt
 ```
 
 #### Enhanced CI with Multi-Tool Analysis
+
 ```yaml
 enhanced_code_review:
   stage: analysis

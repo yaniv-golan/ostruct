@@ -5,6 +5,7 @@ This example demonstrates how to migrate existing CI/CD scripts and automation w
 ## Overview
 
 This guide covers:
+
 - **CI/CD Script Migration**: Update existing automation scripts
 - **Configuration Management**: Centralized settings for automation
 - **Cost Controls**: Prevent runaway costs in automated environments
@@ -47,6 +48,7 @@ This guide covers:
 ### Original GitHub Actions
 
 **before/github-actions.yml**:
+
 ```yaml
 name: Traditional Analysis
 on: [push, pull_request]
@@ -74,11 +76,12 @@ jobs:
             -f code=src/ \
             -d tests=tests/ \
             -d docs=docs/ \
-            --dir-recursive \
+            -R \
             --output-file results.json
 ```
 
 **Issues with traditional approach:**
+
 - All files processed identically (inefficient)
 - No cost controls
 - Limited error handling
@@ -88,6 +91,7 @@ jobs:
 ### Original GitLab CI
 
 **before/gitlab-ci.yml**:
+
 ```yaml
 stages:
   - analysis
@@ -99,7 +103,7 @@ analyze:
     - pip install ostruct-cli
   script:
     # Traditional single-command approach
-    - ostruct run analysis.j2 schema.json -d source=. --dir-recursive
+    - ostruct run analysis.j2 schema.json -d source=. -R
   artifacts:
     paths:
       - results.json
@@ -110,6 +114,7 @@ analyze:
 ### Original Jenkins Pipeline
 
 **before/jenkins-pipeline.groovy**:
+
 ```groovy
 pipeline {
     agent any
@@ -125,7 +130,7 @@ pipeline {
                 sh '''
                     ostruct run analysis.j2 schema.json \
                       -d code=. \
-                      --dir-recursive
+                      -R
                 '''
             }
         }
@@ -138,6 +143,7 @@ pipeline {
 ### Enhanced GitHub Actions
 
 **after/enhanced-github.yml**:
+
 ```yaml
 name: Enhanced Multi-Tool Analysis
 on:
@@ -295,6 +301,7 @@ jobs:
 ### Enhanced GitLab CI
 
 **after/enhanced-gitlab.yml**:
+
 ```yaml
 stages:
   - setup
@@ -393,6 +400,7 @@ cost_monitoring:
 ### Enhanced Jenkins Pipeline
 
 **after/enhanced-jenkins.groovy**:
+
 ```groovy
 pipeline {
     agent any
@@ -583,6 +591,7 @@ limits:
 ### Basic CI Configuration
 
 **configs/ci-basic.yaml**:
+
 ```yaml
 models:
   default: gpt-4o
@@ -607,6 +616,7 @@ limits:
 ### Advanced CI Configuration
 
 **configs/ci-advanced.yaml**:
+
 ```yaml
 models:
   default: gpt-4o
@@ -634,6 +644,7 @@ limits:
 ### Security Scan Configuration
 
 **configs/security-scan.yaml**:
+
 ```yaml
 models:
   default: gpt-4o
@@ -663,6 +674,7 @@ limits:
 ### CI Migration Tool
 
 **scripts/migrate-ci.py**:
+
 ```python
 #!/usr/bin/env python3
 """Migrate existing CI/CD scripts to enhanced ostruct usage."""
@@ -768,22 +780,26 @@ if __name__ == "__main__":
 ## Benefits of Enhanced Automation
 
 ### Performance Improvements
+
 - **50-70% token reduction** through explicit file routing
 - **Faster execution** with parallel tool processing
 - **Better error handling** with retry logic and health checks
 
 ### Cost Benefits
+
 - **Configurable cost limits** prevent runaway charges
 - **Real-time cost monitoring** in CI/CD pipelines
 - **Optimized processing** reduces overall API usage
 
 ### Quality Improvements
+
 - **Multi-tool integration** provides richer analysis
 - **Code execution** enables dynamic analysis
 - **Documentation context** improves recommendations
 - **External knowledge** through MCP integration
 
 ### Operational Benefits
+
 - **Centralized configuration** ensures consistency
 - **Health checks** prevent failures
 - **Detailed reporting** improves visibility
@@ -792,12 +808,14 @@ if __name__ == "__main__":
 ## Migration Checklist
 
 ### Pre-Migration
+
 - [ ] Document current CI/CD workflows
 - [ ] Measure baseline performance and costs
 - [ ] Identify file types and routing opportunities
 - [ ] Test enhanced commands locally
 
 ### Migration Steps
+
 - [ ] Create configuration files for different environments
 - [ ] Update CI/CD scripts with enhanced syntax
 - [ ] Add health checks and error handling
@@ -805,6 +823,7 @@ if __name__ == "__main__":
 - [ ] Add quality gates and reporting
 
 ### Post-Migration Validation
+
 - [ ] Compare performance metrics
 - [ ] Verify cost improvements
 - [ ] Test failure scenarios

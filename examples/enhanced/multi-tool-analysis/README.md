@@ -5,6 +5,7 @@ This example demonstrates the power of ostruct's enhanced multi-tool integration
 ## Overview
 
 This example shows how to leverage multiple tools simultaneously for:
+
 - **Code Interpreter**: Data analysis and Python execution
 - **File Search**: Document retrieval and context search
 - **MCP Server**: External repository documentation access
@@ -117,6 +118,7 @@ ostruct --config config/ostruct.yaml run prompts/analysis.j2 schemas/analysis_re
 ## Configuration File Example
 
 **config/ostruct.yaml**:
+
 ```yaml
 models:
   default: gpt-4o
@@ -143,28 +145,36 @@ limits:
 ## Benefits Demonstrated
 
 ### 1. Tool Synergy
+
 Each tool contributes unique capabilities:
+
 - **Code Interpreter**: Executes analysis scripts, generates visualizations
 - **File Search**: Provides contextual documentation and best practices
 - **MCP Server**: Accesses external repository knowledge
 - **Template Files**: Handle configuration and metadata
 
 ### 2. Optimized Processing
+
 Explicit file routing ensures:
+
 - Data files go to Code Interpreter for analysis
 - Documentation goes to File Search for context
 - Configuration stays in template context
 - No redundant processing
 
 ### 3. Cost Efficiency
+
 Smart routing reduces costs by:
+
 - Only processing files with appropriate tools
 - Avoiding unnecessary uploads
 - Using configuration to set limits
 - Preventing token waste
 
 ### 4. Enhanced Results
+
 Multi-tool integration provides:
+
 - Executable analysis with real results
 - Contextual documentation insights
 - External knowledge integration
@@ -183,14 +193,16 @@ This pattern is ideal for:
 ## Migration from Traditional Usage
 
 ### Before (Traditional)
+
 ```bash
 # All files processed the same way
 ostruct run analysis.j2 schema.json \
   -d all_files . \
-  --dir-recursive
+  -R
 ```
 
 ### After (Enhanced)
+
 ```bash
 # Optimized routing for better results
 ostruct run analysis.j2 schema.json \

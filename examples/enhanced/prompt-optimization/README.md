@@ -5,6 +5,7 @@ This example demonstrates how ostruct's enhanced features automatically optimize
 ## Overview
 
 This example showcases ostruct's built-in optimization capabilities:
+
 - **Automatic Template Optimization**: Smart prompt structuring and token management
 - **Tool-Specific Routing**: Optimal file distribution across Code Interpreter, File Search, and templates
 - **Progress Reporting**: Real-time visibility into optimization decisions
@@ -48,6 +49,7 @@ This example showcases ostruct's built-in optimization capabilities:
 ### 1. Explicit File Routing vs. Generic Processing
 
 #### Before: Traditional Approach
+
 ```bash
 # All files processed the same way - inefficient
 ostruct run templates/analysis.j2 schemas/analysis_result.json \
@@ -59,12 +61,14 @@ ostruct run templates/analysis.j2 schemas/analysis_result.json \
 ```
 
 **Issues with traditional approach:**
+
 - All files loaded into template context (high token usage)
 - No tool-specific optimization
 - Redundant processing
 - Higher costs
 
 #### After: Optimized Multi-Tool Approach
+
 ```bash
 # Explicit routing for optimal processing
 ostruct run templates/smart-analysis.j2 schemas/analysis_result.json \
@@ -76,6 +80,7 @@ ostruct run templates/smart-analysis.j2 schemas/analysis_result.json \
 ```
 
 **Benefits of optimized approach:**
+
 - **Code Interpreter**: Processes data and code efficiently
 - **File Search**: Searches documentation context
 - **Template**: Handles configuration only
@@ -84,7 +89,9 @@ ostruct run templates/smart-analysis.j2 schemas/analysis_result.json \
 ### 2. Smart Template Design
 
 #### Before: Monolithic Template
+
 **templates/traditional/basic-analysis.j2**:
+
 ```jinja
 Analyze the following data and code:
 
@@ -104,12 +111,15 @@ Please provide a comprehensive analysis.
 ```
 
 **Problems:**
+
 - All content in prompt context
 - No tool-specific optimization
 - Inefficient token usage
 
 #### After: Multi-Tool Optimized Template
+
 **templates/optimized/smart-analysis.j2**:
+
 ```jinja
 ---
 system_prompt: You are an expert data analyst with access to code execution and document search capabilities.
@@ -143,6 +153,7 @@ Provide analysis with:
 ```
 
 **Advantages:**
+
 - Tool-specific content handling
 - Reduced template token usage
 - Better separation of concerns
@@ -151,7 +162,9 @@ Provide analysis with:
 ### 3. Configuration-Driven Optimization
 
 #### Cost-Focused Configuration
+
 **configs/cost-focused.yaml**:
+
 ```yaml
 models:
   default: gpt-4o  # Cost-effective model
@@ -173,7 +186,9 @@ limits:
 ```
 
 #### Performance-Focused Configuration
+
 **configs/optimized.yaml**:
+
 ```yaml
 models:
   default: gpt-4o
@@ -199,6 +214,7 @@ limits:
 ### Example 1: Data Analysis Optimization
 
 #### Traditional Usage
+
 ```bash
 # Inefficient: All data in template context
 time ostruct run before-after/traditional/data-analysis.j2 schemas/analysis_result.json \
@@ -209,6 +225,7 @@ time ostruct run before-after/traditional/data-analysis.j2 schemas/analysis_resu
 ```
 
 #### Optimized Usage
+
 ```bash
 # Efficient: Tool-specific routing
 time ostruct --config configs/optimized.yaml run before-after/optimized/efficient-analysis.j2 schemas/analysis_result.json \
@@ -221,17 +238,19 @@ time ostruct --config configs/optimized.yaml run before-after/optimized/efficien
 ### Example 2: Code Review Optimization
 
 #### Traditional Code Review
+
 ```bash
 # All files in template - token-heavy
 ostruct run before-after/traditional/code-review.j2 schemas/analysis_result.json \
   -d source=src/ \
   -d tests=tests/ \
   -d docs=docs/ \
-  --dir-recursive \
+  -R \
   --output-file traditional_review.json
 ```
 
 #### Multi-Tool Code Review
+
 ```bash
 # Optimized tool usage
 ostruct run before-after/optimized/multi-tool-review.j2 schemas/analysis_result.json \
@@ -244,6 +263,7 @@ ostruct run before-after/optimized/multi-tool-review.j2 schemas/analysis_result.
 ### Example 3: Research Analysis with MCP
 
 #### Enhanced with External Context
+
 ```bash
 # Leverage external knowledge efficiently
 ostruct --config configs/optimized.yaml run before-after/optimized/smart-analysis.j2 schemas/analysis_result.json \
@@ -260,6 +280,7 @@ ostruct --config configs/optimized.yaml run before-after/optimized/smart-analysi
 ### Performance Benchmark Script
 
 **scripts/benchmark.py**:
+
 ```python
 #!/usr/bin/env python3
 """Benchmark ostruct performance improvements."""
@@ -339,7 +360,9 @@ def main():
             "name": "Traditional Code Review",
             "cmd": """ostruct run before-after/traditional/code-review.j2 schemas/analysis_result.json \
                      -d source=data/ \
-                     --dir-recursive \
+                     -d tests=tests/ \
+                     -d docs=docs/ \
+                     -R \
                      --dry-run""",
             "type": "traditional"
         },
@@ -408,6 +431,7 @@ if __name__ == "__main__":
 ### Cost Comparison Tool
 
 **scripts/cost-comparison.py**:
+
 ```python
 #!/usr/bin/env python3
 """Compare costs between traditional and optimized approaches."""
@@ -478,6 +502,7 @@ if __name__ == "__main__":
 ## Demonstration Script
 
 **scripts/optimization-demo.sh**:
+
 ```bash
 #!/bin/bash
 set -euo pipefail
@@ -581,21 +606,25 @@ echo "4. Progressive enhancement maintains backward compatibility"
 ## Key Optimization Benefits
 
 ### 1. Token Efficiency
+
 - **50-70% reduction** in token usage through explicit routing
 - Smart template design minimizes redundant content
 - Tool-specific processing eliminates waste
 
 ### 2. Cost Savings
+
 - Configuration-driven budget controls
 - Optimal model selection for different tasks
 - Reduced retry costs through better error handling
 
 ### 3. Performance Improvements
+
 - Parallel processing through multi-tool integration
 - Faster execution with targeted file routing
 - Better results through tool specialization
 
 ### 4. Scalability
+
 - Efficient handling of large datasets
 - Sustainable cost structure for production use
 - Configurable limits prevent runaway costs
@@ -603,21 +632,25 @@ echo "4. Progressive enhancement maintains backward compatibility"
 ## Migration Strategy
 
 ### Phase 1: Identify Optimization Opportunities
+
 1. Analyze current token usage patterns
 2. Identify files suitable for different tools
 3. Measure baseline costs and performance
 
 ### Phase 2: Implement Explicit Routing
+
 1. Convert `-f` flags to tool-specific routing
 2. Update templates for multi-tool integration
 3. Test with `--dry-run` to validate improvements
 
 ### Phase 3: Add Configuration Management
+
 1. Create environment-specific configurations
 2. Set appropriate cost limits
 3. Implement monitoring and alerting
 
 ### Phase 4: Optimize Templates
+
 1. Redesign templates for tool-specific content
 2. Add conditional logic for tool availability
 3. Implement progressive enhancement patterns
