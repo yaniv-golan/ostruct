@@ -4,8 +4,8 @@ import pytest
 from jinja2 import TemplateRuntimeError
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
-from ostruct.cli.template_filters import single_filter
 from ostruct.cli.security import SecurityManager
+from ostruct.cli.template_filters import single_filter
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 

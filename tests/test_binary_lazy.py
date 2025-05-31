@@ -2,9 +2,7 @@
 
 import json
 import os
-from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 from ostruct.cli.cli import create_cli
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -53,9 +51,9 @@ class TestBinaryLazyLoading:
         )
 
         # Should succeed
-        assert result.exit_code == 0, (
-            f"Expected success but got: {result.output}"
-        )
+        assert (
+            result.exit_code == 0
+        ), f"Expected success but got: {result.output}"
         # In dry run mode, template doesn't render output, just validates
         assert "Dry run completed successfully" in result.output
 
@@ -151,9 +149,9 @@ class TestBinaryLazyLoading:
         )
 
         # Should succeed
-        assert result.exit_code == 0, (
-            f"Expected success but got: {result.output}"
-        )
+        assert (
+            result.exit_code == 0
+        ), f"Expected success but got: {result.output}"
         # In dry run mode, template doesn't render output, just validates
         assert "Dry run completed successfully" in result.output
 
@@ -200,8 +198,8 @@ class TestBinaryLazyLoading:
         )
 
         # Should succeed
-        assert result.exit_code == 0, (
-            f"Expected success but got: {result.output}"
-        )
+        assert (
+            result.exit_code == 0
+        ), f"Expected success but got: {result.output}"
         # In dry run mode, template doesn't render output, just validates
         assert "Dry run completed successfully" in result.output

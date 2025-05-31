@@ -1,7 +1,6 @@
 """Tests for token warning functionality."""
 
 import logging
-from unittest.mock import patch
 
 import pytest
 from ostruct.cli.token_validation import TokenLimitValidator
