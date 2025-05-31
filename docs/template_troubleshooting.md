@@ -296,6 +296,17 @@ ostruct run template.j2 schema.json --show-optimization-steps --optimization-ste
 
 **Solution**: Report as bug if optimizer generates invalid references.
 
+#### Issue: FileInfoList Shows Instead of Content
+
+**Symptoms**: Template shows `FileInfoList(['filename'])` instead of file content.
+
+**Debug**: Check if you're using `{{ variable }}` instead of `{{ variable.content }}`.
+
+**Solution**: Always use `.content` to access file content:
+
+- ✅ Correct: `{{ my_file.content }}`
+- ❌ Wrong: `{{ my_file }}`
+
 #### Issue: Content Moved Incorrectly
 
 **Symptoms**: File content appears in appendix when it shouldn't.
@@ -362,6 +373,7 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 | `TemplateSyntaxError` | Invalid Jinja2 syntax | `--debug-templates` | Fix template syntax |
 | `TemplateNotFound` | Missing template file | `--debug` | Check file path |
 | `FilterArgumentError` | Wrong filter usage | `--debug-templates` | Fix filter syntax |
+| `FileInfoList(['path'])` in output | Using `{{ var }}` instead of `{{ var.content }}` | `--debug-templates` | Use `.content` to access file content |
 
 ### File Loading Errors
 

@@ -29,6 +29,9 @@ Each file routing option supports three syntaxes:
 --fta app_config config.yaml       # Two-arg alias → app_config variable (best tab completion)
 ```
 
+**Important**: Access file content with `{{ variable.content }}`, not `{{ variable }}`.
+Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
+
 **Code Interpreter Files** (uploaded for execution + available in template):
 
 ```bash

@@ -59,6 +59,11 @@ Auto-Naming Syntax
    ostruct run task.j2 schema.json -ft config.yaml      # → config_yaml variable
    ostruct run task.j2 schema.json -ft my-file.txt      # → my_file_txt variable
 
+.. note::
+   **File Content Access**: In templates, use ``{{ variable.content }}`` to access file contents.
+
+   Example: ``{{ config_yaml.content }}`` for the file content.
+
 Two-Argument Syntax
 ~~~~~~~~~~~~~~~~~~~
 
@@ -80,6 +85,11 @@ Two-Argument Alias Syntax
    # Examples (supports tab completion for paths)
    ostruct run task.j2 schema.json --fta config settings.yaml
    ostruct run task.j2 schema.json --fta data input.json
+
+.. note::
+   **Important**: To access file content in templates, use ``{{ variable.content }}``, not just ``{{ variable }}``.
+
+   Example: ``{{ config.content }}`` to get file contents.
 
 Directory Template Access
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
