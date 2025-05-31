@@ -204,7 +204,7 @@ Analysis Pipeline with Services
          - ./pipeline/schemas:/app/schemas:ro
          - ./pipeline/intermediate:/app/intermediate:ro
          - ./pipeline/results:/app/output
-       command: run /app/templates/security.j2 /app/schemas/security.json -fc /app/src/ -ft /app/intermediate/prepared.json --output-file /app/output/security_report.json
+       command: run /app/templates/security.j2 /app/schemas/security.json -dc /app/src/ -ft /app/intermediate/prepared.json --output-file /app/output/security_report.json
 
      # Final report generation
      report-gen:
@@ -245,7 +245,7 @@ Scheduled Analysis with Cron
          - /var/run/docker.sock:/var/run/docker.sock:ro
        command: >
          bash -c "
-           echo '${ANALYSIS_SCHEDULE} ostruct run /app/templates/daily.j2 /app/schemas/daily.json -fc /app/data/ --output-file /app/output/daily-$(date +%Y%m%d).json' | crontab - &&
+           echo '${ANALYSIS_SCHEDULE} ostruct run /app/templates/daily.j2 /app/schemas/daily.json -dc /app/data/ --output-file /app/output/daily-$(date +%Y%m%d).json' | crontab - &&
            crond -f
          "
        restart: unless-stopped
@@ -419,7 +419,7 @@ CronJob for Scheduled Analysis
                - run
                - /app/templates/daily.j2
                - /app/schemas/daily.json
-               - -fc
+               - -dc
                - /app/data/
                - --output-file
                - /app/output/daily-analysis.json

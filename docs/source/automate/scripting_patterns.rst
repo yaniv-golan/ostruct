@@ -70,7 +70,7 @@ Process multiple files in sequence with comprehensive error handling:
            --base-dir "$PWD" \
            -A "$INPUT_DIR" \
            -A "$OUTPUT_DIR" \
-           -ft "input_file=$input_file" \
+           -ft input_file "$input_file" \
            --timeout "$TIMEOUT" \
            --code-interpreter-cleanup \
            --file-search-cleanup \

@@ -55,7 +55,7 @@ Basic GitHub Actions Workflow
            ostruct run templates/code_review.j2 schemas/review.json \
              --base-dir ${{ github.workspace }} \
              -A ${{ github.workspace }}/src \
-             -fc src/ \
+             -dc src/ \
              --code-interpreter-cleanup \
              --output-file analysis_results.json
 
@@ -116,7 +116,7 @@ Multi-Platform Analysis
              --base-dir "${{ env.ANALYSIS_BASE }}" \
              -A "${{ env.ANALYSIS_BASE }}/src" \
              -A "${{ env.ANALYSIS_BASE }}/tests" \
-             -fc src/ \
+             -dc src/ \
              -ft config.yaml \
              --code-interpreter-cleanup \
              --timeout 600 \
@@ -143,7 +143,7 @@ Advanced GitHub Actions Patterns
            --base-dir ${{ github.workspace }} \
            -A ${{ github.workspace }}/src \
            -ft changed_files.txt \
-           -fc src/ \
+           -dc src/ \
            --output-file pr_analysis.json
        fi
 
@@ -165,7 +165,7 @@ Advanced GitHub Actions Patterns
      run: |
        ostruct run templates/${{ matrix.analysis-type.template }} \
          schemas/${{ matrix.analysis-type.schema }} \
-         -fc src/ -ft config.yaml \
+         -dc src/ -ft config.yaml \
          --output-file ${{ matrix.analysis-type.name }}_results.json
 
 GitLab CI
@@ -201,7 +201,7 @@ Basic GitLab CI Configuration
            --base-dir $CI_PROJECT_DIR \
            -A $CI_PROJECT_DIR/src \
            -A $CI_PROJECT_DIR/tests \
-           -fc src/ \
+           -dc src/ \
            -ft .gitlab-ci.yml \
            --code-interpreter-cleanup \
            --output-file analysis_results.json
@@ -234,8 +234,8 @@ GitLab CI with Security Scanning
            --base-dir $CI_PROJECT_DIR \
            -A $CI_PROJECT_DIR/src \
            -A $CI_PROJECT_DIR/config \
-           -fc src/ \
-           -fc config/ \
+           -dc src/ \
+           -dc config/ \
            -fs documentation/ \
            --file-search-cleanup \
            --code-interpreter-cleanup \
@@ -304,7 +304,7 @@ Declarative Pipeline
                                --base-dir ${WORKSPACE} \
                                -A ${WORKSPACE}/src \
                                -A ${WORKSPACE}/tests \
-                               -fc src/ \
+                               -dc src/ \
                                -ft Jenkinsfile \
                                -ft config.yaml \
                                --code-interpreter-cleanup \
@@ -346,7 +346,7 @@ Declarative Pipeline
                            ostruct run templates/security_validation.j2 schemas/security_check.json \
                                --base-dir ${WORKSPACE} \
                                -A ${WORKSPACE}/src \
-                               -fc src/ \
+                               -dc src/ \
                                -fs documentation/ \
                                --file-search-cleanup \
                                --code-interpreter-cleanup \
@@ -394,7 +394,7 @@ Scripted Pipeline with Advanced Features
                                ostruct run templates/security.j2 schemas/security.json \
                                    --base-dir ${WORKSPACE} \
                                    -A ${WORKSPACE}/src \
-                                   -fc src/ \
+                                   -dc src/ \
                                    --timeout 300 \
                                    --output-file security_results.json
                            '''
@@ -408,7 +408,7 @@ Scripted Pipeline with Advanced Features
                                ostruct run templates/performance.j2 schemas/performance.json \
                                    --base-dir ${WORKSPACE} \
                                    -A ${WORKSPACE}/src \
-                                   -fc src/ \
+                                   -dc src/ \
                                    --timeout 300 \
                                    --output-file performance_results.json
                            '''
@@ -495,7 +495,7 @@ Azure Pipelines YAML
            ostruct run templates/azure_analysis.j2 schemas/analysis.json \
              --base-dir $(Build.SourcesDirectory) \
              -A $(Build.SourcesDirectory)/src \
-             -fc src/ \
+             -dc src/ \
              -ft azure-pipelines.yml \
              --code-interpreter-cleanup \
              --output-file $(Build.ArtifactStagingDirectory)/analysis_results.json
@@ -580,7 +580,7 @@ File Access Controls
          -A ${{ github.workspace }}/src \
          -A ${{ github.workspace }}/tests \
          -A ${{ github.workspace }}/config \
-         -fc src/ \
+         -dc src/ \
          --code-interpreter-cleanup \
          --file-search-cleanup
 
@@ -614,7 +614,7 @@ Parallel Execution
      run: |
        ostruct run templates/${{ matrix.analysis }}.j2 \
          schemas/${{ matrix.analysis }}.json \
-         -fc src/ --timeout 300
+         -dc src/ --timeout 300
 
 Conditional Execution
 ---------------------
@@ -626,7 +626,7 @@ Conditional Execution
      if: github.ref == 'refs/heads/main'
      run: |
        ostruct run templates/comprehensive.j2 schema.json \
-         -fc src/ -fs docs/ --timeout 900
+         -dc src/ -fs docs/ --timeout 900
 
 Caching Strategies
 ------------------
@@ -657,7 +657,7 @@ Timeout and Resource Management
      timeout-minutes: 10
      run: |
        ostruct run template.j2 schema.json \
-         -fc src/ \
+         -dc src/ \
          --timeout 300 \
          --code-interpreter-cleanup \
          --file-search-cleanup
@@ -682,7 +682,7 @@ Comprehensive Error Handling
 
        # Run analysis with error capture
        if ! ostruct run template.j2 schema.json \
-         -fc src/ \
+         -dc src/ \
          --timeout 300 \
          --output-file results.json; then
          echo "::error::Analysis failed"
@@ -859,11 +859,11 @@ Common CI/CD Issues
    # Debug: Test with shorter timeout
    ostruct run template.j2 schema.json \
      --dry-run \
-     -fc src/
+     -dc src/
 
    # Solution: Increase timeout or reduce file size
    ostruct run template.j2 schema.json \
-     -fc src/ \
+     -dc src/ \
      --timeout 900
 
 **Memory/Resource Limits:**
@@ -874,7 +874,7 @@ Common CI/CD Issues
    - name: Memory-Controlled Analysis
      run: |
        ostruct run template.j2 schema.json \
-         -fc src/ \
+         -dc src/ \
          --code-interpreter-cleanup \
          --file-search-cleanup \
          --timeout 600
@@ -885,10 +885,10 @@ Performance Monitoring
 .. code-block:: bash
 
    # Monitor execution time
-   time ostruct run template.j2 schema.json -fc src/
+   time ostruct run template.j2 schema.json -dc src/
 
    # Monitor token usage with dry run
-   ostruct run template.j2 schema.json --dry-run -fc src/
+   ostruct run template.j2 schema.json --dry-run -dc src/
 
 Next Steps
 ==========

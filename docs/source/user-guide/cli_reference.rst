@@ -59,16 +59,16 @@ Auto-Naming Syntax
    ostruct run task.j2 schema.json -ft config.yaml      # → config_yaml variable
    ostruct run task.j2 schema.json -ft my-file.txt      # → my_file_txt variable
 
-Equals Syntax
-~~~~~~~~~~~~~
+Two-Argument Syntax
+~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   -ft, --file-for-template NAME=PATH
+   -ft, --file-for-template NAME PATH
 
    # Examples
-   ostruct run task.j2 schema.json -ft config=settings.yaml    # → config variable
-   ostruct run task.j2 schema.json -ft data=input.json        # → data variable
+   ostruct run task.j2 schema.json -ft config settings.yaml    # → config variable
+   ostruct run task.j2 schema.json -ft data input.json        # → data variable
 
 Two-Argument Alias Syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,16 +112,16 @@ Auto-Naming Syntax
    ostruct run analyze.j2 schema.json -fc data.csv         # → data_csv variable
    ostruct run analyze.j2 schema.json -fc sales_data.xlsx  # → sales_data_xlsx variable
 
-Equals Syntax
-~~~~~~~~~~~~~
+Two-Argument Syntax
+~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   -fc, --file-for-code-interpreter NAME=PATH
+   -fc, --file-for-code-interpreter NAME PATH
 
    # Examples
-   ostruct run analyze.j2 schema.json -fc dataset=data.csv
-   ostruct run analyze.j2 schema.json -fc sales=sales_data.xlsx
+   ostruct run analyze.j2 schema.json -fc dataset data.csv
+   ostruct run analyze.j2 schema.json -fc sales sales_data.xlsx
 
 Two-Argument Alias Syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -173,16 +173,16 @@ Auto-Naming Syntax
    ostruct run search.j2 schema.json -fs docs.pdf          # → docs_pdf variable
    ostruct run search.j2 schema.json -fs manual.txt        # → manual_txt variable
 
-Equals Syntax
-~~~~~~~~~~~~~
+Two-Argument Syntax
+~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   -fs, --file-for-search NAME=PATH
+   -fs, --file-for-search NAME PATH
 
    # Examples
-   ostruct run search.j2 schema.json -fs manual=docs.pdf
-   ostruct run search.j2 schema.json -fs knowledge=kb.txt
+   ostruct run search.j2 schema.json -fs manual docs.pdf
+   ostruct run search.j2 schema.json -fs knowledge kb.txt
 
 Two-Argument Alias Syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -646,8 +646,8 @@ Configuration Validation
 
    # Compare environments
    ostruct run validate.j2 schema.json \\
-     -ft dev=dev.yaml \\
-     -ft prod=prod.yaml \\
+     -ft dev dev.yaml \\
+     -ft prod prod.yaml \\
      -fs infrastructure_docs.pdf
 
 Code Review Automation

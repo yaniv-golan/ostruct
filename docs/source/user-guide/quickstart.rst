@@ -144,7 +144,7 @@ Now use ostruct to extract structured data from Juno's profile:
 .. code-block:: bash
 
    ostruct run analyze_pet.j2 pet_schema.json \
-     -ft profile=juno_profile.txt \
+     -ft profile juno_profile.txt \
      -m gpt-4o
 
 **Result**: You'll get perfectly structured JSON output like this:
@@ -175,7 +175,7 @@ Understanding What Happened
 
 Let's break down the magic:
 
-1. **File Routing**: ``-ft profile=juno_profile.txt`` routed the text file to template access only
+1. **File Routing**: ``-ft profile juno_profile.txt`` routed the text file to template access only
 2. **Template Processing**: The ``.j2`` template combined the profile content with instructions
 3. **Schema Validation**: The JSON schema ensured the output matched your exact requirements
 4. **AI Intelligence**: GPT-4o understood the context and extracted the right information
@@ -266,13 +266,13 @@ Run the advanced analysis:
 .. code-block:: bash
 
    ostruct run comprehensive_analysis.j2 comprehensive_schema.json \
-     -ft profile=juno_profile.txt \
+     -ft profile juno_profile.txt \
      -fc medical_data.csv \
      -m gpt-4o
 
 **What's different?**
 
-- ``-ft profile=juno_profile.txt``: Profile text for template access
+- ``-ft profile juno_profile.txt``: Profile text for template access
 - ``-fc medical_data.csv``: Medical data to Code Interpreter for analysis
 - The AI can now correlate text descriptions with structured data
 
@@ -337,7 +337,7 @@ Key CLI Patterns to Remember
 
 **File Routing Syntax**
   - ``-ft file.txt`` (auto-naming: becomes ``file_txt`` variable)
-  - ``-ft data=file.txt`` (custom naming: becomes ``data`` variable)
+  - ``-ft data file.txt`` (custom naming: becomes ``data`` variable)
   - ``--fta data file.txt`` (tab completion support)
 
 **Tool Selection**

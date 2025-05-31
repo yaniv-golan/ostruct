@@ -186,6 +186,87 @@ Each file variable provides a ``FileInfo`` object with these attributes:
    {% if file.is_file %}     <!-- Is a regular file -->
    {% if file.is_dir %}      <!-- Is a directory -->
 
+FileInfoList Object Structure
+-----------------------------
+
+**Important:** All file variables in ostruct templates are actually ``FileInfoList`` objects, not individual ``FileInfo`` objects. This provides a consistent interface whether you're working with single files or collections.
+
+**Adaptive Properties:**
+
+``FileInfoList`` has adaptive properties that return different types based on the content:
+
+- **Single file from file mapping** (``-ft``, ``-fc``, ``-fs``): Returns scalar values
+- **Multiple files or directory mapping** (``-dt``): Returns lists
+
+.. code-block:: jinja
+
+   <!-- For single file: my_file contains 1 file from -fc my_file=data.csv -->
+   {{ my_file.name }}        <!-- Returns: "data.csv" (string) -->
+   {{ my_file.content }}     <!-- Returns: file contents (string) -->
+   {{ my_file.path }}        <!-- Returns: "data.csv" (string) -->
+   {{ my_file.size }}        <!-- Returns: 1024 (integer) -->
+
+   <!-- For multiple files: logs contains 3 files from -dt logs=./log_files -->
+   {{ logs.name }}           <!-- Returns: ["app.log", "error.log", "debug.log"] (list) -->
+   {{ logs.content }}        <!-- Returns: [content1, content2, content3] (list) -->
+   {{ logs.path }}           <!-- Returns: ["app.log", "error.log", "debug.log"] (list) -->
+   {{ logs.size }}           <!-- Returns: [1024, 2048, 512] (list) -->
+
+**Always-List Properties:**
+
+For explicit list access, use the ``.names`` property:
+
+.. code-block:: jinja
+
+   <!-- Always returns a list, even for single files -->
+   {{ my_file.names }}       <!-- Returns: ["data.csv"] (list) -->
+   {{ logs.names }}          <!-- Returns: ["app.log", "error.log", "debug.log"] (list) -->
+
+**Single File Extraction:**
+
+Use the ``|single`` filter to explicitly extract a single file from a list:
+
+.. code-block:: jinja
+
+   <!-- Extract single file when you expect exactly one -->
+   {{ my_files|single.name }}     <!-- Returns the name of the single file -->
+   {{ my_files|single.content }}  <!-- Returns the content of the single file -->
+
+   <!-- Error handling: raises TemplateRuntimeError if not exactly 1 file -->
+   {{ empty_list|single.name }}   <!-- Error: expected 1 file, got 0 -->
+   {{ multi_files|single.name }}  <!-- Error: expected 1 file, got 3 -->
+
+**List Operations:**
+
+Since ``FileInfoList`` extends Python's list, you can use standard list operations:
+
+.. code-block:: jinja
+
+   <!-- Access by index -->
+   {{ logs[0].name }}        <!-- First file name -->
+   {{ logs[-1].name }}       <!-- Last file name -->
+
+   <!-- Iteration -->
+   {% for file in logs %}
+   - {{ file.name }}: {{ file.size }} bytes
+   {% endfor %}
+
+   <!-- Length and existence -->
+   {{ logs|length }}         <!-- Number of files -->
+   {% if logs %}             <!-- Check if any files exist -->
+   Found {{ logs|length }} log files
+   {% endif %}
+
+**Error Messages:**
+
+If you try to access ``FileInfo`` attributes on a multi-file list, you'll get helpful error messages:
+
+.. code-block:: jinja
+
+   <!-- This will show a helpful error for multi-file lists -->
+   {{ logs.content }}        <!-- OK: returns list of contents -->
+   {{ logs.encoding }}       <!-- Error with suggestion to use logs[0].encoding or logs|single.encoding -->
+
 Directory and Pattern Processing
 ---------------------------------
 
@@ -380,6 +461,39 @@ Data Processing Filters
    - Average size: {{ stats.avg }}
    - Largest: {{ stats.max }}
    - Smallest: {{ stats.min }}
+
+**Single Item Extraction:**
+
+The ``|single`` filter extracts exactly one item from a list, with error handling:
+
+.. code-block:: jinja
+
+   <!-- Extract single file when expecting exactly one -->
+   {{ my_files|single.name }}        <!-- Returns the name of the single file -->
+   {{ my_files|single.content }}     <!-- Returns the content of the single file -->
+
+   <!-- Works with any list type -->
+   {{ single_item_list|single }}     <!-- Returns the single item -->
+
+   <!-- Error handling for invalid cases -->
+   {{ empty_list|single }}           <!-- TemplateRuntimeError: expected 1 item, got 0 -->
+   {{ multi_files|single }}          <!-- TemplateRuntimeError: expected 1 item, got 3 -->
+
+**Use Cases:**
+
+- **File Processing**: When you expect exactly one file but receive a ``FileInfoList``
+- **Data Validation**: Ensure lists contain exactly one item before processing
+- **API Consistency**: Convert adaptive properties to single values explicitly
+
+.. code-block:: jinja
+
+   <!-- Validate single file upload -->
+   {% if uploaded_files|length == 1 %}
+   Processing file: {{ uploaded_files|single.name }}
+   Content: {{ uploaded_files|single.content }}
+   {% else %}
+   Error: Expected exactly one file, got {{ uploaded_files|length }}
+   {% endif %}
 
 Code Processing Filters
 -----------------------
