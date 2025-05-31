@@ -57,6 +57,7 @@ from ostruct.cli.errors import (
     OstructFileNotFoundError,
     PathSecurityError,
 )
+
 from .file_info import FileInfo
 from .file_list import FileInfoList
 from .security import SecurityManager

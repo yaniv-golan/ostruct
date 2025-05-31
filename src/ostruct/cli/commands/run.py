@@ -12,7 +12,6 @@ from ..click_options import all_options
 from ..config import OstructConfig
 from ..errors import (
     CLIError,
-    DuplicateFileMappingError,
     InvalidJSONError,
     SchemaFileError,
     SchemaValidationError,
