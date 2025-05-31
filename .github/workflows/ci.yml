@@ -34,6 +34,9 @@ jobs:
     - name: Run pre-commit
       run: |
         pre-commit run --all-files
+    - name: Run type checking with MyPy
+      run: |
+        poetry run mypy src tests
     - name: Run tests with pytest
       run: |
         # Run all tests except live tests, with verbose output and logging

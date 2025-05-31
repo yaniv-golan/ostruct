@@ -40,9 +40,6 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install --with dev,docs
-          pip install --user sphinx sphinx-rtd-theme myst-parser
-          echo "After pip install contents of .local/bin:"
-          ls -la $HOME/.local/bin
           echo "Sphinx package location:"
           python -c "import sphinx; print(sphinx.__file__)" || true
           echo "Sphinx entry points:"

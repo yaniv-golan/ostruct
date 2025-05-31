@@ -153,7 +153,7 @@ example-name/
    ostruct run prompts/task.j2 schemas/result.json -fc examples/basic/app.py
 
    # Documentation search with File Search
-   ostruct run prompts/task.j2 schemas/result.json -fs examples/basic/ -ft config.yaml
+   ostruct run prompts/task.j2 schemas/result.json -ds examples/basic/ -ft config.yaml
 
    # Multi-tool combination
    ostruct run prompts/task.j2 schemas/result.json \
