@@ -519,8 +519,9 @@ async def stream_structured_output(
         logger.debug("Parameters: %s", json.dumps(stream_kwargs, indent=2))
         logger.debug("Schema: %s", json.dumps(strict_schema, indent=2))
         logger.debug("Tools being passed to API: %s", tools)
-        print(
-            f"DEBUG: Complete API params: {json.dumps(api_params, indent=2, default=str)}"
+        logger.debug(
+            "Complete API params: %s",
+            json.dumps(api_params, indent=2, default=str),
         )
 
         # Use the Responses API with streaming
@@ -992,7 +993,7 @@ async def execute_model(
                 logger.debug(f"Web Search tool config: {web_tool_config}")
 
         # Debug log the final tools array
-        print(f"DEBUG: Final tools array being passed to API: {tools}")
+        logger.debug(f"Final tools array being passed to API: {tools}")
 
         # Stream the response
         logger.debug(f"Tools being passed to API: {tools}")
