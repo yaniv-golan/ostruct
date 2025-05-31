@@ -256,7 +256,7 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 for old_file in old_docs/*.pdf; do
   new_file="new_docs/$(basename "$old_file")"
   output_file="results/$(basename "$old_file" .pdf)_diff.json"
-  
+
   ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
     --fca old_pdf "$old_file" \
     --fca new_pdf "$new_file" \

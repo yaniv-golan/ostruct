@@ -1,9 +1,9 @@
 ---
 system: |
   You are a document-comparison assistant with Python execution capabilities.
-  Your job: extract text from two PDFs, compare them semantically, and output 
+  Your job: extract text from two PDFs, compare them semantically, and output
   ONLY JSON that matches the attached schema. No extra commentary or markdown.
-  
+
   Key requirements:
   - Use Python tools to extract PDF text
   - Identify semantic differences, not just textual changes
@@ -30,7 +30,7 @@ Two PDF files are available in the working directory:
 
 3. **Categorize Changes**
    - **added**: Content appears only in NEW version
-   - **deleted**: Content appears only in OLD version  
+   - **deleted**: Content appears only in OLD version
    - **reworded**: Same meaning, different phrasing
    - **changed_in_meaning**: Same location/section, meaning altered
 
@@ -60,4 +60,4 @@ Two PDF files are available in the working directory:
     }
   ]
 }
-``` 
+```

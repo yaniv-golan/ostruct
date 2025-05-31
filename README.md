@@ -79,7 +79,7 @@ ostruct run prompts/hybrid_analysis.j2 schemas/scan_result.json \
 **Three optimized approaches** for automated security vulnerability scanning:
 
 - **Static Analysis**: $0.18 cost, fast processing, comprehensive vulnerability detection
-- **Code Interpreter**: $0.18 cost (same!), superior analysis quality with evidence-based findings  
+- **Code Interpreter**: $0.18 cost (same!), superior analysis quality with evidence-based findings
 - **Hybrid Analysis**: $0.20 cost (+13%), maximum depth with cross-validation
 
 Each approach finds the same core vulnerabilities but with different levels of detail and analysis quality. Directory-based analysis provides comprehensive project coverage in a single scan.

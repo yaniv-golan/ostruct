@@ -56,4 +56,4 @@ else
 fi
 
 echo
-echo "🏁 Dry run test completed" 
+echo "🏁 Dry run test completed"

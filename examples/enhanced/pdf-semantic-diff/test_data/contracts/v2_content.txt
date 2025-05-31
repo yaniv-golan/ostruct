@@ -19,4 +19,4 @@ Project completion is expected within 10 weeks from start date.
 
 4. INTELLECTUAL PROPERTY
 All code and designs become property of the client upon final payment.
-Source code will be provided in a private repository. 
+Source code will be provided in a private repository.
