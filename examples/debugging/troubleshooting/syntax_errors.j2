@@ -1,0 +1,56 @@
+# Jinja2 Syntax Errors Troubleshooting Example
+# This template demonstrates common Jinja2 syntax issues
+
+System: You are analyzing the following code:
+
+## Valid Syntax Examples
+{% for file in files %}
+File: {{ file.path }}
+Size: {{ file.content | length }} characters
+{% endfor %}
+
+Total files: {{ files | length }}
+
+## Common Syntax Errors
+
+# Error 1: Missing closing braces
+This will fail: {{ config.name }  # Missing closing }
+
+# Error 2: Incorrect filter syntax
+File size: {{ file.content | len() }}  # Should be "length", not "len()"
+
+# Error 3: Unclosed block
+{% if files %}
+Processing files...
+# Missing {% endif %}
+
+# Error 4: Wrong block structure
+{% for file in files %}
+{{ file.path }}
+{% endloop %}  # Should be {% endfor %}
+
+# Error 5: Invalid variable syntax
+Project name: {{{ project.name }}}  # Too many braces
+
+# Error 6: Incorrect comparison
+{% if files.length > 0 %}  # Should be "files | length > 0"
+Files available
+{% endif %}
+
+# Error 7: Missing quotes in string
+{% set message = Hello World %}  # Should be "Hello World"
+
+# Error 8: Invalid block nesting
+{% for file in files %}
+  {% if file.size > 1000 %}
+    Large file: {{ file.path }}
+  {% endfor %}  # Should be {% endif %}
+{% endfor %}
+
+## Debugging Hints
+# To debug syntax errors:
+# 1. Use --debug-templates to see template parsing details
+# 2. Check for matching braces and block tags
+# 3. Verify filter names and syntax
+# 4. Ensure proper string quoting
+# 5. Check block nesting and closing tags

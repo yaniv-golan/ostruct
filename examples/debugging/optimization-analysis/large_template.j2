@@ -1,0 +1,100 @@
+# Large Template for Optimization Analysis
+# This template demonstrates optimization benefits with multiple file references
+
+System: You are a senior software architect reviewing the following codebase.
+
+## Project Overview
+The project consists of multiple configuration files and source code that need comprehensive analysis.
+
+## Configuration Analysis
+
+### Main Configuration
+{{ main_config.content }}
+
+### Database Configuration
+{{ db_config.content }}
+
+### API Configuration
+{{ api_config.content }}
+
+## Source Code Review
+
+### Core Application Code
+{{ app_py.content }}
+
+### Database Models
+{{ models_py.content }}
+
+### API Handlers
+{{ handlers_py.content }}
+
+### Utility Functions
+{{ utils_py.content }}
+
+## Documentation Review
+
+### README
+{{ readme_md.content }}
+
+### API Documentation
+{{ api_docs_md.content }}
+
+### Installation Guide
+{{ install_md.content }}
+
+## Testing Code
+
+### Unit Tests
+{{ test_unit_py.content }}
+
+### Integration Tests
+{{ test_integration_py.content }}
+
+### End-to-End Tests
+{{ test_e2e_py.content }}
+
+## Configuration Files
+
+### Docker Configuration
+{{ dockerfile.content }}
+
+### CI/CD Pipeline
+{{ github_workflows_ci_yml.content }}
+
+### Environment Variables
+{{ env_example.content }}
+
+## Analysis Summary
+
+Based on the review of:
+- Configuration: {{ main_config.content }}
+- Database setup: {{ db_config.content }}
+- API design: {{ api_config.content }}
+- Core logic: {{ app_py.content }}
+- Data models: {{ models_py.content }}
+- API handlers: {{ handlers_py.content }}
+- Utilities: {{ utils_py.content }}
+- Documentation: {{ readme_md.content }}
+- Testing: {{ test_unit_py.content }}
+
+Please provide:
+1. Architecture assessment
+2. Code quality evaluation
+3. Security considerations
+4. Performance recommendations
+5. Deployment suggestions
+
+## Detailed File-by-File Analysis
+
+{% for file in all_files %}
+### {{ file.name }}
+Path: {{ file.path }}
+Size: {{ file.content | length }} characters
+
+Content Analysis:
+{{ file.content }}
+
+---
+{% endfor %}
+
+This template includes many file references that would benefit from optimization.

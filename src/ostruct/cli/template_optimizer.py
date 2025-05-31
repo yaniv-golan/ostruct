@@ -109,11 +109,14 @@ class TemplateOptimizer:
                 "line",
             }
 
-    def optimize_for_llm(self, template_content: str) -> OptimizationResult:
+    def optimize_for_llm(
+        self, template_content: str, step_tracker: Optional[Any] = None
+    ) -> OptimizationResult:
         """Apply prompt engineering best practices for files and directories.
 
         Args:
             template_content: Original template content
+            step_tracker: Optional step tracker for detailed optimization logging
 
         Returns:
             OptimizationResult with optimized template and metadata
@@ -126,6 +129,15 @@ class TemplateOptimizer:
         self.file_references.clear()
         self.dir_references.clear()
         self.optimization_log.clear()
+
+        # Log initial step
+        if step_tracker:
+            step_tracker.log_step(
+                "Initial template loaded",
+                "",
+                template_content,
+                "Starting optimization process with original template",
+            )
 
         # Get loop variables to avoid optimizing them
         loop_variables = self._get_loop_variables(template_content)
@@ -161,7 +173,17 @@ class TemplateOptimizer:
                 # If any error, keep original
                 return full_match
 
+        # Track file content optimization step
+        pre_file_opt = optimized
         optimized = re.sub(file_pattern, replace_file_reference, optimized)
+
+        if step_tracker and pre_file_opt != optimized:
+            step_tracker.log_step(
+                "File content optimization",
+                pre_file_opt,
+                optimized,
+                f"Moved {len(self.file_references)} files to appendix, kept {len(inline_files_kept)} inline",
+            )
 
         # Step 2: Optimize directory content references
         dir_pattern = (
@@ -171,16 +193,36 @@ class TemplateOptimizer:
         def replace_dir_reference_with_loop_check(match: Match[str]) -> str:
             return self._replace_dir_reference(match, loop_variables)
 
+        # Track directory optimization step
+        pre_dir_opt = optimized
         optimized = re.sub(
             dir_pattern, replace_dir_reference_with_loop_check, optimized
         )
 
+        if step_tracker and pre_dir_opt != optimized:
+            step_tracker.log_step(
+                "Directory reference optimization",
+                pre_dir_opt,
+                optimized,
+                f"Converted {len(self.dir_references)} directory references to natural language",
+            )
+
         # Step 3: Build comprehensive appendix if we moved files
         if self.file_references or self.dir_references:
-            optimized += "\n\n" + self._build_complete_appendix()
+            pre_appendix = optimized
+            appendix = self._build_complete_appendix()
+            optimized += "\n\n" + appendix
             self.optimization_log.append(
                 "Built structured appendix with moved content"
             )
+
+            if step_tracker:
+                step_tracker.log_step(
+                    "Appendix generation",
+                    pre_appendix,
+                    optimized,
+                    f"Generated appendix with {len(self.file_references)} files and {len(self.dir_references)} directories",
+                )
 
         optimization_time = (time.time() - start_time) * 1000
 
@@ -368,7 +410,7 @@ class TemplateOptimizer:
             for dir_var, reference in self.dir_references.items():
                 appendix_lines.append(f"  <dir:{dir_var}>")
                 appendix_lines.append(f"    Referenced as: {reference}")
-                appendix_lines.append(f"    {{{{ {dir_var}.files }}}}")
+                appendix_lines.append(f"    {{{{ {dir_var} }}}}")
                 appendix_lines.append("")
 
         return "\n".join(appendix_lines)
@@ -386,17 +428,20 @@ class TemplateOptimizer:
         }
 
 
-def optimize_template_for_llm(template_content: str) -> OptimizationResult:
+def optimize_template_for_llm(
+    template_content: str, step_tracker: Optional[Any] = None
+) -> OptimizationResult:
     """Convenience function for template optimization.
 
     Args:
         template_content: Original template content
+        step_tracker: Optional step tracker for detailed optimization logging
 
     Returns:
         OptimizationResult with optimized template
     """
     optimizer = TemplateOptimizer()
-    return optimizer.optimize_for_llm(template_content)
+    return optimizer.optimize_for_llm(template_content, step_tracker)
 
 
 def is_optimization_beneficial(

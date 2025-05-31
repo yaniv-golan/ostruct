@@ -1138,6 +1138,22 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         CLIError: For errors during CLI operations.
     """
     try:
+        # 0. Configure Debug Logging
+        from .template_debug import configure_debug_logging
+
+        configure_debug_logging(
+            verbose=bool(args.get("verbose", False)),
+            debug=bool(args.get("debug", False))
+            or bool(args.get("debug_templates", False)),
+        )
+
+        # 0a. Handle Debug Help Request
+        if args.get("help_debug", False):
+            from .template_debug_help import show_template_debug_help
+
+            show_template_debug_help()
+            return ExitCode.SUCCESS
+
         # 0. Configure Progress Reporting
         configure_progress_reporter(
             verbose=args.get("verbose", False),
@@ -1273,7 +1289,23 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
                 cost_breakdown = f"Token Analysis\nModel: {args['model']}\nInput tokens: {total_tokens}\nRegistry not available in test environment"
             print(cost_breakdown)
 
-            if args.get("verbose", False):
+            # Show template content based on debug flags
+            from .template_debug import show_template_content
+
+            show_template_content(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                show_templates=bool(args.get("show_templates", False)),
+                debug=bool(args.get("debug", False))
+                or bool(args.get("debug_templates", False)),
+            )
+
+            # Legacy verbose support for backward compatibility
+            if (
+                args.get("verbose", False)
+                and not args.get("debug", False)
+                and not args.get("show_templates", False)
+            ):
                 logger.info("\nSystem Prompt:")
                 logger.info("-" * 40)
                 logger.info(system_prompt)

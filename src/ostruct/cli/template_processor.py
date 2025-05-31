@@ -25,12 +25,97 @@ from .errors import (
 from .file_utils import FileInfoList, collect_files
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
+from .template_optimizer import (
+    is_optimization_beneficial,
+    optimize_template_for_llm,
+)
 from .template_utils import render_template
 from .types import CLIParams
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+
+def _render_template_with_debug(
+    template_content: str,
+    context: Dict[str, Any],
+    env: jinja2.Environment,
+    no_optimization: bool = False,
+    show_optimization_diff: bool = False,
+    show_optimization_steps: bool = False,
+    optimization_step_detail: str = "summary",
+) -> str:
+    """Render template with optimization debugging support.
+
+    Args:
+        template_content: Template content to render
+        context: Template context variables
+        env: Jinja2 environment
+        no_optimization: Skip optimization entirely
+        show_optimization_diff: Show before/after optimization comparison
+        show_optimization_steps: Show detailed optimization step tracking
+        optimization_step_detail: Level of detail for optimization steps
+
+    Returns:
+        Rendered template string
+    """
+    from .template_debug import show_optimization_diff as show_diff
+
+    if no_optimization:
+        # Skip optimization entirely - render directly
+        template = env.from_string(template_content)
+        return template.render(**context)
+
+    # Handle optimization debugging (diff and/or steps)
+    if show_optimization_diff or show_optimization_steps:
+        # Check if optimization would be beneficial
+        if is_optimization_beneficial(template_content):
+            # Create step tracker if step tracking is enabled
+            step_tracker = None
+            if show_optimization_steps:
+                from .template_debug import OptimizationStepTracker
+
+                step_tracker = OptimizationStepTracker(enabled=True)
+
+            # Get optimization result with optional step tracking
+            optimization_result = optimize_template_for_llm(
+                template_content, step_tracker
+            )
+
+            if optimization_result.has_optimizations:
+                # Show the diff if requested
+                if show_optimization_diff:
+                    show_diff(
+                        template_content,
+                        optimization_result.optimized_template,
+                    )
+
+                # Show optimization steps if requested
+                if show_optimization_steps and step_tracker:
+                    if optimization_step_detail == "detailed":
+                        step_tracker.show_detailed_steps()
+                    else:
+                        step_tracker.show_step_summary()
+
+                # Render the optimized version
+                template = env.from_string(
+                    optimization_result.optimized_template
+                )
+                return template.render(**context)
+
+        # No optimization was applied, show that too
+        if show_optimization_diff:
+            show_diff(template_content, template_content)
+        if show_optimization_steps:
+            from .template_debug import (
+                show_optimization_steps as show_steps_func,
+            )
+
+            show_steps_func([], optimization_step_detail)
+
+    # Fall back to standard rendering (which includes optimization)
+    return render_template(template_content, context, env)
 
 
 def process_system_prompt(
@@ -265,6 +350,72 @@ async def process_templates(
         CLIError: For template processing errors
     """
     logger.debug("=== Template Processing Phase ===")
+
+    # Add template debugging if enabled
+    debug_enabled = args.get("debug", False)
+    debug_templates_enabled = args.get("debug_templates", False)
+    show_context = args.get("show_context", False)
+    show_context_detailed = args.get("show_context_detailed", False)
+    show_pre_optimization = args.get("show_pre_optimization", False)
+    show_optimization_diff = args.get("show_optimization_diff", False)
+    no_optimization = args.get("no_optimization", False)
+    show_optimization_steps = args.get("show_optimization_steps", False)
+    optimization_step_detail = args.get("optimization_step_detail", "summary")
+
+    debugger = None
+    if debug_enabled or debug_templates_enabled:
+        from .template_debug import (
+            TemplateDebugger,
+            log_template_expansion,
+            show_file_content_expansions,
+        )
+
+        # Initialize template debugger
+        debugger = TemplateDebugger(enabled=True)
+
+        # Log template context
+        show_file_content_expansions(template_context)
+
+        # Log raw template before expansion
+        logger.debug("Raw task template:")
+        logger.debug(task_template)
+
+        # Log initial template state
+        debugger.log_expansion_step(
+            "Initial template loaded",
+            "",
+            task_template,
+            {"template_path": template_path},
+        )
+
+    # Show context inspection if requested
+    if show_context or show_context_detailed:
+        from .template_debug import (
+            display_context_detailed,
+            display_context_summary,
+        )
+
+        if show_context_detailed:
+            display_context_detailed(template_context)
+        elif show_context:
+            display_context_summary(template_context)
+
+        # Check for undefined variables if context inspection is enabled
+        from .template_debug import detect_undefined_variables
+
+        undefined_vars = detect_undefined_variables(
+            task_template, template_context
+        )
+        if undefined_vars:
+            click.echo(
+                f"⚠️  Potentially undefined variables: {', '.join(undefined_vars)}",
+                err=True,
+            )
+            click.echo(
+                f"   Available variables: {', '.join(sorted(template_context.keys()))}",
+                err=True,
+            )
+
     system_prompt = process_system_prompt(
         task_template,
         args.get("system_prompt"),
@@ -274,7 +425,76 @@ async def process_templates(
         args.get("ignore_task_sysprompt", False),
         template_path,
     )
-    user_prompt = render_template(task_template, template_context, env)
+
+    # Log system prompt processing step
+    if debugger:
+        debugger.log_expansion_step(
+            "System prompt processed",
+            task_template,
+            system_prompt,
+            {
+                "system_prompt_source": (
+                    "task_template"
+                    if not args.get("system_prompt")
+                    else "custom"
+                )
+            },
+        )
+
+    # Handle pre-optimization template display
+    if show_pre_optimization:
+        from .template_debug import show_pre_optimization_template
+
+        show_pre_optimization_template(task_template)
+
+        # Handle optimization debugging with custom rendering
+    if no_optimization or show_optimization_diff or show_optimization_steps:
+        # We need custom handling for optimization debugging
+        user_prompt = _render_template_with_debug(
+            task_template,
+            template_context,
+            env,
+            no_optimization=bool(no_optimization),
+            show_optimization_diff=bool(show_optimization_diff),
+            show_optimization_steps=bool(show_optimization_steps),
+            optimization_step_detail=str(optimization_step_detail),
+        )
+    else:
+        # Standard rendering with optimization
+        user_prompt = render_template(task_template, template_context, env)
+
+    # Log user prompt rendering step
+    if debugger:
+        debugger.log_expansion_step(
+            "User prompt rendered",
+            task_template,
+            user_prompt,
+            template_context,
+        )
+
+    # Log template expansion if debug enabled
+    if debug_enabled or debug_templates_enabled:
+        from .template_debug import log_template_expansion
+
+        log_template_expansion(
+            template_content=task_template,
+            context=template_context,
+            expanded=user_prompt,
+            template_file=template_path,
+        )
+
+        # Show expansion summary and detailed steps
+        if debugger:
+            debugger.show_expansion_summary()
+            debugger.show_detailed_expansion()
+
+            # Show expansion statistics
+            stats = debugger.get_expansion_stats()
+            if stats:
+                logger.debug(
+                    f"📊 Expansion Stats: {stats['total_steps']} steps, {stats['unique_variables']} variables"
+                )
+
     return system_prompt, user_prompt
 
 

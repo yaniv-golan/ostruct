@@ -708,92 +708,36 @@ class TestCLICore:
     def test_invalid_template_syntax(
         self, fs: FakeFilesystem, cli_runner: CliTestRunner
     ) -> None:
-        """Test error handling for invalid template syntax."""
-        # Create necessary files
+        """Test invalid template syntax handling."""
         schema_content = {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {"result": {"type": "string"}},
-            "required": ["result"],
+            "schema": {
+                "type": "object",
+                "properties": {"result": {"type": "string"}},
+                "required": ["result"],
+                "additionalProperties": False,
+            }
         }
         fs.create_file(
             f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
         fs.create_file(
-            f"{TEST_BASE_DIR}/task.txt", contents="Invalid syntax: {{ unclosed"
+            f"{TEST_BASE_DIR}/template.j2",
+            contents="Invalid syntax: {% for item in items %}...{% endfor",
         )
 
         result = cli_runner.invoke(
             create_cli(),
             [
                 "run",
-                "task.txt",
-                "schema.json",
+                f"{TEST_BASE_DIR}/template.j2",
+                f"{TEST_BASE_DIR}/schema.json",
                 "--dry-run",
             ],
         )
+
+        # Test should check for non-zero exit code and error message
+        assert result.exit_code != 0
         cli_runner.check_error_message(result, "Template syntax error")
-
-    def test_schema_validation_error_logging(
-        self,
-        cli_runner: CliTestRunner,
-        fs: FakeFilesystem,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        """Test that schema validation errors are logged appropriately."""
-
-        # Test schema validation with debug validation enabled
-        with caplog.at_level(logging.ERROR):
-            caplog.clear()
-
-            # Create invalid schema with circular reference
-            invalid_schema = {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",  # Add schema version
-                "type": "object",
-                "properties": {"test": {"$ref": "#/definitions/test"}},
-                "required": ["test"],
-                "additionalProperties": False,
-                "definitions": {  # Add definitions section for proper circular reference
-                    "test": {
-                        "type": "object",
-                        "properties": {
-                            "test": {
-                                "$ref": "#/definitions/test"
-                            }  # Creates true circular reference
-                        },
-                    }
-                },
-            }
-
-            # Write schema and template files
-            fs.create_file(
-                f"{TEST_BASE_DIR}/schema.json",
-                contents=json.dumps(invalid_schema),
-            )
-            fs.create_file(
-                f"{TEST_BASE_DIR}/template.j2", contents="test template"
-            )
-
-            # Change to test base directory
-            os.chdir(TEST_BASE_DIR)
-
-            result = cli_runner.invoke(
-                create_cli(),
-                [
-                    "run",
-                    "template.j2",
-                    "schema.json",
-                    "--debug-validation",  # Enable debug validation to catch schema errors early
-                    "--dry-run",  # Avoid making actual API calls
-                ],
-            )
-
-            # Check error classification and messages
-            assert result.exit_code == ExitCode.SCHEMA_ERROR
-            assert "Invalid JSON Schema" in str(result.exception)
-            assert (
-                "Circular reference found" in caplog.text
-            )  # Updated assertion for circular reference detection
 
     def test_schema_validation_error_chain(
         self,

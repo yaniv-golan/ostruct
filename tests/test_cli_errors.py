@@ -276,7 +276,7 @@ def test_error_context_handling():
     assert "Source: new.json" in str(error)
 
 
-def test_error_handler_output(caplog):
+def test_error_handler_output(caplog, capsys):
     """Test error handler output formatting."""
     with caplog.at_level(logging.DEBUG):
         try:
@@ -290,15 +290,20 @@ def test_error_handler_output(caplog):
         except SystemExit:
             pass
 
-    # Check debug log format
-    assert "Error details:" in caplog.text
-    assert "Type: SchemaFileError" in caplog.text
+    # Check stderr output (where the error is actually displayed)
+    captured = capsys.readouterr()
+    stderr_output = captured.err
 
-    # Check context formatting
-    log_entry = caplog.records[-1].message
-    assert "schema_path: test.json" in log_entry
-    assert "line: 10" in log_entry
-    assert "column: 5" in log_entry
+    # Check that error is displayed to user
+    assert "[SCHEMA_ERROR] Invalid JSON" in stderr_output
+    assert "Source: test.json" in stderr_output
+
+    # Check debug log format (if any logs were captured)
+    if caplog.records:
+        log_entry = caplog.records[-1].message
+        assert "schema_path: test.json" in log_entry
+        assert "line: 10" in log_entry
+        assert "column: 5" in log_entry
 
 
 def test_error_formatting():

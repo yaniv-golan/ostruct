@@ -47,6 +47,73 @@ def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
         help="Show detailed validation errors",
     )(cmd)
 
+    cmd = click.option(
+        "--debug",
+        is_flag=True,
+        help="🐛 Enable debug-level logging including template expansion",
+    )(cmd)
+
+    cmd = click.option(
+        "--show-templates",
+        is_flag=True,
+        help="📝 Show expanded templates before sending to API",
+    )(cmd)
+
+    cmd = click.option(
+        "--debug-templates",
+        is_flag=True,
+        help="🔍 Enable detailed template expansion debugging with step-by-step analysis",
+    )(cmd)
+
+    cmd = click.option(
+        "--show-context",
+        is_flag=True,
+        help="📋 Show template variable context summary",
+    )(cmd)
+
+    cmd = click.option(
+        "--show-context-detailed",
+        is_flag=True,
+        help="📋 Show detailed template variable context with content preview",
+    )(cmd)
+
+    cmd = click.option(
+        "--show-pre-optimization",
+        is_flag=True,
+        help="🔧 Show template content before optimization is applied",
+    )(cmd)
+
+    cmd = click.option(
+        "--show-optimization-diff",
+        is_flag=True,
+        help="🔄 Show template optimization changes (before/after comparison)",
+    )(cmd)
+
+    cmd = click.option(
+        "--no-optimization",
+        is_flag=True,
+        help="⚡ Skip template optimization entirely for debugging",
+    )(cmd)
+
+    cmd = click.option(
+        "--show-optimization-steps",
+        is_flag=True,
+        help="🔧 Show detailed optimization step tracking with before/after changes",
+    )(cmd)
+
+    cmd = click.option(
+        "--optimization-step-detail",
+        type=click.Choice(["summary", "detailed"]),
+        default="summary",
+        help="📊 Level of optimization step detail (summary shows overview, detailed shows full diffs)",
+    )(cmd)
+
+    cmd = click.option(
+        "--help-debug",
+        is_flag=True,
+        help="📚 Show comprehensive template debugging help and examples",
+    )(cmd)
+
     # Final cast to Command for return type
     return cast(Command, cmd)
 
