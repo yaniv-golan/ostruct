@@ -163,7 +163,8 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
         in your template but will not be uploaded to any tools. Use for configuration files,
         small data files, or any content you want to reference in templates.
         Format: -ft path (auto-generates variable name from filename).
-        Example: -ft config.yaml → config_yaml variable, -ft src/main.py → main_py variable""",
+        Access file content: {{ variable.content }} (not just {{ variable }})
+        Example: -ft config.yaml → config_yaml variable, use {{ config_yaml.content }}""",
         shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
     )(cmd)
 
@@ -179,7 +180,8 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
         help="""📄 [TEMPLATE] Files for template with custom aliases. Use this for reusable
         templates where you need stable variable names independent of file paths.
         Format: --fta name path (supports tab completion for paths).
-        Example: --fta code_file src/main.py --fta config_data config.yaml""",
+        Access file content: {{ name.content }} (not just {{ name }})
+        Example: --fta config_data config.yaml → use {{ config_data.content }}""",
         shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
     )(cmd)
 

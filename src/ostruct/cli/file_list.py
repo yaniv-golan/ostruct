@@ -321,14 +321,26 @@ class FileInfoList(List[FileInfo]):
         """Get string representation of the file list.
 
         Returns:
-            str: String representation in format FileInfoList([paths])
+            str: Helpful guidance message for template usage
         """
         with self._lock:
             if not self:
                 return "FileInfoList([])"
+
+            # For single file from file mapping (--fta, -ft, etc.)
+            if len(self) == 1 and not self._from_dir:
+                var_name = self._var_alias or "file_var"
+                return f"[File '{self[0].path}' - Use {{ {var_name}.content }} to access file content]"
+
+            # For multiple files or directory mapping
+            var_name = self._var_alias or "file_list"
             if len(self) == 1:
-                return f"FileInfoList(['{self[0].path}'])"
-            return f"FileInfoList({[f.path for f in self]})"
+                return f"[Directory file '{self[0].path}' - Use {{ {var_name}[0].content }} or {{ {var_name}|single.content }} to access content]"
+            else:
+                paths_preview = [f.path for f in self[:2]]
+                if len(self) > 2:
+                    paths_preview.append(f"... +{len(self) - 2} more")
+                return f"[{len(self)} files: {', '.join(paths_preview)} - Use {{ {var_name}[0].content }} or loop over files]"
 
     def __repr__(self) -> str:
         """Get detailed string representation of the file list.

@@ -80,20 +80,37 @@ def test_file_list_str_repr(
     file_info = FileInfo.from_path(
         "/test_workspace/base/test.txt", security_manager=security_manager
     )
-    files = FileInfoList([file_info])
 
     # Test empty list
     empty_files = FileInfoList([])
     assert str(empty_files) == "FileInfoList([])"
     assert repr(empty_files) == "FileInfoList([])"
 
-    # Test single file
-    assert (
-        str(files) == "FileInfoList(['test.txt'])"
-    )  # Path relative to base_dir
-    assert (
-        repr(files) == "FileInfoList(['test.txt'])"
-    )  # Path relative to base_dir
+    # Test single file from file mapping (not from_dir)
+    files = FileInfoList([file_info], from_dir=False, var_alias="test_file")
+    expected_str = (
+        "[File 'test.txt' - Use { test_file.content } to access file content]"
+    )
+    assert str(files) == expected_str
+    assert repr(files) == expected_str
+
+    # Test single file from directory mapping (from_dir=True)
+    files_from_dir = FileInfoList(
+        [file_info], from_dir=True, var_alias="dir_files"
+    )
+    expected_dir_str = "[Directory file 'test.txt' - Use { dir_files[0].content } or { dir_files|single.content } to access content]"
+    assert str(files_from_dir) == expected_dir_str
+
+    # Test multiple files
+    fs.create_file("/test_workspace/base/test2.txt", contents="world")
+    file_info2 = FileInfo.from_path(
+        "/test_workspace/base/test2.txt", security_manager=security_manager
+    )
+    multi_files = FileInfoList(
+        [file_info, file_info2], var_alias="multi_files"
+    )
+    expected_multi_str = "[2 files: test.txt, test2.txt - Use { multi_files[0].content } or loop over files]"
+    assert str(multi_files) == expected_multi_str
 
 
 def test_file_list_minimal_thread_safety(
