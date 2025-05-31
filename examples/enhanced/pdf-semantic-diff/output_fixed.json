@@ -1,0 +1,34 @@
+{
+  "changes": [
+    {
+      "type": "reworded",
+      "description": "Added TypeScript to frontend development.",
+      "old_snippet": "- Frontend development using React",
+      "new_snippet": "- Frontend development using React and TypeScript"
+    },
+    {
+      "type": "reworded",
+      "description": "Specified Node.js for backend development.",
+      "old_snippet": "- Backend API development",
+      "new_snippet": "- Backend API development with Node.js"
+    },
+    {
+      "type": "added",
+      "description": "New section added.",
+      "old_snippet": null,
+      "new_snippet": "4. INTELLECTUAL PROPERTY"
+    },
+    {
+      "type": "added",
+      "description": "New section added.",
+      "old_snippet": null,
+      "new_snippet": "All code and designs become property of the client upon final payment."
+    },
+    {
+      "type": "added",
+      "description": "New section added.",
+      "old_snippet": null,
+      "new_snippet": "Source code will be provided in a private repository."
+    }
+  ]
+}

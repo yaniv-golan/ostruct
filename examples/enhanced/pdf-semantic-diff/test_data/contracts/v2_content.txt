@@ -1,0 +1,22 @@
+SAMPLE SERVICE AGREEMENT
+
+1. SCOPE OF WORK
+The contractor will provide full-stack development services including:
+- Frontend development using React and TypeScript
+- Backend API development with Node.js
+- Database design and implementation
+- Comprehensive testing and deployment
+- Post-launch support for 30 days
+
+2. PAYMENT TERMS
+Payment of $7,500 will be made in three installments:
+- 40% upon project start
+- 40% upon milestone completion
+- 20% upon final delivery
+
+3. TIMELINE
+Project completion is expected within 10 weeks from start date.
+
+4. INTELLECTUAL PROPERTY
+All code and designs become property of the client upon final payment.
+Source code will be provided in a private repository. 

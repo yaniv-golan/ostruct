@@ -1,0 +1,19 @@
+SAMPLE SERVICE AGREEMENT
+
+1. SCOPE OF WORK
+The contractor will provide web development services including:
+- Frontend development using React
+- Backend API development
+- Database design and implementation
+- Testing and deployment
+
+2. PAYMENT TERMS
+Payment of $5,000 will be made in two installments:
+- 50% upon project start
+- 50% upon completion
+
+3. TIMELINE
+Project completion is expected within 8 weeks from start date.
+
+4. INTELLECTUAL PROPERTY
+All code and designs remain property of the client upon final payment. 
