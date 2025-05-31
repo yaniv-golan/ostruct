@@ -11,6 +11,31 @@ from pydantic import BaseModel, Field, field_validator
 logger = logging.getLogger(__name__)
 
 
+class WebSearchUserLocationConfig(BaseModel):
+    """Configuration for web search user location."""
+
+    country: Optional[str] = None
+    city: Optional[str] = None
+    region: Optional[str] = None
+
+
+class WebSearchToolConfig(BaseModel):
+    """Configuration for web search tool settings."""
+
+    enable_by_default: bool = False
+    user_location: Optional[WebSearchUserLocationConfig] = None
+    search_context_size: Optional[str] = Field(default=None)
+
+    @field_validator("search_context_size")
+    @classmethod
+    def validate_search_context_size(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ["low", "medium", "high"]:
+            raise ValueError(
+                "search_context_size must be one of: low, medium, high"
+            )
+        return v
+
+
 class ToolsConfig(BaseModel):
     """Configuration for tool-specific settings."""
 
@@ -22,6 +47,9 @@ class ToolsConfig(BaseModel):
     )
     file_search: Dict[str, Any] = Field(
         default_factory=lambda: {"max_results": 10}
+    )
+    web_search: WebSearchToolConfig = Field(
+        default_factory=WebSearchToolConfig
     )
 
 
@@ -164,6 +192,10 @@ class OstructConfig(BaseModel):
         """Get file search configuration."""
         return self.tools.file_search
 
+    def get_web_search_config(self) -> WebSearchToolConfig:
+        """Get web search configuration."""
+        return self.tools.web_search
+
     def should_require_approval(self, cost_estimate: float = 0.0) -> bool:
         """Determine if approval should be required for an operation."""
         if self.operation.require_approval == "always":
@@ -204,6 +236,14 @@ tools:
 
   file_search:
     max_results: 10
+
+  web_search:
+    enable_by_default: false  # Whether to enable web search by default
+    search_context_size: medium  # Options: low, medium, high
+    user_location:
+      country: US  # Optional: country for geographically relevant results
+      city: San Francisco  # Optional: city for local context
+      region: California  # Optional: region/state for regional relevance
 
 # MCP (Model Context Protocol) server configurations
 # You can define shortcuts to commonly used MCP servers

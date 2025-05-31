@@ -558,6 +558,55 @@ def file_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
+def web_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add Web Search CLI options."""
+    cmd: Any = f if isinstance(f, Command) else f
+
+    cmd = click.option(
+        "--web-search",
+        is_flag=True,
+        help="""🌐 [WEB SEARCH] Enable OpenAI web search tool for up-to-date information.
+        Allows the model to search the web for current events, recent updates, and real-time data.
+        Note: Search queries may be sent to external services via OpenAI.""",
+    )(cmd)
+
+    cmd = click.option(
+        "--no-web-search",
+        is_flag=True,
+        help="""Explicitly disable web search even if enabled by default in configuration.""",
+    )(cmd)
+
+    cmd = click.option(
+        "--user-country",
+        type=str,
+        help="""🌐 [WEB SEARCH] Specify user country for geographically tailored search results.
+        Used to improve search relevance by location (e.g., 'US', 'UK', 'Germany').""",
+    )(cmd)
+
+    cmd = click.option(
+        "--user-city",
+        type=str,
+        help="""🌐 [WEB SEARCH] Specify user city for geographically tailored search results.
+        Used to improve search relevance by location (e.g., 'San Francisco', 'London').""",
+    )(cmd)
+
+    cmd = click.option(
+        "--user-region",
+        type=str,
+        help="""🌐 [WEB SEARCH] Specify user region/state for geographically tailored search results.
+        Used to improve search relevance by location (e.g., 'California', 'Bavaria').""",
+    )(cmd)
+
+    cmd = click.option(
+        "--search-context-size",
+        type=click.Choice(["low", "medium", "high"]),
+        help="""🌐 [WEB SEARCH] Control the amount of content retrieved from web pages.
+        'low' retrieves minimal content, 'high' retrieves comprehensive content. Default: medium.""",
+    )(cmd)
+
+    return cast(Command, cmd)
+
+
 def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add debugging and progress CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
@@ -609,6 +658,7 @@ def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
     cmd = mcp_options(cmd)
     cmd = code_interpreter_options(cmd)
     cmd = file_search_options(cmd)
+    cmd = web_search_options(cmd)
     cmd = debug_options(cmd)
     cmd = debug_progress_options(cmd)
 

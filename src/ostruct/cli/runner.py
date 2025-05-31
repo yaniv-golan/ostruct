@@ -5,13 +5,14 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, Type
+from typing import Any, AsyncGenerator, Dict, List, Optional, Type, Union
 
 from openai import AsyncOpenAI, OpenAIError
 from openai_model_registry import ModelRegistry
 from pydantic import BaseModel
 
 from .code_interpreter import CodeInterpreterManager
+from .config import OstructConfig
 from .cost_estimation import calculate_cost_estimate, format_cost_breakdown
 from .errors import (
     APIErrorMapper,
@@ -531,6 +532,34 @@ async def stream_structured_output(
             if on_log:
                 on_log(logging.DEBUG, f"Received chunk: {chunk}", {})
 
+            # Check for tool calls (including web search)
+            if hasattr(chunk, "choices") and chunk.choices:
+                choice = chunk.choices[0]
+                # Log tool calls if present
+                if (
+                    hasattr(choice, "delta")
+                    and hasattr(choice.delta, "tool_calls")
+                    and choice.delta.tool_calls
+                ):
+                    for tool_call in choice.delta.tool_calls:
+                        if (
+                            hasattr(tool_call, "type")
+                            and tool_call.type == "web_search_preview"
+                        ):
+                            tool_id = getattr(tool_call, "id", "unknown")
+                            logger.debug(
+                                f"Web search tool invoked (id={tool_id})"
+                            )
+                        elif hasattr(tool_call, "function") and hasattr(
+                            tool_call.function, "name"
+                        ):
+                            # Handle other tool types for completeness
+                            tool_name = tool_call.function.name
+                            tool_id = getattr(tool_call, "id", "unknown")
+                            logger.debug(
+                                f"Tool '{tool_name}' invoked (id={tool_id})"
+                            )
+
             # Handle different response formats based on the chunk structure
             content_added = False
 
@@ -876,6 +905,92 @@ async def execute_model(
                             "File Search manager has no created vector stores"
                         )
 
+        # Process Web Search configuration if enabled
+        # Check CLI flags first, then fall back to config defaults
+        web_search_from_cli = args.get("web_search", False)
+        no_web_search_from_cli = args.get("no_web_search", False)
+
+        # Load configuration to check defaults
+        from typing import cast
+
+        config_path = cast(Union[str, Path, None], args.get("config"))
+        config = OstructConfig.load(config_path)
+        web_search_config = config.get_web_search_config()
+
+        # Determine if web search should be enabled
+        web_search_enabled = False
+        if web_search_from_cli:
+            # Explicit --web-search flag takes precedence
+            web_search_enabled = True
+        elif no_web_search_from_cli:
+            # Explicit --no-web-search flag disables
+            web_search_enabled = False
+        else:
+            # Use config default
+            web_search_enabled = web_search_config.enable_by_default
+
+        if web_search_enabled:
+            # Import validation function
+            from .model_validation import validate_web_search_compatibility
+
+            # Check model compatibility
+            compatibility_warning = validate_web_search_compatibility(
+                args["model"], True
+            )
+            if compatibility_warning:
+                logger.warning(compatibility_warning)
+                # For now, we'll warn but still allow the user to proceed
+                # In the future, this could be made stricter based on user feedback
+
+            # Check for Azure OpenAI endpoint guard-rail
+            api_base = os.getenv("OPENAI_API_BASE", "")
+            if "azure.com" in api_base.lower():
+                logger.warning(
+                    "Web search is not currently supported or may be unreliable with Azure OpenAI endpoints and has been disabled."
+                )
+            else:
+                web_tool_config: Dict[str, Any] = {
+                    "type": "web_search_preview"
+                }
+
+                # Add user_location if provided via CLI or config
+                user_country = args.get("user_country")
+                user_city = args.get("user_city")
+                user_region = args.get("user_region")
+
+                # Fall back to config if not provided via CLI
+                if (
+                    not any([user_country, user_city, user_region])
+                    and web_search_config.user_location
+                ):
+                    user_country = web_search_config.user_location.country
+                    user_city = web_search_config.user_location.city
+                    user_region = web_search_config.user_location.region
+
+                if user_country or user_city or user_region:
+                    user_location: Dict[str, Any] = {"type": "approximate"}
+                    if user_country:
+                        user_location["country"] = user_country
+                    if user_city:
+                        user_location["city"] = user_city
+                    if user_region:
+                        user_location["region"] = user_region
+
+                    web_tool_config["user_location"] = user_location
+
+                # Add search_context_size if provided via CLI or config
+                search_context_size = (
+                    args.get("search_context_size")
+                    or web_search_config.search_context_size
+                )
+                if search_context_size:
+                    web_tool_config["search_context_size"] = (
+                        search_context_size
+                    )
+
+                tools.append(web_tool_config)
+                logger.debug(f"Web Search tool config: {web_tool_config}")
+
         # Debug log the final tools array
         print(f"DEBUG: Final tools array being passed to API: {tools}")
 
@@ -1113,6 +1228,20 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
                 token_count=total_tokens,
                 token_limit=128000,  # Default fallback
             )
+
+        # 3a. Web Search Compatibility Validation
+        if args.get("web_search", False) and not args.get(
+            "no_web_search", False
+        ):
+            from .model_validation import validate_web_search_compatibility
+
+            compatibility_warning = validate_web_search_compatibility(
+                args["model"], True
+            )
+            if compatibility_warning:
+                logger.warning(compatibility_warning)
+                # For production usage, consider making this an error instead of warning
+                # raise CLIError(compatibility_warning, exit_code=ExitCode.VALIDATION_ERROR)
 
         # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):

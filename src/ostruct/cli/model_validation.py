@@ -160,3 +160,45 @@ async def validate_model_and_schema(
     registry = ModelRegistry.get_instance()
 
     return output_model, messages, total_tokens, registry
+
+
+def supports_web_search(model: str) -> bool:
+    """Check if model supports web search capabilities.
+
+    Args:
+        model: The model name to check
+
+    Returns:
+        True if the model supports web search, False otherwise
+    """
+    try:
+        registry = ModelRegistry.get_instance()
+        capabilities = registry.get_capabilities(model)
+        return getattr(capabilities, "supports_web_search", False)
+    except Exception:
+        # Default to False for safety if we can't determine support
+        return False
+
+
+def validate_web_search_compatibility(
+    model: str, web_search_enabled: bool
+) -> Optional[str]:
+    """Validate web search compatibility and return warning message if needed.
+
+    Args:
+        model: The model name to validate
+        web_search_enabled: Whether web search is enabled
+
+    Returns:
+        Warning message if there's a compatibility issue, None otherwise
+    """
+    if not web_search_enabled:
+        return None
+
+    if not supports_web_search(model):
+        return (
+            f"Model '{model}' does not support web search capabilities. "
+            f"Consider using a compatible model like 'gpt-4o', 'gpt-4.1', or an O-series model."
+        )
+
+    return None

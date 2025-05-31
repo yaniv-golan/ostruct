@@ -13,6 +13,7 @@ import yaml
 
 from .errors import (
     DirectoryNotFoundError,
+    DuplicateFileMappingError,
     InvalidJSONError,
     OstructFileNotFoundError,
     PathSecurityError,
@@ -20,7 +21,6 @@ from .errors import (
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
     VariableNameError,
-    DuplicateFileMappingError,
 )
 from .file_utils import FileInfoList, collect_files
 from .path_utils import validate_path_mapping
@@ -84,84 +84,100 @@ def process_system_prompt(
 
         try:
             template = env.from_string(cli_system_prompt)
-            return template.render(**template_context).strip()
+            base_prompt = template.render(**template_context).strip()
         except jinja2.TemplateError as e:
             raise SystemPromptError(f"Error rendering system prompt: {e}")
 
     elif system_prompt is not None:
         try:
             template = env.from_string(system_prompt)
-            return template.render(**template_context).strip()
+            base_prompt = template.render(**template_context).strip()
         except jinja2.TemplateError as e:
             raise SystemPromptError(f"Error rendering system prompt: {e}")
 
-    # Build message parts from template in order: auto-stub, include_system, system_prompt
-    message_parts = []
-
-    # 1. Auto-stub (default system prompt)
-    message_parts.append("You are a helpful assistant.")
-
-    # 2. Template-based system prompts (include_system and system_prompt)
-    if not ignore_task_sysprompt:
-        try:
-            # Extract YAML frontmatter
-            if task_template.startswith("---\n"):
-                end = task_template.find("\n---\n", 4)
-                if end != -1:
-                    frontmatter = task_template[4:end]
-                    try:
-                        metadata = yaml.safe_load(frontmatter)
-                        if isinstance(metadata, dict):
-                            # 2a. include_system: from template
-                            inc = metadata.get("include_system")
-                            if inc and template_path:
-                                inc_path = (
-                                    Path(template_path).parent / inc
-                                ).resolve()
-                                if not inc_path.is_file():
-                                    raise click.ClickException(
-                                        f"include_system file not found: {inc}"
-                                    )
-                                include_txt = inc_path.read_text(
-                                    encoding="utf-8"
-                                )
-                                message_parts.append(include_txt)
-
-                            # 2b. system_prompt: from template
-                            if "system_prompt" in metadata:
-                                template_system_prompt = str(
-                                    metadata["system_prompt"]
-                                )
-                                try:
-                                    template = env.from_string(
-                                        template_system_prompt
-                                    )
-                                    message_parts.append(
-                                        template.render(
-                                            **template_context
-                                        ).strip()
-                                    )
-                                except jinja2.TemplateError as e:
-                                    raise SystemPromptError(
-                                        f"Error rendering system prompt: {e}"
-                                    )
-                    except yaml.YAMLError as e:
-                        raise SystemPromptError(
-                            f"Invalid YAML frontmatter: {e}"
-                        )
-
-        except Exception as e:
-            raise SystemPromptError(
-                f"Error extracting system prompt from template: {e}"
-            )
-
-    # Return the combined message (remove default if we have other content)
-    if len(message_parts) > 1:
-        # Remove the default auto-stub if we have other content
-        return "\n\n".join(message_parts[1:]).strip()
     else:
-        # Return just the default
-        return message_parts[0]
+        # Build message parts from template in order: auto-stub, include_system, system_prompt
+        message_parts = []
+
+        # 1. Auto-stub (default system prompt)
+        message_parts.append("You are a helpful assistant.")
+
+        # 2. Template-based system prompts (include_system and system_prompt)
+        if not ignore_task_sysprompt:
+            try:
+                # Extract YAML frontmatter
+                if task_template.startswith("---\n"):
+                    end = task_template.find("\n---\n", 4)
+                    if end != -1:
+                        frontmatter = task_template[4:end]
+                        try:
+                            metadata = yaml.safe_load(frontmatter)
+                            if isinstance(metadata, dict):
+                                # 2a. include_system: from template
+                                inc = metadata.get("include_system")
+                                if inc and template_path:
+                                    inc_path = (
+                                        Path(template_path).parent / inc
+                                    ).resolve()
+                                    if not inc_path.is_file():
+                                        raise click.ClickException(
+                                            f"include_system file not found: {inc}"
+                                        )
+                                    include_txt = inc_path.read_text(
+                                        encoding="utf-8"
+                                    )
+                                    message_parts.append(include_txt)
+
+                                # 2b. system_prompt: from template
+                                if "system_prompt" in metadata:
+                                    template_system_prompt = str(
+                                        metadata["system_prompt"]
+                                    )
+                                    try:
+                                        template = env.from_string(
+                                            template_system_prompt
+                                        )
+                                        message_parts.append(
+                                            template.render(
+                                                **template_context
+                                            ).strip()
+                                        )
+                                    except jinja2.TemplateError as e:
+                                        raise SystemPromptError(
+                                            f"Error rendering system prompt: {e}"
+                                        )
+                        except yaml.YAMLError as e:
+                            raise SystemPromptError(
+                                f"Invalid YAML frontmatter: {e}"
+                            )
+
+            except Exception as e:
+                raise SystemPromptError(
+                    f"Error extracting system prompt from template: {e}"
+                )
+
+        # Return the combined message (remove default if we have other content)
+        if len(message_parts) > 1:
+            # Remove the default auto-stub if we have other content
+            base_prompt = "\n\n".join(message_parts[1:]).strip()
+        else:
+            # Return just the default
+            base_prompt = message_parts[0]
+
+    # Add web search tool instructions if web search is enabled
+    web_search_enabled = template_context.get("web_search_enabled", False)
+    if web_search_enabled:
+        web_search_instructions = (
+            "\n\nYou have access to a web search tool for finding up-to-date information. "
+            "Use it when you need current events, recent data, or real-time information. "
+            "When using web search results, cite your sources in any 'sources' or 'references' "
+            "field in the JSON schema if available. Do not include [n] citation markers "
+            "within other JSON fields - keep the main content clean and put citations "
+            "in dedicated source fields."
+        )
+        base_prompt += web_search_instructions
+
+    return base_prompt
 
 
 def validate_task_template(
@@ -750,6 +766,31 @@ async def create_template_context_from_routing(
 
         # Add current model to context
         context["current_model"] = args["model"]
+
+        # Add web search enabled flag to context
+        # Use the same logic as runner.py for consistency
+        web_search_from_cli = args.get("web_search", False)
+        no_web_search_from_cli = args.get("no_web_search", False)
+
+        # Load configuration to check defaults
+        from .config import OstructConfig
+
+        config_path = cast(Union[str, Path, None], args.get("config"))
+        config = OstructConfig.load(config_path)
+        web_search_config = config.get_web_search_config()
+
+        # Determine if web search should be enabled
+        if web_search_from_cli:
+            # Explicit --web-search flag takes precedence
+            web_search_enabled = True
+        elif no_web_search_from_cli:
+            # Explicit --no-web-search flag disables
+            web_search_enabled = False
+        else:
+            # Use config default
+            web_search_enabled = web_search_config.enable_by_default
+
+        context["web_search_enabled"] = web_search_enabled
 
         return context
 
