@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Critical**: Resolved Click framework limitations for variable argument file routing
 - **Critical**: Fixed template variable collision issues with comprehensive file naming
+- **Critical**: Fixed FileInfoList API inconsistency - added adaptive `.name` property that returns scalar for single files, list for multiple files
+- **Enhancement**: Added always-list `.names` property to FileInfoList for explicit list access
+- **Enhancement**: Added `|single` Jinja2 filter for safe single-item extraction from lists with clear error messages
+- **Enhancement**: Improved error messages when accessing FileInfo attributes on multi-file lists with specific guidance
 - **Security**: Maintained all existing path validation and security controls
 - **Performance**: Optimized file processing and template rendering
 
@@ -50,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Performance Baseline**: Code Interpreter (10-16s), File Search (7-8s), basic operations (1-2s)
 - **Architecture**: Explicit file routing system with tool-specific processing
 - **Testing**: Enhanced test suite with proper OpenAI SDK mocking patterns
+
+### Developer Experience
+
+- **API Consistency**: FileInfoList now provides consistent adaptive behavior across all properties (name, content, path, abs_path, size)
+- **Template Clarity**: All file variables are now explicitly FileInfoList instances with documented adaptive properties
+- **Error Guidance**: Enhanced error messages include template variable names and suggest correct syntax patterns
+- **Filter Safety**: New `|single` filter provides explicit validation for single-item expectations with descriptive errors
 
 ## [0.7.2] - 2025-03-07
 
