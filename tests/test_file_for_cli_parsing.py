@@ -164,9 +164,9 @@ class TestFileForCLIParsing:
                 ("template", "/explicit/config.yaml"),
                 ("code-interpreter", "/explicit/data.csv"),
             ],
-            "template_files": [("name", "/other/template.txt")],
-            "code_interpreter_files": [("data", "/other/code.py")],
-            "file_search_files": [("docs", "/other/search.pdf")],
+            "template_file_aliases": [("name", "/other/template.txt")],
+            "code_interpreter_file_aliases": [("data", "/other/code.py")],
+            "file_search_file_aliases": [("docs", "/other/search.pdf")],
         }
 
         routing = processor._parse_file_routing_from_args(args)

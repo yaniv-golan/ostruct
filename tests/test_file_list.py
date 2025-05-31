@@ -269,3 +269,202 @@ def test_file_list_slicing_thread_safety(
         thread.start()
     for thread in threads:
         thread.join()
+
+
+def test_file_list_name_property_adaptive_behavior(
+    fs: FakeFilesystem, security_manager: SecurityManager
+) -> None:
+    """Test FileInfoList.name adaptive behavior."""
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+
+    # Test empty list
+    empty_files = FileInfoList([])
+    assert empty_files.name == []
+
+    # Test single file from file mapping (not from_dir)
+    fs.create_file("/test_workspace/base/single.txt", contents="content")
+    single_file = FileInfo.from_path(
+        "/test_workspace/base/single.txt", security_manager=security_manager
+    )
+    single_files = FileInfoList(
+        [single_file], from_dir=False, var_alias="single_var"
+    )
+    assert single_files.name == "single.txt"  # Returns scalar string
+    assert isinstance(single_files.name, str)
+
+    # Test single file from directory mapping (from_dir=True)
+    single_files_from_dir = FileInfoList(
+        [single_file], from_dir=True, var_alias="dir_var"
+    )
+    assert single_files_from_dir.name == ["single.txt"]  # Returns list
+    assert isinstance(single_files_from_dir.name, list)
+
+    # Test multiple files
+    fs.create_file("/test_workspace/base/file1.txt", contents="content1")
+    fs.create_file("/test_workspace/base/file2.txt", contents="content2")
+    multi_files = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/file1.txt",
+                security_manager=security_manager,
+            ),
+            FileInfo.from_path(
+                "/test_workspace/base/file2.txt",
+                security_manager=security_manager,
+            ),
+        ],
+        from_dir=False,
+        var_alias="multi_var",
+    )
+    assert multi_files.name == ["file1.txt", "file2.txt"]  # Returns list
+    assert isinstance(multi_files.name, list)
+
+
+def test_file_list_names_property_always_list(
+    fs: FakeFilesystem, security_manager: SecurityManager
+) -> None:
+    """Test FileInfoList.names always returns a list."""
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+
+    # Test empty list
+    empty_files = FileInfoList([])
+    assert empty_files.names == []
+    assert isinstance(empty_files.names, list)
+
+    # Test single file (should still return list)
+    fs.create_file("/test_workspace/base/single.txt", contents="content")
+    single_file = FileInfo.from_path(
+        "/test_workspace/base/single.txt", security_manager=security_manager
+    )
+    single_files = FileInfoList(
+        [single_file], from_dir=False, var_alias="single_var"
+    )
+    assert single_files.names == ["single.txt"]  # Always returns list
+    assert isinstance(single_files.names, list)
+
+    # Test multiple files
+    fs.create_file("/test_workspace/base/file1.txt", contents="content1")
+    fs.create_file("/test_workspace/base/file2.txt", contents="content2")
+    multi_files = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/file1.txt",
+                security_manager=security_manager,
+            ),
+            FileInfo.from_path(
+                "/test_workspace/base/file2.txt",
+                security_manager=security_manager,
+            ),
+        ],
+        from_dir=False,
+        var_alias="multi_var",
+    )
+    assert multi_files.names == ["file1.txt", "file2.txt"]
+    assert isinstance(multi_files.names, list)
+
+
+def test_file_list_getattr_error_messages(
+    fs: FakeFilesystem, security_manager: SecurityManager
+) -> None:
+    """Test FileInfoList.__getattr__ provides helpful error messages."""
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    fs.create_file("/test_workspace/base/file1.txt", contents="content1")
+    fs.create_file("/test_workspace/base/file2.txt", contents="content2")
+
+    # Test multi-file list trying to access FileInfo attributes
+    multi_files = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/file1.txt",
+                security_manager=security_manager,
+            ),
+            FileInfo.from_path(
+                "/test_workspace/base/file2.txt",
+                security_manager=security_manager,
+            ),
+        ],
+        from_dir=False,
+        var_alias="test_files",
+    )
+
+    # Should raise AttributeError with helpful message for known FileInfo attributes
+    with pytest.raises(AttributeError) as exc_info:
+        _ = multi_files.encoding
+
+    error_msg = str(exc_info.value)
+    assert "test_files" in error_msg
+    assert "contains 2 files" in error_msg
+    assert "test_files[0].encoding" in error_msg
+    assert "test_files|single.encoding" in error_msg
+
+    # Test directory mapping (from_dir=True) with single file
+    single_file_from_dir = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/file1.txt",
+                security_manager=security_manager,
+            )
+        ],
+        from_dir=True,
+        var_alias="dir_files",
+    )
+
+    with pytest.raises(AttributeError) as exc_info:
+        _ = single_file_from_dir.hash
+
+    error_msg = str(exc_info.value)
+    assert "dir_files" in error_msg
+    assert "contains 1 files" in error_msg
+
+    # Test unknown attribute (should get default AttributeError)
+    with pytest.raises(AttributeError) as exc_info:
+        _ = multi_files.unknown_attribute
+
+    error_msg = str(exc_info.value)
+    assert "FileInfoList" in error_msg
+    assert "has no attribute 'unknown_attribute'" in error_msg
+
+
+def test_file_list_var_alias_in_error_messages(
+    fs: FakeFilesystem, security_manager: SecurityManager
+) -> None:
+    """Test that var_alias is properly used in error messages."""
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    fs.create_file("/test_workspace/base/test.txt", contents="content")
+
+    # Test with custom var_alias
+    files_with_alias = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/test.txt",
+                security_manager=security_manager,
+            )
+        ],
+        from_dir=True,
+        var_alias="my_custom_files",
+    )
+
+    with pytest.raises(AttributeError) as exc_info:
+        _ = (
+            files_with_alias.encoding
+        )  # This should trigger __getattr__ since from_dir=True
+
+    error_msg = str(exc_info.value)
+    assert "my_custom_files" in error_msg
+
+    # Test without var_alias (should use fallback)
+    files_no_alias = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/test.txt",
+                security_manager=security_manager,
+            )
+        ],
+        from_dir=True,
+    )  # No var_alias provided
+
+    with pytest.raises(AttributeError) as exc_info:
+        _ = files_no_alias.encoding
+
+    error_msg = str(exc_info.value)
+    assert "file_list" in error_msg  # Should use fallback name

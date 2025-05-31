@@ -2,7 +2,15 @@
 
 import logging
 import threading
-from typing import Iterable, Iterator, List, SupportsIndex, Union, overload
+from typing import (
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    SupportsIndex,
+    Union,
+    overload,
+)
 
 from .file_info import FileInfo
 
@@ -42,26 +50,35 @@ class FileInfoList(List[FileInfo]):
         path: File path(s)
         abs_path: Absolute file path(s)
         size: File size(s) in bytes
+        name: Filename(s) without directory path
 
     Raises:
         ValueError: When accessing properties on an empty list
     """
 
-    def __init__(self, files: List[FileInfo], from_dir: bool = False) -> None:
+    def __init__(
+        self,
+        files: List[FileInfo],
+        from_dir: bool = False,
+        var_alias: Optional[str] = None,
+    ) -> None:
         """Initialize FileInfoList.
 
         Args:
             files: List of FileInfo objects
             from_dir: Whether this list was created from a directory mapping
+            var_alias: Variable name used in template (for error messages)
         """
         logger.debug(
-            "Creating FileInfoList with %d files, from_dir=%s",
+            "Creating FileInfoList with %d files, from_dir=%s, var_alias=%s",
             len(files),
             from_dir,
+            var_alias,
         )
         self._lock = threading.RLock()  # Use RLock for nested method calls
         super().__init__(files)
         self._from_dir = from_dir
+        self._var_alias = var_alias
 
     @property
     def content(self) -> Union[str, List[str]]:
@@ -206,6 +223,99 @@ class FileInfoList(List[FileInfo]):
         except Exception as e:
             logger.error("Error accessing file size: %s", e)
             raise
+
+    @property
+    def name(self) -> Union[str, List[str]]:
+        """Get the filename(s) without directory path.
+
+        Returns:
+            Union[str, List[str]]: For a single file from file mapping (not from_dir),
+                                   returns its name as a string.
+                                   For multiple files or directory mapping,
+                                   returns a list of names.
+        """
+        with self._lock:
+            if not self:
+                return []
+
+            if len(self) == 1 and not self._from_dir:
+                return self[0].name  # Return scalar for single non-dir file
+            else:
+                return [f.name for f in self]  # Return list otherwise
+
+    @property
+    def names(self) -> List[str]:
+        """Get all filenames as a list."""
+        with self._lock:
+            if not self:
+                return []
+            try:
+                return [f.name for f in self]
+            except Exception as e:
+                logger.error(
+                    f"Error accessing file names for .names property in '{self._var_alias or 'FileInfoList'}': {e}"
+                )
+                raise
+
+    def __getattr__(self, attr_name: str) -> None:
+        """Provide helpful error messages for FileInfo attributes accessed on multi-file lists."""
+        # Import here to avoid circular imports
+        try:
+            from .template_schema import FileInfoProxy
+
+            # Try to get _valid_attrs as a class attribute, but it's actually an instance attribute
+            # So we'll get an empty set and fall back to our hardcoded list
+            valid_attrs = getattr(FileInfoProxy, "_valid_attrs", None)
+            if not valid_attrs:
+                # Use the same attributes that FileInfoProxy uses
+                valid_attrs = {
+                    "name",
+                    "path",
+                    "content",
+                    "ext",
+                    "basename",
+                    "dirname",
+                    "abs_path",
+                    "exists",
+                    "is_file",
+                    "is_dir",
+                    "size",
+                    "mtime",
+                    "encoding",
+                    "hash",
+                    "extension",
+                    "parent",
+                    "stem",
+                    "suffix",
+                }
+        except ImportError:
+            # Fallback list of common FileInfo attributes
+            valid_attrs = {
+                "name",
+                "path",
+                "content",
+                "size",
+                "abs_path",
+                "exists",
+                "encoding",
+                "hash",
+            }
+
+        # Only provide enhanced errors for known FileInfo attributes
+        if attr_name in valid_attrs:
+            # Check if this is a non-scalar list trying to access FileInfo attributes
+            if len(self) != 1 or self._from_dir:
+                var_name = getattr(self, "_var_alias", None) or "file_list"
+                raise AttributeError(
+                    f"'{var_name}' contains {len(self)} files. "
+                    f"Use '{{{{ {var_name}[0].{attr_name} }}}}' for the first file, "
+                    f"or '{{{{ {var_name}|single.{attr_name} }}}}' if expecting exactly one file."
+                )
+
+        # Let the default AttributeError occur for truly missing attributes
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{attr_name}'"
+        )
 
     def __str__(self) -> str:
         """Get string representation of the file list.

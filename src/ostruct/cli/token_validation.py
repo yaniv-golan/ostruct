@@ -1,5 +1,6 @@
 """Token limit validation with actionable error guidance."""
 
+import logging
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -46,6 +47,8 @@ class TokenLimitValidator:
         Raises:
             PromptTooLargeError: If prompt exceeds context window with actionable guidance
         """
+        logger = logging.getLogger(__name__)
+
         limit = context_limit or self.MAX_TOKENS
         total_tokens = self._count_template_tokens(template_content)
 
@@ -61,6 +64,15 @@ class TokenLimitValidator:
             except (OSError, IOError):
                 # Skip files that can't be read for token counting
                 continue
+
+        # Add 90% warning threshold
+        if total_tokens > limit * 0.9:
+            logger.warning(
+                "Prompt is %.1f%% of the %d-token window (%d tokens)",
+                total_tokens / limit * 100,
+                limit,
+                total_tokens,
+            )
 
         if total_tokens > limit:
             self._raise_actionable_error(total_tokens, limit, oversized_files)

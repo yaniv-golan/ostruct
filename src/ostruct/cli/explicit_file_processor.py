@@ -139,19 +139,18 @@ class ExplicitFileProcessor:
                 f"Legacy -d flag detected: {len(legacy_dirs)} dirs (handled separately)"
             )
 
-        # Handle explicit tool routing - all file options now contain (name, path) tuples
+        # Handle explicit tool routing - file options now have different formats
 
-        # Template files (from -ft and --fta)
-        template_file_tuples = args.get("template_files", [])
-        for name_path_tuple in template_file_tuples:
-            if isinstance(name_path_tuple, tuple):
-                name, path = name_path_tuple
-                routing.template_files.append(str(path))
+        # Template files (from -ft) - now single-argument auto-naming
+        template_file_paths = args.get("template_files", [])
+        for file_path in template_file_paths:
+            if isinstance(file_path, str):
+                routing.template_files.append(file_path)
             else:
-                # Fallback for old format
-                routing.template_files.append(str(name_path_tuple))
+                # Fallback for old format (shouldn't happen with new implementation)
+                routing.template_files.append(str(file_path))
 
-        # Template file aliases (from --fta)
+        # Template file aliases (from --fta) - two-argument explicit naming
         template_file_aliases = args.get("template_file_aliases", [])
         for name_path_tuple in template_file_aliases:
             if isinstance(name_path_tuple, tuple):
@@ -160,16 +159,16 @@ class ExplicitFileProcessor:
             else:
                 routing.template_files.append(str(name_path_tuple))
 
-        # Code Interpreter files (from -fc and --fca)
-        code_interpreter_file_tuples = args.get("code_interpreter_files", [])
-        for name_path_tuple in code_interpreter_file_tuples:
-            if isinstance(name_path_tuple, tuple):
-                name, path = name_path_tuple
-                routing.code_interpreter_files.append(str(path))
+        # Code Interpreter files (from -fc) - now single-argument auto-naming
+        code_interpreter_file_paths = args.get("code_interpreter_files", [])
+        for file_path in code_interpreter_file_paths:
+            if isinstance(file_path, str):
+                routing.code_interpreter_files.append(file_path)
             else:
-                routing.code_interpreter_files.append(str(name_path_tuple))
+                # Fallback for old format (shouldn't happen with new implementation)
+                routing.code_interpreter_files.append(str(file_path))
 
-        # Code interpreter file aliases (from --fca)
+        # Code interpreter file aliases (from --fca) - two-argument explicit naming
         code_interpreter_file_aliases = args.get(
             "code_interpreter_file_aliases", []
         )
@@ -180,16 +179,16 @@ class ExplicitFileProcessor:
             else:
                 routing.code_interpreter_files.append(str(name_path_tuple))
 
-        # File Search files (from -fs and --fsa)
-        file_search_file_tuples = args.get("file_search_files", [])
-        for name_path_tuple in file_search_file_tuples:
-            if isinstance(name_path_tuple, tuple):
-                name, path = name_path_tuple
-                routing.file_search_files.append(str(path))
+        # File Search files (from -fs) - now single-argument auto-naming
+        file_search_file_paths = args.get("file_search_files", [])
+        for file_path in file_search_file_paths:
+            if isinstance(file_path, str):
+                routing.file_search_files.append(file_path)
             else:
-                routing.file_search_files.append(str(name_path_tuple))
+                # Fallback for old format (shouldn't happen with new implementation)
+                routing.file_search_files.append(str(file_path))
 
-        # File search file aliases (from --fsa)
+        # File search file aliases (from --fsa) - two-argument explicit naming
         file_search_file_aliases = args.get("file_search_file_aliases", [])
         for name_path_tuple in file_search_file_aliases:
             if isinstance(name_path_tuple, tuple):

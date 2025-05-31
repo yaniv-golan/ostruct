@@ -5,12 +5,10 @@ We isolate this code here and provide proper type annotations for Click's
 decorator-based API.
 """
 
-from pathlib import Path
-from typing import Any, Callable, List, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, TypeVar, Union, cast
 
 import click
 from click import Command
-from click.core import Context, Option, Parameter
 from typing_extensions import ParamSpec
 
 from ostruct import __version__
@@ -19,7 +17,6 @@ from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
     TaskTemplateVariableError,
 )
 from ostruct.cli.validators import (
-    validate_file_routing_spec,
     validate_json_variable,
     validate_name_path_pair,
     validate_variable,
@@ -30,92 +27,6 @@ R = TypeVar("R")
 F = TypeVar("F", bound=Callable[..., Any])
 CommandDecorator = Callable[[F], Command]
 DecoratedCommand = Union[Command, Callable[..., Any]]
-
-
-class FileRouteOption(Option):
-    """Custom Click option that supports 1-2 arguments for file routing.
-
-    Supports three syntaxes:
-    1. Auto-naming: -ft config.yaml (auto-generates variable name)
-    2. Two-arg alias: -ft code_file config.yaml (explicit name + path)
-    3. Equals alias: -ft code_file=config.yaml (name=path format)
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.multiple = True
-        self.nargs = 1  # We'll manually handle the variable args
-
-    def full_process_value(self, ctx: Context, param: Parameter, value: Any) -> Any:  # type: ignore[override]
-        """Override the main value processing to handle our custom logic."""
-        if value is None:
-            return []
-
-        # Handle case where value is already processed
-        if isinstance(value, list) and value and isinstance(value[0], tuple):
-            return value
-
-        # Process each value through our parser
-        result = []
-        for item in value:
-            if isinstance(item, str):
-                result.append(self._parse_route_spec(item))
-            else:
-                result.append(item)
-
-        return result
-
-    def _parse_route_spec(self, value: str) -> Tuple[str, Path]:
-        """Parse a route specification into (name, path) tuple."""
-        if "=" in value:
-            # Equals format: name=path
-            name, path_str = value.split("=", 1)
-        else:
-            # Auto-naming format
-            path_str = value
-            name = self._generate_variable_name(path_str)
-
-        path = Path(path_str)
-        if not path.exists():
-            raise click.BadParameter(f"File not found: {path_str}")
-
-        if not name.isidentifier():
-            raise click.BadParameter(f"Invalid variable name: {name}")
-
-        return (name, path)
-
-    def _generate_variable_name(self, file_path: str) -> str:
-        """Generate a valid Python variable name from a file path."""
-        import re
-
-        filename = Path(file_path).name
-        # Replace non-alphanumeric chars with underscores
-        var_name = re.sub(r"[^a-zA-Z0-9_]", "_", filename)
-        # Ensure it starts with letter or underscore
-        if var_name and var_name[0].isdigit():
-            var_name = "_" + var_name
-        return var_name or "file"
-
-
-def file_route_option(
-    param_decls: List[str],
-    name: str,
-    help_text: str,
-    route_type: str = "template",
-) -> Callable[[Any], Any]:
-    """Helper to create a FileRouteOption with consistent settings."""
-
-    def decorator(f: Any) -> Any:
-        return click.option(
-            *param_decls,
-            cls=FileRouteOption,
-            multiple=True,
-            metavar="[NAME] PATH",
-            help=help_text,
-            # Remove shell_complete as it's not available on Path objects
-        )(f)
-
-    return decorator
 
 
 def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
@@ -174,25 +85,22 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
         shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
     )(cmd)
 
-    # Template files with auto-naming and equals syntax
+    # Template files with auto-naming ONLY (single argument)
     cmd = click.option(
         "-ft",
         "--file-for-template",
         "template_files",
         multiple=True,
-        type=str,
-        metavar="PATH or NAME=PATH",
-        callback=validate_file_routing_spec,
-        help="""📄 [TEMPLATE] Files for template access only. These files will be available
+        type=click.Path(exists=True, file_okay=True, dir_okay=False),
+        help="""📄 [TEMPLATE] Files for template access only (auto-naming). These files will be available
         in your template but will not be uploaded to any tools. Use for configuration files,
         small data files, or any content you want to reference in templates.
-        Two forms: -ft config.yaml (auto-name) or -ft code_file=src/main.py (equals syntax).
-        For custom names with tab completion, use --fta instead.
-        Example: -ft config.yaml -ft code_file=src/main.py""",
+        Format: -ft path (auto-generates variable name from filename).
+        Example: -ft config.yaml → config_yaml variable, -ft src/main.py → main_py variable""",
         shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
     )(cmd)
 
-    # Template files with two-argument alias syntax
+    # Template files with two-argument alias syntax (explicit naming)
     cmd = click.option(
         "--fta",
         "--file-for-template-alias",
@@ -502,25 +410,22 @@ def code_interpreter_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add Code Interpreter CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    # Code interpreter files with auto-naming and equals syntax
+    # Code interpreter files with auto-naming ONLY (single argument)
     cmd = click.option(
         "-fc",
         "--file-for-code-interpreter",
         "code_interpreter_files",
         multiple=True,
-        type=str,
-        metavar="PATH or NAME=PATH",
-        callback=validate_file_routing_spec,
-        help="""💻 [CODE INTERPRETER] Files to upload for code execution and analysis.
+        type=click.Path(exists=True, file_okay=True, dir_okay=False),
+        help="""💻 [CODE INTERPRETER] Files to upload for code execution and analysis (auto-naming).
         Perfect for data files (CSV, JSON), code files (Python, R), or any files that
         need computational processing. Files are uploaded to an isolated execution environment.
-        Two forms: -fc data.csv (auto-name) or -fc dataset=src/data.csv (equals syntax).
-        For custom names with tab completion, use --fca instead.
-        Example: -fc data.csv -fc dataset=src/data.csv""",
+        Format: -fc path (auto-generates variable name from filename).
+        Example: -fc data.csv → data_csv variable, -fc analysis.py → analysis_py variable""",
         shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
     )(cmd)
 
-    # Code interpreter files with two-argument alias syntax
+    # Code interpreter files with two-argument alias syntax (explicit naming)
     cmd = click.option(
         "--fca",
         "--file-for-code-interpreter-alias",
@@ -573,25 +478,22 @@ def file_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add File Search CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    # File search files with auto-naming and equals syntax
+    # File search files with auto-naming ONLY (single argument)
     cmd = click.option(
         "-fs",
         "--file-for-search",
         "file_search_files",
         multiple=True,
-        type=str,
-        metavar="PATH or NAME=PATH",
-        callback=validate_file_routing_spec,
-        help="""🔍 [FILE SEARCH] Files to upload for semantic vector search. Perfect for
+        type=click.Path(exists=True, file_okay=True, dir_okay=False),
+        help="""🔍 [FILE SEARCH] Files to upload for semantic vector search (auto-naming). Perfect for
         documents (PDF, TXT, MD), manuals, knowledge bases, or any text content you want to
         search through. Files are processed into a searchable vector store.
-        Two forms: -fs docs.pdf (auto-name) or -fs manual=src/docs.pdf (equals syntax).
-        For custom names with tab completion, use --fsa instead.
-        Example: -fs docs.pdf -fs manual=src/docs.pdf""",
+        Format: -fs path (auto-generates variable name from filename).
+        Example: -fs docs.pdf → docs_pdf variable, -fs manual.txt → manual_txt variable""",
         shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
     )(cmd)
 
-    # File search files with two-argument alias syntax
+    # File search files with two-argument alias syntax (explicit naming)
     cmd = click.option(
         "--fsa",
         "--file-for-search-alias",
@@ -694,32 +596,23 @@ def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
 
 def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add all CLI options.
+    """Apply all CLI options to a command."""
+    cmd: Any = f if isinstance(f, Command) else f
 
-    Args:
-        f: Function to decorate
+    # Apply option groups in order
+    cmd = file_options(cmd)
+    cmd = variable_options(cmd)
+    cmd = model_options(cmd)
+    cmd = system_prompt_options(cmd)
+    cmd = output_options(cmd)
+    cmd = api_options(cmd)
+    cmd = mcp_options(cmd)
+    cmd = code_interpreter_options(cmd)
+    cmd = file_search_options(cmd)
+    cmd = debug_options(cmd)
+    cmd = debug_progress_options(cmd)
 
-    Returns:
-        Decorated function
-    """
-    decorators = [
-        model_options,  # Model selection and parameters first
-        system_prompt_options,  # System prompt configuration
-        file_options,  # File and directory handling
-        variable_options,  # Variable definitions
-        mcp_options,  # MCP server integration
-        code_interpreter_options,  # Code Interpreter integration
-        file_search_options,  # File Search integration
-        output_options,  # Output control
-        api_options,  # API configuration
-        debug_options,  # Debug settings
-        debug_progress_options,  # Progress and logging
-    ]
-
-    for decorator in decorators:
-        f = decorator(f)
-
-    return cast(Command, f)
+    return cast(Command, cmd)
 
 
 def create_click_command() -> CommandDecorator:

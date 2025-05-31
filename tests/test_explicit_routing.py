@@ -104,8 +104,8 @@ class TestExplicitFileProcessor:
             "tool_files": [
                 ("template", "/test/config.yaml"),
             ],
-            "template_files": [("custom_name", "/test/other.yaml")],
-            "code_interpreter_files": [("data", "/test/data.csv")],
+            "template_file_aliases": [("custom_name", "/test/other.yaml")],
+            "code_interpreter_file_aliases": [("data", "/test/data.csv")],
         }
 
         routing = self.processor._parse_file_routing_from_args(args)

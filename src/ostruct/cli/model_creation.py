@@ -160,6 +160,96 @@ def _get_type_with_constraints(
 
     field_type = field_schema.get("type")
 
+    # Handle union types (e.g., ["string", "null"])
+    if isinstance(field_type, list):
+        union_types: List[Type[Any]] = []
+        base_type: Type[Any] = str  # Default base type for constraints
+
+        for type_name in field_type:
+            if type_name == "string":
+                base_type = str
+                union_types.append(str)
+            elif type_name == "integer":
+                base_type = int
+                union_types.append(int)
+            elif type_name == "number":
+                base_type = float
+                union_types.append(float)
+            elif type_name == "boolean":
+                base_type = bool
+                union_types.append(bool)
+            elif type_name == "null":
+                union_types.append(type(None))
+            elif type_name == "object":
+                # For object unions, we'd need more complex handling
+                base_type = dict
+                union_types.append(dict)
+            elif type_name == "array":
+                # For array unions, we'd need more complex handling
+                base_type = list
+                union_types.append(list)
+
+        if len(union_types) == 1:
+            # Single type, use it directly
+            field_type_cls: Any = union_types[0]
+        else:
+            # Create union type
+            field_type_cls = Union[tuple(union_types)]
+
+        # Apply constraints based on the base type (non-null type)
+        if base_type == str:
+            # Add string-specific constraints to field_kwargs
+            if "pattern" in field_schema:
+                field_kwargs["pattern"] = field_schema["pattern"]
+            if "minLength" in field_schema:
+                field_kwargs["min_length"] = field_schema["minLength"]
+            if "maxLength" in field_schema:
+                field_kwargs["max_length"] = field_schema["maxLength"]
+
+            # Handle special string formats
+            if "format" in field_schema:
+                if field_schema["format"] == "date-time":
+                    # For union with null, we need Optional[datetime]
+                    if type(None) in union_types:
+                        field_type_cls = Union[datetime, type(None)]
+                    else:
+                        field_type_cls = datetime
+                elif field_schema["format"] == "date":
+                    if type(None) in union_types:
+                        field_type_cls = Union[date, type(None)]
+                    else:
+                        field_type_cls = date
+                elif field_schema["format"] == "time":
+                    if type(None) in union_types:
+                        field_type_cls = Union[time, type(None)]
+                    else:
+                        field_type_cls = time
+                elif field_schema["format"] == "email":
+                    if type(None) in union_types:
+                        field_type_cls = Union[EmailStr, type(None)]
+                    else:
+                        field_type_cls = EmailStr
+                elif field_schema["format"] == "uri":
+                    if type(None) in union_types:
+                        field_type_cls = Union[AnyUrl, type(None)]
+                    else:
+                        field_type_cls = AnyUrl
+
+        elif base_type in (int, float):
+            # Add number-specific constraints to field_kwargs
+            if "minimum" in field_schema:
+                field_kwargs["ge"] = field_schema["minimum"]
+            if "maximum" in field_schema:
+                field_kwargs["le"] = field_schema["maximum"]
+            if "exclusiveMinimum" in field_schema:
+                field_kwargs["gt"] = field_schema["exclusiveMinimum"]
+            if "exclusiveMaximum" in field_schema:
+                field_kwargs["lt"] = field_schema["exclusiveMaximum"]
+            if "multipleOf" in field_schema:
+                field_kwargs["multiple_of"] = field_schema["multipleOf"]
+
+        return (field_type_cls, Field(**field_kwargs))
+
     # Handle array type
     if field_type == "array":
         items_schema = field_schema.get("items", {})
@@ -219,7 +309,7 @@ def _get_type_with_constraints(
 
     # Handle other types
     if field_type == "string":
-        field_type_cls: Type[Any] = str
+        field_type_cls = str
 
         # Add string-specific constraints to field_kwargs
         if "pattern" in field_schema:

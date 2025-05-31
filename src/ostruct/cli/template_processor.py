@@ -20,6 +20,7 @@ from .errors import (
     TaskTemplateSyntaxError,
     TaskTemplateVariableError,
     VariableNameError,
+    DuplicateFileMappingError,
 )
 from .file_utils import FileInfoList, collect_files
 from .path_utils import validate_path_mapping
@@ -409,6 +410,12 @@ def collect_template_files(
         # Check if this is a wrapped security error
         if isinstance(e.__cause__, PathSecurityError):
             raise e.__cause__
+        # Don't wrap InvalidJSONError
+        if isinstance(e, InvalidJSONError):
+            raise
+        # Don't wrap DuplicateFileMappingError
+        if isinstance(e, DuplicateFileMappingError):
+            raise
         # Catch broader exceptions and re-raise
         logger.error(
             "Error collecting template files: %s", str(e), exc_info=True
@@ -539,28 +546,26 @@ async def create_template_context_from_routing(
         files_tuples = []
         seen_files = set()  # Track files to avoid duplicates
 
-        # Add template files - handle both auto-naming and custom naming
-        template_file_tuples = args.get("template_files", [])
-        for name_path_tuple in template_file_tuples:
-            if isinstance(name_path_tuple, tuple):
-                custom_name, file_path_raw = name_path_tuple
-                file_path = str(file_path_raw)
+        # Add template files - now single-argument auto-naming only
+        template_file_paths = args.get("template_files", [])
+        for template_file_path in template_file_paths:
+            if isinstance(template_file_path, (str, Path)):
+                # Auto-generate name for single-arg form: -ft config.yaml
+                file_name = _generate_template_variable_name(
+                    str(template_file_path)
+                )
+                file_path_str = str(template_file_path)
+                if file_path_str not in seen_files:
+                    files_tuples.append((file_name, file_path_str))
+                    seen_files.add(file_path_str)
 
-                if custom_name is None:
-                    # Auto-generate name for single-arg form: -ft config.yaml
-                    file_name = _generate_template_variable_name(file_path)
-                else:
-                    # Use custom name for two-arg form: -ft code_file src/main.py
-                    file_name = str(custom_name)
-
-                if file_path not in seen_files:
-                    files_tuples.append((file_name, file_path))
-                    seen_files.add(file_path)
-
-        # Add template file aliases (from --fta)
+        # Add template file aliases (from --fta) - two-argument explicit naming
         template_file_aliases = args.get("template_file_aliases", [])
         for name_path_tuple in template_file_aliases:
-            if isinstance(name_path_tuple, tuple):
+            if (
+                isinstance(name_path_tuple, tuple)
+                and len(name_path_tuple) == 2
+            ):
                 custom_name, file_path_raw = name_path_tuple
                 file_path = str(file_path_raw)
                 file_name = str(
@@ -572,36 +577,49 @@ async def create_template_context_from_routing(
                     seen_files.add(file_path)
 
         # Also process template_files from routing result (for compatibility)
-        for file_path in template_files:
-            file_name = _generate_template_variable_name(file_path)
-            if file_path not in seen_files:
-                files_tuples.append((file_name, file_path))
-                seen_files.add(file_path)
+        for template_file_item in template_files:
+            if isinstance(template_file_item, (str, Path)):
+                file_name = _generate_template_variable_name(
+                    str(template_file_item)
+                )
+                file_path_str = str(template_file_item)
+                if file_path_str not in seen_files:
+                    files_tuples.append((file_name, file_path_str))
+                    seen_files.add(file_path_str)
+            elif (
+                isinstance(template_file_item, tuple)
+                and len(template_file_item) == 2
+            ):
+                # Handle tuple format (name, path)
+                _, template_file_path = template_file_item
+                template_file_path_str = str(template_file_path)
+                file_name = _generate_template_variable_name(
+                    template_file_path_str
+                )
+                if template_file_path_str not in seen_files:
+                    files_tuples.append((file_name, template_file_path_str))
+                    seen_files.add(template_file_path_str)
 
-        # Add code interpreter files - handle both auto-naming and custom naming
-        code_interpreter_file_tuples = args.get("code_interpreter_files", [])
-        for name_path_tuple in code_interpreter_file_tuples:
-            if isinstance(name_path_tuple, tuple):
-                custom_name, file_path_raw = name_path_tuple
-                file_path = str(file_path_raw)
+        # Add code interpreter files - now single-argument auto-naming only
+        code_interpreter_file_paths = args.get("code_interpreter_files", [])
+        for ci_file_path in code_interpreter_file_paths:
+            if isinstance(ci_file_path, (str, Path)):
+                # Auto-generate name: -fc data.csv
+                file_name = _generate_template_variable_name(str(ci_file_path))
+                file_path_str = str(ci_file_path)
+                if file_path_str not in seen_files:
+                    files_tuples.append((file_name, file_path_str))
+                    seen_files.add(file_path_str)
 
-                if custom_name is None:
-                    # Auto-generate name: -fc data.csv
-                    file_name = _generate_template_variable_name(file_path)
-                else:
-                    # Use custom name: -fc dataset data.csv
-                    file_name = str(custom_name)
-
-                if file_path not in seen_files:
-                    files_tuples.append((file_name, file_path))
-                    seen_files.add(file_path)
-
-        # Add code interpreter file aliases (from --fca)
+        # Add code interpreter file aliases (from --fca) - two-argument explicit naming
         code_interpreter_file_aliases = args.get(
             "code_interpreter_file_aliases", []
         )
         for name_path_tuple in code_interpreter_file_aliases:
-            if isinstance(name_path_tuple, tuple):
+            if (
+                isinstance(name_path_tuple, tuple)
+                and len(name_path_tuple) == 2
+            ):
                 custom_name, file_path_raw = name_path_tuple
                 file_path = str(file_path_raw)
                 file_name = str(
@@ -613,34 +631,40 @@ async def create_template_context_from_routing(
                     seen_files.add(file_path)
 
         # Also process code_interpreter_files from routing result (for compatibility)
-        for file_path in code_interpreter_files:
-            file_name = _generate_template_variable_name(file_path)
-            if file_path not in seen_files:
-                files_tuples.append((file_name, file_path))
-                seen_files.add(file_path)
+        for ci_file_item in code_interpreter_files:
+            if isinstance(ci_file_item, (str, Path)):
+                file_name = _generate_template_variable_name(str(ci_file_item))
+                file_path_str = str(ci_file_item)
+                if file_path_str not in seen_files:
+                    files_tuples.append((file_name, file_path_str))
+                    seen_files.add(file_path_str)
+            elif isinstance(ci_file_item, tuple) and len(ci_file_item) == 2:
+                # Handle tuple format (name, path)
+                _, ci_file_path = ci_file_item
+                ci_file_path_str = str(ci_file_path)
+                file_name = _generate_template_variable_name(ci_file_path_str)
+                if ci_file_path_str not in seen_files:
+                    files_tuples.append((file_name, ci_file_path_str))
+                    seen_files.add(ci_file_path_str)
 
-        # Add file search files - handle both auto-naming and custom naming
-        file_search_file_tuples = args.get("file_search_files", [])
-        for name_path_tuple in file_search_file_tuples:
-            if isinstance(name_path_tuple, tuple):
-                custom_name, file_path_raw = name_path_tuple
-                file_path = str(file_path_raw)
+        # Add file search files - now single-argument auto-naming only
+        file_search_file_paths = args.get("file_search_files", [])
+        for fs_file_path in file_search_file_paths:
+            if isinstance(fs_file_path, (str, Path)):
+                # Auto-generate name: -fs docs.pdf
+                file_name = _generate_template_variable_name(str(fs_file_path))
+                file_path_str = str(fs_file_path)
+                if file_path_str not in seen_files:
+                    files_tuples.append((file_name, file_path_str))
+                    seen_files.add(file_path_str)
 
-                if custom_name is None:
-                    # Auto-generate name: -fs docs.pdf
-                    file_name = _generate_template_variable_name(file_path)
-                else:
-                    # Use custom name: -fs manual docs.pdf
-                    file_name = str(custom_name)
-
-                if file_path not in seen_files:
-                    files_tuples.append((file_name, file_path))
-                    seen_files.add(file_path)
-
-        # Add file search file aliases (from --fsa)
+        # Add file search file aliases (from --fsa) - two-argument explicit naming
         file_search_file_aliases = args.get("file_search_file_aliases", [])
         for name_path_tuple in file_search_file_aliases:
-            if isinstance(name_path_tuple, tuple):
+            if (
+                isinstance(name_path_tuple, tuple)
+                and len(name_path_tuple) == 2
+            ):
                 custom_name, file_path_raw = name_path_tuple
                 file_path = str(file_path_raw)
                 file_name = str(
@@ -652,11 +676,21 @@ async def create_template_context_from_routing(
                     seen_files.add(file_path)
 
         # Also process file_search_files from routing result (for compatibility)
-        for file_path in file_search_files:
-            file_name = _generate_template_variable_name(file_path)
-            if file_path not in seen_files:
-                files_tuples.append((file_name, file_path))
-                seen_files.add(file_path)
+        for fs_file_item in file_search_files:
+            if isinstance(fs_file_item, (str, Path)):
+                file_name = _generate_template_variable_name(str(fs_file_item))
+                file_path_str = str(fs_file_item)
+                if file_path_str not in seen_files:
+                    files_tuples.append((file_name, file_path_str))
+                    seen_files.add(file_path_str)
+            elif isinstance(fs_file_item, tuple) and len(fs_file_item) == 2:
+                # Handle tuple format (name, path)
+                _, fs_file_path = fs_file_item
+                fs_file_path_str = str(fs_file_path)
+                file_name = _generate_template_variable_name(fs_file_path_str)
+                if fs_file_path_str not in seen_files:
+                    files_tuples.append((file_name, fs_file_path_str))
+                    seen_files.add(fs_file_path_str)
 
         # Process files from explicit routing
         files_dict = collect_files(
@@ -731,6 +765,9 @@ async def create_template_context_from_routing(
     except Exception as e:
         # Don't wrap InvalidJSONError
         if isinstance(e, InvalidJSONError):
+            raise
+        # Don't wrap DuplicateFileMappingError
+        if isinstance(e, DuplicateFileMappingError):
             raise
         # Check if this is a wrapped security error
         if isinstance(e.__cause__, PathSecurityError):

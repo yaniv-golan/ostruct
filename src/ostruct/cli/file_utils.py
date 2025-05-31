@@ -51,8 +51,9 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import chardet
 
-from .errors import (
+from ostruct.cli.errors import (
     DirectoryNotFoundError,
+    DuplicateFileMappingError,
     OstructFileNotFoundError,
     PathSecurityError,
 )
@@ -388,12 +389,16 @@ def collect_files(
             logger.debug("Processing file mapping: %s", mapping)
             name, path = _validate_and_split_mapping(mapping, "file")
             if name in files:
-                raise ValueError(f"Duplicate file mapping: {name}")
+                raise DuplicateFileMappingError(
+                    f"Duplicate file mapping: {name}"
+                )
 
             file_info = FileInfo.from_path(
                 str(path), security_manager=security_manager, **kwargs
             )
-            files[name] = FileInfoList([file_info], from_dir=False)
+            files[name] = FileInfoList(
+                [file_info], from_dir=False, var_alias=name
+            )
             logger.debug("Added single file mapping: %s -> %s", name, path)
 
     # Process pattern mappings
@@ -402,7 +407,9 @@ def collect_files(
             logger.debug("Processing pattern mapping: %s", mapping)
             name, pattern = _validate_and_split_mapping(mapping, "pattern")
             if name in files:
-                raise ValueError(f"Duplicate pattern mapping: {name}")
+                raise DuplicateFileMappingError(
+                    f"Duplicate pattern mapping: {name}"
+                )
 
             try:
                 matched_files = collect_files_from_pattern(
@@ -419,7 +426,9 @@ def collect_files(
                 logger.warning("No files matched pattern: %s", pattern)
                 continue
 
-            files[name] = FileInfoList(matched_files, from_dir=False)
+            files[name] = FileInfoList(
+                matched_files, from_dir=False, var_alias=name
+            )
             logger.debug(
                 "Added pattern mapping: %s -> %s (%d files)",
                 name,
@@ -433,7 +442,9 @@ def collect_files(
             logger.debug("Processing directory mapping: %s", mapping)
             name, directory = _validate_and_split_mapping(mapping, "directory")
             if name in files:
-                raise ValueError(f"Duplicate directory mapping: {name}")
+                raise DuplicateFileMappingError(
+                    f"Duplicate directory mapping: {name}"
+                )
 
             logger.debug(
                 "Processing directory mapping: %s -> %s", name, directory
@@ -461,9 +472,11 @@ def collect_files(
 
             if not dir_files:
                 logger.warning("No files found in directory: %s", directory)
-                files[name] = FileInfoList([], from_dir=True)
+                files[name] = FileInfoList([], from_dir=True, var_alias=name)
             else:
-                files[name] = FileInfoList(dir_files, from_dir=True)
+                files[name] = FileInfoList(
+                    dir_files, from_dir=True, var_alias=name
+                )
                 logger.debug(
                     "Added directory mapping: %s -> %s (%d files)",
                     name,

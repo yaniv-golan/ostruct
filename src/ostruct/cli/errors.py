@@ -32,6 +32,27 @@ class VariableValueError(VariableError):
     pass
 
 
+class DuplicateFileMappingError(VariableError):
+    """Raised when duplicate file mappings are detected."""
+
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+        """
+        super().__init__(
+            message,
+            context=context,
+            exit_code=ExitCode.USAGE_ERROR,
+        )
+
+
 class InvalidJSONError(CLIError):
     """Error raised when JSON is invalid."""
 
@@ -767,10 +788,16 @@ def handle_error(e: Exception) -> None:
             logger.debug(
                 f"Error details:\nType: {type(e).__name__}\n{context_str.rstrip()}"
             )
-    elif not isinstance(e, click.UsageError):
+    elif not isinstance(
+        e,
+        (
+            click.UsageError,
+            DuplicateFileMappingError,
+            VariableNameError,
+            VariableValueError,
+        ),
+    ):
         logger.error(msg, exc_info=True)
-    else:
-        logger.error(msg)
 
     # 3. User output
     click.secho(msg, fg="red", err=True)
@@ -780,6 +807,9 @@ def handle_error(e: Exception) -> None:
 # Export public API
 __all__ = [
     "VariableError",
+    "VariableNameError",
+    "VariableValueError",
+    "DuplicateFileMappingError",
     "PathError",
     "PathSecurityError",
     "OstructFileNotFoundError",

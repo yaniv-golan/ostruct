@@ -3,7 +3,15 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Match, Optional
+from typing import Any, Dict, List, Match, Optional, Set
+
+try:
+    from jinja2 import Environment
+    from jinja2.nodes import For, Name
+
+    JINJA2_AVAILABLE = True
+except ImportError:
+    JINJA2_AVAILABLE = False
 
 
 @dataclass
@@ -44,6 +52,63 @@ class TemplateOptimizer:
             50  # Very small values stay inline regardless
         )
 
+    def _get_loop_variables(self, template_content: str) -> Set[str]:
+        """Extract loop variables from template to avoid optimizing them.
+
+        Args:
+            template_content: Template content to analyze
+
+        Returns:
+            Set of variable names used in for loops
+        """
+        if not JINJA2_AVAILABLE:
+            # Fallback: return common loop variable names
+            return {
+                "file",
+                "item",
+                "element",
+                "entry",
+                "record",
+                "row",
+                "line",
+            }
+
+        try:
+            env = Environment()
+            ast = env.parse(template_content)
+            loop_vars = set()
+
+            def visit_node(node: Any) -> None:
+                """Recursively visit AST nodes to find loop variables."""
+                if isinstance(node, For):
+                    # Handle single loop variable: {% for item in items %}
+                    if isinstance(node.target, Name):
+                        loop_vars.add(node.target.name)
+                    # Handle tuple unpacking: {% for key, value in items %}
+                    elif hasattr(node.target, "items"):
+                        for item in node.target.items:
+                            if isinstance(item, Name):
+                                loop_vars.add(item.name)
+
+                # Recursively visit child nodes
+                for child in node.iter_child_nodes():
+                    visit_node(child)
+
+            visit_node(ast)
+            return loop_vars
+
+        except Exception:
+            # If AST parsing fails, return common loop variable names as fallback
+            return {
+                "file",
+                "item",
+                "element",
+                "entry",
+                "record",
+                "row",
+                "line",
+            }
+
     def optimize_for_llm(self, template_content: str) -> OptimizationResult:
         """Apply prompt engineering best practices for files and directories.
 
@@ -62,6 +127,9 @@ class TemplateOptimizer:
         self.dir_references.clear()
         self.optimization_log.clear()
 
+        # Get loop variables to avoid optimizing them
+        loop_variables = self._get_loop_variables(template_content)
+
         optimized = template_content
         inline_files_kept = []
 
@@ -73,7 +141,7 @@ class TemplateOptimizer:
             content_expr = match.group(1)
 
             # Extract file path from various patterns
-            file_path = self._extract_file_path(content_expr)
+            file_path = self._extract_file_path(content_expr, loop_variables)
             if not file_path:
                 return full_match  # Keep original if can't parse
 
@@ -99,7 +167,13 @@ class TemplateOptimizer:
         dir_pattern = (
             r"{{\s*([^}]*\.(files|content)|[^}]*\.files\[[^]]*\])\s*}}"
         )
-        optimized = re.sub(dir_pattern, self._replace_dir_reference, optimized)
+
+        def replace_dir_reference_with_loop_check(match: Match[str]) -> str:
+            return self._replace_dir_reference(match, loop_variables)
+
+        optimized = re.sub(
+            dir_pattern, replace_dir_reference_with_loop_check, optimized
+        )
 
         # Step 3: Build comprehensive appendix if we moved files
         if self.file_references or self.dir_references:
@@ -118,11 +192,14 @@ class TemplateOptimizer:
             optimization_time_ms=optimization_time,
         )
 
-    def _extract_file_path(self, content_expr: str) -> Optional[str]:
+    def _extract_file_path(
+        self, content_expr: str, loop_variables: Set[str]
+    ) -> Optional[str]:
         """Extract file path from various Jinja2 content expressions.
 
         Args:
             content_expr: Jinja2 expression containing file reference
+            loop_variables: Set of loop variables to avoid
 
         Returns:
             Extracted file path or None if not found
@@ -136,6 +213,9 @@ class TemplateOptimizer:
         match = re.search(r"(\w+)\.content", content_expr)
         if match:
             var_name = match.group(1)
+            # Skip if this is a loop variable
+            if var_name in loop_variables:
+                return None
             # Common file variable patterns
             if any(
                 keyword in var_name.lower()
@@ -226,11 +306,14 @@ class TemplateOptimizer:
         else:
             return f"the content of <file:{file_path}>"
 
-    def _replace_dir_reference(self, match: Match[str]) -> str:
+    def _replace_dir_reference(
+        self, match: Match[str], loop_variables: Set[str]
+    ) -> str:
         """Replace directory content references with natural language.
 
         Args:
             match: Regex match object for directory reference
+            loop_variables: Set of loop variables to avoid
 
         Returns:
             Natural language reference or original text
@@ -244,6 +327,11 @@ class TemplateOptimizer:
             return full_match
 
         dir_var = dir_match.group(1)
+
+        # Skip if this is a loop variable
+        if dir_var in loop_variables:
+            return full_match
+
         reference = f"the files and subdirectories in <dir:{dir_var}>"
         self.dir_references[dir_var] = reference
         self.optimization_log.append(

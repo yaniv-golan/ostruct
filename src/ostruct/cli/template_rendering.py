@@ -167,20 +167,6 @@ def render_template(
             if "stdin" not in wrapped_context:
                 wrapped_context["stdin"] = StdinProxy()
 
-            # Load file content for FileInfo objects
-            for key, value in context.items():
-                if isinstance(value, FileInfo):
-                    # Access content property to trigger loading
-                    _ = value.content
-                elif (
-                    isinstance(value, list)
-                    and value
-                    and isinstance(value[0], FileInfo)
-                ):
-                    for file_info in value:
-                        # Access content property to trigger loading
-                        _ = file_info.content
-
             if progress:
                 progress.update(1)  # Update progress for template creation
 
@@ -240,24 +226,14 @@ def render_template(
                         )
                         if value and isinstance(value[0], FileInfo):
                             logger.info(
-                                "    First file: %s (content length: %d)",
+                                "    First file: %s",
                                 value[0].path,
-                                (
-                                    len(value[0].content)
-                                    if hasattr(value[0], "content")
-                                    else -1
-                                ),
                             )
                     elif isinstance(value, FileInfo):
                         logger.info(
-                            "  %s: FileInfo(%s) content length: %d",
+                            "  %s: FileInfo(%s)",
                             key,
                             value.path,
-                            (
-                                len(value.content)
-                                if hasattr(value, "content")
-                                else -1
-                            ),
                         )
                     else:
                         logger.info("  %s: %s", key, type(value).__name__)
@@ -282,14 +258,6 @@ def render_template(
                                 logger.debug(
                                     "      exists: %r",
                                     os.path.exists(item.path),
-                                )
-                                logger.debug(
-                                    "      content length: %d",
-                                    (
-                                        len(item.content)
-                                        if hasattr(item, "content")
-                                        else -1
-                                    ),
                                 )
                     else:
                         logger.debug(

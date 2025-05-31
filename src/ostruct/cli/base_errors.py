@@ -147,7 +147,7 @@ class CLIError(Exception):
         if tips := self.context.get("troubleshooting"):
             lines.extend(["", "Troubleshooting:"])
             if isinstance(tips, list):
-                lines.extend(f"  {i+1}. {tip}" for i, tip in enumerate(tips))
+                lines.extend(f"  {i + 1}. {tip}" for i, tip in enumerate(tips))
             else:
                 lines.append(f"  1. {tips}")
 

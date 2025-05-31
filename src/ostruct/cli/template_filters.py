@@ -7,14 +7,26 @@ import logging
 import re
 import textwrap
 from collections import Counter
-from typing import Any, Dict, List, Optional, Sequence, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+)
 
 import tiktoken
-from jinja2 import Environment, pass_context
+from jinja2 import Environment, TemplateRuntimeError, pass_context
 from pygments import highlight
 from pygments.formatters import HtmlFormatter, NullFormatter, TerminalFormatter
 from pygments.lexers import TextLexer, get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +139,7 @@ def list_to_table(
     """Convert list to markdown table."""
     if not headers:
         return "| # | Value |\n| --- | --- |\n" + "\n".join(
-            f"| {i+1} | {item} |" for i, item in enumerate(items)
+            f"| {i + 1} | {item} |" for i, item in enumerate(items)
         )
     return (
         f"| {' | '.join(headers)} |\n| {' | '.join('-' * len(h) for h in headers)} |\n"
@@ -591,6 +603,44 @@ def format_code(
         return str(text)
 
 
+def single_filter(value: Any) -> Any:
+    """Extract single item from a list, ensuring exactly one item exists."""
+    # Import here to avoid circular imports
+    try:
+        from .file_list import FileInfoList
+
+        FileInfoListType = FileInfoList
+    except ImportError:
+        # Fallback if imports fail
+        FileInfoListType = None
+
+    if FileInfoListType and isinstance(value, FileInfoListType):
+        var_alias = getattr(value, "_var_alias", None) or "list"
+        if len(value) == 1:
+            return value[0]  # ✅ Return the FileInfo object, not the list
+        else:
+            raise TemplateRuntimeError(
+                f"Filter 'single' expected exactly 1 file for '{var_alias}', got {len(value)}."
+            )
+
+    # For other list types (but not strings or dicts)
+    if (
+        hasattr(value, "__len__")
+        and hasattr(value, "__getitem__")
+        and not isinstance(value, (str, dict))
+        and hasattr(value, "__iter__")
+    ):
+        if len(value) == 1:
+            return value[0]
+        else:
+            raise TemplateRuntimeError(
+                f"Filter 'single' expected exactly 1 item, got {len(value)}."
+            )
+
+    # Pass through non-list types (including FileInfo and strings)
+    return value
+
+
 def register_template_filters(env: Environment) -> None:
     """Register all template filters with the Jinja2 environment.
 
@@ -630,6 +680,8 @@ def register_template_filters(env: Environment) -> None:
         "escape_special": escape_special,
         # Table utilities
         "auto_table": auto_table,
+        # Single item extraction
+        "single": single_filter,
     }
 
     env.filters.update(filters)
