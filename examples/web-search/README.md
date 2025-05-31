@@ -271,14 +271,17 @@ When using these schemas, include clear instructions in your templates:
 ## Example Usage
 
 ```bash
-# Basic web search usage
-ostruct run current_analysis.j2 analysis_schema.json --web-search -V topic="AI developments"
+# Basic research (requires 'question' variable)
+ostruct run basic_research.j2 basic_research_schema.json --web-search -V question="What are the new features in Python 3.13?"
 
-# With geographic targeting (when implemented)
-ostruct run local_news.j2 news_schema.json --web-search --user-country US --user-city "San Francisco"
+# Current events analysis (requires 'topic' variable)
+ostruct run current_events.j2 current_events_schema.json --web-search -V topic="AI developments"
+
+# Flexible analysis with optional parameters (requires 'topic' variable)
+ostruct run flexible_analysis.j2 enhanced_sources_schema.json --web-search -V topic="climate change" -V depth="detailed" -V timeframe="60 days"
 
 # Dry run to validate without API costs
-ostruct run research_template.j2 research_schema.json --web-search --dry-run
+ostruct run basic_research.j2 basic_research_schema.json --web-search --dry-run -V question="Any research question"
 ```
 
 ## Model Compatibility
@@ -358,21 +361,20 @@ Web search is supported by the following models:
 ### Debug Commands
 
 ```bash
-# Check model compatibility
-ostruct run template.j2 schema.json --web-search --model MODEL_NAME --dry-run
+# Check model compatibility with basic research
+ostruct run basic_research.j2 basic_research_schema.json --web-search --model gpt-4o --dry-run -V question="test question"
 
-# Verbose logging for debugging
-ostruct run template.j2 schema.json --web-search --verbose
+# Verbose logging for debugging current events
+ostruct run current_events.j2 current_events_schema.json --web-search --verbose -V topic="test topic"
 
 # Test without web search for comparison
-ostruct run template.j2 schema.json -V topic="same topic"
+ostruct run basic_research.j2 basic_research_schema.json -V question="same research question"
 ```
 
 ## Next Steps
 
 Explore the example templates in this directory to see web search in action:
 
-- `current_events.j2` - News and current events analysis
-- `tech_research.j2` - Technology trend research
-- `market_analysis.j2` - Current market data gathering
-- `fact_check.j2` - Fact verification with sources
+- `basic_research.j2` - General research questions with comprehensive analysis
+- `current_events.j2` - News and current events analysis with timeline focus
+- `flexible_analysis.j2` - Adaptive template that works with or without web search
