@@ -1,0 +1,54 @@
+{
+    "type": "object",
+    "properties": {
+        "research_question": {
+            "type": "string",
+            "description": "The research question being answered"
+        },
+        "answer": {
+            "type": "string",
+            "description": "Main research findings and answer"
+        },
+        "key_insights": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Key insights and important points discovered"
+        },
+        "sources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the source page or article"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "URL of the source"
+                    },
+                    "publication": {
+                        "type": "string",
+                        "description": "Name of the publication or website"
+                    },
+                    "date_published": {
+                        "type": "string",
+                        "description": "Publication date (if available)"
+                    }
+                },
+                "required": [
+                    "title",
+                    "url"
+                ]
+            },
+            "description": "List of web sources used for this research"
+        }
+    },
+    "required": [
+        "research_question",
+        "answer",
+        "sources"
+    ]
+}

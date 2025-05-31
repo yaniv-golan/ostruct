@@ -1,0 +1,145 @@
+{
+    "type": "object",
+    "properties": {
+        "summary": {
+            "type": "string",
+            "description": "Brief 2-3 sentence summary of the current situation"
+        },
+        "recent_developments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "event": {
+                        "type": "string",
+                        "description": "Description of the specific development or event"
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Date when this event occurred (if available)"
+                    },
+                    "significance": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "medium",
+                            "low"
+                        ],
+                        "description": "How significant this development is to the overall topic"
+                    }
+                },
+                "required": [
+                    "event",
+                    "significance"
+                ]
+            },
+            "description": "List of recent developments and news items"
+        },
+        "key_players": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the person, organization, or entity"
+                    },
+                    "role": {
+                        "type": "string",
+                        "description": "Their role or involvement in the situation"
+                    },
+                    "impact": {
+                        "type": "string",
+                        "description": "How they influence or are affected by the situation"
+                    }
+                },
+                "required": [
+                    "name",
+                    "role"
+                ]
+            },
+            "description": "Main people, organizations, or entities involved"
+        },
+        "impact_analysis": {
+            "type": "object",
+            "properties": {
+                "immediate_effects": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Short-term impacts and immediate consequences"
+                },
+                "long_term_implications": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Potential long-term effects and implications"
+                },
+                "affected_sectors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Industries, markets, or areas that are impacted"
+                }
+            },
+            "required": [
+                "immediate_effects"
+            ]
+        },
+        "context": {
+            "type": "string",
+            "description": "How this relates to broader trends, historical events, or ongoing situations"
+        },
+        "sources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the news article or source"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "URL of the source"
+                    },
+                    "publication": {
+                        "type": "string",
+                        "description": "Name of the news outlet or publication"
+                    },
+                    "date_published": {
+                        "type": "string",
+                        "description": "When the article was published (if available)"
+                    },
+                    "relevance": {
+                        "type": "string",
+                        "enum": [
+                            "primary",
+                            "supporting",
+                            "background"
+                        ],
+                        "description": "How this source relates to the analysis"
+                    }
+                },
+                "required": [
+                    "title",
+                    "url"
+                ]
+            },
+            "description": "List of news sources and articles used in this analysis"
+        },
+        "last_updated": {
+            "type": "string",
+            "description": "Most recent date found in the source material"
+        }
+    },
+    "required": [
+        "summary",
+        "recent_developments",
+        "impact_analysis",
+        "sources"
+    ]
+}

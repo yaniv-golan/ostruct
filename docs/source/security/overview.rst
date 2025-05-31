@@ -204,6 +204,45 @@ Code Interpreter Data Handling
 - Use cleanup options to manage storage quotas
 - Consider data anonymization for sensitive datasets
 
+Web Search Data Handling
+-------------------------
+
+.. important::
+   **Search Query Privacy**: When using ``--web-search``, search queries may be sent to external search services via OpenAI. These queries can be derived from your prompts and template content.
+
+**What happens during web search:**
+- Search queries are generated based on your prompt and template content
+- Queries are sent to external search services through OpenAI's web search tool
+- Search results are retrieved and processed by the model
+- No files are uploaded, but prompt content may influence search queries
+
+**API Key and Authentication:**
+- Web search uses your existing ``OPENAI_API_KEY`` - no separate authentication required
+- The same API key that powers other ostruct features also handles web search requests
+- No additional API keys or service subscriptions needed beyond your OpenAI account
+
+**Rate Limits and Quotas:**
+- Web search requests count toward your standard OpenAI API rate limits (RPM/TPM)
+- No separate rate limits are imposed specifically on the web search tool
+- Existing ostruct retry logic and error handling applies to web search operations
+- Monitor your OpenAI dashboard for usage tracking across all features including web search
+
+**Security considerations:**
+- **Avoid sensitive information in prompts** when using web search
+- Review template content for potentially sensitive keywords or data
+- Consider using ``--no-web-search`` for sensitive prompts
+- Be aware that search queries may be logged by search providers
+- Web search is automatically disabled for Azure OpenAI endpoints
+
+**Best practices:**
+- Use generic terms rather than specific internal project names
+- Avoid including personal information, credentials, or proprietary data in prompts
+- Test with public information first to understand search behavior
+- Consider the query implications of your template variables
+
+**Opt-in requirement:**
+Web search is always opt-in and requires explicit use of the ``--web-search`` flag. This ensures users are aware when external search services may be accessed.
+
 Template File Security
 ----------------------
 
@@ -237,6 +276,10 @@ Tool Routing Security Matrix
      - ✅ Yes
      - ⚠️ Yes
      - Document search, knowledge bases
+   * - ``--web-search`` (Web Search)
+     - ❌ No
+     - ⚠️ Query Data
+     - Current information, research
 
 Cleanup and Data Retention
 ---------------------------

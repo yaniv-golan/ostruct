@@ -1,0 +1,94 @@
+{
+    "type": "object",
+    "properties": {
+        "topic": {
+            "type": "string",
+            "description": "The main topic being researched"
+        },
+        "executive_summary": {
+            "type": "string",
+            "description": "Brief executive summary of findings"
+        },
+        "detailed_analysis": {
+            "type": "string",
+            "description": "Comprehensive analysis of the topic"
+        },
+        "confidence_level": {
+            "type": "string",
+            "enum": [
+                "high",
+                "medium",
+                "low"
+            ],
+            "description": "Overall confidence in the findings based on source quality"
+        },
+        "sources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the source"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "URL of the source"
+                    },
+                    "publication": {
+                        "type": "string",
+                        "description": "Name of the publication or website"
+                    },
+                    "author": {
+                        "type": "string",
+                        "description": "Author of the article (if available)"
+                    },
+                    "date_published": {
+                        "type": "string",
+                        "description": "Publication date"
+                    },
+                    "relevance": {
+                        "type": "string",
+                        "enum": [
+                            "primary",
+                            "supporting",
+                            "background"
+                        ],
+                        "description": "How this source relates to the main analysis"
+                    },
+                    "credibility": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "medium",
+                            "low"
+                        ],
+                        "description": "Assessment of source credibility and reliability"
+                    },
+                    "key_information": {
+                        "type": "string",
+                        "description": "What key information this source provides"
+                    }
+                },
+                "required": [
+                    "title",
+                    "url",
+                    "relevance",
+                    "credibility"
+                ]
+            },
+            "description": "Categorized and assessed sources used in the analysis"
+        },
+        "methodology_notes": {
+            "type": "string",
+            "description": "Notes on how the research was conducted and sources were evaluated"
+        }
+    },
+    "required": [
+        "topic",
+        "executive_summary",
+        "detailed_analysis",
+        "confidence_level",
+        "sources"
+    ]
+}
