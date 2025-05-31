@@ -366,23 +366,231 @@ Use ``--show-context`` to see all available variables:
    File is empty or could not be read.
    {% endif %}
 
-Directory and Pattern Processing
----------------------------------
+Troubleshooting Directory Variables
+----------------------------------
 
-When processing directories or patterns, iterate over file collections:
+**Problem: Template variable changes between runs**
+
+This happens when using auto-naming directory routing and the directory name changes:
 
 .. code-block:: bash
 
-   # Directory processing
-   ostruct run template.j2 schema.json -dt ./config_files
+   # ❌ Problem: variable name depends on directory name
+   ostruct run template.j2 schema.json -dc ./project_v1/src    # → src variable
+   ostruct run template.j2 schema.json -dc ./project_v2/source # → source variable
+
+**Solution**: Use directory aliases for stable variable names:
+
+.. code-block:: bash
+
+   # ✅ Solution: stable variable name
+   ostruct run template.j2 schema.json --dca code ./project_v1/src    # → code variable
+   ostruct run template.j2 schema.json --dca code ./project_v2/source # → code variable
+
+**Problem: "UndefinedError" for directory variables**
+
+Common causes:
+
+1. **Directory doesn't exist**: Check the directory path
+2. **Directory is empty**: No files to process
+3. **Permission issues**: Can't read directory contents
 
 .. code-block:: jinja
 
-   Configuration files found:
-   {% for file in config_files %}
-   - {{ file.name }} ({{ file.size }} bytes)
-     {{ file.content | truncate(100) }}
+   {# Defensive template coding #}
+   {% if source_code is defined and source_code %}
+   Found {{ source_code | length }} files in source directory
+   {% else %}
+   No source code files found or directory not accessible
+   {% endif %}
+
+**Problem: Template breaks with different project structures**
+
+.. code-block:: jinja
+
+   {# ❌ Brittle template - assumes specific directory names #}
+   {% for file in src %}...{% endfor %}
+   {% for file in config %}...{% endfor %}
+
+**Solution**: Use aliases and defensive coding:
+
+.. code-block:: jinja
+
+   {# ✅ Robust template - works with any directory structure #}
+   {% if source_code is defined %}
+   {% for file in source_code %}...{% endfor %}
+   {% endif %}
+
+   {% if app_config is defined %}
+   {% for file in app_config %}...{% endfor %}
+   {% endif %}
+
+**Problem: Need to work with unknown directory structures**
+
+Use aliases and make templates flexible:
+
+.. code-block:: bash
+
+   # Template can work with any project structure
+   ostruct run analysis.j2 schema.json --dca code ./any/source/path
+
+.. code-block:: jinja
+
+   {# Template works regardless of actual directory structure #}
+   {% if code %}
+   # Code Analysis
+
+   {% for file in code %}
+   ## {{ file.name }}
+
+   {% if file.suffix in ['.py', '.js', '.ts'] %}
+   Programming file detected: {{ file.content | word_count }} words
+   {% elif file.suffix in ['.md', '.txt'] %}
+   Documentation file: {{ file.name }}
+   {% else %}
+   Other file: {{ file.name }}
+   {% endif %}
    {% endfor %}
+   {% endif %}
+
+Directory Access Patterns
+-------------------------
+
+ostruct provides two approaches for directory routing, each suited to different template use cases:
+
+**Auto-Naming**
+~~~~~~~~~~~~~~~
+
+Use auto-naming when your template is designed for a specific directory structure:
+
+.. code-block:: bash
+
+   # Auto-naming syntax
+   ostruct run template.j2 schema.json -dt ./config_files     # → config_files variable
+   ostruct run template.j2 schema.json -dc ./datasets        # → datasets variable
+   ostruct run template.j2 schema.json -ds ./documentation   # → documentation variable
+
+.. code-block:: jinja
+
+   {# Template must know actual directory names #}
+   Configuration files:
+   {% for file in config_files %}
+   - {{ file.name }}: {{ file.content | truncate(50) }}
+   {% endfor %}
+
+   Dataset files:
+   {% for file in datasets %}
+   - {{ file.name }} ({{ file.size }} bytes)
+   {% endfor %}
+
+**Alias Access (Stable Variables)**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use aliases when your template needs to work with different directory structures:
+
+.. code-block:: bash
+
+   # Alias syntax for stable variable names
+   ostruct run template.j2 schema.json --dta app_config ./settings      # → app_config variable
+   ostruct run template.j2 schema.json --dca source_code ./src          # → source_code variable
+   ostruct run template.j2 schema.json --dsa knowledge_base ./docs      # → knowledge_base variable
+
+.. code-block:: jinja
+
+   {# Template uses stable variable names #}
+   Application Configuration:
+   {% for file in app_config %}
+   - {{ file.name }}: {{ file.content }}
+   {% endfor %}
+
+   Source Code Analysis:
+   {% for file in source_code %}
+   ## {{ file.name }}
+   {{ file.content | word_count }} words of code
+   {% endfor %}
+
+   Knowledge Base:
+   {% for file in knowledge_base %}
+   Document: {{ file.name }}
+   Summary: {{ file.content | truncate(200) }}
+   {% endfor %}
+
+**Best Practices for Directory Routing**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. tip::
+   **Template Reusability**: Use aliases (``--dta``, ``--dca``, ``--dsa``) for templates that need to work across different projects or directory structures.
+
+.. code-block:: jinja
+
+   {# Reusable template that works with any project structure #}
+   {% if source_code %}
+   # Source Code Analysis
+
+   Total files: {{ source_code | length }}
+
+   {% for file in source_code %}
+   ## {{ file.name }}
+   - Size: {{ file.size }} bytes
+   - Type: {{ file.suffix }}
+   {% if file.suffix in ['.py', '.js', '.java'] %}
+   - Code content: {{ file.content | word_count }} words
+   {% endif %}
+   {% endfor %}
+   {% endif %}
+
+   {% if app_config %}
+   # Configuration Analysis
+
+   {% for file in app_config %}
+   Configuration file: {{ file.name }}
+   {% if file.suffix == '.json' %}
+   JSON content detected
+   {% elif file.suffix in ['.yaml', '.yml'] %}
+   YAML content detected
+   {% endif %}
+   {% endfor %}
+   {% endif %}
+
+**Directory Structure Flexibility**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The same template works with different project structures when using aliases:
+
+.. code-block:: bash
+
+   # Project A structure
+   ostruct run analysis.j2 schema.json --dca code ./src --dta configs ./settings
+
+   # Project B structure
+   ostruct run analysis.j2 schema.json --dca code ./source --dta configs ./config
+
+   # Project C structure
+   ostruct run analysis.j2 schema.json --dca code ./app --dta configs ./env
+
+**Checking Directory Contents**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: jinja
+
+   {# Check if directory contains files #}
+   {% if source_code %}
+   Found {{ source_code | length }} source files:
+   {% for file in source_code %}
+   - {{ file.name }}
+   {% endfor %}
+   {% else %}
+   No source code files found.
+   {% endif %}
+
+   {# Filter files by type #}
+   {% set python_files = source_code | selectattr('suffix', 'equalto', '.py') | list %}
+   {% if python_files %}
+   Python files ({{ python_files | length }}):
+   {% for file in python_files %}
+   - {{ file.name }}: {{ file.content | word_count }} lines
+   {% endfor %}
+   {% endif %}
 
 CLI Variables
 =============

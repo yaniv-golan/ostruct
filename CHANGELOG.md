@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Equals syntax: `-ft app=config.yaml` → `app` variable
   - Two-argument alias: `--fta app config.yaml` → `app` variable (with perfect tab completion)
 - **OpenAI Responses API Integration**: Direct integration with OpenAI Python SDK v1.81.0, replacing openai-structured wrapper
-- **Enhanced CLI Interface**: New routing options (`-fc`/`--fca`, `-fs`/`--fsa`, `-ft`/`--fta`) with organized help system
+- **Enhanced CLI Interface**: New routing options (`-fc`/`--fca`, `-fs`/`--fsa`, `-ft`/`--fta`, `-dc`/`--dca`, `-ds`/`--dsa`, `-dt`/`--dta`,) with organized help system
 - **Configuration System**: YAML-based configuration with environment variable support
 - **Progress Reporting**: Real-time progress updates with user-friendly messaging
 - **Template Optimization**: Automatic prompt optimization for better LLM performance
@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Critical**: Resolved Click framework limitations for variable argument file routing
 - **Critical**: Fixed template variable collision issues with comprehensive file naming
+- **Critical**: Resolved directory routing design flaw - generic templates can now use stable variable names with directory alias syntax
 - **Critical**: Fixed FileInfoList API inconsistency - added adaptive `.name` property that returns scalar for single files, list for multiple files
 - **Enhancement**: Added always-list `.names` property to FileInfoList for explicit list access
 - **Enhancement**: Added `|single` Jinja2 filter for safe single-item extraction from lists with clear error messages

@@ -45,6 +45,17 @@ class ExplicitRouting:
         default_factory=list
     )  # File Search directory uploads
 
+    # Directory aliases for stable template variable names
+    template_dir_aliases: List[tuple[str, str]] = field(
+        default_factory=list
+    )  # (alias_name, dir_path) for template access
+    code_interpreter_dir_aliases: List[tuple[str, str]] = field(
+        default_factory=list
+    )  # (alias_name, dir_path) for code interpreter
+    file_search_dir_aliases: List[tuple[str, str]] = field(
+        default_factory=list
+    )  # (alias_name, dir_path) for file search
+
 
 @dataclass
 class ProcessingResult:
@@ -197,12 +208,29 @@ class ExplicitFileProcessor:
             else:
                 routing.file_search_files.append(str(name_path_tuple))
 
-        # Directory options remain unchanged (no aliasing needed for dirs)
+        # Directory options - auto-naming (existing behavior)
         routing.template_dirs.extend(args.get("template_dirs", []))
         routing.code_interpreter_dirs.extend(
             args.get("code_interpreter_dirs", [])
         )
         routing.file_search_dirs.extend(args.get("file_search_dirs", []))
+
+        # Directory aliases - custom naming for stable template variables
+        template_dir_aliases = args.get("template_dir_aliases", [])
+        for alias_name, dir_path in template_dir_aliases:
+            routing.template_dir_aliases.append((alias_name, str(dir_path)))
+
+        code_interpreter_dir_aliases = args.get(
+            "code_interpreter_dir_aliases", []
+        )
+        for alias_name, dir_path in code_interpreter_dir_aliases:
+            routing.code_interpreter_dir_aliases.append(
+                (alias_name, str(dir_path))
+            )
+
+        file_search_dir_aliases = args.get("file_search_dir_aliases", [])
+        for alias_name, dir_path in file_search_dir_aliases:
+            routing.file_search_dir_aliases.append((alias_name, str(dir_path)))
 
         # Handle tool-specific file routing
         # New --file-for syntax: --file-for TOOL PATH
@@ -243,12 +271,20 @@ class ExplicitFileProcessor:
         auto_enabled = set()
 
         # Auto-enable tools based on file routing
-        if routing.code_interpreter_files or routing.code_interpreter_dirs:
+        if (
+            routing.code_interpreter_files
+            or routing.code_interpreter_dirs
+            or routing.code_interpreter_dir_aliases
+        ):
             if "code-interpreter" not in enabled_tools:
                 auto_enabled.add("code-interpreter")
                 enabled_tools.add("code-interpreter")
 
-        if routing.file_search_files or routing.file_search_dirs:
+        if (
+            routing.file_search_files
+            or routing.file_search_dirs
+            or routing.file_search_dir_aliases
+        ):
             if "file-search" not in enabled_tools:
                 auto_enabled.add("file-search")
                 enabled_tools.add("file-search")
@@ -288,6 +324,17 @@ class ExplicitFileProcessor:
         all_dirs.extend(routing.template_dirs)
         all_dirs.extend(routing.code_interpreter_dirs)
         all_dirs.extend(routing.file_search_dirs)
+
+        # Add directory aliases (extract paths from tuples)
+        all_dirs.extend(
+            [dir_path for _, dir_path in routing.template_dir_aliases]
+        )
+        all_dirs.extend(
+            [dir_path for _, dir_path in routing.code_interpreter_dir_aliases]
+        )
+        all_dirs.extend(
+            [dir_path for _, dir_path in routing.file_search_dir_aliases]
+        )
 
         # Validate files through security manager
         for file_path in all_files:
@@ -357,6 +404,22 @@ class ExplicitFileProcessor:
             )
 
         for dir_path in routing.file_search_dirs:
+            validated_files["file-search"].extend(
+                self._expand_directory(dir_path)
+            )
+
+        # Expand directory aliases to individual files
+        for alias_name, dir_path in routing.template_dir_aliases:
+            validated_files["template"].extend(
+                self._expand_directory(dir_path)
+            )
+
+        for alias_name, dir_path in routing.code_interpreter_dir_aliases:
+            validated_files["code-interpreter"].extend(
+                self._expand_directory(dir_path)
+            )
+
+        for alias_name, dir_path in routing.file_search_dir_aliases:
             validated_files["file-search"].extend(
                 self._expand_directory(dir_path)
             )

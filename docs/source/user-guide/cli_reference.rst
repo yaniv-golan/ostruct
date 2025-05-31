@@ -74,13 +74,16 @@ Auto-Naming Syntax
 Two-Argument Syntax
 ~~~~~~~~~~~~~~~~~~~
 
+.. note::
+   **Important**: The basic ``-ft`` flag only supports auto-naming. For custom variable names, use ``--fta``.
+
 .. code-block:: bash
 
-   -ft, --file-for-template NAME PATH
+   # Two-argument syntax is NOT supported by -ft:
+   # ostruct run task.j2 schema.json -ft config settings.yaml    # ❌ This will fail
 
-   # Examples
-   ostruct run task.j2 schema.json -ft config settings.yaml    # → config variable
-   ostruct run task.j2 schema.json -ft data input.json        # → data variable
+   # Use --fta instead for custom variable names:
+   # See "Two-Argument Alias Syntax" section below
 
 Two-Argument Alias Syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,15 +101,29 @@ Two-Argument Alias Syntax
 
    Example: ``{{ config.content }}`` to get file contents.
 
-Directory Template Access
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Directory Template Access (Auto-Naming)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
    -dt, --dir-for-template DIRECTORY
 
    # Example
-   ostruct run task.j2 schema.json -dt ./config_files
+   ostruct run task.j2 schema.json -dt ./config_files    # → config_files variable
+
+Directory Template Access (Custom Alias)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   --dta, --dir-for-template-alias NAME DIRECTORY
+
+   # Examples (supports tab completion for paths)
+   ostruct run task.j2 schema.json --dta app_config ./settings
+   ostruct run task.j2 schema.json --dta source_code ./src
+
+.. tip::
+   **When to Use Directory Aliases**: Use ``--dta`` for reusable templates that need stable variable names regardless of actual directory names. Use ``-dt`` for specific directory structures where the auto-generated name is acceptable.
 
 Code Interpreter Files (💻 Execution + Analysis)
 ------------------------------------------------
@@ -132,13 +149,16 @@ Auto-Naming Syntax
 Two-Argument Syntax
 ~~~~~~~~~~~~~~~~~~~
 
+.. note::
+   **Important**: The basic ``-fc`` flag only supports auto-naming. For custom variable names, use ``--fca``.
+
 .. code-block:: bash
 
-   -fc, --file-for-code-interpreter NAME PATH
+   # Two-argument syntax is NOT supported by -fc:
+   # ostruct run analyze.j2 schema.json -fc dataset data.csv    # ❌ This will fail
 
-   # Examples
-   ostruct run analyze.j2 schema.json -fc dataset data.csv
-   ostruct run analyze.j2 schema.json -fc sales sales_data.xlsx
+   # Use --fca instead for custom variable names:
+   # See "Two-Argument Alias Syntax" section below
 
 Two-Argument Alias Syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,15 +171,29 @@ Two-Argument Alias Syntax
    ostruct run analyze.j2 schema.json --fca dataset data.csv
    ostruct run analyze.j2 schema.json --fca sales sales_data.xlsx
 
-Directory Code Interpreter Access
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Directory Code Interpreter Access (Auto-Naming)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
    -dc, --dir-for-code-interpreter DIRECTORY
 
    # Example
-   ostruct run analyze.j2 schema.json -dc ./datasets
+   ostruct run analyze.j2 schema.json -dc ./datasets      # → datasets variable
+
+Directory Code Interpreter Access (Custom Alias)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   --dca, --dir-for-code-interpreter-alias NAME DIRECTORY
+
+   # Examples (supports tab completion for paths)
+   ostruct run analyze.j2 schema.json --dca training_data ./data
+   ostruct run analyze.j2 schema.json --dca code_files ./src
+
+.. tip::
+   **When to Use Directory Aliases**: Use ``--dca`` for analysis templates that need to work with different datasets or directories. Use ``-dc`` when the directory name clearly indicates its contents.
 
 Code Interpreter Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -193,13 +227,16 @@ Auto-Naming Syntax
 Two-Argument Syntax
 ~~~~~~~~~~~~~~~~~~~
 
+.. note::
+   **Important**: The basic ``-fs`` flag only supports auto-naming. For custom variable names, use ``--fsa``.
+
 .. code-block:: bash
 
-   -fs, --file-for-search NAME PATH
+   # Two-argument syntax is NOT supported by -fs:
+   # ostruct run search.j2 schema.json -fs manual docs.pdf    # ❌ This will fail
 
-   # Examples
-   ostruct run search.j2 schema.json -fs manual docs.pdf
-   ostruct run search.j2 schema.json -fs knowledge kb.txt
+   # Use --fsa instead for custom variable names:
+   # See "Two-Argument Alias Syntax" section below
 
 Two-Argument Alias Syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -212,15 +249,29 @@ Two-Argument Alias Syntax
    ostruct run search.j2 schema.json --fsa manual docs.pdf
    ostruct run search.j2 schema.json --fsa knowledge kb.txt
 
-Directory File Search Access
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Directory File Search Access (Auto-Naming)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
    -ds, --dir-for-search DIRECTORY
 
    # Example
-   ostruct run search.j2 schema.json -ds ./documentation
+   ostruct run search.j2 schema.json -ds ./documentation  # → documentation variable
+
+Directory File Search Access (Custom Alias)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   --dsa, --dir-for-search-alias NAME DIRECTORY
+
+   # Examples (supports tab completion for paths)
+   ostruct run search.j2 schema.json --dsa knowledge_base ./docs
+   ostruct run search.j2 schema.json --dsa user_manuals ./manuals
+
+.. tip::
+   **When to Use Directory Aliases**: Use ``--dsa`` for search templates that need to work with different documentation sets. Use ``-ds`` when the directory name clearly describes the content type.
 
 File Search Options
 ~~~~~~~~~~~~~~~~~~~
@@ -231,6 +282,137 @@ File Search Options
    --file-search-cleanup                        # Clean up vector stores after use (default: true)
    --file-search-retry-count COUNT              # Retry attempts for operations (default: 3)
    --file-search-timeout SECONDS               # Timeout for indexing (default: 60.0)
+
+Directory Routing Design Pattern
+================================
+
+ostruct provides a **consistent design pattern** for routing both files and directories to tools. Understanding when to use each syntax ensures your templates are robust and reusable.
+
+When to Use Each Syntax
+-----------------------
+
+.. list-table:: Directory Routing Decision Guide
+   :header-rows: 1
+   :widths: 25 35 40
+
+   * - Use Case
+     - Syntax Choice
+     - Example
+   * - **Specific directory structure**
+     - Auto-naming (``-dt``, ``-dc``, ``-ds``)
+     - ``-dc ./datasets`` → ``datasets`` variable
+   * - **Generic/reusable templates**
+     - Alias flags (``--dta``, ``--dca``, ``--dsa``)
+     - ``--dca code ./src`` → ``code`` variable
+   * - **Template knows directory names**
+     - Auto-naming
+     - Template expects ``{{ config_files }}``
+   * - **Template needs stable variables**
+     - Alias flags
+     - Template uses ``{{ source_code }}`` regardless of actual directory
+
+**Directory Routing Flexibility**
+
+Directory aliases enable generic templates to work with any directory structure:
+
+.. code-block:: bash
+
+   # Auto-naming: Variable names depend on directory structure
+   ostruct run template.j2 schema.json -dc ./project_a/src        # → src variable
+   ostruct run template.j2 schema.json -dc ./project_b/source     # → source variable
+
+   # Alias naming: Stable variable names regardless of structure
+   ostruct run template.j2 schema.json --dca code ./project_a/src     # → code variable
+   ostruct run template.j2 schema.json --dca code ./project_b/source  # → code variable
+
+Practical Examples
+------------------
+
+**Template Development Workflow**
+
+.. code-block:: bash
+
+   # 1. Start with auto-naming for quick prototyping
+   ostruct run code_review.j2 schema.json -dc ./src
+
+   # 2. Move to aliases for production templates
+   ostruct run code_review.j2 schema.json --dca source_code ./src
+
+**Multi-Directory Analysis**
+
+.. code-block:: bash
+
+   # Analyze different types of content with stable variable names
+   ostruct run security_scan.j2 schema.json \
+     --dca source_code ./src \
+     --dta config_files ./config \
+     --dsa documentation ./docs
+
+**Template Compatibility**
+
+.. code-block:: jinja
+
+   {# Template works with any directory structure #}
+   {% for file in source_code %}
+   File: {{ file.name }}
+   Content: {{ file.content }}
+   {% endfor %}
+
+   {% for doc in documentation %}
+   Documentation: {{ doc.name }}
+   {% endfor %}
+
+**Directory Structure Flexibility**
+
+.. code-block:: bash
+
+   # Same template works with different project structures
+
+   # Project A structure
+   ostruct run analysis.j2 schema.json --dca code ./src --dta configs ./settings
+
+   # Project B structure
+   ostruct run analysis.j2 schema.json --dca code ./source --dta configs ./config
+
+   # Project C structure
+   ostruct run analysis.j2 schema.json --dca code ./app --dta configs ./env
+
+Template Design Patterns
+-------------------------
+
+**Generic Templates with Stable Variables**
+
+.. code-block:: bash
+
+   # Use aliases for templates that work with any project structure
+   ostruct run analysis.j2 schema.json --dca code ./src
+
+.. code-block:: jinja
+
+   {# Template works regardless of actual directory structure #}
+   {% for file in code %}
+   File analysis: {{ file.name }}
+   {% endfor %}
+
+**Specific Templates with Auto-Naming**
+
+.. code-block:: bash
+
+   # Use auto-naming when template expects specific directory names
+   ostruct run project_scanner.j2 schema.json -dc ./src -dc ./tests
+
+.. code-block:: jinja
+
+   {# Template designed for specific project structure #}
+   Source files:
+   {% for file in src %}
+   - {{ file.name }}
+   {% endfor %}
+
+   Test files:
+   {% for file in tests %}
+   - {{ file.name }}
+   {% endfor %}
 
 File Routing Best Practices and Advanced Patterns
 ==================================================
@@ -471,7 +653,7 @@ Error Prevention and Debugging
    # Variables: file1_txt, file2_txt (confusing in templates)
 
    # Solution: Use semantic names
-   ostruct run task.j2 schema.json -ft input_spec file1.txt -ft output_spec file2.txt
+   ostruct run task.j2 schema.json --fta input_spec file1.txt --fta output_spec file2.txt
 
 **Variable Name Validation**
 
@@ -1079,7 +1261,7 @@ Common File Routing Issues
    # Error: Variables 'data_csv' and 'data_json' may be confusing
 
    # Solution: Use explicit naming
-   ostruct run task.j2 schema.json -ft input_data data.csv -fc analysis_data data.json
+   ostruct run task.j2 schema.json --fta input_data data.csv --fca analysis_data data.json
 
 **Nested path confusion:**
 
@@ -1090,7 +1272,7 @@ Common File Routing Issues
    # Variable: config_yaml (path information lost)
 
    # Solution: Use descriptive names for complex paths
-   ostruct run task.j2 schema.json -ft deep_config ./very/deep/nested/config.yaml
+   ostruct run task.j2 schema.json --fta deep_config ./very/deep/nested/config.yaml
 
 **Auto-naming issues:**
 
@@ -1101,7 +1283,7 @@ Common File Routing Issues
    # Variables: file1_txt, file2_txt (hard to distinguish in templates)
 
    # Solution: Use semantic naming
-   ostruct run task.j2 schema.json -ft input_spec file1.txt -ft output_spec file2.txt
+   ostruct run task.j2 schema.json --fta input_spec file1.txt --fta output_spec file2.txt
 
 **Template variable access errors:**
 
@@ -1122,7 +1304,7 @@ Common File Routing Issues
    # Variables: old_var, new_data_json (inconsistent naming)
 
    # Solution: Choose one consistent approach
-   ostruct run task.j2 schema.json -ft old_data data.csv -ft new_data new_data.json
+   ostruct run task.j2 schema.json --fta old_data data.csv --fta new_data new_data.json
 
 Error Messages and Solutions
 ---------------------------
@@ -1156,6 +1338,58 @@ Error Messages and Solutions
 • **Cause**: Path is incorrect or file doesn't exist
 • **Solution**: Verify file paths, use absolute paths, or set ``--base-dir``
 • **Prevention**: Use tab completion with alias flags (``--fta``, ``--fca``, ``--fsa``)
+
+Directory Routing Issues
+------------------------
+
+**"Missing required template variable" with directory routing**
+
+.. code-block:: bash
+
+   # Problem: Auto-naming creates unpredictable variables
+   ostruct run template.j2 schema.json -dc ./src
+   # Error: Template expects 'code' but gets 'main_py', 'utils_py'
+
+.. code-block:: bash
+
+   # Solution: Use directory aliases for stable variable names
+   ostruct run template.j2 schema.json --dca code ./src
+   # Creates stable 'code' variable regardless of directory contents
+
+**"Template variables change between runs"**
+
+• **Cause**: Directory contents changed, affecting auto-generated variable names
+• **Solution**: Use alias syntax (``--dta``, ``--dca``, ``--dsa``) for consistent variables
+• **Prevention**: Use aliases for templates that need to work across different projects
+
+**"Directory routing vs file routing confusion"**
+
+.. code-block:: bash
+
+   # Problem: Mixing individual files and directories
+   ostruct run task.j2 schema.json -fc important.py -dc ./src
+   # Variables: important_py, main_py, utils_py (inconsistent naming)
+
+.. code-block:: bash
+
+   # Solution: Use consistent alias patterns
+   ostruct run task.j2 schema.json --fca key_file important.py --dca source_code ./src
+   # Variables: key_file, source_code (predictable and semantic)
+
+**"Directory alias vs auto-naming decision"**
+
+Use **auto-naming** (``-dt``, ``-dc``, ``-ds``) when:
+
+• Template is specific to known directory structure
+• One-off analysis where variable names don't matter
+• Directory contents are predictable and stable
+
+Use **alias syntax** (``--dta``, ``--dca``, ``--dsa``) when:
+
+• Template is generic and reusable across projects
+• Variable names must be stable regardless of directory contents
+• Template doesn't know specific filenames in advance
+• Creating reusable workflows and CI/CD automation
 
 Getting Help
 ============

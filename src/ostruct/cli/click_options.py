@@ -191,10 +191,27 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
         "template_dirs",
         multiple=True,
         type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📁 [TEMPLATE] Directories for template access only. All files will be available
+        help="""📁 [TEMPLATE] Directories for template access only (auto-naming). All files will be available
         in your template but will not be uploaded to any tools. Use for project configurations,
         reference data, or any directory content you want accessible in templates.
+        Format: -dt path (auto-generates variable name from directory name).
         Example: -dt ./config -dt ./data""",
+        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
+    )(cmd)
+
+    # Template directories with two-argument alias syntax (explicit naming)
+    cmd = click.option(
+        "--dta",
+        "--dir-for-template-alias",
+        "template_dir_aliases",
+        multiple=True,
+        nargs=2,
+        metavar="<NAME> <PATH>",
+        callback=validate_name_path_pair,
+        help="""📁 [TEMPLATE] Directories for template with custom aliases. Use this for reusable
+        templates where you need stable variable names independent of directory paths.
+        Format: --dta name path (supports tab completion for paths).
+        Example: --dta config_data ./settings --dta source_code ./src""",
         shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
     )(cmd)
 
@@ -515,10 +532,26 @@ def code_interpreter_options(f: Union[Command, Callable[..., Any]]) -> Command:
         "code_interpreter_dirs",
         multiple=True,
         type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📂 [CODE INTERPRETER] Directories to upload for code execution. All files
+        help="""📂 [CODE INTERPRETER] Directories to upload for code execution (auto-naming). All files
         in the directory will be uploaded to the execution environment. Use for datasets,
         code repositories, or any directory that needs computational processing.
+        Format: -dc path (auto-generates variable name from directory name).
         Example: -dc ./data -dc ./scripts""",
+        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
+    )(cmd)
+
+    # Code interpreter directories with two-argument alias syntax (explicit naming)
+    cmd = click.option(
+        "--dca",
+        "--dir-for-code-interpreter-alias",
+        "code_interpreter_dir_aliases",
+        multiple=True,
+        nargs=2,
+        metavar="<NAME> <PATH>",
+        callback=validate_name_path_pair,
+        help="""📂 [CODE INTERPRETER] Directories for code execution with custom aliases.
+        Format: --dca name path (supports tab completion for paths).
+        Example: --dca dataset ./data --dca source_code ./src""",
         shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
     )(cmd)
 
@@ -583,10 +616,26 @@ def file_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
         "file_search_dirs",
         multiple=True,
         type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📁 [FILE SEARCH] Directories to upload for semantic search. All files in the
+        help="""📁 [FILE SEARCH] Directories to upload for semantic search (auto-naming). All files in the
         directory will be processed into a searchable vector store. Use for documentation
         directories, knowledge bases, or any collection of searchable documents.
+        Format: -ds path (auto-generates variable name from directory name).
         Example: -ds ./docs -ds ./manuals""",
+        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
+    )(cmd)
+
+    # File search directories with two-argument alias syntax (explicit naming)
+    cmd = click.option(
+        "--dsa",
+        "--dir-for-search-alias",
+        "file_search_dir_aliases",
+        multiple=True,
+        nargs=2,
+        metavar="<NAME> <PATH>",
+        callback=validate_name_path_pair,
+        help="""📁 [FILE SEARCH] Directories for search with custom aliases.
+        Format: --dsa name path (supports tab completion for paths).
+        Example: --dsa documentation ./docs --dsa knowledge_base ./manuals""",
         shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
     )(cmd)
 

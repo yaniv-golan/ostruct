@@ -244,10 +244,44 @@ ostruct run template.j2 schema.json --file-for code-interpreter shared.json --fi
 
 #### Directory Routing
 
+ostruct provides two directory routing patterns to match different use cases:
+
+**Auto-Naming Pattern** (for known directory structures):
+
 ```bash
-# Upload entire directories to specific tools
-ostruct run template.j2 schema.json -dc ./datasets -ds ./docs -dt ./config
+# Variables are auto-generated from directory contents
+ostruct run template.j2 schema.json -dt ./config -dc ./datasets -ds ./docs
+# Creates variables like: config_yaml, datasets_csv, docs_pdf (based on actual files)
 ```
+
+**Alias Pattern** (for generic, reusable templates):
+
+```bash
+# Create stable variable names regardless of directory contents
+ostruct run template.j2 schema.json --dta app_config ./config --dca data ./datasets --dsa knowledge ./docs
+# Creates stable variables: app_config, data, knowledge (always these names)
+```
+
+**When to Use Each Pattern:**
+
+- Use **auto-naming** (`-dt`, `-dc`, `-ds`) when your template knows the specific directory structure
+- Use **alias syntax** (`--dta`, `--dca`, `--dsa`) when your template is generic and needs stable variable names
+
+**Template Example:**
+
+```jinja
+{# Works with alias pattern - variables are predictable #}
+{% for file in app_config %}
+Configuration: {{ file.name }} = {{ file.content }}
+{% endfor %}
+
+{# Analysis data from stable variable name #}
+{% for file in data %}
+Processing: {{ file.path }}
+{% endfor %}
+```
+
+This design pattern makes templates reusable across different projects while maintaining full backward compatibility.
 
 #### MCP Server Integration
 
@@ -343,7 +377,57 @@ echo "John Smith is a 35-year-old software engineer" | \
 
 ### Example 2: Multi-Tool Data Analysis
 
-For more complex scenarios, use explicit file routing with flexible syntax options:
+1. Create an analysis template `analysis_template.j2`:
+
+```jinja
+Analyze the following data sources:
+
+{% if sales_data_csv is defined %}
+Sales Data: {{ sales_data_csv.name }} ({{ sales_data_csv.size }} bytes)
+{% endif %}
+
+{% if customer_data_json is defined %}
+Customer Data: {{ customer_data_json.name }} ({{ customer_data_json.size }} bytes)
+{% endif %}
+
+{% if market_reports_pdf is defined %}
+Market Reports: {{ market_reports_pdf.name }} ({{ market_reports_pdf.size }} bytes)
+{% endif %}
+
+{% if config_yaml is defined %}
+Configuration: {{ config_yaml.content }}
+{% endif %}
+
+Provide comprehensive analysis and actionable insights.
+```
+
+2. Create an analysis schema `analysis_schema.json`:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "insights": {"type": "string", "description": "Key insights from the data"},
+        "recommendations": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Actionable recommendations"
+        },
+        "data_quality": {"type": "string", "description": "Assessment of data quality"}
+      },
+      "required": ["insights", "recommendations"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["analysis"],
+  "additionalProperties": false
+}
+```
+
+3. For more complex scenarios, use explicit file routing with flexible syntax options:
 
 ```bash
 # Auto-naming (fastest for one-off analysis)

@@ -22,6 +22,7 @@ from .errors import (
     TaskTemplateVariableError,
     VariableNameError,
 )
+from .explicit_file_processor import ProcessingResult
 from .file_utils import FileInfoList, collect_files
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
@@ -750,7 +751,7 @@ def _generate_template_variable_name(file_path: str) -> str:
 async def create_template_context_from_routing(
     args: CLIParams,
     security_manager: SecurityManager,
-    routing_result: Any,  # ProcessingResult from explicit_file_processor
+    routing_result: ProcessingResult,
 ) -> Dict[str, Any]:
     """Create template context from explicit file routing result.
 
@@ -928,11 +929,43 @@ async def create_template_context_from_routing(
                     files_tuples.append((file_name, fs_file_path_str))
                     seen_files.add(fs_file_path_str)
 
+        # Handle directory aliases - create stable template variables for directories
+        dir_mappings = []
+
+        # Get directory aliases from routing result (these are already processed from CLI args)
+        routing = routing_result.routing
+        for alias_name, dir_path in routing.template_dir_aliases:
+            dir_mappings.append((alias_name, str(dir_path)))
+        for alias_name, dir_path in routing.code_interpreter_dir_aliases:
+            dir_mappings.append((alias_name, str(dir_path)))
+        for alias_name, dir_path in routing.file_search_dir_aliases:
+            dir_mappings.append((alias_name, str(dir_path)))
+
+        # Auto-naming directories (from -dt, -dc, -ds)
+        template_dirs = args.get("template_dirs", [])
+        for dir_path in template_dirs:
+            dir_name = _generate_template_variable_name(str(dir_path))
+            dir_mappings.append((dir_name, str(dir_path)))
+
+        code_interpreter_dirs = args.get("code_interpreter_dirs", [])
+        for dir_path in code_interpreter_dirs:
+            dir_name = _generate_template_variable_name(str(dir_path))
+            dir_mappings.append((dir_name, str(dir_path)))
+
+        file_search_dirs = args.get("file_search_dirs", [])
+        for dir_path in file_search_dirs:
+            dir_name = _generate_template_variable_name(str(dir_path))
+            dir_mappings.append((dir_name, str(dir_path)))
+
         # Process files from explicit routing
         files_dict = collect_files(
             file_mappings=cast(
                 List[Tuple[str, Union[str, Path]]], files_tuples
             ),
+            dir_mappings=cast(
+                List[Tuple[str, Union[str, Path]]], dir_mappings
+            ),
+            dir_recursive=args.get("recursive", False),
             security_manager=security_manager,
         )
 
