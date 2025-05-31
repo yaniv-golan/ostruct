@@ -41,6 +41,13 @@ ostruct provides three syntaxes for routing files to different tools, giving you
 .. warning::
    **Security Note**: All file access is validated through the SecurityManager. Files must be within allowed directories for access.
 
+.. note::
+   **New in v0.8.0**: Enhanced file routing with three flexible syntax options:
+
+   1. **Auto-naming** (``-ft config.yaml``) - Generates variable names automatically
+   2. **Two-argument** (``-ft config settings.yaml``) - Explicit variable naming
+   3. **Alias flags** (``--fta config settings.yaml``) - Two-argument with tab completion
+
 Template Files (📄 Local Access Only)
 --------------------------------------
 
@@ -224,6 +231,327 @@ File Search Options
    --file-search-cleanup                        # Clean up vector stores after use (default: true)
    --file-search-retry-count COUNT              # Retry attempts for operations (default: 3)
    --file-search-timeout SECONDS               # Timeout for indexing (default: 60.0)
+
+File Routing Best Practices and Advanced Patterns
+==================================================
+
+Auto-Naming Convention Details
+------------------------------
+
+**Variable Name Generation Rules**
+
+ostruct generates variable names from file paths using these transformation rules:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 35 30
+
+   * - File Path Pattern
+     - Generated Variable
+     - Applied Rule
+   * - ``config.yaml``
+     - ``config_yaml``
+     - Replace dots with underscores
+   * - ``my-file.txt``
+     - ``my_file_txt``
+     - Replace hyphens with underscores
+   * - ``hello.world.json``
+     - ``hello_world_json``
+     - Replace all non-alphanumeric with underscores
+   * - ``123data.csv``
+     - ``_123data_csv``
+     - Prepend underscore if starts with digit
+   * - ``data@file.txt``
+     - ``data_file_txt``
+     - Replace symbols with underscores
+   * - ``My File (1).doc``
+     - ``My_File__1__doc``
+     - Replace spaces and parentheses with underscores
+
+**Nested Directory Handling**
+
+For files in nested directories, auto-naming uses **only the filename**, not the full path:
+
+.. code-block:: bash
+
+   # Nested path examples
+   ostruct run task.j2 schema.json -ft config/database/settings.yaml
+   # → Variable: settings_yaml (NOT config_database_settings_yaml)
+
+   ostruct run task.j2 schema.json -ft data/2024/Q1/sales.csv
+   # → Variable: sales_csv (NOT data_2024_Q1_sales_csv)
+
+   ostruct run task.j2 schema.json -ft src/main/java/App.java
+   # → Variable: App_java (NOT src_main_java_App_java)
+
+**Complex Path Examples**
+
+.. code-block:: bash
+
+   # Special characters and spaces
+   ostruct run task.j2 schema.json -ft "user data/file (backup).json"
+   # → Variable: file__backup__json
+
+   # Version numbers and dates
+   ostruct run task.j2 schema.json -ft data-v2.1_2024-03-15.csv
+   # → Variable: data_v2_1_2024_03_15_csv
+
+   # Multiple extensions
+   ostruct run task.j2 schema.json -ft archive.tar.gz
+   # → Variable: archive_tar_gz
+
+Variable Name Collision Resolution
+----------------------------------
+
+**Collision Detection**
+
+ostruct detects and prevents variable name collisions across all file routing types and CLI variables:
+
+.. code-block:: bash
+
+   # This will cause a collision error:
+   ostruct run task.j2 schema.json \
+     -ft data.csv \
+     -fc data.json \
+     -V data=test
+   # Error: Variable 'data_csv', 'data_json', and 'data' would collide when normalized
+
+**Resolution Strategies**
+
+1. **Use explicit naming** (recommended):
+
+.. code-block:: bash
+
+   # Clear, non-colliding names
+   ostruct run task.j2 schema.json \
+     -ft template_data data.csv \
+     --fca analysis_data data.json \
+     -V env_data=test
+
+2. **Rename one of the files**:
+
+.. code-block:: bash
+
+   # Rename files to avoid collisions
+   ostruct run task.j2 schema.json \
+     -ft config_data.csv \
+     -fc analysis_data.json
+
+3. **Use different variable names**:
+
+.. code-block:: bash
+
+   # Use two-argument syntax for control
+   ostruct run task.j2 schema.json \
+     -ft csv_source data.csv \
+     -fc json_source data.json
+
+**Built-in Variable Protection**
+
+These variable names are reserved and cannot be used:
+
+- ``template`` - Reserved for template metadata
+- ``schema`` - Reserved for schema information
+- ``request`` - Reserved for request context
+- ``response`` - Reserved for response data
+- ``system`` - Reserved for system information
+
+Legacy Flag Interaction
+-----------------------
+
+**Mixing Legacy and New Flags**
+
+You can mix legacy flags (``-f``, ``-d``, ``-p``) with new routing flags, but be aware of variable name conflicts:
+
+.. code-block:: bash
+
+   # Safe mixing - different variable names
+   ostruct run task.j2 schema.json \
+     -f old_config config.yaml \
+     -ft new-settings.json
+   # Variables: old_config, new_settings_json
+
+   # Potential conflict - similar names
+   ostruct run task.j2 schema.json \
+     -f data data.csv \
+     -ft data.json
+   # Error: Variables 'data' and 'data_json' may be confusing in templates
+
+**Migration Strategy**
+
+When migrating from legacy to new syntax:
+
+.. code-block:: bash
+
+   # Old syntax (still works)
+   ostruct run task.j2 schema.json -f config config.yaml -f data data.csv
+
+   # New syntax (recommended)
+   ostruct run task.j2 schema.json -ft config.yaml -ft data.csv
+   # Variables: config_yaml, data_csv
+
+   # Or with explicit naming
+   ostruct run task.j2 schema.json --fta config config.yaml --fta data data.csv
+
+Syntax Selection Best Practices
+-------------------------------
+
+**When to Use Auto-Naming (``-ft path``)**
+
+✅ **Good for:**
+
+- Quick prototyping and one-off analyses
+- Scripts where variable names don't need to be stable
+- Simple file names that generate clear variable names
+
+.. code-block:: bash
+
+   # Clear, obvious variable names
+   ostruct run analyze.j2 schema.json -ft config.yaml -fc sales_data.csv
+   # Variables: config_yaml, sales_data_csv
+
+❌ **Avoid when:**
+
+- File names are ambiguous (``data.csv``, ``file.txt``)
+- Building reusable templates that others will use
+- File names contain special characters or are very long
+
+**When to Use Two-Argument Syntax (``-ft name path``)**
+
+✅ **Good for:**
+
+- Reusable templates where variable names need to be stable
+- Complex file paths where auto-naming is unclear
+- Team environments where consistency matters
+
+.. code-block:: bash
+
+   # Clear, semantic variable names
+   ostruct run project_report.j2 schema.json \
+     -ft project_config ./config/complex-project-settings.yaml \
+     -fc quarterly_data ./data/Q4-2024/sales/regional-breakdown.xlsx
+
+**When to Use Alias Syntax (``--fta name path``)**
+
+✅ **Good for:**
+
+- Interactive use where you want tab completion for paths
+- Complex directory structures
+- When you frequently use the same files with different names
+
+.. code-block:: bash
+
+   # Tab completion helps with complex paths
+   ostruct run analysis.j2 schema.json \
+     --fta config ./deeply/nested/config/production/settings.yaml \
+     --fca dataset ./data/2024/Q4/processed/clean_sales_data.csv
+
+**Hybrid Approach Example**
+
+For maximum clarity, use a combination of syntaxes:
+
+.. code-block:: bash
+
+   # Combine syntaxes based on needs
+   ostruct run comprehensive_analysis.j2 schema.json \
+     -ft simple_config.yaml \                     # Auto-naming for simple files
+     --fta database_config ./config/db/prod.yaml \  # Alias for complex paths
+     -fc analysis ./data/clean_dataset.csv \        # Two-arg for semantic clarity
+     -V environment=production                       # CLI variables as needed
+
+Error Prevention and Debugging
+------------------------------
+
+**Common Naming Issues and Solutions**
+
+.. code-block:: bash
+
+   # Problem: Ambiguous auto-generated names
+   ostruct run task.j2 schema.json -ft file1.txt -ft file2.txt
+   # Variables: file1_txt, file2_txt (confusing in templates)
+
+   # Solution: Use semantic names
+   ostruct run task.j2 schema.json -ft input_spec file1.txt -ft output_spec file2.txt
+
+**Variable Name Validation**
+
+ostruct validates all variable names to ensure they're valid Python/Jinja2 identifiers:
+
+.. code-block:: bash
+
+   # Invalid variable names (will cause errors)
+   ostruct run task.j2 schema.json -ft "123-invalid" file.txt     # Starts with number
+   ostruct run task.j2 schema.json -ft "my-var" file.txt          # Contains hyphen
+   ostruct run task.j2 schema.json -ft "class" file.txt           # Python keyword
+
+   # Valid alternatives
+   ostruct run task.j2 schema.json -ft "_123_valid" file.txt      # Prefixed underscore
+   ostruct run task.j2 schema.json -ft "my_var" file.txt          # Underscores OK
+   ostruct run task.j2 schema.json -ft "file_class" file.txt      # Avoid keywords
+
+**Debugging Variable Names**
+
+To see what variables will be created before running:
+
+.. code-block:: bash
+
+   # Dry run to check variable names (if implemented)
+   ostruct run task.j2 schema.json --dry-run \
+     -ft config.yaml \
+     -fc data/sales.csv \
+     --fsa manual docs.pdf
+
+   # Check template for undefined variables
+   ostruct run task.j2 schema.json --validate-only \
+     -ft config.yaml
+
+Template Usage Patterns
+-----------------------
+
+**Accessing Auto-Named Variables**
+
+.. code-block:: jinja
+
+   {# Auto-named variables from file paths #}
+   Configuration: {{ config_yaml.content }}
+   Sales data: {{ sales_data_csv.content }}
+   Documentation: {{ user_manual_pdf.content }}
+
+**Handling Multiple Files of Same Type**
+
+.. code-block:: bash
+
+   # Use descriptive names to distinguish files
+   ostruct run compare.j2 schema.json \
+     -ft baseline_config ./configs/baseline.yaml \
+     -ft production_config ./configs/production.yaml \
+     -ft staging_config ./configs/staging.yaml
+
+.. code-block:: jinja
+
+   {# Clear distinction in templates #}
+   Baseline: {{ baseline_config.content }}
+   Production: {{ production_config.content }}
+   Staging: {{ staging_config.content }}
+
+**Best Template Practices**
+
+.. code-block:: jinja
+
+   {# Document expected variables at top of template #}
+   {#
+   Expected variables:
+   - config_data: Main configuration file
+   - sales_info: Sales data for analysis
+   - user_manual: Documentation reference
+   #}
+
+   {% if not config_data.content %}
+     {% error "Configuration file is required" %}
+   {% endif %}
+
+       Analysis based on: {{ config_data.name }}
+    Data source: {{ sales_info.name }} ({{ sales_info.size }} bytes)
 
 Advanced File Routing
 =====================
@@ -736,81 +1064,101 @@ Performance Tips
 3. **Set appropriate timeouts** for large file processing
 4. **Use progress reporting** (``--progress-level detailed``) for long operations
 
-Common Workflows
-================
+Troubleshooting File Routing
+=============================
 
-Data Analysis Pipeline
-----------------------
+Common File Routing Issues
+--------------------------
 
-.. code-block:: bash
-
-   # 1. Upload data for analysis
-   ostruct run analysis.j2 schema.json \\
-     -fc sales_data.csv \\
-     -fc customer_data.json \\
-     --code-interpreter-download-dir ./results
-
-   # 2. Search documentation for context
-   ostruct run research.j2 schema.json \\
-     -fs business_rules.pdf \\
-     -fs process_docs.md
-
-   # 3. Generate comprehensive report
-   ostruct run report.j2 schema.json \\
-     -ft config.yaml \\
-     -fc analysis_results.json \\
-     -fs documentation.pdf
-
-Configuration Validation
-------------------------
+**Variable name conflicts:**
 
 .. code-block:: bash
 
-   # Compare environments
-   ostruct run validate.j2 schema.json \\
-     -ft dev dev.yaml \\
-     -ft prod prod.yaml \\
-     -fs infrastructure_docs.pdf
+   # Problem: Conflicting variable names
+   ostruct run task.j2 schema.json -ft data.csv -fc data.json
+   # Error: Variables 'data_csv' and 'data_json' may be confusing
 
-Code Review Automation
-----------------------
+   # Solution: Use explicit naming
+   ostruct run task.j2 schema.json -ft input_data data.csv -fc analysis_data data.json
+
+**Nested path confusion:**
 
 .. code-block:: bash
 
-   # Analyze code with documentation context
-   ostruct run code_review.j2 schema.json \\
-     -fc source_code/ \\
-     -fs coding_standards.md \\
-     -ft .eslintrc.json
+   # Problem: Complex nested paths
+   ostruct run task.j2 schema.json -ft ./very/deep/nested/config.yaml
+   # Variable: config_yaml (path information lost)
 
-Troubleshooting
-===============
+   # Solution: Use descriptive names for complex paths
+   ostruct run task.j2 schema.json -ft deep_config ./very/deep/nested/config.yaml
 
-Common Issues
--------------
+**Auto-naming issues:**
 
-**File not found errors:**
-- Verify file paths are correct
-- Check that files are within allowed directories
-- Use absolute paths or set ``--base-dir``
+.. code-block:: bash
 
-**Template rendering errors:**
-- Use ``--dry-run`` to test template without API calls
-- Check variable names match file routing expectations
-- Verify Jinja2 syntax in templates
+   # Problem: Ambiguous auto-generated names
+   ostruct run task.j2 schema.json -ft file1.txt -ft file2.txt
+   # Variables: file1_txt, file2_txt (hard to distinguish in templates)
 
-**API timeout errors:**
-- Increase ``--timeout`` for large files
-- Use File Search for large documents instead of template access
-- Consider breaking large tasks into smaller chunks
+   # Solution: Use semantic naming
+   ostruct run task.j2 schema.json -ft input_spec file1.txt -ft output_spec file2.txt
 
-**Token limit exceeded:**
-- Use ``--dry-run`` to estimate token usage
-- Reduce file sizes or use File Search for large documents
-- Consider using models with larger context windows
+**Template variable access errors:**
+
+.. code-block:: jinja
+
+   {# Problem: Forgetting .content #}
+   {{ my_file }}  <!-- Shows object description, not content -->
+
+   {# Solution: Always use .content for file content #}
+   {{ my_file.content }}  <!-- Actual file content -->
+
+**Legacy flag mixing confusion:**
+
+.. code-block:: bash
+
+   # Problem: Mixing different syntaxes inconsistently
+   ostruct run task.j2 schema.json -f old_var data.csv -ft new_data.json
+   # Variables: old_var, new_data_json (inconsistent naming)
+
+   # Solution: Choose one consistent approach
+   ostruct run task.j2 schema.json -ft old_data data.csv -ft new_data new_data.json
+
+Error Messages and Solutions
+---------------------------
+
+**"Variable name collision detected"**
+
+• **Cause**: Multiple files generate the same variable name
+• **Solution**: Use explicit naming with two-argument syntax
+• **Prevention**: Check auto-generated names for conflicts
+
+**"Invalid variable name"**
+
+• **Cause**: Auto-generated name contains invalid characters
+• **Solution**: Use explicit variable names that are valid Python identifiers
+• **Prevention**: Avoid files with only special characters in names
+
+**"FileInfoList object in output"**
+
+• **Cause**: Template uses ``{{ variable }}`` instead of ``{{ variable.content }}``
+• **Solution**: Always use ``.content`` to access file contents
+• **Prevention**: Document expected variables at top of templates
+
+**"Path outside allowed directories"**
+
+• **Cause**: File path violates security restrictions
+• **Solution**: Use ``-A`` to add allowed directories or move files to allowed locations
+• **Prevention**: Set up proper ``--base-dir`` and allowed directory structure
+
+**"File not found"**
+
+• **Cause**: Path is incorrect or file doesn't exist
+• **Solution**: Verify file paths, use absolute paths, or set ``--base-dir``
+• **Prevention**: Use tab completion with alias flags (``--fta``, ``--fca``, ``--fsa``)
 
 Getting Help
-------------
+============
 
 .. code-block:: bash
 
