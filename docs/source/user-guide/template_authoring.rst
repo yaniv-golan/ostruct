@@ -6,6 +6,16 @@ Learn how to create powerful Jinja2 templates for ostruct that combine static te
 .. note::
    This guide assumes no prior knowledge of Jinja2. Templates use a customized Jinja2 environment with ostruct-specific enhancements.
 
+.. tip::
+   **Schema Creation Tool**: When creating templates, use the **Meta-Schema Generator** to automatically create corresponding JSON schemas:
+
+   .. code-block:: bash
+
+      cd examples/meta-schema-generator
+      ./scripts/generate_and_validate_schema.sh -o my_schema.json my_template.j2
+
+   This ensures your schemas are OpenAI-compliant and match your template structure. See :doc:`examples` for complete documentation.
+
 Template Basics
 ================
 
@@ -118,7 +128,7 @@ Auto-Naming Examples
 
 .. code-block:: jinja
 
-   # Access in template
+   # Access in template (IMPORTANT: use .content)
    Configuration settings:
    {{ config_yaml.content }}
 
@@ -140,9 +150,21 @@ Override auto-naming with explicit variable names:
 
 .. code-block:: jinja
 
-   # Access with custom name
+   # Access with custom name (IMPORTANT: use .content)
    Application configuration:
    {{ app_config.content }}
+
+**Important: File Content Access**
+
+All file variables in ostruct are ``FileInfoList`` objects. To access file content, you must use the ``.content`` property:
+
+.. code-block:: jinja
+
+   ✅ Correct:   {{ my_file.content }}
+   ❌ Incorrect: {{ my_file }}  # Shows guidance message, not content
+
+If you accidentally use ``{{ my_file }}`` without ``.content``, you'll see a helpful message like:
+``[File 'config.yaml' - Use {{ my_file.content }} to access file content]``
 
 FileInfo Object Structure
 -------------------------
@@ -242,30 +264,107 @@ Since ``FileInfoList`` extends Python's list, you can use standard list operatio
 
 .. code-block:: jinja
 
-   <!-- Access by index -->
-   {{ logs[0].name }}        <!-- First file name -->
-   {{ logs[-1].name }}       <!-- Last file name -->
+   <!-- Access individual files by index -->
+   {{ my_files[0].content }}     <!-- First file content -->
+   {{ my_files[-1].name }}       <!-- Last file name -->
 
-   <!-- Iteration -->
-   {% for file in logs %}
-   - {{ file.name }}: {{ file.size }} bytes
+   <!-- Iterate over all files -->
+   {% for file in my_files %}
+   File: {{ file.name }}
+   Content: {{ file.content }}
    {% endfor %}
 
-   <!-- Length and existence -->
-   {{ logs|length }}         <!-- Number of files -->
-   {% if logs %}             <!-- Check if any files exist -->
-   Found {{ logs|length }} log files
-   {% endif %}
+   <!-- Check list length -->
+   Found {{ my_files | length }} files
 
-**Error Messages:**
+   <!-- Slice operations -->
+   {% for file in my_files[1:3] %}
+   Processing: {{ file.name }}
+   {% endfor %}
 
-If you try to access ``FileInfo`` attributes on a multi-file list, you'll get helpful error messages:
+Common File Access Patterns
+---------------------------
+
+Here are the most common patterns for working with file variables:
+
+**Single File Content Access:**
 
 .. code-block:: jinja
 
-   <!-- This will show a helpful error for multi-file lists -->
-   {{ logs.content }}        <!-- OK: returns list of contents -->
-   {{ logs.encoding }}       <!-- Error with suggestion to use logs[0].encoding or logs|single.encoding -->
+   <!-- Most common: accessing content of a single file -->
+   Configuration:
+   {{ config_file.content }}
+
+   <!-- Alternative for single files -->
+   Configuration:
+   {{ config_file|single.content }}
+
+**Multiple Files:**
+
+.. code-block:: jinja
+
+   <!-- Processing multiple files -->
+   {% for file in source_files %}
+   ## {{ file.name }}
+   {{ file.content }}
+   {% endfor %}
+
+**File Metadata:**
+
+.. code-block:: jinja
+
+   <!-- Using file properties -->
+   Processing {{ my_file.name }} ({{ my_file.size }} bytes)
+   Last modified: {{ my_file.mtime }}
+   Encoding: {{ my_file.encoding }}
+
+**Conditional Processing:**
+
+.. code-block:: jinja
+
+   <!-- Check if files exist or have certain properties -->
+   {% if config_file.exists %}
+   Configuration loaded: {{ config_file.content }}
+   {% else %}
+   No configuration file found.
+   {% endif %}
+
+Troubleshooting File Variables
+-----------------------------
+
+**Problem: "FileInfoList(['path'])" appears in output**
+
+This means you're using ``{{ variable }}`` instead of ``{{ variable.content }}``:
+
+.. code-block:: jinja
+
+   ❌ Wrong:   {{ my_file }}        # Shows: FileInfoList(['file.txt'])
+   ✅ Correct: {{ my_file.content }}  # Shows: actual file content
+
+**Problem: "UndefinedError" for file variables**
+
+Check that:
+
+1. The file path is correct
+2. The variable name matches (check for typos)
+3. You're using the right file routing flag
+
+Use ``--show-context`` to see all available variables:
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json --fta config config.yaml --show-context
+
+**Problem: Empty or missing content**
+
+.. code-block:: jinja
+
+   <!-- Check if file has content -->
+   {% if my_file.content %}
+   Content: {{ my_file.content }}
+   {% else %}
+   File is empty or could not be read.
+   {% endif %}
 
 Directory and Pattern Processing
 ---------------------------------

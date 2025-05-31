@@ -72,6 +72,7 @@ Documentation
 
    user-guide/introduction
    user-guide/quickstart
+   user-guide/examples
    user-guide/cli_reference
    user-guide/template_authoring
 
