@@ -762,7 +762,7 @@ Pull Request Analysis Template
    ## Changed Files
    {% for file in changed_files %}
    ### {{ file.name }}
-   {% if file.ext == "py" %}
+   {% if file.extension == "py" %}
    **Language**: Python
    **Lines**: {{ file.content | word_count }}
    ```python
@@ -809,9 +809,9 @@ Security Scan Template
    {% endfor %}
 
    ## Source Code Analysis
-   {% for file in source_files if file.ext in ['py', 'js', 'ts', 'java', 'go'] %}
+   {% for file in source_files if file.extension in ['py', 'js', 'ts', 'java', 'go'] %}
    ### {{ file.name }}
-   ```{{ file.ext }}
+   ```{{ file.extension }}
    {{ file.content }}
    ```
    {% endfor %}

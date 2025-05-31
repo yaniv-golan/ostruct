@@ -185,8 +185,7 @@ Each file variable provides a ``FileInfo`` object with these attributes:
 .. code-block:: jinja
 
    {{ file.basename }}       <!-- Name without extension -->
-   {{ file.ext }}            <!-- Extension (e.g., "txt") -->
-   {{ file.suffix }}         <!-- Extension with dot (e.g., ".txt") -->
+   {{ file.extension }}      <!-- Extension (e.g., "txt") -->
    {{ file.stem }}           <!-- Name without extension -->
    {{ file.dirname }}        <!-- Parent directory name -->
    {{ file.parent }}         <!-- Parent directory path -->
@@ -251,8 +250,8 @@ Use the ``|single`` filter to explicitly extract a single file from a list:
 .. code-block:: jinja
 
    <!-- Extract single file when you expect exactly one -->
-   {{ my_files|single.name }}     <!-- Returns the name of the single file -->
-   {{ my_files|single.content }}  <!-- Returns the content of the single file -->
+   {{ (my_files|single).name }}     <!-- Returns the name of the single file -->
+   {{ (my_files|single).content }}  <!-- Returns the content of the single file -->
 
    <!-- Error handling: raises TemplateRuntimeError if not exactly 1 file -->
    {{ empty_list|single.name }}   <!-- Error: expected 1 file, got 0 -->
@@ -297,7 +296,7 @@ Here are the most common patterns for working with file variables:
 
    <!-- Alternative for single files -->
    Configuration:
-   {{ config_file|single.content }}
+   {{ (config_file|single).content }}
 
 **Multiple Files:**
 
@@ -443,9 +442,9 @@ Use aliases and make templates flexible:
    {% for file in code %}
    ## {{ file.name }}
 
-   {% if file.suffix in ['.py', '.js', '.ts'] %}
+   {% if file.extension in ['py', 'js', 'ts'] %}
    Programming file detected: {{ file.content | word_count }} words
-   {% elif file.suffix in ['.md', '.txt'] %}
+   {% elif file.extension in ['md', 'txt'] %}
    Documentation file: {{ file.name }}
    {% else %}
    Other file: {{ file.name }}
@@ -532,8 +531,8 @@ Use aliases when your template needs to work with different directory structures
    {% for file in source_code %}
    ## {{ file.name }}
    - Size: {{ file.size }} bytes
-   - Type: {{ file.suffix }}
-   {% if file.suffix in ['.py', '.js', '.java'] %}
+   - Type: {{ file.extension }}
+   {% if file.extension in ['py', 'js', 'java'] %}
    - Code content: {{ file.content | word_count }} words
    {% endif %}
    {% endfor %}
@@ -544,9 +543,9 @@ Use aliases when your template needs to work with different directory structures
 
    {% for file in app_config %}
    Configuration file: {{ file.name }}
-   {% if file.suffix == '.json' %}
+   {% if file.extension == 'json' %}
    JSON content detected
-   {% elif file.suffix in ['.yaml', '.yml'] %}
+   {% elif file.extension in ['yaml', 'yml'] %}
    YAML content detected
    {% endif %}
    {% endfor %}
@@ -584,7 +583,7 @@ The same template works with different project structures when using aliases:
    {% endif %}
 
    {# Filter files by type #}
-   {% set python_files = source_code | selectattr('suffix', 'equalto', '.py') | list %}
+   {% set python_files = source_code | selectattr('extension', 'equalto', 'py') | list %}
    {% if python_files %}
    Python files ({{ python_files | length }}):
    {% for file in python_files %}
@@ -663,7 +662,7 @@ Loops and Iteration
    {{ loop.index }}. {{ file.name }}
       - Size: {{ file.size }} bytes
       - Modified: {{ file.mtime }}
-      {% if file.ext == "py" %}
+      {% if file.extension == "py" %}
       - Python file detected
       {% endif %}
    {% endfor %}
@@ -682,12 +681,12 @@ Filtering and Grouping
 .. code-block:: jinja
 
    Python files:
-   {% for file in files if file.ext == "py" %}
+   {% for file in files if file.extension == "py" %}
    - {{ file.name }}
    {% endfor %}
 
    Files by extension:
-   {% for ext, group in files | groupby('ext') %}
+   {% for ext, group in files | groupby('extension') %}
    {{ ext }} files:
    {% for file in group %}
      - {{ file.name }}
@@ -754,7 +753,7 @@ Data Processing Filters
    {% endfor %}
 
    Unique extensions:
-   {% for ext in files | extract_field('ext') | unique %}
+   {% for ext in files | extract_field('extension') | unique %}
    - {{ ext }}
    {% endfor %}
 
@@ -776,8 +775,8 @@ The ``|single`` filter extracts exactly one item from a list, with error handlin
 .. code-block:: jinja
 
    <!-- Extract single file when expecting exactly one -->
-   {{ my_files|single.name }}        <!-- Returns the name of the single file -->
-   {{ my_files|single.content }}     <!-- Returns the content of the single file -->
+   {{ (my_files|single).name }}        <!-- Returns the name of the single file -->
+   {{ (my_files|single).content }}     <!-- Returns the content of the single file -->
 
    <!-- Works with any list type -->
    {{ single_item_list|single }}     <!-- Returns the single item -->
@@ -796,8 +795,8 @@ The ``|single`` filter extracts exactly one item from a list, with error handlin
 
    <!-- Validate single file upload -->
    {% if uploaded_files|length == 1 %}
-   Processing file: {{ uploaded_files|single.name }}
-   Content: {{ uploaded_files|single.content }}
+   Processing file: {{ (uploaded_files|single).name }}
+   Content: {{ (uploaded_files|single).content }}
    {% else %}
    Error: Expected exactly one file, got {{ uploaded_files|length }}
    {% endif %}
@@ -1148,7 +1147,7 @@ Template Composition Example
    {% if files %}
    {% for file in files %}
    **{{ file.name }}** ({{ file.size }} bytes):
-   ```{{ file.ext }}
+   ```{{ file.extension }}
    {{ file.content }}
    ```
    {% endfor %}
@@ -1256,7 +1255,7 @@ Multi-File Analysis Template
    ## Detailed Analysis
    {% for file in source_files %}
    ### {{ file.name }}
-   ```{{ file.ext }}
+   ```{{ file.extension }}
    {{ file.content }}
    ```
    {% endfor %}
