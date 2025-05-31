@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Schema Generator Output",
+  "description": "JSON schema defining the structure of ostruct's output when generating schemas from user prompt templates",
+  "type": "object",
+  "properties": {
+    "generated_schema": {
+      "type": "string",
+      "description": "JSON-escaped string containing the generated JSON schema",
+      "minLength": 1
+    },
+    "input_template_digest": {
+      "type": "string",
+      "description": "SHA256 hash of the user's input prompt template",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "schema_generation_model_id": {
+      "type": "string",
+      "description": "ID of the LLM model used for schema generation",
+      "minLength": 1
+    },
+    "generation_timestamp_utc": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the schema was generated",
+      "format": "date-time"
+    },
+    "identified_placeholders": {
+      "type": "array",
+      "description": "Array of placeholder names identified in the user's template",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "inferred_property_details": {
+      "type": "array",
+      "description": "Details about how placeholders map to schema properties",
+      "items": {
+        "type": "object",
+        "properties": {
+          "placeholder_name": {
+            "type": "string",
+            "description": "Name of the placeholder in the template"
+          },
+          "inferred_type": {
+            "type": "string",
+            "description": "Inferred JSON schema type for this property",
+            "enum": ["string", "number", "integer", "boolean", "array", "object", "null"]
+          },
+          "confidence_score": {
+            "type": "number",
+            "description": "Confidence level for the type inference (0-1)",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Explanation for why this type was inferred"
+          }
+        },
+        "required": ["placeholder_name", "inferred_type", "confidence_score"],
+        "additionalProperties": false
+      }
+    },
+    "schema_quality_assessment": {
+      "type": "object",
+      "description": "Assessment of the generated schema quality",
+      "properties": {
+        "confidence_score": {
+          "type": "number",
+          "description": "Overall confidence in the generated schema (0-1)",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "completeness_notes": {
+          "type": "string",
+          "description": "Notes about schema completeness and coverage"
+        },
+        "ambiguity_warnings": {
+          "type": "array",
+          "description": "Warnings about ambiguous or unclear aspects",
+          "items": {
+            "type": "string"
+          }
+        },
+        "improvement_suggestions": {
+          "type": "array",
+          "description": "Suggestions for improving the template or schema",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["confidence_score"],
+      "additionalProperties": false
+    },
+    "best_practices_adherence_check": {
+      "type": "object",
+      "description": "Checklist for JSON Schema best practices and OpenAI compatibility",
+      "properties": {
+        "has_root_object": {
+          "type": "boolean",
+          "description": "Schema uses root object type"
+        },
+        "uses_additional_properties_false": {
+          "type": "boolean",
+          "description": "Schema sets additionalProperties to false"
+        },
+        "all_properties_required": {
+          "type": "boolean",
+          "description": "All properties are in required array (uses null union for optional)"
+        },
+        "uses_supported_types_only": {
+          "type": "boolean",
+          "description": "Only uses OpenAI-supported JSON schema types"
+        },
+        "avoids_unsupported_keywords": {
+          "type": "boolean",
+          "description": "Avoids unsupported JSON schema keywords"
+        },
+        "has_appropriate_constraints": {
+          "type": "boolean",
+          "description": "Uses appropriate constraints (minLength, maxLength, etc.)"
+        },
+        "compliance_notes": {
+          "type": "array",
+          "description": "Notes about compliance issues or exceptions",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "has_root_object",
+        "uses_additional_properties_false",
+        "all_properties_required",
+        "uses_supported_types_only",
+        "avoids_unsupported_keywords",
+        "has_appropriate_constraints"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "generated_schema",
+    "input_template_digest",
+    "schema_generation_model_id",
+    "generation_timestamp_utc"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,104 @@
+You are an expert JSON Schema architect specializing in creating schemas for OpenAI's Structured Outputs feature. Your task is to analyze a user's Jinja2 prompt template and generate a comprehensive JSON schema that defines the structure of the expected output.
+
+## User's Prompt Template
+
+The user has provided the following Jinja2 template:
+
+```jinja2
+{{ user_template.content | default('No template provided') }}
+```
+
+## Your Task
+
+Analyze this template and generate a JSON schema that:
+
+1. **Identifies all output expectations** from the template text, including:
+   - Explicit instructions for data structure
+   - Implicit structure from the context and use case
+   - Any placeholders or variables that suggest output fields
+
+2. **Adheres to OpenAI Structured Outputs requirements**:
+   - Uses root object type only (no arrays, primitives, or unions at root)
+   - Sets `additionalProperties: false` on all objects
+   - Includes ALL properties in the `required` array
+   - For optional fields, use union types like `["string", "null"]`
+   - Only uses supported types: string, number, integer, boolean, array, object, null
+   - Avoids unsupported keywords: `anyOf`, `oneOf`, `allOf`, `not`, `if/then/else`, `$ref`, etc.
+
+3. **Follows JSON Schema best practices**:
+   - Provides clear, descriptive property names
+   - Includes helpful descriptions for all properties
+   - Uses appropriate constraints (minLength, maxLength, minimum, maximum, enum, etc.)
+   - Maintains consistent naming conventions
+   - Groups related properties logically
+
+4. **Performs quality assessment**:
+   - Evaluate confidence in the generated schema
+   - Identify potential ambiguities or unclear aspects
+   - Suggest improvements to the template or schema
+
+## Analysis Process
+
+1. **Template Analysis**: Examine the template for:
+   - Direct instructions about output format
+   - Context clues about the expected data structure
+   - Any examples or patterns mentioned
+   - The apparent use case or domain
+
+2. **Schema Design**: Create a schema that captures:
+   - All explicitly requested fields
+   - Reasonable inferences about data types
+   - Appropriate constraints and validation rules
+   - Clear property descriptions
+
+3. **Validation Check**: Ensure the schema:
+   - Complies with OpenAI's Structured Outputs requirements
+   - Uses only supported JSON Schema features
+   - Has appropriate error handling and validation
+
+## Output Requirements
+
+Generate a response that matches this exact structure:
+
+```json
+{
+  "generated_schema": "<JSON-escaped string containing the complete JSON schema>",
+  "input_template_digest": "<SHA256 hash of the input template>",
+  "schema_generation_model_id": "{{ model_id | default('gpt-4') }}",
+  "generation_timestamp_utc": "{{ now_utc | default('') }}",
+  "identified_placeholders": ["<array of placeholder names found in template>"],
+  "inferred_property_details": [
+    {
+      "placeholder_name": "<name>",
+      "inferred_type": "<JSON schema type>",
+      "confidence_score": <0-1>,
+      "reasoning": "<explanation for type choice>"
+    }
+  ],
+  "schema_quality_assessment": {
+    "confidence_score": <0-1>,
+    "completeness_notes": "<assessment of schema completeness>",
+    "ambiguity_warnings": ["<list of potential ambiguities>"],
+    "improvement_suggestions": ["<suggestions for template or schema improvements>"]
+  },
+  "best_practices_adherence_check": {
+    "has_root_object": true,
+    "uses_additional_properties_false": true,
+    "all_properties_required": true,
+    "uses_supported_types_only": true,
+    "avoids_unsupported_keywords": true,
+    "has_appropriate_constraints": true,
+    "compliance_notes": ["<any compliance notes or exceptions>"]
+  }
+}
+```
+
+## Critical Requirements
+
+- The `generated_schema` field must contain a properly JSON-escaped string
+- All boolean fields in `best_practices_adherence_check` should be `true` for OpenAI compatibility
+- If any compliance issues exist, document them in `compliance_notes`
+- Provide realistic confidence scores based on template clarity
+- Include constructive suggestions for improvement
+
+Begin your analysis now.
