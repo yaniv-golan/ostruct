@@ -25,7 +25,9 @@ def test_file_list_single_file(
     file_info = FileInfo.from_path(
         test_file, security_manager=security_manager
     )
-    files = FileInfoList([file_info])
+    files = FileInfoList(
+        [file_info], from_dir=False
+    )  # Explicitly mark as single file mapping
     assert len(files) == 1
     assert files.content == "hello"  # Test direct content access
     assert files[0].content == "hello"  # Test list access
@@ -35,7 +37,7 @@ def test_file_list_single_file(
 def test_file_list_multiple_files(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
-    """Test FileInfoList with multiple files."""
+    """Test FileInfoList with multiple files - scalar properties should raise errors."""
     fs.makedirs("/test_workspace/base", exist_ok=True)
     fs.create_file("/test_workspace/base/test1.txt", contents="hello")
     fs.create_file("/test_workspace/base/test2.txt", contents="world")
@@ -52,23 +54,32 @@ def test_file_list_multiple_files(
         ]
     )
     assert len(files) == 2
-    assert files.content == ["hello", "world"]  # Test direct content access
-    assert files[0].content == "hello"  # Test list access
+
+    # Scalar properties should raise errors for multiple files
+    with pytest.raises(ValueError):
+        _ = files.content
+    with pytest.raises(ValueError):
+        _ = files.path
+
+    # List access should still work
+    assert files[0].content == "hello"
     assert files[1].content == "world"
-    assert files.path == [
-        "test1.txt",
-        "test2.txt",
-    ]  # Paths relative to base_dir
+    assert files[0].path == "test1.txt"
+    assert files[1].path == "test2.txt"
 
 
 def test_file_list_empty(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
-    """Test empty FileInfoList."""
+    """Test empty FileInfoList - scalar properties should raise errors."""
     files = FileInfoList([])
     assert len(files) == 0
-    assert files.path == []  # Empty list for path
-    assert files.content == []  # Empty list for content
+
+    # Scalar properties should raise errors for empty list
+    with pytest.raises(ValueError):
+        _ = files.path
+    with pytest.raises(ValueError):
+        _ = files.content
 
 
 def test_file_list_str_repr(
@@ -122,9 +133,11 @@ def test_file_list_minimal_thread_safety(
     file_info = FileInfo.from_path(
         "/test_workspace/base/test.txt", security_manager=security_manager
     )
-    files = FileInfoList([file_info])
+    files = FileInfoList(
+        [file_info], from_dir=False
+    )  # Explicitly mark as single file mapping
 
-    # Test concurrent access to content and path
+    # Test concurrent access to content and path for single file
     def read_content() -> None:
         assert files.content == "hello"
 
@@ -165,8 +178,17 @@ def test_file_list_slicing(
 
     # Test various slicing operations
     assert len(file_list[1:3]) == 2
-    assert file_list[1:3].content == ["content1", "content2"]
-    assert file_list[1:3].path == ["test1.txt", "test2.txt"]
+
+    # Sliced lists with multiple files should raise errors on scalar properties
+    sliced = file_list[1:3]
+    with pytest.raises(ValueError):
+        _ = sliced.content
+    with pytest.raises(ValueError):
+        _ = sliced.path
+
+    # Individual file access should work
+    assert sliced[0].content == "content1"
+    assert sliced[1].content == "content2"
 
 
 def test_file_list_concurrent_iteration(
@@ -242,8 +264,9 @@ def test_file_list_thread_safety_with_nested_calls(
                 files.append(file_info2)
         # These operations are thread-safe and can be done concurrently
         assert len(files) > 0
-        assert files.content  # This will acquire the lock
-        assert files.path  # This will also acquire the lock
+        # Use individual file access since files may contain multiple files now
+        assert files[0].content  # Access first file directly
+        assert files[0].path  # Access first file directly
 
     threads = [threading.Thread(target=modify_and_read) for _ in range(3)]
     for thread in threads:
@@ -278,8 +301,9 @@ def test_file_list_slicing_thread_safety(
     def slice_and_read() -> None:
         sliced = file_list[1:3]
         assert len(sliced) == 2
-        assert sliced.content == ["content1", "content2"]
-        assert sliced.path == ["test1.txt", "test2.txt"]
+        # Individual file access should work
+        assert sliced[0].content == "content1"
+        assert sliced[1].content == "content2"
 
     threads = [threading.Thread(target=slice_and_read) for _ in range(3)]
     for thread in threads:
@@ -288,17 +312,19 @@ def test_file_list_slicing_thread_safety(
         thread.join()
 
 
-def test_file_list_name_property_adaptive_behavior(
+def test_file_list_name_property_strict_behavior(
     fs: FakeFilesystem, security_manager: SecurityManager
 ) -> None:
-    """Test FileInfoList.name adaptive behavior."""
+    """Test FileInfoList.name strict single-file behavior."""
     fs.makedirs("/test_workspace/base", exist_ok=True)
 
-    # Test empty list
+    # Test empty list - should raise error
     empty_files = FileInfoList([])
-    assert empty_files.name == []
+    with pytest.raises(ValueError) as exc_info:
+        _ = empty_files.name
+    assert "No files in 'file_list'" in str(exc_info.value)
 
-    # Test single file from file mapping (not from_dir)
+    # Test single file from file mapping (not from_dir) - should work
     fs.create_file("/test_workspace/base/single.txt", contents="content")
     single_file = FileInfo.from_path(
         "/test_workspace/base/single.txt", security_manager=security_manager
@@ -309,14 +335,16 @@ def test_file_list_name_property_adaptive_behavior(
     assert single_files.name == "single.txt"  # Returns scalar string
     assert isinstance(single_files.name, str)
 
-    # Test single file from directory mapping (from_dir=True)
+    # Test single file from directory mapping (from_dir=True) - should raise error
     single_files_from_dir = FileInfoList(
         [single_file], from_dir=True, var_alias="dir_var"
     )
-    assert single_files_from_dir.name == ["single.txt"]  # Returns list
-    assert isinstance(single_files_from_dir.name, list)
+    with pytest.raises(ValueError) as exc_info:
+        _ = single_files_from_dir.name
+    assert "dir_var" in str(exc_info.value)
+    assert "contains files from directory mapping" in str(exc_info.value)
 
-    # Test multiple files
+    # Test multiple files - should raise error
     fs.create_file("/test_workspace/base/file1.txt", contents="content1")
     fs.create_file("/test_workspace/base/file2.txt", contents="content2")
     multi_files = FileInfoList(
@@ -333,8 +361,97 @@ def test_file_list_name_property_adaptive_behavior(
         from_dir=False,
         var_alias="multi_var",
     )
-    assert multi_files.name == ["file1.txt", "file2.txt"]  # Returns list
-    assert isinstance(multi_files.name, list)
+    with pytest.raises(ValueError) as exc_info:
+        _ = multi_files.name
+    assert "multi_var" in str(exc_info.value)
+    assert "contains 2 files" in str(exc_info.value)
+
+
+def test_file_list_scalar_properties_strict_behavior(
+    fs: FakeFilesystem, security_manager: SecurityManager
+) -> None:
+    """Test all scalar properties raise errors for multiple files or directory mappings."""
+    fs.makedirs("/test_workspace/base", exist_ok=True)
+    fs.create_file("/test_workspace/base/test1.txt", contents="content1")
+    fs.create_file("/test_workspace/base/test2.txt", contents="content2")
+
+    # Test multiple files - all scalar properties should raise errors
+    multi_files = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/test1.txt",
+                security_manager=security_manager,
+            ),
+            FileInfo.from_path(
+                "/test_workspace/base/test2.txt",
+                security_manager=security_manager,
+            ),
+        ],
+        from_dir=False,
+        var_alias="multi_var",
+    )
+
+    # Test content property
+    with pytest.raises(ValueError) as exc_info:
+        _ = multi_files.content
+    assert "multi_var" in str(exc_info.value)
+    assert "contains 2 files" in str(exc_info.value)
+
+    # Test path property
+    with pytest.raises(ValueError) as exc_info:
+        _ = multi_files.path
+    assert "multi_var" in str(exc_info.value)
+    assert "contains 2 files" in str(exc_info.value)
+
+    # Test abs_path property
+    with pytest.raises(ValueError) as exc_info:
+        _ = multi_files.abs_path
+    assert "multi_var" in str(exc_info.value)
+    assert "contains 2 files" in str(exc_info.value)
+
+    # Test size property
+    with pytest.raises(ValueError) as exc_info:
+        _ = multi_files.size
+    assert "multi_var" in str(exc_info.value)
+    assert "contains 2 files" in str(exc_info.value)
+
+    # Test single file from directory mapping - should also raise errors
+    single_file_from_dir = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/test1.txt",
+                security_manager=security_manager,
+            )
+        ],
+        from_dir=True,
+        var_alias="dir_var",
+    )
+
+    # All properties should raise errors for directory mappings
+    for prop_name in ["content", "path", "abs_path", "size", "name"]:
+        with pytest.raises(ValueError) as exc_info:
+            _ = getattr(single_file_from_dir, prop_name)
+        assert "dir_var" in str(exc_info.value)
+        assert "contains files from directory mapping" in str(exc_info.value)
+
+    # Test single file from file mapping - should work
+    single_file = FileInfoList(
+        [
+            FileInfo.from_path(
+                "/test_workspace/base/test1.txt",
+                security_manager=security_manager,
+            )
+        ],
+        from_dir=False,
+        var_alias="single_var",
+    )
+
+    # All properties should work for single file from file mapping
+    assert single_file.content == "content1"
+    assert single_file.path == "test1.txt"
+    assert "/test_workspace/base/test1.txt" in single_file.abs_path
+    assert isinstance(single_file.size, int)
+    assert single_file.name == "test1.txt"
 
 
 def test_file_list_names_property_always_list(

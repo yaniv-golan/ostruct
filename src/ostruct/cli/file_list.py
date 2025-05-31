@@ -20,12 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 class FileInfoList(List[FileInfo]):
-    """List of FileInfo objects with smart content access.
+    """List of FileInfo objects with strict single-file content access.
 
     This class extends List[FileInfo] to provide convenient access to file contents
-    and metadata. When the list contains exactly one file from a single file mapping,
-    properties like content return the value directly. For multiple files or directory
-    mappings, properties return a list of values.
+    and metadata. Properties like content, path, name, etc. are designed for single-file
+    access only and will raise ValueError for multiple files or directory mappings.
+
+    This prevents accidental data exposure and template errors by requiring explicit
+    handling of multi-file scenarios through indexing (files[0].content) or the
+    |single filter (files|single.content).
 
     This class is thread-safe. All operations that access or modify the internal list
     are protected by a reentrant lock (RLock). This allows nested method calls while
@@ -38,22 +41,24 @@ class FileInfoList(List[FileInfo]):
             files = FileInfoList([file_info], from_dir=False)
             content = files.content  # Returns "file contents"
 
-        Multiple files or directory (--files or --dir):
+        Multiple files or directory (raises error):
             files = FileInfoList([file1, file2])  # or FileInfoList([file1], from_dir=True)
-            content = files.content  # Returns ["contents1", "contents2"] or ["contents1"]
+            content = files.content  # Raises ValueError with helpful message
 
-        Backward compatibility:
-            content = files[0].content  # Still works
+        Safe multi-file access:
+            content = files[0].content  # Access first file explicitly
+            content = files|single.content  # Use |single filter for validation
 
     Properties:
-        content: File content(s) - string for single file mapping, list for multiple files or directory
-        path: File path(s)
-        abs_path: Absolute file path(s)
-        size: File size(s) in bytes
-        name: Filename(s) without directory path
+        content: File content - only for single file from file mapping (not directory)
+        path: File path - only for single file from file mapping
+        abs_path: Absolute file path - only for single file from file mapping
+        size: File size in bytes - only for single file from file mapping
+        name: Filename without directory path - only for single file from file mapping
+        names: Always returns list of all filenames (safe for multi-file access)
 
     Raises:
-        ValueError: When accessing properties on an empty list
+        ValueError: When accessing scalar properties on empty list, multiple files, or directory mappings
     """
 
     def __init__(
@@ -81,167 +86,239 @@ class FileInfoList(List[FileInfo]):
         self._var_alias = var_alias
 
     @property
-    def content(self) -> Union[str, List[str]]:
-        """Get the content of the file(s).
+    def content(self) -> str:
+        """Get the content of a single file.
 
         Returns:
-            Union[str, List[str]]: For a single file from file mapping, returns its content as a string.
-                                  For multiple files, directory mapping, or empty list, returns a list of contents.
+            str: Content of the single file from file mapping.
+
+        Raises:
+            ValueError: If the list is empty or contains multiple files.
         """
         # Take snapshot under lock
         with self._lock:
             if not self:
-                logger.debug("FileInfoList.content called but list is empty")
-                return []
-
-            # Make a copy of the files we need to access
-            if len(self) == 1 and not self._from_dir:
-                file_info = self[0]
-                is_single = True
-            else:
-                files = list(self)
-                is_single = False
-
-        # Access file contents outside lock to prevent deadlocks
-        try:
-            if is_single:
-                logger.debug(
-                    "FileInfoList.content returning single file content (not from dir)"
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"No files in '{var_name}'. Cannot access .content property."
                 )
-                return file_info.content
 
+            # Check for multiple files or directory mapping
+            if len(self) > 1:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains {len(self)} files. "
+                    f"Use '{{{{ {var_name}[0].content }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.content }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.content }}}}{{%% endfor %%}}'."
+                )
+
+            if self._from_dir:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains files from directory mapping. "
+                    f"Use '{{{{ {var_name}[0].content }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.content }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.content }}}}{{%% endfor %%}}'."
+                )
+
+            # Single file from file mapping
+            file_info = self[0]
+
+        # Access file content outside lock to prevent deadlocks
+        try:
             logger.debug(
-                "FileInfoList.content returning list of %d contents (from_dir=%s)",
-                len(files),
-                self._from_dir,
+                "FileInfoList.content returning single file content (not from dir)"
             )
-            return [f.content for f in files]
+            return file_info.content
         except Exception as e:
             logger.error("Error accessing file content: %s", e)
             raise
 
     @property
-    def path(self) -> Union[str, List[str]]:
-        """Get the path of the file(s).
+    def path(self) -> str:
+        """Get the path of a single file.
 
         Returns:
-            Union[str, List[str]]: For a single file from file mapping, returns its path as a string.
-                                  For multiple files, directory mapping, or empty list, returns a list of paths.
+            str: Path of the single file from file mapping.
+
+        Raises:
+            ValueError: If the list is empty or contains multiple files.
         """
         # First get a snapshot of the list state under the lock
         with self._lock:
             if not self:
-                return []
-            if len(self) == 1 and not self._from_dir:
-                file_info = self[0]
-                is_single = True
-            else:
-                files = list(self)
-                is_single = False
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"No files in '{var_name}'. Cannot access .path property."
+                )
 
-        # Now access file paths outside the lock
+            # Check for multiple files or directory mapping
+            if len(self) > 1:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains {len(self)} files. "
+                    f"Use '{{{{ {var_name}[0].path }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.path }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.path }}}}{{%% endfor %%}}'."
+                )
+
+            if self._from_dir:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains files from directory mapping. "
+                    f"Use '{{{{ {var_name}[0].path }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.path }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.path }}}}{{%% endfor %%}}'."
+                )
+
+            # Single file from file mapping
+            file_info = self[0]
+
+        # Now access file path outside the lock
         try:
-            if is_single:
-                return file_info.path
-            return [f.path for f in files]
+            return file_info.path
         except Exception as e:
             logger.error("Error accessing file path: %s", e)
             raise
 
     @property
-    def abs_path(self) -> Union[str, List[str]]:
-        """Get the absolute path of the file(s).
+    def abs_path(self) -> str:
+        """Get the absolute path of a single file.
 
         Returns:
-            Union[str, List[str]]: For a single file from file mapping, returns its absolute path as a string.
-                                  For multiple files or directory mapping, returns a list of absolute paths.
+            str: Absolute path of the single file from file mapping.
 
         Raises:
-            ValueError: If the list is empty
+            ValueError: If the list is empty or contains multiple files.
         """
         # First get a snapshot of the list state under the lock
         with self._lock:
             if not self:
-                raise ValueError("No files in FileInfoList")
-            if len(self) == 1 and not self._from_dir:
-                file_info = self[0]
-                is_single = True
-            else:
-                files = list(self)
-                is_single = False
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"No files in '{var_name}'. Cannot access .abs_path property."
+                )
 
-        # Now access file paths outside the lock
+            # Check for multiple files or directory mapping
+            if len(self) > 1:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains {len(self)} files. "
+                    f"Use '{{{{ {var_name}[0].abs_path }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.abs_path }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.abs_path }}}}{{%% endfor %%}}'."
+                )
+
+            if self._from_dir:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains files from directory mapping. "
+                    f"Use '{{{{ {var_name}[0].abs_path }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.abs_path }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.abs_path }}}}{{%% endfor %%}}'."
+                )
+
+            # Single file from file mapping
+            file_info = self[0]
+
+        # Now access file path outside the lock
         try:
-            if is_single:
-                return file_info.abs_path
-            return [f.abs_path for f in files]
+            return file_info.abs_path
         except Exception as e:
             logger.error("Error accessing absolute path: %s", e)
             raise
 
     @property
-    def size(self) -> Union[int, List[int]]:
-        """Get file size(s) in bytes.
+    def size(self) -> int:
+        """Get file size of a single file in bytes.
 
         Returns:
-            Union[int, List[int]]: For a single file from file mapping, returns its size in bytes.
-                                  For multiple files or directory mapping, returns a list of sizes.
+            int: Size of the single file from file mapping in bytes.
 
         Raises:
-            ValueError: If the list is empty or if any file size is None
+            ValueError: If the list is empty, contains multiple files, or file size is None.
         """
         # First get a snapshot of the list state under the lock
         with self._lock:
             if not self:
-                raise ValueError("No files in FileInfoList")
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"No files in '{var_name}'. Cannot access .size property."
+                )
 
-            # Make a copy of the files we need to access
-            if len(self) == 1 and not self._from_dir:
-                file_info = self[0]
-                is_single = True
-            else:
-                files = list(self)
-                is_single = False
+            # Check for multiple files or directory mapping
+            if len(self) > 1:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains {len(self)} files. "
+                    f"Use '{{{{ {var_name}[0].size }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.size }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.size }}}}{{%% endfor %%}}'."
+                )
 
-        # Now access file sizes outside the lock
+            if self._from_dir:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains files from directory mapping. "
+                    f"Use '{{{{ {var_name}[0].size }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.size }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.size }}}}{{%% endfor %%}}'."
+                )
+
+            # Single file from file mapping
+            file_info = self[0]
+
+        # Now access file size outside the lock
         try:
-            if is_single:
-                size = file_info.size
-                if size is None:
-                    raise ValueError(
-                        f"Could not get size for file: {file_info.path}"
-                    )
-                return size
-
-            sizes = []
-            for f in files:
-                size = f.size
-                if size is None:
-                    raise ValueError(f"Could not get size for file: {f.path}")
-                sizes.append(size)
-            return sizes
+            size = file_info.size
+            if size is None:
+                raise ValueError(
+                    f"Could not get size for file: {file_info.path}"
+                )
+            return size
         except Exception as e:
             logger.error("Error accessing file size: %s", e)
             raise
 
     @property
-    def name(self) -> Union[str, List[str]]:
-        """Get the filename(s) without directory path.
+    def name(self) -> str:
+        """Get the filename of a single file without directory path.
 
         Returns:
-            Union[str, List[str]]: For a single file from file mapping (not from_dir),
-                                   returns its name as a string.
-                                   For multiple files or directory mapping,
-                                   returns a list of names.
+            str: Name of the single file from file mapping.
+
+        Raises:
+            ValueError: If the list is empty or contains multiple files.
         """
         with self._lock:
             if not self:
-                return []
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"No files in '{var_name}'. Cannot access .name property."
+                )
 
-            if len(self) == 1 and not self._from_dir:
-                return self[0].name  # Return scalar for single non-dir file
-            else:
-                return [f.name for f in self]  # Return list otherwise
+            # Check for multiple files or directory mapping
+            if len(self) > 1:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains {len(self)} files. "
+                    f"Use '{{{{ {var_name}[0].name }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.name }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.name }}}}{{%% endfor %%}}'."
+                )
+
+            if self._from_dir:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains files from directory mapping. "
+                    f"Use '{{{{ {var_name}[0].name }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.name }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.name }}}}{{%% endfor %%}}'."
+                )
+
+            # Single file from file mapping
+            return self[0].name
 
     @property
     def names(self) -> List[str]:
