@@ -63,15 +63,26 @@ Analyze code for security vulnerabilities, style issues, and performance problem
 ### Security Vulnerability Scanning
 
 ```bash
-# Traditional directory scanning
-ostruct run prompts/task.j2 schemas/scan_result.json -d examples/intermediate
+# Budget-friendly static analysis (recommended for most projects)
+ostruct run prompts/static_analysis.j2 schemas/scan_result.json \
+  -d code examples -R --sys-file prompts/system.txt
 
-# Enhanced multi-tool approach
-ostruct run prompts/task.j2 schemas/scan_result.json \
-  -fc source_code/ -fs security_docs/ -ft config.yaml
+# Professional security analysis with Code Interpreter (best balance)
+ostruct run prompts/code_interpreter.j2 schemas/scan_result.json \
+  -dc examples --sys-file prompts/system.txt
+
+# Comprehensive hybrid analysis for critical applications
+ostruct run prompts/hybrid_analysis.j2 schemas/scan_result.json \
+  -d code examples -R -dc examples --sys-file prompts/system.txt
 ```
 
-Scan codebases for security vulnerabilities, combining static analysis with AI-powered reasoning, code execution analysis, and documentation context.
+**Three optimized approaches** for automated security vulnerability scanning:
+
+- **Static Analysis**: $0.18 cost, fast processing, comprehensive vulnerability detection
+- **Code Interpreter**: $0.18 cost (same!), superior analysis quality with evidence-based findings  
+- **Hybrid Analysis**: $0.20 cost (+13%), maximum depth with cross-validation
+
+Each approach finds the same core vulnerabilities but with different levels of detail and analysis quality. Directory-based analysis provides comprehensive project coverage in a single scan.
 
 ### Data Analysis with Code Interpreter
 
@@ -345,7 +356,7 @@ ostruct run analysis_template.j2 analysis_schema.json \
 # Mixed syntax with custom variable names
 ostruct run analysis_template.j2 analysis_schema.json \
   -fc sales_data.csv \
-  -fc customers=customer_data.json \
+  -fc customers customer_data.json \
   --fsa reports market_reports.pdf \
   --fta app_config config.yaml
 
