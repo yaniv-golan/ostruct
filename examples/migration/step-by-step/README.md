@@ -69,9 +69,9 @@ echo "=== Current ostruct Usage Inventory ==="
 
 # Example current commands (replace with your actual usage)
 CURRENT_COMMANDS=(
-    "ostruct run analysis.j2 schema.json -f data=input.csv -d source=./src"
-    "ostruct run review.j2 review_schema.json -d code=./src -R"
-    "ostruct run config-check.j2 config_schema.json -f dev=dev.yaml -f prod=prod.yaml"
+    "ostruct run analysis.j2 schema.json -ft data input.csv -dc source ./src"
+    "ostruct run review.j2 review_schema.json -dc code ./src -R"
+    "ostruct run config-check.j2 config_schema.json -ft dev dev.yaml -ft prod prod.yaml"
 )
 
 echo "Current commands in use:"
@@ -151,15 +151,15 @@ def main():
     # Define your current commands here
     commands = [
         {
-            "cmd": "ostruct run templates/analysis.j2 schemas/result.json -f data=examples/data.csv -d source=examples/src",
+            "cmd": "ostruct run templates/analysis.j2 schemas/result.json -ft data examples/data.csv -dc source examples/src",
             "description": "Data analysis workflow"
         },
         {
-            "cmd": "ostruct run templates/review.j2 schemas/review.json -d code=examples/src -R",
+            "cmd": "ostruct run templates/review.j2 schemas/review.json -dc code examples/src -R",
             "description": "Code review workflow"
         },
         {
-            "cmd": "ostruct run templates/config.j2 schemas/config.json -f dev=examples/dev.yaml -f prod=examples/prod.yaml",
+            "cmd": "ostruct run templates/config.j2 schemas/config.json -ft dev examples/dev.yaml -ft prod examples/prod.yaml",
             "description": "Configuration validation"
         }
     ]
@@ -213,17 +213,17 @@ if __name__ == "__main__":
 ## Current Usage Assessment
 
 ### Commands in Use
-1. **Data Analysis**: `ostruct run analysis.j2 schema.json -f data=input.csv -d source=./src`
+1. **Data Analysis**: `ostruct run analysis.j2 schema.json -ft data input.csv -dc source ./src`
    - Files: CSV data, source code
    - Purpose: Analyze data with code context
    - **Migration Opportunity**: Route CSV to Code Interpreter, source to File Search
 
-2. **Code Review**: `ostruct run review.j2 review_schema.json -d code=./src -R`
+2. **Code Review**: `ostruct run review.j2 review_schema.json -dc code ./src -R`
    - Files: Source code directory
    - Purpose: Comprehensive code review
    - **Migration Opportunity**: Use Code Interpreter for execution, File Search for docs
 
-3. **Config Validation**: `ostruct run config-check.j2 config_schema.json -f dev=dev.yaml -f prod=prod.yaml`
+3. **Config Validation**: `ostruct run config-check.j2 config_schema.json -ft dev dev.yaml -ft prod prod.yaml`
    - Files: Configuration files
    - Purpose: Multi-environment validation
    - **Migration Opportunity**: Keep configs in template, add docs to File Search
@@ -264,20 +264,20 @@ echo "🔄 Running traditional commands..."
 
 # Traditional data analysis
 ostruct run templates/analysis.j2 schemas/result.json \
-  -f data=examples/data.csv \
-  -d source=examples/src \
+  -ft data examples/data.csv \
+  -dc source examples/src \
   --output-file traditional_analysis.json
 
 # Traditional code review
 ostruct run templates/review.j2 schemas/review.json \
-  -d code=examples/src \
+  -dc code examples/src \
   -R README.md \
   --output-file traditional_review.json
 
 # Traditional config validation
 ostruct run templates/config.j2 schemas/config.json \
-  -f dev=examples/dev.yaml \
-  -f prod=examples/prod.yaml \
+  -ft dev examples/dev.yaml \
+  -ft prod examples/prod.yaml \
   --output-file traditional_config.json
 
 echo "✅ Traditional commands completed"
@@ -293,22 +293,22 @@ echo "🚀 Running enhanced commands with explicit routing..."
 
 # Enhanced data analysis - route appropriately
 ostruct run templates/analysis.j2 schemas/result.json \
-  -fc examples/data.csv \
-  -fs examples/src \
+  -fc data examples/data.csv \
+  -ds source examples/src \
   --output-file enhanced_analysis.json
 
 # Enhanced code review - use Code Interpreter + File Search
 ostruct run templates/review.j2 schemas/review.json \
-  -fc examples/src \
-  -fs docs/ \
+  -dc code examples/src \
+  -ds docs docs/ \
   -R README.md \
   --output-file enhanced_review.json
 
 # Enhanced config validation - template + documentation search
 ostruct run templates/config.j2 schemas/config.json \
-  -ft examples/dev.yaml \
-  -ft examples/prod.yaml \
-  -fs infrastructure_docs/ \
+  -ft dev examples/dev.yaml \
+  -ft prod examples/prod.yaml \
+  -ds infrastructure_docs infrastructure_docs/ \
   --output-file enhanced_config.json
 
 echo "✅ Enhanced commands completed"
@@ -500,8 +500,8 @@ echo "💻 Adding Code Interpreter integration..."
 
 # Data analysis with code execution
 ostruct --config ostruct.yaml run templates/analysis.j2 schemas/result.json \
-  -fc examples/data.csv \
-  -fc examples/analysis_script.py \
+  -fc data examples/data.csv \
+  -fc analysis_script examples/analysis_script.py \
   --output-file code_interpreter_result.json
 
 echo "✅ Code Interpreter integration tested"
@@ -519,9 +519,9 @@ echo "🔍 Adding File Search integration..."
 
 # Code review with documentation context
 ostruct --config ostruct.yaml run templates/review.j2 schemas/review.json \
-  -fc examples/src \
-  -fs docs/ \
-  -fs README.md \
+  -dc src examples/src \
+  -ds docs docs/ \
+  -ft readme README.md \
   --output-file file_search_result.json
 
 echo "✅ File Search integration tested"
@@ -539,8 +539,8 @@ echo "🌐 Adding MCP integration..."
 
 # Analysis with external repository context
 ostruct --config ostruct.yaml run templates/analysis.j2 schemas/result.json \
-  -fc examples/src \
-  -fs docs/ \
+  -dc src examples/src \
+  -ds docs docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   -V repo_owner=your-org \
   -V repo_name=your-project \
@@ -688,8 +688,8 @@ fi
 
 # Provide traditional command equivalents
 echo "📝 Use these traditional commands:"
-echo "  ostruct run template.j2 schema.json -f file=data.csv -d source=./src"
-echo "  ostruct run template.j2 schema.json -d code=./src -R"
+echo "  ostruct run template.j2 schema.json -ft file data.csv -dc source ./src"
+echo "  ostruct run template.j2 schema.json -dc code ./src -R"
 
 echo "✅ Rollback complete"
 ```

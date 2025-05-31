@@ -46,10 +46,10 @@ Combine all tools for comprehensive analysis:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc data/sales_data.csv \
-  -fc code/analytics.py \
-  -fs docs/ \
-  -ft config/analysis.yaml \
+  -fc sales_data data/sales_data.csv \
+  -fc analytics_code code/analytics.py \
+  -ds docs docs/ \
+  -ft analysis_config config/analysis.yaml \
   --sys-file prompts/system.txt \
   --output-file comprehensive_analysis.json
 ```
@@ -60,8 +60,8 @@ Analyze data while searching for relevant documentation:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc data/ \
-  -fs docs/ \
+  -dc data data/ \
+  -ds docs docs/ \
   --sys-file prompts/system.txt \
   -V analysis_type=data_exploration \
   -V include_visualizations=true
@@ -73,8 +73,8 @@ Analyze code using external repository documentation via MCP:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc code/ \
-  -fs docs/ \
+  -dc code code/ \
+  -ds docs docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   --sys-file prompts/system.txt \
   -V repo_owner=your-org \
@@ -88,9 +88,9 @@ Execute performance analysis code while searching documentation:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc data/performance.log \
-  -fc code/analytics.py \
-  -fs docs/troubleshooting.md \
+  -fc performance_log data/performance.log \
+  -fc analytics_code code/analytics.py \
+  -ft troubleshooting docs/troubleshooting.md \
   --sys-file prompts/system.txt \
   -V analysis_type=performance \
   -V execute_analysis=true \
@@ -109,9 +109,10 @@ Use persistent configuration for consistent multi-tool analysis:
 # - Cost controls
 
 ostruct --config config/ostruct.yaml run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc data/ \
-  -fc code/ \
-  -fs docs/ \
+  -dc data data/ \
+  -dc src src/ \
+  -ds docs docs/ \
+  -dc config config/ \
   --sys-file prompts/system.txt
 ```
 
@@ -197,7 +198,7 @@ This pattern is ideal for:
 ```bash
 # All files processed the same way
 ostruct run analysis.j2 schema.json \
-  -d all_files . \
+  -dc all_files . \
   -R
 ```
 
@@ -206,10 +207,10 @@ ostruct run analysis.j2 schema.json \
 ```bash
 # Optimized routing for better results
 ostruct run analysis.j2 schema.json \
-  -fc data/ \
-  -fc code/ \
-  -fs docs/ \
-  -ft config/
+  -dc data data/ \
+  -dc code code/ \
+  -ds docs docs/ \
+  -dc config config/
 ```
 
 ## CI/CD Integration
@@ -237,10 +238,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           ostruct --config config/ostruct.yaml run prompts/analysis.j2 schemas/analysis_result.json \
-            -fc data/ \
-            -fc src/ \
-            -fs docs/ \
-            -ft config/ \
+            -dc data data/ \
+            -dc src src/ \
+            -ds docs docs/ \
+            -dc config config/ \
             --progress-level none \
             --output-file analysis_results.json
 

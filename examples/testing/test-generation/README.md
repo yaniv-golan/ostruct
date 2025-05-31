@@ -9,6 +9,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 ## Features
 
 ### Core Test Generation
+
 - Automatic test case generation for untested functions
 - Coverage gap identification and reporting
 - Test suite optimization suggestions
@@ -16,6 +17,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 - Integration with existing test suites
 
 ### Enhanced Multi-Tool Integration
+
 - **Code Interpreter**: Execute generated tests to verify functionality
 - **File Search**: Search documentation for testing best practices
 - **MCP Servers**: Access repository standards and testing guidelines
@@ -53,7 +55,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code path/to/your/code \
+     -dc code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest
@@ -63,7 +65,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code examples/untested \
+     -dc code examples/untested \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest
@@ -75,7 +77,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code path/to/your/code \
+     -dc code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=unittest
@@ -85,7 +87,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code examples/complex \
+     -dc code examples/complex \
      -R \
      --sys-file prompts/system.txt \
      -V framework=unittest
@@ -97,7 +99,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code path/to/your/code \
+     -dc code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \
@@ -108,7 +110,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code examples/partial \
+     -dc code examples/partial \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \
@@ -121,7 +123,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code path/to/your/code \
+     -dc code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \
@@ -132,7 +134,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -d code examples/untested \
+     -dc code examples/untested \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \
@@ -223,7 +225,7 @@ Example output:
 - name: Generate Tests
   run: |
     ostruct run prompts/task.j2 schemas/test_cases.json \
-      -d code . \
+      -dc code . \
       -R \
       --sys-file prompts/system.txt \
       -V framework=pytest
@@ -235,7 +237,7 @@ Example output:
 test_generation:
   script:
     - ostruct run prompts/task.j2 schemas/test_cases.json \
-        -d code . \
+        -dc code . \
         -R \
         --sys-file prompts/system.txt \
         -V framework=pytest

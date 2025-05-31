@@ -59,7 +59,7 @@ These commands work exactly as before:
    ```bash
    # Traditional pattern (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -d code examples/security \
+     -dc code examples/security \
      -R \
      --sys-file prompts/system.txt
    ```
@@ -78,7 +78,7 @@ These commands work exactly as before:
    ```bash
    # Traditional with output file (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -d code examples/style \
+     -dc code examples/style \
      -R \
      --sys-file prompts/system.txt \
      --output-file style_review.json
@@ -91,15 +91,15 @@ These commands work exactly as before:
 Upload code for execution and dynamic analysis:
 
 ```bash
-# Auto-naming (quick analysis)
+# Directory routing for code analysis
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -fc examples/security/ \
+  -dc security_code examples/security \
   --sys-file prompts/system.txt
 
-# Equals syntax with custom names
+# Individual file routing
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -fc examples/security/sql_injection.py \
-  -fc perf_code=examples/performance/n_plus_one.py \
+  -fc sql_injection examples/security/sql_injection.py \
+  -fc perf_code examples/performance/n_plus_one.py \
   --sys-file prompts/system.txt
 
 # Two-argument alias syntax (best tab completion)
@@ -116,15 +116,15 @@ Search documentation for best practices and context:
 ```bash
 # Code review with documentation context
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -fc examples/security/ \
-  -fs docs/ \
+  -dc security_code examples/security \
+  -ds docs docs/ \
   --sys-file prompts/system.txt
 
 # Template-only configuration files
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -fc source_code/ \
-  -fs documentation/ \
-  -ft .eslintrc.json \
+  -dc source_code source_code/ \
+  -ds documentation documentation/ \
+  -ft eslint_config .eslintrc.json \
   --sys-file prompts/system.txt
 ```
 
@@ -135,10 +135,10 @@ Combine Code Interpreter and File Search for comprehensive analysis:
 ```bash
 # Full multi-tool analysis
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -fc examples/security/ \
-  -fc examples/performance/ \
-  -fs docs/ \
-  -ft config.yaml \
+  -dc security_code examples/security \
+  -dc performance_code examples/performance \
+  -ds docs docs/ \
+  -ft config config.yaml \
   --sys-file prompts/system.txt \
   --output-file comprehensive_review.json
 ```
@@ -166,8 +166,8 @@ EOF
 
 # Run with configuration
 ostruct --config ostruct.yaml run prompts/task.j2 schemas/code_review.json \
-  -fc src/ \
-  -fs docs/ \
+  -dc src src/ \
+  -ds docs docs/ \
   --sys-file prompts/system.txt
 ```
 
@@ -198,7 +198,7 @@ The review results follow a structured schema defined in `schemas/code_review.js
 - name: Run Code Review
   run: |
     ostruct run prompts/task.j2 schemas/code_review.json \
-      -d code . \
+      -dc code . \
       -R \
       -p code "*.{py,js,ts}" \
       --sys-file prompts/system.txt \
@@ -229,10 +229,10 @@ The review results follow a structured schema defined in `schemas/code_review.js
 
     # Run enhanced analysis
     ostruct --config ci_config.yaml run prompts/task.j2 schemas/code_review.json \
-      -fc src/ \
-      -fc tests/ \
-      -fs docs/ \
-      -ft .github/workflows/ \
+      -dc src src/ \
+      -dc tests tests/ \
+      -ds docs docs/ \
+      -dc workflows .github/workflows \
       --sys-file prompts/system.txt \
       --output-file enhanced_review.json
 ```
@@ -245,7 +245,7 @@ The review results follow a structured schema defined in `schemas/code_review.js
 code_review:
   script:
     - ostruct run prompts/task.j2 schemas/code_review.json \
-        -d code . \
+        -dc code . \
         -R \
         --sys-file prompts/system.txt
 ```
@@ -274,9 +274,9 @@ enhanced_code_review:
       EOF
     - |
       ostruct run prompts/task.j2 schemas/code_review.json \
-        -fc src/ \
-        -fs documentation/ \
-        -ft ci/ \
+        -dc src src/ \
+        -ds documentation documentation/ \
+        -dc ci ci/ \
         --sys-file prompts/system.txt \
         --output-file comprehensive_review.json
   artifacts:
@@ -324,10 +324,10 @@ limits:
                     pip install ostruct-cli
 
                     ostruct --config jenkins_config.yaml run prompts/task.j2 schemas/code_review.json \
-                      -fc src/ \
-                      -fc test/ \
-                      -fs docs/ \
-                      -ft Jenkinsfile \
+                      -dc src src/ \
+                      -dc test test/ \
+                      -ds docs docs/ \
+                      -ft jenkinsfile Jenkinsfile \
                       --sys-file prompts/system.txt \
                       --output-file jenkins_review.json
                 '''

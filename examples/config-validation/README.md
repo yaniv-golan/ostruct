@@ -9,6 +9,7 @@ Configuration files are often complex, environment-specific, and prone to subtle
 ## Features
 
 ### Core Validation
+
 - Multi-file configuration validation
 - Cross-environment consistency checking
 - Semantic understanding of config values
@@ -17,6 +18,7 @@ Configuration files are often complex, environment-specific, and prone to subtle
 - Support for JSON and YAML formats
 
 ### Enhanced Multi-Tool Integration
+
 - **File Search**: Search documentation for configuration best practices
 - **Code Interpreter**: Validate configuration logic and dependencies
 - **MCP Servers**: Connect to external services for additional context
@@ -61,7 +63,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs path/to/your/configs \
+     -dc configs path/to/your/configs \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
@@ -75,7 +77,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs examples/basic \
+     -dc configs examples/basic \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=basic-app \
@@ -91,7 +93,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs path/to/your/configs \
+     -dc configs path/to/your/configs \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
@@ -105,7 +107,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs examples/intermediate \
+     -dc configs examples/intermediate \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=multi-service \
@@ -121,7 +123,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs path/to/your/configs \
+     -dc configs path/to/your/configs \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
@@ -135,7 +137,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs examples/advanced/services \
+     -dc configs examples/advanced/services \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=microservices \
@@ -151,7 +153,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs path/to/your/configs \
+     -dc configs path/to/your/configs \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
@@ -162,7 +164,7 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs examples/basic \
+     -dc configs examples/basic \
      -R \
      --sys-file prompts/system.txt \
      -V service_name=basic-app \
@@ -172,55 +174,58 @@ These commands work exactly as before:
 ### Enhanced Multi-Tool Usage
 
 #### Configuration Analysis with Documentation Context
+
 Upload configuration files for analysis while searching documentation for best practices:
 
 ```bash
 # Configuration analysis with documentation search
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -ft examples/basic/dev.yaml \
-  -ft examples/basic/prod.yaml \
-  -fs docs/ \
+  -ft dev_config examples/basic/dev.yaml \
+  -ft prod_config examples/basic/prod.yaml \
+  -ds docs docs/ \
   --sys-file prompts/system.txt \
   -V service_name=basic-app \
   -V cross_env_check=true
 
 # Multi-environment validation with explicit routing
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -ft examples/intermediate/ \
-  -fs infrastructure_docs/ \
+  -dc configs examples/intermediate \
+  -ds infrastructure_docs infrastructure_docs/ \
   --sys-file prompts/system.txt \
   -V environment=all \
   --output-file multi_env_validation.json
 ```
 
 #### Code Interpreter for Logic Validation
+
 Use Code Interpreter to validate configuration logic and dependencies:
 
 ```bash
 # Configuration with dependency validation
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -fc examples/advanced/services/ \
-  -ft examples/advanced/shared/ \
+  -dc services examples/advanced/services \
+  -dc shared examples/advanced/shared \
   --sys-file prompts/system.txt \
   -V service_name=microservices \
   -V strict_mode=true
 
 # Complex configuration analysis
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -fc config_templates/ \
-  -fc validation_scripts/ \
-  -fs documentation/ \
+  -dc config_templates config_templates/ \
+  -dc validation_scripts validation_scripts/ \
+  -ds documentation documentation/ \
   --sys-file prompts/system.txt \
   --output-file comprehensive_validation.json
 ```
 
 #### MCP Server Integration for Repository Context
+
 Connect to MCP servers to access repository documentation and standards:
 
 ```bash
 # Configuration validation with repository context
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -ft examples/basic/ \
+  -dc configs examples/basic \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   --sys-file prompts/system.txt \
   -V service_name=basic-app \
@@ -229,14 +234,15 @@ ostruct run prompts/task.j2 schemas/validation_result.json \
 
 # Multi-tool analysis with external documentation
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -fc config_files/ \
-  -fs local_docs/ \
+  -dc config_files config_files/ \
+  -ds local_docs local_docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   --sys-file prompts/system.txt \
   --output-file enhanced_validation.json
 ```
 
 #### Configuration-Driven Workflows
+
 Use persistent configuration for consistent validation:
 
 ```bash
@@ -257,8 +263,8 @@ EOF
 
 # Run with configuration
 ostruct --config ostruct.yaml run prompts/task.j2 schemas/validation_result.json \
-  -ft config/ \
-  -fs docs/
+  -dc config config/ \
+  -ds docs docs/
 ```
 
 ## Example Files
@@ -369,6 +375,7 @@ Analyze the provided configuration files...
 ```
 
 This approach allows teams to:
+
 - **Share expertise**: Common system prompts across multiple templates
 - **Maintain consistency**: Standardized instructions and tone
 - **Add specificity**: Template-specific guidance while inheriting shared knowledge
