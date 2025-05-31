@@ -2,6 +2,20 @@
 
 This use case demonstrates how to perform automated code reviews using ostruct CLI with both traditional and enhanced multi-tool capabilities. It analyzes code for potential issues related to security, style, complexity, and more, producing structured JSON output that can be integrated into CI/CD pipelines.
 
+## 🔒 Security & Data Privacy Notice
+
+**⚠️ IMPORTANT**: This example uses Code Interpreter (`-fc`, `-dc`) and File Search (`-fs`, `-ds`) features that **upload your files to OpenAI's services** for processing.
+
+**Before using these examples:**
+
+- **Review your data sensitivity** - Do not upload proprietary, confidential, or sensitive code
+- **Consider data governance policies** - Check if your organization allows code uploads to external services
+- **Use test/demo code** - The provided examples use sample code for demonstration purposes
+
+**For detailed information about data handling and security best practices**, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
+
+**Alternative**: Use template-only options (`-ft`, `-dt`) for local-only processing without uploads.
+
 ## Features
 
 ### Core Analysis

@@ -2,6 +2,18 @@
 
 This example demonstrates ostruct's ability to perform complex document analysis using Code Interpreter integration. The system extracts text from two PDF files, performs semantic comparison, and outputs structured JSON results.
 
+## 🔒 Security & Data Privacy Notice
+
+**⚠️ IMPORTANT**: This example uses Code Interpreter (`-fc`) features that **upload your PDF files to OpenAI's services** for processing.
+
+**Before using with your documents:**
+
+- **Review data sensitivity** - Do not upload confidential, proprietary, or sensitive documents
+- **Consider document content** - PDFs may contain personal information, business secrets, or legal details
+- **Check data governance policies** - Verify your organization allows document uploads to external services
+
+**For detailed information about data handling and security best practices**, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
+
 ## Overview
 
 - **Input**: Two PDF files (old and new versions)
