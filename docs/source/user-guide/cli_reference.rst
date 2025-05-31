@@ -481,15 +481,127 @@ Progress and Debugging
    --debug-openai-stream                        # Debug OpenAI streaming
    --show-model-schema                          # Show generated Pydantic model schema
 
+Progress Reporting Levels (v0.8.0+)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ostruct provides three levels of progress reporting to help you monitor long-running operations.
+
+The default level is ``basic`` for all environments. Use ``--progress-level none`` for scripts and CI/CD pipelines where you want silent operation.
+
+**--progress-level none** (Silent operation)
+
+.. code-block:: bash
+
+   ostruct run analysis.j2 schema.json -fc large_data.csv --progress-level none
+
+Output: No progress indicators, only final results.
+
+**--progress-level basic** (Default)
+
+.. code-block:: bash
+
+   ostruct run analysis.j2 schema.json -fc large_data.csv --progress-level basic
+
+.. code-block:: text
+
+   ✓ Template loaded and validated
+   ✓ Files processed (1 file, 2.4MB)
+   ⏳ Generating response...
+   ✓ Response received (3,421 tokens)
+   ✓ Output validated against schema
+
+**--progress-level detailed** (For debugging and monitoring)
+
+.. code-block:: bash
+
+   ostruct run analysis.j2 schema.json -fc large_data.csv --progress-level detailed
+
+.. code-block:: text
+
+   [00:00] 🔄 Initializing ostruct run
+   [00:01] 📄 Loading template: analysis.j2
+   [00:01] 📋 Loading schema: schema.json
+   [00:01] ✓ Template validation passed
+   [00:02] 📁 Processing files:
+           • large_data.csv → Code Interpreter (2.4MB)
+   [00:03] 🔄 Template optimization applied:
+           • Moved large_data.csv to appendix (saved 1,247 tokens)
+   [00:03] 🤖 Requesting OpenAI API:
+           • Model: gpt-4o
+           • Input tokens: 2,156
+           • Estimated cost: $0.0432
+   [00:05] ⏳ Generating response... (streaming)
+   [00:12] ✓ Response received:
+           • Output tokens: 1,265
+           • Total cost: $0.0558
+           • Duration: 9.2s
+   [00:12] 🔍 Validating output against schema
+   [00:12] ✓ Validation successful
+   [00:12] 💾 Writing output to file
+   [00:12] ✅ Complete (total time: 12.4s)
+
+**Progress with Multi-Tool Operations:**
+
+.. code-block:: bash
+
+   ostruct run comprehensive.j2 schema.json \\
+     -fc data.csv \\
+     -fs docs.pdf \\
+     --progress-level detailed
+
+.. code-block:: text
+
+   [00:00] 🔄 Initializing multi-tool analysis
+   [00:01] 📁 Processing files:
+           • data.csv → Code Interpreter (1.2MB)
+           • docs.pdf → File Search (892KB)
+   [00:02] 🔄 Code Interpreter: Uploading data.csv
+   [00:03] ✓ Code Interpreter: File uploaded (file_id: abc123)
+   [00:03] 🔄 File Search: Processing docs.pdf
+   [00:05] ✓ File Search: Vector store created (vs_xyz789)
+   [00:05] 🔄 Template optimization applied (3 optimizations)
+   [00:06] 🤖 Creating assistant with tools
+   [00:07] ⏳ Generating response with tool access...
+   [00:15] 🔧 Tool call: Code Interpreter execution
+   [00:18] 🔧 Tool call: File Search query
+   [00:20] ✓ Response with tool results received
+   [00:20] ✅ Complete (total time: 20.1s)
+
+**Error Handling with Progress:**
+
+.. code-block:: text
+
+   [00:05] ❌ Error: Template validation failed
+           • Line 15: Unknown variable 'undefined_var'
+           • Suggestion: Check variable names match file routing
+
+   [00:08] ⚠️  Warning: Large file upload (5.2MB)
+           • File: large_dataset.csv
+           • Consider: Breaking into smaller files
+
+   [00:12] ❌ API Error: Rate limit exceeded
+           • Retrying in 60 seconds...
+           • Use --rate-limit to avoid this
+
 **Examples:**
 
 .. code-block:: bash
 
-   # Detailed debugging
+   # Detailed debugging for development
    ostruct run task.j2 schema.json -ft data.txt \\
      --verbose \\
      --debug-validation \\
      --progress-level detailed
+
+   # Silent operation for scripts/CI/CD
+   ostruct run task.j2 schema.json -ft data.txt \\
+     --progress-level none \\
+     --output-file results.json
+
+   # Monitor expensive operations
+   ostruct run analysis.j2 schema.json -fc large_dataset.csv \\
+     --progress-level detailed \\
+     --timeout 1800
 
 Timeout Control
 ---------------

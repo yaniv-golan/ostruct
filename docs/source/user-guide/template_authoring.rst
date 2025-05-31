@@ -725,10 +725,15 @@ System Prompt Best Practices
      Focus on actionable feedback with specific line numbers and concrete suggestions.
    ---
 
-Shared System Prompts
----------------------
+Shared System Prompts (v0.8.0+)
+=================================
 
-Use ``include_system:`` to share common system prompt content across multiple templates:
+The ``include_system:`` feature allows you to share common system prompt content across multiple templates, promoting consistency and reducing duplication in your prompt engineering workflows.
+
+Basic Usage
+-----------
+
+Use ``include_system:`` to reference external system prompt files:
 
 .. code-block:: yaml
 
@@ -741,14 +746,53 @@ Use ``include_system:`` to share common system prompt content across multiple te
      - Documentation completeness
    ---
 
-The ``include_system:`` feature allows you to:
+**Benefits of Shared System Prompts:**
 
 - **Maintain consistency** across multiple templates with shared expertise
 - **Reduce duplication** by centralizing common instructions
 - **Enable specialization** by adding template-specific guidance
 - **Simplify maintenance** by updating shared prompts in one location
+- **Version control** shared prompts independently from templates
+- **Team collaboration** through standardized prompt libraries
 
-**Example shared prompt file** (``shared/base_analyst.txt``):
+Advanced Usage Patterns
+-----------------------
+
+**Multiple includes** for modular prompt construction:
+
+.. code-block:: yaml
+
+   ---
+   include_system: shared/base_expert.txt
+   include_system: shared/code_analysis_specialist.txt
+   include_system: shared/security_focus.txt
+   system_prompt: |
+     For this specific task, also consider:
+     - Performance implications of suggested changes
+     - Backwards compatibility requirements
+   ---
+
+**Conditional includes** based on template context:
+
+.. code-block:: jinja
+
+   ---
+   {% if analysis_type == "security" %}
+   include_system: shared/security_expert.txt
+   {% elif analysis_type == "performance" %}
+   include_system: shared/performance_expert.txt
+   {% else %}
+   include_system: shared/general_analyst.txt
+   {% endif %}
+   system_prompt: |
+     Analysis type: {{ analysis_type }}
+     Focus on {{ focus_areas | join(", ") }}
+   ---
+
+Shared Prompt Library Examples
+------------------------------
+
+**Base Expert** (``shared/base_expert.txt``):
 
 .. code-block:: text
 
@@ -758,31 +802,220 @@ The ``include_system:`` feature allows you to:
    - Security best practices and vulnerability assessment
    - Code quality metrics and maintainability
 
-   Always provide:
-   1. Specific, actionable recommendations
-   2. Code examples when applicable
-   3. Risk assessment for identified issues
-   4. Prioritized improvement suggestions
+   Communication style:
+   - Always provide specific, actionable recommendations
+   - Include code examples when applicable
+   - Assess risk levels for identified issues
+   - Prioritize suggestions by business impact
 
-**Template using shared prompt:**
+**Security Specialist** (``shared/security_expert.txt``):
+
+.. code-block:: text
+
+   You are a cybersecurity expert specializing in:
+   - OWASP Top 10 vulnerabilities
+   - Secure coding practices
+   - Threat modeling and risk assessment
+   - Compliance frameworks (SOC2, PCI DSS, GDPR)
+
+   For security analysis, always:
+   1. Identify potential attack vectors
+   2. Assess severity using CVSS scoring
+   3. Provide specific remediation steps
+   4. Consider defense-in-depth strategies
+
+**Data Science Expert** (``shared/data_scientist.txt``):
+
+.. code-block:: text
+
+   You are a senior data scientist with expertise in:
+   - Statistical analysis and hypothesis testing
+   - Machine learning algorithm selection
+   - Data quality assessment and cleaning
+   - Visualization best practices
+
+   Always approach analysis with:
+   - Statistical rigor and appropriate confidence intervals
+   - Clear assumptions and limitations
+   - Actionable insights for business stakeholders
+   - Reproducible methodology
+
+Organizational Patterns
+-----------------------
+
+**Hierarchical organization** for large teams:
+
+.. code-block:: text
+
+   prompts/
+   ├── shared/
+   │   ├── base/
+   │   │   ├── expert.txt                 # Foundation expert persona
+   │   │   ├── analyst.txt                # Basic analyst role
+   │   │   └── communicator.txt           # Communication guidelines
+   │   ├── domain/
+   │   │   ├── security_expert.txt        # Security specialization
+   │   │   ├── performance_expert.txt     # Performance specialization
+   │   │   ├── data_scientist.txt         # Data science expertise
+   │   │   └── devops_engineer.txt        # DevOps specialization
+   │   └── project/
+   │       ├── project_alpha_context.txt  # Project-specific context
+   │       └── compliance_requirements.txt # Regulatory context
+   └── templates/
+       ├── security/
+       │   ├── code_review.j2             # Uses security_expert.txt
+       │   └── vulnerability_scan.j2      # Uses security_expert.txt
+       └── analysis/
+           ├── performance_analysis.j2    # Uses performance_expert.txt
+           └── data_exploration.j2        # Uses data_scientist.txt
+
+**Team-specific includes:**
+
+.. code-block:: yaml
+
+   ---
+   # Frontend team template
+   include_system: shared/base/expert.txt
+   include_system: shared/domain/frontend_specialist.txt
+   include_system: shared/project/ui_guidelines.txt
+   system_prompt: |
+     Review this React component for:
+     - Accessibility compliance (WCAG 2.1)
+     - Performance optimization opportunities
+     - Code maintainability and testing
+   ---
+
+Path Resolution Rules
+--------------------
+
+The ``include_system:`` path is resolved using these rules:
+
+1. **Relative to template location** (primary):
+
+   .. code-block:: text
+
+      templates/analysis/review.j2
+      include_system: ../shared/expert.txt
+      # Resolves to: templates/shared/expert.txt
+
+2. **Relative to current working directory**:
+
+   .. code-block:: text
+
+      # If running from project root
+      include_system: prompts/shared/expert.txt
+
+3. **Absolute paths** (when needed):
+
+   .. code-block:: text
+
+      include_system: /path/to/shared/prompts/expert.txt
+
+**Best practice:** Use relative paths from template directory for portability.
+
+Template Composition Example
+---------------------------
+
+**Template using shared prompts:**
 
 .. code-block:: jinja
 
    ---
-   include_system: shared/base_analyst.txt
+   include_system: ../shared/security_expert.txt
+   include_system: ../shared/code_reviewer.txt
    system_prompt: |
-     Focus specifically on database query optimization.
-     Look for N+1 queries, missing indexes, and inefficient joins.
-   model: gpt-4o
-   ---
-   Analyze this database access code:
+     Focus specifically on these security concerns:
+     - Input validation and sanitization
+     - Authentication and authorization flaws
+     - SQL injection and XSS vulnerabilities
 
-   {{ database_code.content }}
+     Analyze for {{ threat_model }} threat model.
+   model: gpt-4o
+   temperature: 0.1
+   ---
+
+   # Security Code Review
+
+   ## Analysis Target
+   {% if files %}
+   {% for file in files %}
+   **{{ file.name }}** ({{ file.size }} bytes):
+   ```{{ file.ext }}
+   {{ file.content }}
+   ```
+   {% endfor %}
+   {% endif %}
+
+   ## Security Requirements
+   - Threat model: {{ threat_model }}
+   - Compliance: {{ compliance_standards | join(", ") }}
+   - Risk tolerance: {{ risk_tolerance }}
+
+Error Handling and Debugging
+----------------------------
+
+**Common issues and solutions:**
+
+.. code-block:: bash
+
+   # Debug include resolution
+   ostruct run template.j2 schema.json --dry-run --verbose
+
+**Error: include_system file not found**
+
+.. code-block:: text
+
+   Error: Could not find include_system file: shared/expert.txt
+   Template: /path/to/templates/analysis.j2
+   Search paths:
+   - /path/to/templates/shared/expert.txt (relative to template)
+   - /path/to/shared/expert.txt (relative to cwd)
+
+**Solution:** Check file paths and ensure shared prompt files exist.
+
+**Error: circular include detected**
+
+.. code-block:: text
+
+   Error: Circular include detected in shared/base.txt
+   Include chain: base.txt → expert.txt → base.txt
+
+**Solution:** Restructure shared prompts to avoid circular dependencies.
+
+Migration and Best Practices
+----------------------------
+
+**Migrating from inline system prompts:**
+
+.. code-block:: jinja
+
+   {# Before - inline duplication #}
+   ---
+   system_prompt: |
+     You are an expert software engineer...
+     [repeated across multiple templates]
+   ---
+
+   {# After - shared expertise #}
+   ---
+   include_system: shared/software_expert.txt
+   system_prompt: |
+     For this specific analysis...
+     [template-specific instructions only]
+   ---
+
+**Best practices:**
+
+1. **Start with base personas** - Create fundamental expert roles first
+2. **Add domain specializations** - Build specific expertise on top of base
+3. **Use version control** - Track changes to shared prompts carefully
+4. **Document prompt libraries** - Maintain clear documentation of available includes
+5. **Test includes together** - Verify combined prompts work well
+6. **Keep includes focused** - Each file should have a single, clear purpose
 
 .. note::
-   The ``include_system:`` path is resolved relative to the template file location.
    Both ``include_system:`` content and ``system_prompt:`` content are combined,
-   with the included content appearing first.
+   with the included content appearing first, followed by the template-specific system prompt.
 
 Advanced Template Patterns
 ===========================
@@ -1092,6 +1325,274 @@ Error Handling
    {% else %}
    No files provided for analysis
    {% endif %}
+
+Template Optimization System (v0.8.0+)
+========================================
+
+ostruct v0.8.0 introduces an **automatic template optimization system** that applies prompt engineering best practices to improve LLM performance and reduce token usage without changing your template's functionality.
+
+How Template Optimization Works
+-------------------------------
+
+The optimizer analyzes your template and automatically:
+
+1. **Moves large file content** to structured appendices at the end of the prompt
+2. **Keeps small values inline** for immediate context (< 200 characters)
+3. **Generates natural language references** to appendix content
+4. **Preserves template logic** without changing behavior
+5. **Optimizes token usage** while maintaining readability
+
+**Example Transformation:**
+
+.. code-block:: jinja
+
+   {# Original template #}
+   Review this configuration:
+   {{ config.content }}
+
+   And analyze this large dataset:
+   {{ data.content }}
+
+   {# Automatically optimized to: #}
+   Review this configuration:
+   (see Configuration File appendix)
+
+   And analyze this large dataset:
+   (see Data File appendix)
+
+   === APPENDICES ===
+   Configuration File:
+   [actual config.content here]
+
+   Data File:
+   [actual data.content here]
+
+When Optimization Occurs
+------------------------
+
+Template optimization happens automatically when:
+
+- Your template contains file content references (``{{ file.content }}``)
+- File content exceeds the inline threshold (200 characters by default)
+- The optimization would provide meaningful token savings
+
+**Files kept inline** (not moved to appendix):
+
+- Very small files (< 50 characters)
+- Files used in loop contexts (``{% for item in files %}``)
+- Files explicitly marked to stay inline
+
+Optimization Benefits
+--------------------
+
+**Performance Improvements:**
+
+- **Better LLM focus** - Important context stays at the beginning
+- **Reduced token costs** - Eliminates redundant file content
+- **Improved accuracy** - Clearer prompt structure for the AI
+- **Faster processing** - More efficient prompt organization
+
+**Token Savings Example:**
+
+.. code-block:: text
+
+   Before optimization: 15,000 tokens
+   After optimization:   8,500 tokens
+   Savings:             43% reduction
+
+Understanding Optimization Results
+---------------------------------
+
+When optimization occurs, you'll see details in the output:
+
+.. code-block:: bash
+
+   ostruct run analysis.j2 schema.json -fc large_data.csv --verbose
+
+   Template Optimization Applied:
+   ✓ Moved large_data.csv to appendix (2,847 chars → reference)
+   ✓ Kept config.yaml inline (156 chars, below threshold)
+   ✓ Total optimization: 2,691 characters saved
+
+**Optimization metadata** is included in results:
+
+.. code-block:: json
+
+   {
+     "optimization": {
+       "applied": true,
+       "files_moved": ["large_data.csv", "logs.txt"],
+       "files_kept_inline": ["config.yaml"],
+       "characters_saved": 2691,
+       "optimization_time_ms": 12.4
+     }
+   }
+
+Controlling Optimization
+------------------------
+
+**Disable optimization** when not needed:
+
+.. code-block:: bash
+
+   # Disable automatic optimization
+   ostruct run template.j2 schema.json --no-optimize
+
+**Configure optimization thresholds** in your ``ostruct.yaml``:
+
+.. code-block:: yaml
+
+   optimization:
+     enabled: true
+     inline_threshold: 200      # Characters to keep inline
+     small_value_threshold: 50  # Always inline if smaller
+     apply_to_loops: false      # Don't optimize loop variables
+
+**Template-level control** via frontmatter:
+
+.. code-block:: jinja
+
+   ---
+   system_prompt: You are an expert analyst.
+   optimization:
+     enabled: false              # Disable for this template
+     inline_threshold: 500       # Custom threshold
+   ---
+
+   Analyze this data: {{ data.content }}
+
+Advanced Optimization Features
+------------------------------
+
+**Smart loop detection** - Variables used in loops aren't optimized:
+
+.. code-block:: jinja
+
+   {# This content stays inline (loop context) #}
+   {% for file in source_files %}
+   Process: {{ file.content }}
+   {% endfor %}
+
+   {# This content gets optimized (direct reference) #}
+   Summary of main config: {{ main_config.content }}
+
+**Natural language references** - Generated references are context-aware:
+
+.. code-block:: text
+
+   Original: {{ sales_data.content }}
+   Optimized: (see Sales Data Analysis appendix)
+
+   Original: {{ security_policy.content }}
+   Optimized: (see Security Policy Document appendix)
+
+**Deterministic optimization** - Same template always produces the same optimization:
+
+.. code-block:: bash
+
+   # These will produce identical optimized prompts
+   ostruct run template.j2 schema.json -fc data.csv
+   ostruct run template.j2 schema.json -fc data.csv
+
+Best Practices with Optimization
+--------------------------------
+
+**Design optimization-friendly templates:**
+
+.. code-block:: jinja
+
+   {# Good - clear file content references #}
+   Analyze the configuration:
+   {{ config.content }}
+
+   Review the security settings:
+   {{ security_config.content }}
+
+   {# Less optimal - mixed content that can't be optimized #}
+   Review this: {{ config.content | truncate(100) }} and also {{ data.content[:200] }}
+
+**Use meaningful variable names** for better appendix references:
+
+.. code-block:: bash
+
+   # Good - descriptive names
+   ostruct run analysis.j2 schema.json --fca user_data data.csv --fca sales_report quarterly.xlsx
+
+   # Less optimal - generic names
+   ostruct run analysis.j2 schema.json -fc data1.csv -fc data2.xlsx
+
+**Consider optimization in template design:**
+
+.. code-block:: jinja
+
+   {# Structure templates so large content can be moved #}
+   Task: Analyze the user behavior data and create insights.
+
+   Requirements:
+   - Focus on conversion patterns
+   - Identify user segments
+   - Provide actionable recommendations
+
+   Data to analyze:
+   {{ user_data.content }}  {# This will be optimized to appendix #}
+
+Troubleshooting Optimization
+----------------------------
+
+**Check optimization status:**
+
+.. code-block:: bash
+
+   # See optimization details
+   ostruct run template.j2 schema.json -fc data.csv --verbose
+
+**Common optimization issues:**
+
+1. **Template uses filters** - Content with filters may not optimize
+2. **Complex Jinja expressions** - Optimizer keeps complex expressions inline
+3. **Very small files** - Files under threshold stay inline (working as intended)
+
+**Verify optimization effectiveness:**
+
+.. code-block:: bash
+
+   # Compare token usage
+   ostruct run template.j2 schema.json -fc data.csv --dry-run --no-optimize
+   ostruct run template.j2 schema.json -fc data.csv --dry-run  # With optimization
+
+Migration Guide: Template Optimization
+--------------------------------------
+
+**Existing templates** work unchanged - optimization is additive:
+
+.. code-block:: jinja
+
+   {# Your existing template #}
+   Analyze: {{ data.content }}
+
+   {# Automatically becomes: #}
+   Analyze: (see Data appendix)
+
+   === APPENDICES ===
+   Data:
+   [original data.content here]
+
+**For templates with custom optimization logic**, you may want to remove manual optimization:
+
+.. code-block:: jinja
+
+   {# Before - manual optimization #}
+   {% if data.size > 1000 %}
+   Large dataset provided (see details below)
+   ...
+   Dataset: {{ data.content }}
+   {% else %}
+   Small dataset: {{ data.content }}
+   {% endif %}
+
+   {# After - let automatic optimization handle it #}
+   Dataset: {{ data.content }}
+   {# Optimization automatically moves large content to appendix #}
 
 Next Steps
 ==========
