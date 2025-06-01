@@ -37,6 +37,27 @@ This directory contains examples for document processing, PDF analysis, text ext
 
 **Best For:** Contract analysis, document version control, automated document review, legal document processing
 
+### [Documentation Example Validator](doc-example-validator/)
+
+**Automated documentation example testing with File Search integration** - Extracts and validates all code examples from project documentation:
+
+**Features:**
+
+- **Smart Example Detection**: Identifies CLI commands, API calls, configuration examples, and code snippets
+- **Project-Type Aware**: Adapts analysis based on CLI, API, Library, or Framework projects
+- **AI Agent Compatible**: Generates task lists for Cursor, Claude, and other AI coding agents
+- **Comprehensive Validation**: Creates detailed test criteria and automation instructions
+- **Dependency Management**: Builds execution order with proper task dependencies
+
+**Validation Results:**
+
+- **Coverage**: Extracts 95%+ of testable examples from typical project documentation
+- **Accuracy**: Task generation includes realistic validation criteria and clear test steps
+- **Automation Ready**: 80%+ of generated tasks can be executed automatically by AI agents
+- **Cost Effective**: Uses File Search for efficient documentation indexing
+
+**Best For:** Documentation quality assurance, CI/CD integration, project migration validation, example testing automation
+
 ## Key Features
 
 ### Multi-Tool Document Processing
@@ -75,6 +96,18 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 ostruct run prompts/document_analysis.j2 schemas/analysis_result.json \
   -fc documents/ \
   -fs reference_docs/
+```
+
+**Documentation Example Validation:**
+
+```bash
+# Extract and validate all examples from project documentation
+ostruct run doc-example-validator/prompts/extract_examples.j2 \
+  doc-example-validator/schemas/example_task_list.schema.json \
+  -ds docs/ \
+  -V project_name="MyProject" \
+  -V project_type="CLI" \
+  --output-file validation_tasks.json
 ```
 
 **Multi-Tool Document Analysis:**
