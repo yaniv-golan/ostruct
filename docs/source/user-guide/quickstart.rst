@@ -7,7 +7,7 @@ Prerequisites
 -------------
 
 - Python 3.10 or higher
-- OpenAI API key (get one at https://platform.openai.com/api-keys)
+- OpenAI API key (get one at https://platform.openai.com/account/api-keys)
 - ``pip`` or ``poetry`` for installation
 
 Installation
