@@ -5,7 +5,6 @@ This example provides a practical, incremental approach to migrating from tradit
 ## Overview
 
 This migration guide demonstrates:
-
 - **Gradual Adoption**: Step-by-step enhancement without breaking existing workflows
 - **Risk-Free Migration**: Each step can be validated before proceeding
 - **Backward Compatibility**: Traditional commands continue to work throughout
@@ -14,13 +13,9 @@ This migration guide demonstrates:
 ## Migration Phases
 
 ### Phase 1: Baseline Assessment
-
 ### Phase 2: Add Explicit File Routing
-
 ### Phase 3: Introduce Configuration Management
-
 ### Phase 4: Enable Multi-Tool Integration
-
 ### Phase 5: Optimize Templates and Workflows
 
 ## Directory Structure
@@ -60,7 +55,6 @@ This migration guide demonstrates:
 ### Step 1.1: Document Current Usage
 
 **phase-1-baseline/current-commands.sh**:
-
 ```bash
 #!/bin/bash
 # Document all current ostruct usage in your project
@@ -69,9 +63,9 @@ echo "=== Current ostruct Usage Inventory ==="
 
 # Example current commands (replace with your actual usage)
 CURRENT_COMMANDS=(
-    "ostruct run analysis.j2 schema.json -ft data input.csv -dc source ./src"
-    "ostruct run review.j2 review_schema.json -dc code ./src -R"
-    "ostruct run config-check.j2 config_schema.json -ft dev dev.yaml -ft prod prod.yaml"
+    "ostruct run analysis.j2 schema.json -f data=input.csv -d source=./src"
+    "ostruct run review.j2 review_schema.json -d code=./src --dir-recursive"
+    "ostruct run config-check.j2 config_schema.json -f dev=dev.yaml -f prod=prod.yaml"
 )
 
 echo "Current commands in use:"
@@ -87,7 +81,6 @@ find . -name "*.py" -o -name "*.js" -o -name "*.yaml" -o -name "*.json" | head -
 ### Step 1.2: Measure Baseline Performance
 
 **phase-1-baseline/baseline-metrics.py**:
-
 ```python
 #!/usr/bin/env python3
 """Measure baseline performance of current ostruct usage."""
@@ -151,15 +144,15 @@ def main():
     # Define your current commands here
     commands = [
         {
-            "cmd": "ostruct run templates/analysis.j2 schemas/result.json -ft data examples/data.csv -dc source examples/src",
+            "cmd": "ostruct run templates/analysis.j2 schemas/result.json -f data=examples/data.csv -d source=examples/src",
             "description": "Data analysis workflow"
         },
         {
-            "cmd": "ostruct run templates/review.j2 schemas/review.json -dc code examples/src -R",
+            "cmd": "ostruct run templates/review.j2 schemas/review.json -d code=examples/src --dir-recursive",
             "description": "Code review workflow"
         },
         {
-            "cmd": "ostruct run templates/config.j2 schemas/config.json -ft dev examples/dev.yaml -ft prod examples/prod.yaml",
+            "cmd": "ostruct run templates/config.j2 schemas/config.json -f dev=examples/dev.yaml -f prod=examples/prod.yaml",
             "description": "Configuration validation"
         }
     ]
@@ -206,24 +199,23 @@ if __name__ == "__main__":
 ### Step 1.3: Create Migration Inventory
 
 **phase-1-baseline/inventory.md**:
-
 ```markdown
 # Migration Inventory
 
 ## Current Usage Assessment
 
 ### Commands in Use
-1. **Data Analysis**: `ostruct run analysis.j2 schema.json -ft data input.csv -dc source ./src`
+1. **Data Analysis**: `ostruct run analysis.j2 schema.json -f data=input.csv -d source=./src`
    - Files: CSV data, source code
    - Purpose: Analyze data with code context
    - **Migration Opportunity**: Route CSV to Code Interpreter, source to File Search
 
-2. **Code Review**: `ostruct run review.j2 review_schema.json -dc code ./src -R`
+2. **Code Review**: `ostruct run review.j2 review_schema.json -d code=./src --dir-recursive`
    - Files: Source code directory
    - Purpose: Comprehensive code review
    - **Migration Opportunity**: Use Code Interpreter for execution, File Search for docs
 
-3. **Config Validation**: `ostruct run config-check.j2 config_schema.json -ft dev dev.yaml -ft prod prod.yaml`
+3. **Config Validation**: `ostruct run config-check.j2 config_schema.json -f dev=dev.yaml -f prod=prod.yaml`
    - Files: Configuration files
    - Purpose: Multi-environment validation
    - **Migration Opportunity**: Keep configs in template, add docs to File Search
@@ -255,7 +247,6 @@ if __name__ == "__main__":
 ### Step 2.1: Convert to Explicit Routing
 
 **phase-2-routing/traditional.sh**:
-
 ```bash
 #!/bin/bash
 # Original commands (still work)
@@ -264,27 +255,26 @@ echo "🔄 Running traditional commands..."
 
 # Traditional data analysis
 ostruct run templates/analysis.j2 schemas/result.json \
-  -ft data examples/data.csv \
-  -dc source examples/src \
+  -f data=examples/data.csv \
+  -d source=examples/src \
   --output-file traditional_analysis.json
 
 # Traditional code review
 ostruct run templates/review.j2 schemas/review.json \
-  -dc code examples/src \
-  -R README.md \
+  -d code=examples/src \
+  --dir-recursive \
   --output-file traditional_review.json
 
 # Traditional config validation
 ostruct run templates/config.j2 schemas/config.json \
-  -ft dev examples/dev.yaml \
-  -ft prod examples/prod.yaml \
+  -f dev=examples/dev.yaml \
+  -f prod=examples/prod.yaml \
   --output-file traditional_config.json
 
 echo "✅ Traditional commands completed"
 ```
 
 **phase-2-routing/enhanced.sh**:
-
 ```bash
 #!/bin/bash
 # Enhanced commands with explicit routing
@@ -293,22 +283,21 @@ echo "🚀 Running enhanced commands with explicit routing..."
 
 # Enhanced data analysis - route appropriately
 ostruct run templates/analysis.j2 schemas/result.json \
-  -fc data examples/data.csv \
-  -ds source examples/src \
+  -fc examples/data.csv \
+  -fs examples/src \
   --output-file enhanced_analysis.json
 
 # Enhanced code review - use Code Interpreter + File Search
 ostruct run templates/review.j2 schemas/review.json \
-  -dc code examples/src \
-  -ds docs docs/ \
-  -R README.md \
+  -fc examples/src \
+  -fs docs/ \
   --output-file enhanced_review.json
 
 # Enhanced config validation - template + documentation search
 ostruct run templates/config.j2 schemas/config.json \
-  -ft dev examples/dev.yaml \
-  -ft prod examples/prod.yaml \
-  -ds infrastructure_docs infrastructure_docs/ \
+  -ft examples/dev.yaml \
+  -ft examples/prod.yaml \
+  -fs infrastructure_docs/ \
   --output-file enhanced_config.json
 
 echo "✅ Enhanced commands completed"
@@ -317,7 +306,6 @@ echo "✅ Enhanced commands completed"
 ### Step 2.2: Compare Results
 
 **phase-2-routing/comparison.py**:
-
 ```python
 #!/usr/bin/env python3
 """Compare traditional vs enhanced routing performance."""
@@ -421,7 +409,6 @@ if __name__ == "__main__":
 ### Step 3.1: Create Basic Configuration
 
 **phase-3-config/basic-config.yaml**:
-
 ```yaml
 # Basic ostruct configuration for migration
 models:
@@ -447,7 +434,6 @@ limits:
 ### Step 3.2: Migration Script
 
 **phase-3-config/migration-script.sh**:
-
 ```bash
 #!/bin/bash
 # Setup configuration management
@@ -491,7 +477,6 @@ echo "✅ Configuration setup complete"
 ### Step 4.1: Add Code Interpreter
 
 **phase-4-multitools/code-interpreter.sh**:
-
 ```bash
 #!/bin/bash
 # Integrate Code Interpreter capabilities
@@ -500,8 +485,8 @@ echo "💻 Adding Code Interpreter integration..."
 
 # Data analysis with code execution
 ostruct --config ostruct.yaml run templates/analysis.j2 schemas/result.json \
-  -fc data examples/data.csv \
-  -fc analysis_script examples/analysis_script.py \
+  -fc examples/data.csv \
+  -fc examples/analysis_script.py \
   --output-file code_interpreter_result.json
 
 echo "✅ Code Interpreter integration tested"
@@ -510,7 +495,6 @@ echo "✅ Code Interpreter integration tested"
 ### Step 4.2: Add File Search
 
 **phase-4-multitools/file-search.sh**:
-
 ```bash
 #!/bin/bash
 # Integrate File Search capabilities
@@ -519,9 +503,9 @@ echo "🔍 Adding File Search integration..."
 
 # Code review with documentation context
 ostruct --config ostruct.yaml run templates/review.j2 schemas/review.json \
-  -dc src examples/src \
-  -ds docs docs/ \
-  -ft readme README.md \
+  -fc examples/src \
+  -fs docs/ \
+  -fs README.md \
   --output-file file_search_result.json
 
 echo "✅ File Search integration tested"
@@ -530,7 +514,6 @@ echo "✅ File Search integration tested"
 ### Step 4.3: Add MCP Integration
 
 **phase-4-multitools/mcp-integration.sh**:
-
 ```bash
 #!/bin/bash
 # Integrate MCP server capabilities
@@ -539,8 +522,8 @@ echo "🌐 Adding MCP integration..."
 
 # Analysis with external repository context
 ostruct --config ostruct.yaml run templates/analysis.j2 schemas/result.json \
-  -dc src examples/src \
-  -ds docs docs/ \
+  -fc examples/src \
+  -fs docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   -V repo_owner=your-org \
   -V repo_name=your-project \
@@ -554,7 +537,6 @@ echo "✅ MCP integration tested"
 ### Step 5.1: Update Templates for Multi-Tool Usage
 
 **phase-5-optimize/template-migration/optimized-analysis.j2**:
-
 ```jinja
 ---
 system_prompt: You are an expert data analyst with access to code execution and document search.
@@ -587,7 +569,6 @@ Provide comprehensive analysis including:
 ### Migration Checker
 
 **tools/migration-checker.py**:
-
 ```python
 #!/usr/bin/env python3
 """Validate migration progress and success."""
@@ -673,7 +654,6 @@ After completing the migration, you should see:
 ## Emergency Rollback
 
 **tools/rollback.sh**:
-
 ```bash
 #!/bin/bash
 # Emergency rollback to traditional usage
@@ -688,8 +668,8 @@ fi
 
 # Provide traditional command equivalents
 echo "📝 Use these traditional commands:"
-echo "  ostruct run template.j2 schema.json -ft file data.csv -dc source ./src"
-echo "  ostruct run template.j2 schema.json -dc code ./src -R"
+echo "  ostruct run template.j2 schema.json -f file=data.csv -d source=./src"
+echo "  ostruct run template.j2 schema.json -d code=./src --dir-recursive"
 
 echo "✅ Rollback complete"
 ```

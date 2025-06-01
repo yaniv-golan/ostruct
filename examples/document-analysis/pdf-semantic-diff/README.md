@@ -12,7 +12,7 @@ This example demonstrates ostruct's ability to perform complex document analysis
 - **Consider document content** - PDFs may contain personal information, business secrets, or legal details
 - **Check data governance policies** - Verify your organization allows document uploads to external services
 
-**For detailed information about data handling and security best practices**, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
+**For detailed information about data handling and security best practices**, see the [Security Overview](../../docs/source/security/overview.rst) documentation.
 
 ## Overview
 

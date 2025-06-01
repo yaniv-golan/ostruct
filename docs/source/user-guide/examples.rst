@@ -210,11 +210,25 @@ JSON/YAML configuration validation with semantic analysis and cross-environment 
 
 Protocol Buffer validation and schema evolution management.
 
-Enhanced Multi-Tool Examples
+Document Analysis Examples
 -----------------------------
 
-**Multi-Tool Analysis** (``enhanced/multi-tool-analysis/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**PDF Semantic Diff** (``document-analysis/pdf-semantic-diff/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Advanced PDF comparison with Code Interpreter integration for semantic document analysis.
+
+**Features**:
+- PDF document processing
+- Change categorization (added, deleted, reworded, changed_in_meaning)
+- Semantic analysis with structured output
+- Complete validation workflow
+
+Data Analysis Examples
+----------------------
+
+**Multi-Tool Analysis** (``data-analysis/multi-tool-analysis/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Comprehensive analysis combining Code Interpreter, File Search, and MCP servers.
 
@@ -224,15 +238,33 @@ Comprehensive analysis combining Code Interpreter, File Search, and MCP servers.
 - MCP server integration
 - Configuration-driven workflows
 
-**CI/CD Automation** (``enhanced/ci-cd-automation/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Infrastructure Examples (Advanced)
+----------------------------------
+
+**CI/CD Automation** (``infrastructure/ci-cd-automation/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CI/CD automation with enhanced ostruct capabilities for automated analysis and reporting.
 
-**Prompt Optimization** (``enhanced/prompt-optimization/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features**:
+- GitHub Actions integration
+- GitLab CI patterns
+- Jenkins workflow automation
+- Cost controls and error handling
+
+Optimization Examples
+---------------------
+
+**Prompt Optimization** (``optimization/prompt-optimization/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Demonstrates ostruct's built-in optimization capabilities for better performance and cost efficiency.
+
+**Features**:
+- 50-70% token reduction techniques
+- Smart template design patterns
+- Tool-specific routing optimization
+- Before/after comparison examples
 
 Specialized Examples
 --------------------
@@ -248,11 +280,6 @@ Etymological analysis of words with component breakdown and origin identificatio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Integration with web search for current information and real-time data gathering.
-
-**Migration Examples** (``migration/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Migration guides for updating existing automation and workflows to use enhanced ostruct capabilities.
 
 Debugging Examples
 ------------------

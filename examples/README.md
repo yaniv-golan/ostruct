@@ -8,12 +8,12 @@ This directory contains practical examples demonstrating various use cases for t
 - `ostruct-cli` installed (`pip install ostruct-cli`)
 - OpenAI API key set in environment (`OPENAI_API_KEY`)
 
-## Enhanced Multi-Tool Integration
+## Multi-Tool Integration
 
-All examples now support the enhanced CLI with multi-tool capabilities:
+All examples support the enhanced CLI with multi-tool capabilities:
 
 - **Traditional Usage**: All existing commands work exactly as before
-- **Enhanced Usage**: New examples show Code Interpreter, File Search, and MCP integration
+- **Multi-Tool Usage**: Examples demonstrate Code Interpreter, File Search, and MCP integration
 - **Explicit File Routing**: Optimized performance through `-ft`, `-fc`, `-fs` flags
 - **Configuration System**: YAML-based configuration for persistent settings
 
@@ -56,6 +56,25 @@ Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
 
 ## Directory Structure
 
+### Document Analysis Examples
+
+- [pdf-semantic-diff](document-analysis/pdf-semantic-diff/): **Advanced PDF comparison with Code Interpreter integration** - Semantic document analysis with change categorization (added, deleted, reworded, changed_in_meaning)
+
+### Infrastructure Examples
+
+- [ci-cd-automation](infrastructure/ci-cd-automation/): **Enhanced CI/CD automation with multi-tool integration** - GitHub Actions, GitLab CI, Jenkins workflows with cost controls and error handling
+- [pipeline-validator](infrastructure/pipeline-validator/): CI/CD pipeline validation
+- [iac-validator](infrastructure/iac-validator/): Infrastructure as Code validation
+- [license-audit](infrastructure/license-audit/): Dependency license auditing
+
+### Optimization Examples
+
+- [prompt-optimization](optimization/prompt-optimization/): **Cost and performance optimization techniques** - Smart template design with 50-70% token reduction through tool-specific routing
+
+### Data Analysis Examples
+
+- [multi-tool-analysis](data-analysis/multi-tool-analysis/): **Comprehensive multi-tool analysis patterns** - Code Interpreter + File Search + MCP integration for complex data workflows
+
 ### Security Examples
 
 - [vulnerability-scan](security/vulnerability-scan/): **Three-approach automated security vulnerability scanning** - Static Analysis ($0.18), Code Interpreter ($0.18), and Hybrid Analysis ($0.20) with comprehensive directory-based project analysis
@@ -74,12 +93,6 @@ Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
 - [test-generator](testing/test-generator/): Test case generation
 - [failure-analysis](testing/failure-analysis/): Test failure root cause analysis
 - [api-testing](testing/api-testing/): API testing with OpenAPI
-
-### Infrastructure Examples
-
-- [pipeline-validator](infrastructure/pipeline-validator/): CI/CD pipeline validation
-- [iac-validator](infrastructure/iac-validator/): Infrastructure as Code validation
-- [license-audit](infrastructure/license-audit/): Dependency license auditing
 
 ### Data Processing Examples
 
@@ -131,10 +144,16 @@ example-name/
 3. Navigate to any example directory:
 
    ```bash
-   cd security/vulnerability-scan
+   cd document-analysis/pdf-semantic-diff
+   # or
+   cd infrastructure/ci-cd-automation
+   # or
+   cd optimization/prompt-optimization
+   # or
+   cd data-analysis/multi-tool-analysis
    ```
 
-4. Run examples using either traditional or enhanced syntax:
+4. Run examples using either traditional or multi-tool syntax:
 
    ### Traditional Usage (Unchanged)
 
@@ -146,7 +165,7 @@ example-name/
    ostruct run prompts/task.j2 schemas/result.json -d source=examples/basic/
    ```
 
-   ### Enhanced Multi-Tool Usage
+   ### Multi-Tool Usage
 
    ```bash
    # Code analysis with Code Interpreter

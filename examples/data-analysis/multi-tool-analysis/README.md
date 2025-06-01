@@ -13,7 +13,7 @@ This example demonstrates the power of ostruct's enhanced multi-tool integration
 - **Check compliance requirements** - Verify your organization allows data uploads to external services
 - **Use test data** - The provided examples use sample data for demonstration purposes
 
-**For detailed information about data handling and security best practices**, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
+**For detailed information about data handling and security best practices**, see the [Security Overview](../../docs/source/security/overview.rst) documentation.
 
 ## Overview
 
