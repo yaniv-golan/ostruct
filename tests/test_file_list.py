@@ -197,7 +197,12 @@ def test_file_list_concurrent_iteration(
     """Test concurrent iteration and modification of FileInfoList."""
     # Create test files
     fs.makedirs("/test_workspace/base", exist_ok=True)
-    fs.create_file("/test_workspace/base/test0.txt", contents="content0")
+
+    # Create all files upfront to avoid race conditions
+    for i in range(3):
+        fs.create_file(
+            f"/test_workspace/base/test{i}.txt", contents=f"content{i}"
+        )
 
     # Create initial FileInfoList with just one file
     files = [
@@ -207,19 +212,24 @@ def test_file_list_concurrent_iteration(
     ]
     file_list = FileInfoList(files)
 
-    # Create additional files during the test
+    # Use a lock to synchronize file additions
+    add_lock = threading.Lock()
+    files_added = threading.Event()
+
+    # Add remaining files during the test
     def add_files() -> None:
-        for i in range(1, 3):
-            fs.create_file(
-                f"/test_workspace/base/test{i}.txt", contents=f"content{i}"
-            )
-            file_info = FileInfo.from_path(
-                f"/test_workspace/base/test{i}.txt",
-                security_manager=security_manager,
-            )
-            file_list.append(file_info)
+        with add_lock:
+            for i in range(1, 3):
+                file_info = FileInfo.from_path(
+                    f"/test_workspace/base/test{i}.txt",
+                    security_manager=security_manager,
+                )
+                file_list.append(file_info)
+        files_added.set()  # Signal that files have been added
 
     def iterate_files() -> None:
+        # Wait for files to be added before iterating
+        files_added.wait(timeout=5.0)
         for file_info in file_list:
             assert file_info.content.startswith("content")
 
