@@ -24,7 +24,7 @@ class RegistryUpdateStatus:
 logger = logging.getLogger(__name__)
 
 # Constants
-UPDATE_CHECK_ENV_VAR = "OSTRUCT_DISABLE_UPDATE_CHECKS"
+UPDATE_CHECK_ENV_VAR = "OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS"
 UPDATE_CHECK_INTERVAL_SECONDS = (
     86400  # Check for updates once per day (24 hours)
 )

@@ -172,7 +172,7 @@ Two-Argument Alias Syntax
    ostruct run analyze.j2 schema.json --fca sales sales_data.xlsx
 
 Directory Code Interpreter Access (Auto-Naming)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -250,7 +250,7 @@ Two-Argument Alias Syntax
    ostruct run search.j2 schema.json --fsa knowledge kb.txt
 
 Directory File Search Access (Auto-Naming)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -260,7 +260,7 @@ Directory File Search Access (Auto-Naming)
    ostruct run search.j2 schema.json -ds ./documentation  # → documentation variable
 
 Directory File Search Access (Custom Alias)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -1307,7 +1307,7 @@ Common File Routing Issues
    ostruct run task.j2 schema.json --fta old_data data.csv --fta new_data new_data.json
 
 Error Messages and Solutions
----------------------------
+----------------------------
 
 **"Variable name collision detected"**
 
@@ -1390,6 +1390,38 @@ Use **alias syntax** (``--dta``, ``--dca``, ``--dsa``) when:
 • Variable names must be stable regardless of directory contents
 • Template doesn't know specific filenames in advance
 • Creating reusable workflows and CI/CD automation
+
+Environment Variables
+=====================
+
+ostruct supports several environment variables for configuration:
+
+**Registry Updates**
+
+- ``OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS``: Set to "1", "true", or "yes" to disable automatic model registry update notifications
+
+**OpenAI Configuration**
+
+- ``OPENAI_API_KEY``: Your OpenAI API key (required)
+- ``OPENAI_API_BASE``: Custom API base URL (optional)
+- ``OPENAI_API_VERSION``: API version to use (optional)
+- ``OPENAI_API_TYPE``: API type (e.g., "azure") (optional)
+
+**MCP Server Configuration**
+
+- ``MCP_<NAME>_URL``: Custom MCP server URLs (e.g., ``MCP_STRIPE_URL=https://mcp.stripe.com``)
+
+**Examples**
+
+.. code-block:: bash
+
+   # Disable registry update checks
+   export OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS=1
+   ostruct run template.j2 schema.json
+
+   # Set custom OpenAI base URL
+   export OPENAI_API_BASE=https://api.example.com/v1
+   ostruct run template.j2 schema.json
 
 Getting Help
 ============

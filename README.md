@@ -170,7 +170,7 @@ ostruct-cli respects the following environment variables:
 - `OPENAI_API_BASE`: Custom API base URL (optional)
 - `OPENAI_API_VERSION`: API version to use (optional)
 - `OPENAI_API_TYPE`: API type (e.g., "azure") (optional)
-- `OSTRUCT_DISABLE_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
+- `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
 - `MCP_<NAME>_URL`: Custom MCP server URLs (e.g., `MCP_STRIPE_URL=https://mcp.stripe.com`)
 
 <details>
