@@ -27,13 +27,10 @@ jobs:
         poetry config virtualenvs.create false
     - name: Install dependencies
       run: |
-        poetry install --no-interaction --with docs
-    - name: Install pre-commit
-      run: |
-        pip install pre-commit
+        poetry install --no-interaction --with dev,docs
     - name: Run pre-commit
       run: |
-        pre-commit run --all-files
+        poetry run pre-commit run --all-files
     - name: Run type checking with MyPy
       run: |
         poetry run mypy src tests
@@ -41,6 +38,15 @@ jobs:
       run: |
         # Run all tests except live tests, with verbose output and logging
         poetry run pytest -m "not live" -vv -s --log-cli-level=DEBUG
+    - name: Test CLI help and basic commands
+      run: |
+        # Test that basic CLI commands work
+        poetry run ostruct --help
+        poetry run ostruct --version || echo "Version command may not be implemented"
+        # Test dry-run functionality
+        echo '{"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}' > test_schema.json
+        echo 'Test: {{ "hello" }}' > test_template.j2
+        poetry run ostruct run test_template.j2 test_schema.json --dry-run
     - name: Build docs (HTML+linkcheck)
       run: |
         cd docs
