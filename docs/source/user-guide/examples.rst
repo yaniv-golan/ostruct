@@ -47,48 +47,43 @@ See the Meta-Schema Generator README in ``examples/meta-schema-generator/README.
 Available Examples
 ==================
 
-Security Examples
------------------
+The following examples are currently available in the ostruct repository. Each example is fully implemented and ready to use.
 
-**Vulnerability Scanning** (``security/vulnerability-scan/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Document Analysis Examples
+--------------------------
 
-Three-approach automated security vulnerability scanning with comprehensive testing and cost analysis.
+**PDF Semantic Diff** (``document-analysis/pdf-semantic-diff/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Advanced PDF comparison with Code Interpreter integration for semantic document analysis.
 
 **Features**:
-- Static Analysis ($0.18)
-- Code Interpreter Analysis ($0.18) - Recommended
-- Hybrid Analysis ($0.20) - Comprehensive
+- Semantic change categorization (added, deleted, reworded, changed_in_meaning)
+- Code Interpreter integration for complex analysis
+- Multi-tool workflow demonstration
 
-**Use Cases**: Security audits, CI/CD integration, code reviews
+**Doc Example Validator** (``document-analysis/doc-example-validator/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Quick Start**:
+Automated documentation example testing with File Search integration.
 
-.. code-block:: bash
+**Features**:
+- Extracts and validates code examples from project documentation
+- Generates AI agent-compatible task lists
+- File Search integration for document processing
 
-   cd examples/security/vulnerability-scan
+Infrastructure Examples
+-----------------------
 
-   # Recommended: Code Interpreter approach
-   ostruct run prompts/code_interpreter.j2 schemas/scan_result.json \
-     --fca code examples/basic/app.py \
-     --sys-file prompts/system.txt
+**CI/CD Automation** (``infrastructure/ci-cd-automation/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**PII Scanner** (``security/pii-scanner/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enhanced CI/CD automation with multi-tool integration for GitHub Actions, GitLab CI, and Jenkins workflows.
 
-GDPR/PII data leak detection for compliance and privacy protection.
-
-**Features**: Personal data detection, GDPR compliance checking, remediation suggestions
-
-**Multi-Repo Scanner** (``security/multi-repo-scan/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Security analysis across multiple repositories and codebases.
-
-**SAST Processor** (``security/sast-processor/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Static Application Security Testing (SAST) results processing and reporting.
+**Features**:
+- Multi-platform CI/CD support
+- Cost controls and error handling
+- Multi-tool integration patterns
 
 Code Quality Examples
 ---------------------
@@ -110,82 +105,91 @@ Automated code review with security, style, and performance analysis.
 
    cd examples/code-quality/code-review
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -f code examples/security/sql_injection.py \
+     -ft code examples/basic/app.py \
      --sys-file prompts/system.txt
-
-**Clone Detection** (``code-quality/clone-detection/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Code clone and duplication detection with refactoring suggestions.
-
-**TODO Extractor** (``code-quality/todo-extractor/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Project-wide TODO, FIXME, and technical debt extraction and tracking.
 
 Testing Examples
 ----------------
 
-**Test Generator** (``testing/test-generator/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Test Generation** (``testing/test-generation/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Automated test case generation for improved code coverage.
 
-**Failure Analysis** (``testing/failure-analysis/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features**:
+- Comprehensive test case generation
+- Multiple testing framework support
+- Code analysis integration
 
-Test failure root cause analysis and debugging assistance.
+Security Examples
+-----------------
 
-**API Testing** (``testing/api-testing/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Vulnerability Scanning** (``security/vulnerability-scan/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-API testing with OpenAPI specification integration.
+Three-approach automated security vulnerability scanning with comprehensive testing and cost analysis.
 
-Infrastructure Examples
------------------------
+**Features**:
+- Static Analysis approach
+- Code Interpreter Analysis (recommended)
+- Hybrid Analysis (comprehensive)
+- Directory-based project analysis
 
-**Pipeline Validator** (``infrastructure/pipeline-validator/``)
+**Quick Start**:
+
+.. code-block:: bash
+
+   cd examples/security/vulnerability-scan
+
+   # Recommended: Code Interpreter approach
+   ostruct run prompts/code_interpreter.j2 schemas/scan_result.json \
+     --fca code examples/basic/app.py \
+     --sys-file prompts/system.txt
+
+Data Analysis Examples
+----------------------
+
+**Multi-Tool Analysis** (``data-analysis/multi-tool-analysis/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Comprehensive multi-tool analysis patterns demonstrating Code Interpreter + File Search + MCP integration.
+
+**Features**:
+- Complex data workflow patterns
+- Multi-tool integration examples
+- Performance optimization techniques
+
+Web Search Examples
+-------------------
+
+**Web Search Integration** (``web-search/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Real-time information retrieval with web search integration for current events analysis and market research.
+
+**Features**:
+- Live data retrieval
+- Source citation
+- Current events analysis
+- Technology updates and market research
+
+Optimization Examples
+---------------------
+
+**Prompt Optimization** (``optimization/prompt-optimization/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-CI/CD pipeline validation and optimization recommendations.
+Cost and performance optimization techniques with smart template design.
 
-**IaC Validator** (``infrastructure/iac-validator/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features**:
+- 50-70% token reduction techniques
+- Tool-specific routing optimization
+- Performance measurement and analysis
 
-Infrastructure as Code validation for Terraform, CloudFormation, and other IaC tools.
+Configuration Examples
+----------------------
 
-**License Audit** (``infrastructure/license-audit/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Dependency license auditing and compliance checking.
-
-Data Processing Examples
-------------------------
-
-**Log Analyzer** (``data-processing/log-analyzer/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Log file analysis for error detection, pattern recognition, and troubleshooting.
-
-**Stream Processor** (``data-processing/stream-processor/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Streaming text analysis for real-time data processing.
-
-**Table Extractor** (``data-processing/table-extractor/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Table data extraction from various formats (CSV, Excel, databases).
-
-**Pipeline Config** (``data-processing/pipeline-config/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Data pipeline configuration validation and optimization.
-
-Schema Validation Examples
---------------------------
-
-**Config Validator** (``config-validation/``)
+**Config Validation** (``config-validation/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 JSON/YAML configuration validation with semantic analysis and cross-environment consistency checking.
@@ -196,14 +200,23 @@ JSON/YAML configuration validation with semantic analysis and cross-environment 
 - Security recommendations
 - Intelligent error messages
 
-**Quick Start**:
+Additional Examples
+--------------------
+
+The repository also includes several other examples in development:
+
+- **Debugging**: Advanced debugging workflows
+- **Etymology**: Language and word analysis
+- **Migration**: Data and system migration patterns
+
+**Quick Start for Any Example**:
 
 .. code-block:: bash
 
    cd examples/config-validation
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -f dev_config examples/basic/dev.yaml \
-     -f prod_config examples/basic/prod.yaml
+     --fta dev_config examples/basic/dev.yaml \
+     --fta prod_config examples/basic/prod.yaml
 
 **Proto Validator** (``schema-validation/proto-validator/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -281,8 +294,8 @@ CI/CD automation with enhanced ostruct capabilities for automated analysis and r
 - Jenkins workflow automation
 - Cost controls and error handling
 
-Optimization Examples
----------------------
+Optimization Examples (Advanced)
+----------------------------------
 
 **Prompt Optimization** (``optimization/prompt-optimization/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
