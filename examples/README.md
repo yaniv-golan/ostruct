@@ -13,7 +13,7 @@ This directory contains practical examples demonstrating various use cases for t
 All examples support the enhanced CLI with multi-tool capabilities:
 
 - **Traditional Usage**: All existing commands work exactly as before
-- **Multi-Tool Usage**: Examples demonstrate Code Interpreter, File Search, and MCP integration
+- **Multi-Tool Usage**: Examples demonstrate Code Interpreter, File Search, Web Search, and MCP integration
 - **Explicit File Routing**: Optimized performance through `-ft`, `-fc`, `-fs` flags
 - **Configuration System**: YAML-based configuration for persistent settings
 
@@ -75,6 +75,10 @@ Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
 ### Data Analysis Examples
 
 - [multi-tool-analysis](data-analysis/multi-tool-analysis/): **Comprehensive multi-tool analysis patterns** - Code Interpreter + File Search + MCP integration for complex data workflows
+
+### Research & Information Examples
+
+- [web-search](web-search/): **Real-time information retrieval with web search integration** - Current events analysis, technology updates, market research with live data and source citations
 
 ### Security Examples
 

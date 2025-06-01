@@ -968,6 +968,106 @@ Directory Processing
 
    -R, --recursive                              # Process directories recursively
 
+Web Search Integration
+======================
+
+ostruct integrates with OpenAI's web search tool to provide real-time information and current data in your structured outputs.
+
+.. note::
+   **Privacy Notice**: When using ``--web-search``, search queries derived from your prompts and template content may be sent to external search services via OpenAI.
+
+Basic Web Search Usage
+----------------------
+
+.. code-block:: bash
+
+   --web-search                                 # Enable web search tool
+   --no-web-search                              # Explicitly disable web search
+
+   # Examples
+   ostruct run research.j2 schema.json --web-search -V topic="latest AI developments"
+   ostruct run analysis.j2 schema.json --web-search --no-web-search  # Disable if enabled by default
+
+Web Search Configuration
+------------------------
+
+.. code-block:: bash
+
+   --user-country COUNTRY                       # Country for geographically tailored results
+   --user-city CITY                             # City for location-specific results
+   --user-region REGION                         # Region/state for local relevance
+   --search-context-size SIZE                   # Content retrieval amount (low|medium|high)
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Location-specific search
+   ostruct run news.j2 schema.json --web-search \\
+     --user-country "US" \\
+     --user-city "San Francisco" \\
+     --user-region "California"
+
+   # High-detail content retrieval
+   ostruct run research.j2 schema.json --web-search \\
+     --search-context-size high
+
+Web Search in Templates
+-----------------------
+
+Use the ``web_search_enabled`` template variable to provide conditional instructions:
+
+.. code-block:: jinja
+
+   {% if web_search_enabled %}
+   {# Note to AI: Web search is available. Please use it for current information. #}
+   Research the latest developments in {{ topic }} using web search.
+   Focus on information from the last 30 days and cite all sources.
+   {% else %}
+   {# Note to AI: Web search not available. Use training data. #}
+   Analyze {{ topic }} based on available training data.
+   Note any limitations due to knowledge cutoff.
+   {% endif %}
+
+**Best Practices for Web Search Templates:**
+
+1. **Include Source Citations**: Always request sources in your schema
+2. **Avoid Inline Citations**: Use dedicated source fields instead of [1], [2] markers
+3. **Request Current Information**: Explicitly ask for recent data when needed
+4. **Handle Both Modes**: Design templates that work with and without web search
+
+Model Compatibility
+-------------------
+
+Web search is supported by these models:
+
+- **GPT-4o series**: All variants support web search
+- **GPT-4.1 series**: All variants except nano support web search
+- **O-series models**: All reasoning models (o1, o3, o4) support web search
+
+**Unsupported models:**
+- GPT-4.1-nano (explicitly unsupported)
+- Older GPT models (3.5-turbo, GPT-4 classic)
+
+Security Considerations
+-----------------------
+
+.. warning::
+   **Search Query Privacy**: Search queries may include content from your prompts and templates.
+
+**Privacy Best Practices:**
+
+- Avoid sensitive information in prompts when using web search
+- Use generic terms rather than internal project names
+- Review template variables for confidential data
+- Test with public information first
+
+**Platform Protections:**
+
+- **Azure OpenAI**: Web search automatically disabled with warning
+- **Rate Limits**: Uses your OpenAI API quota
+- **Existing API Key**: No separate authentication needed
+
 MCP Server Integration
 ======================
 

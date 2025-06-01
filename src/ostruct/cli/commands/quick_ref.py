@@ -28,6 +28,7 @@ def quick_reference() -> None:
   -J config='{"key":"value"}'               JSON structured data
 
 🔌 TOOLS:
+  --web-search                              🌐 Real-time web search for current info
   --mcp-server label@https://server.com/sse MCP server integration
   --timeout 7200                           2-hour timeout for long operations
 
@@ -43,6 +44,9 @@ def quick_reference() -> None:
 
   # Multi-tool workflow
   ostruct run workflow.j2 schema.json -fc raw_data.csv -fs knowledge/ -ft config.json
+
+  # Current information research
+  ostruct run research.j2 schema.json --web-search -V topic="latest AI developments"
 
 📖 Full help: ostruct run --help
 📖 Documentation: https://ostruct.readthedocs.io

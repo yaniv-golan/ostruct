@@ -35,7 +35,7 @@ def create_cli_group() -> click.Group:
 
         ostruct transforms unstructured inputs into structured JSON using OpenAI APIs,
         Jinja2 templates, and powerful tool integrations including Code Interpreter,
-        File Search, and MCP servers.
+        File Search, Web Search, and MCP servers.
 
         🚀 QUICK START:
             ostruct run template.j2 schema.json -V name=value

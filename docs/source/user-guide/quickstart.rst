@@ -354,6 +354,7 @@ Key CLI Patterns to Remember
   - ``-ft``: Template access only (configuration, small files)
   - ``-fc``: Code Interpreter (data analysis, computation)
   - ``-fs``: File Search (document retrieval, knowledge bases)
+  - ``--web-search``: Web Search (current events, real-time data)
 
 **Model Options**
   - ``-m gpt-4o`` (default, best for most tasks)

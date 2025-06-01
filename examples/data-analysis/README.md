@@ -10,7 +10,7 @@ This directory contains examples for comprehensive data processing, multi-tool a
 
 **Features:**
 
-- **Complete Integration**: Code Interpreter for data processing + File Search for context + MCP for external knowledge
+- **Complete Integration**: Code Interpreter for data processing + File Search for context + Web Search for current data + MCP for external knowledge
 - **Configuration-Driven**: Flexible analysis types controlled through configuration variables
 - **Scalable Patterns**: Handles diverse data types and analysis requirements
 - **Professional Output**: Structured results with comprehensive analysis and recommendations

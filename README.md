@@ -26,7 +26,7 @@
 
 # ostruct-cli
 
-ostruct processes unstructured data (text files, code, CSVs, etc.), input variables, and dynamic prompt templates to produce structured JSON output defined by a JSON schema. With enhanced multi-tool integration, ostruct now supports Code Interpreter for data analysis, File Search for document retrieval, and MCP (Model Context Protocol) servers for extended capabilities.
+ostruct processes unstructured data (text files, code, CSVs, etc.), input variables, and dynamic prompt templates to produce structured JSON output defined by a JSON schema. With enhanced multi-tool integration, ostruct now supports Code Interpreter for data analysis, File Search for document retrieval, Web Search for real-time information access, and MCP (Model Context Protocol) servers for extended capabilities.
 
 <div align="center">
 
@@ -134,6 +134,7 @@ Break down words into their components, showing their origins, meanings, and hie
 
 - **Code Interpreter**: Upload and analyze data files, execute Python code, generate visualizations
 - **File Search**: Vector-based document search and retrieval from uploaded files
+- **Web Search**: Real-time information retrieval and current data access via OpenAI's web search tool
 - **MCP Servers**: Connect to Model Context Protocol servers for extended functionality
 - **Explicit File Routing**: Route different files to specific tools for optimized processing
 
@@ -220,6 +221,7 @@ ostruct now includes powerful multi-tool integration while maintaining **full ba
 
 - **Code Interpreter** for data analysis and visualization
 - **File Search** for document retrieval
+- **Web Search** for real-time information access
 - **MCP Servers** for extended functionality
 - **Explicit File Routing** for optimized processing
 
@@ -237,6 +239,9 @@ ostruct run analysis.j2 schema.json -fc data.csv
 
 # File Search (document retrieval)
 ostruct run search.j2 schema.json -fs documentation.pdf
+
+# Web Search (real-time information)
+ostruct run research.j2 schema.json --web-search -V topic="latest AI developments"
 
 # Multiple tools with one file
 ostruct run template.j2 schema.json --file-for code-interpreter shared.json --file-for file-search shared.json

@@ -259,7 +259,7 @@ Data Analysis Examples
 **Multi-Tool Analysis** (``data-analysis/multi-tool-analysis/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Comprehensive analysis combining Code Interpreter, File Search, and MCP servers.
+Comprehensive analysis combining Code Interpreter, File Search, Web Search, and MCP servers.
 
 **Features**:
 - Code Interpreter for data analysis

@@ -15,7 +15,7 @@ Key Features
 
 - **Schema-First Approach**: Define your output structure using JSON Schema with automatic validation
 - **Template-Based Input**: Use Jinja2 templates with support for YAML frontmatter and system prompts
-- **Multi-Tool Integration**: Seamless integration with Code Interpreter, File Search, and MCP servers
+- **Multi-Tool Integration**: Seamless integration with Code Interpreter, File Search, Web Search, and MCP servers
 - **File Processing**: Handle single files, multiple files, or entire directories with thread-safe operations
 - **Cross-Platform**: Robust support for Windows, macOS, and Linux with consistent path handling
 - **Security-Focused**: Safe file access with explicit directory permissions and enhanced error handling
@@ -49,7 +49,7 @@ ostruct solves these problems by providing:
   Path validation, symlink resolution, and directory restrictions protect against unauthorized file access.
 
 **Tool Integration**
-  Native support for Code Interpreter (data analysis), File Search (document retrieval), and MCP servers (external services).
+  Native support for Code Interpreter (data analysis), File Search (document retrieval), Web Search (real-time information), and MCP servers (external services).
 
 **Developer Experience**
   Simple CLI interface with comprehensive options for various use cases, from quick scripts to production pipelines.

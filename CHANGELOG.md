@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2025-01-15
+
+### Added
+
+- **Web Search Integration**: Added documentation for web search functionality across all relevant documentation files
+- **Examples**: Linked docs to existing web-search example to demonstrate real-time information retrieval capabilities
+
+### Fixed
+
+- **Documentation**: Updated all multi-tool integration references to include Web Search alongside Code Interpreter, File Search, and MCP servers
+- **CLI Reference**: Added Web Search integration section with usage examples and privacy notices
+- **Quick Reference**: Added web search tool and example to quick reference command
+
 ## [0.8.0] - 2025-06-01
 
 ### Added

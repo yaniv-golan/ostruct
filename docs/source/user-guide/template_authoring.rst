@@ -1355,6 +1355,48 @@ When files are routed to File Search (``-fs``), they're available for semantic s
    Use the uploaded documents to answer questions about {{ topic }}.
    Provide specific references to source documents in your responses.
 
+Web Search Context
+------------------
+
+When web search is enabled (``--web-search``), the ``web_search_enabled`` variable is available:
+
+.. code-block:: jinja
+
+   {% if web_search_enabled %}
+   {# Note to AI: Web search is available. Please use it for current information. #}
+   Research the latest developments in {{ topic }} using web search.
+   Focus on information from the last 30 days and cite all sources in the 'sources' field.
+   {% else %}
+   {# Note to AI: Web search not available. Use training data. #}
+   Analyze {{ topic }} based on available training data.
+   Note any limitations due to knowledge cutoff date.
+   {% endif %}
+
+**Best practices for web search templates:**
+
+.. code-block:: jinja
+
+   ---
+   system_prompt: You are a research analyst with access to current information.
+   ---
+
+   {% if web_search_enabled %}
+   Please research {{ research_topic }} using web search to find:
+   - Recent developments (last 30 days)
+   - Current market trends
+   - Expert opinions and analysis
+
+   **Important**: Cite all sources in the 'sources' field. Do not use inline citations like [1], [2].
+   {% else %}
+   Please analyze {{ research_topic }} based on your training data.
+   Note: This analysis is based on information available up to your knowledge cutoff.
+   {% endif %}
+
+   Focus areas:
+   1. Current status and recent changes
+   2. Key trends and patterns
+   3. Future outlook and predictions
+
 Template Organization and Reuse
 ===============================
 
