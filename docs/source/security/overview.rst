@@ -571,7 +571,7 @@ Code References
 External Resources
 ------------------
 
-- `OpenAI API Security <https://platform.openai.com/docs>`_
+- `OpenAI Platform Documentation <https://platform.openai.com>`_
 - `OWASP Path Traversal Prevention <https://owasp.org/www-community/attacks/Path_Traversal>`_
 - `Secure API Key Management <https://cheatsheetseries.owasp.org/cheatsheets/Key_Management_Cheat_Sheet.html>`_
 
