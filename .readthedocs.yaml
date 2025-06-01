@@ -9,9 +9,8 @@ build:
       - pip install poetry
       - poetry config virtualenvs.create false
     post_install:
-      - poetry install --with docs
-      - pip install sphinx-rtd-theme
-      - pip install myst-parser
+      - poetry install
+      - pip install -e ".[docs]"
 
 sphinx:
   configuration: docs/source/conf.py
