@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.1] - 2025-01-15
+## [0.8.1] - 2025-06-01
 
 ### Added
 
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Documentation Build**: Fixed Read the Docs configuration to use `pip install -e ".[docs]"` instead of `poetry install --with docs` to properly install documentation dependencies from `pyproject.toml` optional-dependencies format
 - **Documentation**: Updated all multi-tool integration references to include Web Search alongside Code Interpreter, File Search, and MCP servers
 - **CLI Reference**: Added Web Search integration section with usage examples and privacy notices
 - **Quick Reference**: Added web search tool and example to quick reference command
