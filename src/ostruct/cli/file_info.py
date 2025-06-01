@@ -24,6 +24,7 @@ class FileInfo:
         content: Optional cached content
         encoding: Optional cached encoding
         hash_value: Optional cached hash value
+        routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
     """
 
     def __init__(
@@ -33,6 +34,7 @@ class FileInfo:
         content: Optional[str] = None,
         encoding: Optional[str] = None,
         hash_value: Optional[str] = None,
+        routing_type: Optional[str] = None,
     ) -> None:
         """Initialize FileInfo instance.
 
@@ -42,19 +44,13 @@ class FileInfo:
             content: Optional cached content
             encoding: Optional cached encoding
             hash_value: Optional cached hash value
+            routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
 
         Raises:
             FileNotFoundError: If the file does not exist
             PathSecurityError: If the path is not allowed
             PermissionError: If access is denied
         """
-        logger.debug("Creating FileInfo for path: %s", path)
-
-        # Validate path
-        if not path:
-            raise ValueError("Path cannot be empty")
-
-        # Initialize private attributes
         self.__path = str(path)
         self.__security_manager = security_manager
         self.__content = content
@@ -62,6 +58,17 @@ class FileInfo:
         self.__hash = hash_value
         self.__size: Optional[int] = None
         self.__mtime: Optional[float] = None
+        self.routing_type = routing_type
+
+        logger.debug(
+            "Creating FileInfo for path: %s, routing_type: %s",
+            path,
+            self.routing_type,
+        )
+
+        # Validate path
+        if not path:
+            raise ValueError("Path cannot be empty")
 
         try:
             # This will raise PathSecurityError if path is not allowed
@@ -124,6 +131,23 @@ class FileInfo:
             raise PermissionError(
                 f"Permission denied: {os.path.basename(str(path))}"
             ) from e
+
+        # Add warning for large template-only files accessed via .content
+        # Check if routing_type is 'template' or if it's part of a legacy -f/-d mapping
+        # For simplicity now, let's assume if routing_type is None it could be legacy template
+        is_template_routed = (
+            self.routing_type == "template" or self.routing_type is None
+        )
+        if (
+            is_template_routed and self.size and self.size > 100 * 1024
+        ):  # 100KB threshold
+            logger.warning(
+                f"File '{self.path}' ({self.size / 1024:.1f}KB) was routed for template-only access "
+                f"but its .content is being accessed. This will include the entire file content "
+                f"in the prompt sent to the AI. For large files intended for analysis or search, "
+                f"consider using -fc (Code Interpreter) or -fs (File Search) to optimize token usage, "
+                f"cost, and avoid exceeding model context limits."
+            )
 
     @property
     def path(self) -> str:
@@ -356,13 +380,17 @@ class FileInfo:
 
     @classmethod
     def from_path(
-        cls, path: str, security_manager: SecurityManager
+        cls,
+        path: str,
+        security_manager: SecurityManager,
+        routing_type: Optional[str] = None,
     ) -> "FileInfo":
         """Create FileInfo instance from path.
 
         Args:
             path: Path to file
             security_manager: Security manager for path validation
+            routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
 
         Returns:
             FileInfo instance
@@ -371,7 +399,7 @@ class FileInfo:
             FileNotFoundError: If file does not exist
             PathSecurityError: If path is not allowed
         """
-        return cls(path, security_manager)
+        return cls(path, security_manager, routing_type=routing_type)
 
     def __str__(self) -> str:
         """String representation showing path."""
@@ -391,6 +419,11 @@ class FileInfo:
 
         Internal methods can modify private attributes, but external access is prevented.
         """
+        # Allow setting routing_type if it's not already set (i.e., during __init__)
+        if name == "routing_type" and not hasattr(self, name):
+            object.__setattr__(self, name, value)
+            return
+
         # Allow setting private attributes from internal methods
         if name.startswith("_FileInfo__") and self._is_internal_call():
             object.__setattr__(self, name, value)

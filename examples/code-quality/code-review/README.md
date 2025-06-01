@@ -4,15 +4,21 @@ This use case demonstrates how to perform automated code reviews using ostruct C
 
 ## 🔒 Security & Data Privacy Notice
 
-**⚠️ IMPORTANT**: This example uses Code Interpreter (`-fc`, `-dc`) and File Search (`-fs`, `-ds`) features that **upload your files to OpenAI's services** for processing.
+Please be aware of the following when using `ostruct` with different file routing options:
 
-**Before using these examples:**
+* **File Uploads to OpenAI Tools**:
+  * Flags like `-fc`, `--fca`, `-dc`, `--dca` (for Code Interpreter) and `-fs`, `--fsa`, `-ds`, `--dsa` (for File Search) **will upload your files** to OpenAI's services for processing.
+  * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
-- **Review your data sensitivity** - Do not upload proprietary, confidential, or sensitive code
-- **Consider data governance policies** - Check if your organization allows code uploads to external services
-- **Use test/demo code** - The provided examples use sample code for demonstration purposes
+* **Template-Only Access & Prompt Content**:
+  * Flags like `-ft`, `--fta`, `-dt`, `--dta` (and legacy `-f`, `-d`) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
+  * **However, if your Jinja2 template includes the content of these files (e.g., using `{{ my_file.content }}`), that file content WILL become part of the prompt sent to the main OpenAI Chat Completions API.**
+  * For large files or sensitive data that should not be part of the main prompt, even if used with `-ft`, avoid rendering their full content in the template or use redaction techniques.
+  * If a large file is intended for analysis or search, prefer using `-fc`/`-fs` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
 
-**For detailed information about data handling and security best practices**, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
+Always review which files are being routed to which tools and how their content is used in your templates to manage data privacy and API costs effectively.
+
+For detailed information about data handling and security best practices, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
 
 **Alternative**: Use template-only options (`-ft`, `-dt`) for local-only processing without uploads.
 
@@ -20,19 +26,19 @@ This use case demonstrates how to perform automated code reviews using ostruct C
 
 ### Core Analysis
 
-- Multi-file code analysis in a single pass
-- Structured output following a defined schema
-- Security vulnerability detection
-- Code style and best practices checking
-- Performance issue identification
-- Documentation completeness analysis
+* Multi-file code analysis in a single pass
+* Structured output following a defined schema
+* Security vulnerability detection
+* Code style and best practices checking
+* Performance issue identification
+* Documentation completeness analysis
 
 ### Enhanced Multi-Tool Integration
 
-- **Code Interpreter**: Execute code snippets for dynamic analysis
-- **File Search**: Search documentation for context and best practices
-- **Explicit File Routing**: Optimize processing through targeted file routing
-- **Configuration System**: Persistent settings for consistent reviews
+* **Code Interpreter**: Execute code snippets for dynamic analysis
+* **File Search**: Search documentation for context and best practices
+* **Explicit File Routing**: Optimize processing through targeted file routing
+* **Configuration System**: Persistent settings for consistent reviews
 
 ## Directory Structure
 
@@ -189,18 +195,18 @@ ostruct --config ostruct.yaml run prompts/task.j2 schemas/code_review.json \
 
 See `docs/customization.md` in this directory for detailed instructions on:
 
-- Modifying the review focus
-- Adding custom rules
-- Extending the schema
-- Using your own examples
+* Modifying the review focus
+* Adding custom rules
+* Extending the schema
+* Using your own examples
 
 ## Schema
 
 The review results follow a structured schema defined in `schemas/code_review.json`. See `docs/schema.md` in this directory for:
 
-- Complete schema documentation
-- Field descriptions
-- Example outputs
+* Complete schema documentation
+* Field descriptions
+* Example outputs
 
 ## CI/CD Integration
 

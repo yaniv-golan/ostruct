@@ -625,6 +625,7 @@ def collect_template_files(
             ),
             dir_recursive=args.get("recursive", False),
             security_manager=security_manager,
+            routing_type="template",  # Indicate these are primarily for template access
         )
 
         # Combine results
@@ -967,6 +968,14 @@ async def create_template_context_from_routing(
             ),
             dir_recursive=args.get("recursive", False),
             security_manager=security_manager,
+            routing_type="template",  # Explicitly set routing_type for files processed here
+            # This needs careful thought as files_tuples can come from various sources
+            # For now, we assume files directly added to files_tuples are 'template' routed
+            # if not overridden by a more specific tool routing later.
+            # This is a simplification. A more robust way would be to track routing type
+            # for each path as it's parsed from CLI args.
+            # For the large file warning, FileInfo will default routing_type to None
+            # which FileInfo.content interprets as potentially template-routed.
         )
 
         # Handle legacy files and directories separately to preserve variable names
@@ -987,6 +996,7 @@ async def create_template_context_from_routing(
                 ),
                 dir_recursive=args.get("recursive", False),
                 security_manager=security_manager,
+                routing_type="template",  # Legacy flags are considered template-only
             )
             # Merge legacy results into the main template context
             files_dict.update(legacy_files_dict)

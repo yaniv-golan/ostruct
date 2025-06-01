@@ -4,25 +4,30 @@ This example demonstrates the power of ostruct's enhanced multi-tool integration
 
 ## 🔒 Security & Data Privacy Notice
 
-**⚠️ IMPORTANT**: This example uses Code Interpreter (`-fc`, `-dc`) and File Search (`-fs`, `-ds`) features that **upload your files to OpenAI's services** for processing.
+Please be aware of the following when using `ostruct` with different file routing options:
 
-**Before using with your data:**
+* **File Uploads to OpenAI Tools**:
+  * Flags like `-fc`, `--fca`, `-dc`, `--dca` (for Code Interpreter) and `-fs`, `--fsa`, `-ds`, `--dsa` (for File Search) **will upload your files** to OpenAI's services for processing.
+  * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
-- **Review data sensitivity** - Do not upload proprietary data, source code, or confidential information
-- **Consider data types** - CSV files, logs, and code may contain sensitive business information
-- **Check compliance requirements** - Verify your organization allows data uploads to external services
-- **Use test data** - The provided examples use sample data for demonstration purposes
+* **Template-Only Access & Prompt Content**:
+  * Flags like `-ft`, `--fta`, `-dt`, `--dta` (and legacy `-f`, `-d`) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
+  * **However, if your Jinja2 template includes the content of these files (e.g., using `{{ my_file.content }}`), that file content WILL become part of the prompt sent to the main OpenAI Chat Completions API.**
+  * For large files or sensitive data that should not be part of the main prompt, even if used with `-ft`, avoid rendering their full content in the template or use redaction techniques.
+  * If a large file is intended for analysis or search, prefer using `-fc`/`-fs` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
 
-**For detailed information about data handling and security best practices**, see the [Security Overview](../../docs/source/security/overview.rst) documentation.
+Always review which files are being routed to which tools and how their content is used in your templates to manage data privacy and API costs effectively.
+
+For detailed information about data handling and security best practices, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
 
 ## Overview
 
 This example shows how to leverage multiple tools simultaneously for:
 
-- **Code Interpreter**: Data analysis and Python execution
-- **File Search**: Document retrieval and context search
-- **MCP Server**: External repository documentation access
-- **Explicit File Routing**: Optimized file processing
+* **Code Interpreter**: Data analysis and Python execution
+* **File Search**: Document retrieval and context search
+* **MCP Server**: External repository documentation access
+* **Explicit File Routing**: Optimized file processing
 
 ## Directory Structure
 
@@ -162,37 +167,37 @@ limits:
 
 Each tool contributes unique capabilities:
 
-- **Code Interpreter**: Executes analysis scripts, generates visualizations
-- **File Search**: Provides contextual documentation and best practices
-- **MCP Server**: Accesses external repository knowledge
-- **Template Files**: Handle configuration and metadata
+* **Code Interpreter**: Executes analysis scripts, generates visualizations
+* **File Search**: Provides contextual documentation and best practices
+* **MCP Server**: Accesses external repository knowledge
+* **Template Files**: Handle configuration and metadata
 
 ### 2. Optimized Processing
 
 Explicit file routing ensures:
 
-- Data files go to Code Interpreter for analysis
-- Documentation goes to File Search for context
-- Configuration stays in template context
-- No redundant processing
+* Data files go to Code Interpreter for analysis
+* Documentation goes to File Search for context
+* Configuration stays in template context
+* No redundant processing
 
 ### 3. Cost Efficiency
 
 Smart routing reduces costs by:
 
-- Only processing files with appropriate tools
-- Avoiding unnecessary uploads
-- Using configuration to set limits
-- Preventing token waste
+* Only processing files with appropriate tools
+* Avoiding unnecessary uploads
+* Using configuration to set limits
+* Preventing token waste
 
 ### 4. Enhanced Results
 
 Multi-tool integration provides:
 
-- Executable analysis with real results
-- Contextual documentation insights
-- External knowledge integration
-- Comprehensive reporting
+* Executable analysis with real results
+* Contextual documentation insights
+* External knowledge integration
+* Comprehensive reporting
 
 ## Use Cases
 

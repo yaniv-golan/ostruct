@@ -789,6 +789,58 @@ JSON Variables
    ostruct run task.j2 schema.json -J config='{"env":"prod","debug":true}'
    ostruct run task.j2 schema.json -J settings='{"timeout":30,"retries":3}'
 
+Configuration Loading and Precedence
+====================================
+
+ostruct uses a hierarchical system for loading configurations. Settings are applied
+with the following order of precedence (highest priority first):
+
+1.  **Direct CLI Flags**: Options specified directly on the command line (e.g., ``--model gpt-4o``, ``--timeout 300``) always take the highest precedence, overriding all other sources.
+
+2.  **Environment Variables**: Specific settings can be configured via environment variables. These override values from configuration files but are overridden by CLI flags.
+    Key environment variables include:
+    - ``OPENAI_API_KEY``: Your OpenAI API key.
+    - ``MCP_<NAME>_URL``: URLs for named MCP servers (e.g., ``MCP_STRIPE_URL=https://mcp.stripe.com``).
+    - ``OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS``: Disable model registry update checks.
+
+3.  **Configuration File via ``--config`` Flag**: If you specify a configuration file using the ``--config /path/to/your/ostruct.yaml`` flag, settings from this file override any project-specific or global user configurations.
+
+4.  **Project-Specific Configuration (``./ostruct.yaml``)**: An ``ostruct.yaml`` file located in the current working directory is loaded next. This allows for project-specific default settings.
+
+5.  **Global User Configuration (``~/.ostruct/config.yaml``)**: If no project-specific configuration is found, ostruct looks for a global configuration file at ``~/.ostruct/config.yaml`` (or the equivalent user configuration directory on your OS).
+
+6.  **Internal Pydantic Model Defaults**: The lowest precedence is given to the default values defined within ostruct's internal Pydantic configuration models. These are used if a setting is not found in any of the above sources.
+
+**Example ``ostruct.yaml``:**
+
+.. code-block:: yaml
+
+   # ostruct.yaml
+   models:
+     default: gpt-4o-mini       # Default model for all runs
+     # You can define other model presets here
+
+   tools:
+     code_interpreter:
+       auto_download: true
+       output_directory: "./ci_output" # Default download dir for CI files
+     file_search:
+       max_results: 15
+       default_vector_store_name: "project_kb"
+
+   operation:
+     timeout_minutes: 30       # Default operation timeout
+     require_approval: "never" # MCP tool approval level
+
+   limits:
+     max_cost_per_run: 5.00    # Fail if estimated cost exceeds $5.00
+     warn_expensive_operations: true
+
+   # mcp:
+   #   my_custom_mcp: "https://example.com/mcp_endpoint"
+
+This system allows for flexible configuration, from global defaults to highly specific per-run overrides.
+
 Model and API Configuration
 ===========================
 

@@ -9,113 +9,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Multi-Tool Integration**: Native support for OpenAI's Code Interpreter, File Search, Web Search, and MCP servers
-- **Hybrid File Routing Syntax**: Three flexible syntax options for file routing:
-  - Auto-naming: `-ft config.yaml` → `config_yaml` variable
-  - Equals syntax: `-ft app=config.yaml` → `app` variable
-  - Two-argument alias: `--fta app config.yaml` → `app` variable (with perfect tab completion)
-- **Comprehensive New CLI Flags**: Major expansion of command-line interface with tool-specific routing (`-fc`/`--fca`, `-fs`/`--fsa`, `-ft`/`--fta`, `-dc`/`--dca`, `-ds`/`--dsa`, `-dt`/`--dta`), debugging options (`--debug`, `--show-templates`, `--debug-templates`, `--show-context`, `--show-optimization-diff`, etc.), and progress control (`--timeout`, `--config`)
-- **Enhanced Progress Reporting**: Real-time user-friendly progress updates with emojis, cost transparency, processing phases, and file routing summaries
-- **Update Check Control**: New `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS` environment variable to disable automatic model registry update notifications
-- **Template Debugging Infrastructure**: Comprehensive debugging system with CLI flags (`--debug-template`, `--debug-expansion`, `--debug-optimization`), troubleshooting guides, and 27 dedicated tests
-- **Meta-Schema Generator Example**: Automated JSON schema generation from ostruct templates with OpenAI Structured Outputs compliance checking and iterative refinement (provided as example, not core functionality)
-- **OpenAI Responses API Integration**: Direct integration with OpenAI Python SDK v1.81.0, replacing openai-structured wrapper
-- **Enhanced CLI Interface**: New routing options (`-fc`/`--fca`, `-fs`/`--fsa`, `-ft`/`--fta`, `-dc`/`--dca`, `-ds`/`--dsa`, `-dt`/`--dta`,) with organized help system
-- **Configuration System**: YAML-based configuration with environment variable support
-- **Progress Reporting**: Real-time progress updates with user-friendly messaging
-- **Template Optimization**: Automatic prompt optimization for better LLM performance with lazy evaluation and binary file detection
-- **Shared System Prompts**: New `include_system:` feature for sharing common system prompt content across templates
-- **Unattended Operation**: Full CI/CD compatibility with timeout controls and error handling
-- **Binary File Handling**: Restored lazy loading behavior to prevent binary file errors during dry-run mode, eliminating unnecessary content loading
-- **Windows Compatibility**: Enhanced file routing with Windows-compatible paths and removed colon-based syntax limitations
-- **Enhanced Error Messages**: Comprehensive error context with actionable suggestions, template variable guidance, and security-focused messaging
-- **Cost Transparency**: Detailed cost reporting and token usage tracking
-- **New Examples Structure**: Organized new examples by functional domain (document-analysis/, infrastructure/, optimization/, data-analysis/) for intuitive navigation
-- **New Examples**:
-  - **PDF Semantic Diff**: Advanced document comparison with File Search integration
-  - **Documentation Example Validator**: Automated testing of documentation examples with AI agent-compatible task generation
-  - **Vulnerability Scan**: Production-ready security analysis with three approaches (Static Analysis $0.18, Code Interpreter $0.18, Hybrid Analysis $0.20)
-- **Enhanced Security Warnings**: Prominent data privacy notices for examples using file upload features
+- **Multi-Tool Integration**:
+  - Introduced explicit file routing options (`-ft`, `-fc`, `-fs`, `--fta`, `--fca`, `--fsa`, `-dt`, `-dc`, `-ds`, `--dta`, `--dca`, `--dsa`) to direct files to specific tools: template context, Code Interpreter, or File Search. This provides granular control over file processing and data flow, especially concerning uploads to external services.
+  - Added the `--file-for TOOL PATH` option (repeatable), enabling a file to be routed to a specific tool. To route one file to multiple tools, repeat the flag (e.g., `--file-for code-interpreter shared.json --file-for file-search shared.json`).
+  - Enhanced template context to include tool-specific file objects (e.g., `code_interpreter_files`, `file_search_files_raw`) providing metadata about files processed by these tools.
+
+- **Code Interpreter Integration**:
+  - Integrated native support for OpenAI\'s Code Interpreter, allowing for Python code execution, data analysis, and visualization generation within ostruct workflows.
+  - New CLI options for Code Interpreter: `--file-for-code-interpreter` (`-fc`), `--file-for-code-interpreter-alias` (`--fca`), `--dir-for-code-interpreter` (`-dc`), `--dir-for-code-interpreter-alias` (`--dca`), `--code-interpreter-cleanup` (default: true), and `--code-interpreter-download-dir`.
+  - Core logic implemented in `src/ostruct/cli/code_interpreter.py`.
+
+- **File Search Integration**:
+  - Integrated native support for OpenAI\'s File Search, enabling vector-based semantic search and retrieval over user-provided documents.
+  - New CLI options for File Search: `--file-for-search` (`-fs`), `--file-for-search-alias` (`--fsa`), `--dir-for-search` (`-ds`), `--dir-for-search-alias` (`--dsa`), `--file-search-cleanup` (default: true), `--file-search-vector-store-name`, `--file-search-retry-count`, and `--file-search-timeout`.
+  - Core logic implemented in `src/ostruct/cli/file_search.py`.
+
+- **Model Context Protocol (MCP) Integration**:
+  - Added support for connecting to external Model Context Protocol (MCP) servers, allowing ostruct to leverage specialized external tools and knowledge bases.
+  - New CLI options for MCP: `--mcp-server`, `--mcp-allowed-tools`, `--mcp-require-approval`, and `--mcp-headers` for authentication and custom request parameters.
+  - Core logic implemented in `src/ostruct/cli/mcp_integration.py`.
+
+- **Configuration System**:
+  - Introduced a YAML-based configuration file (default: `ostruct.yaml` in the current directory or `~/.ostruct/config.yaml`, or a path specified by `--config`) for persistent settings related to models, tools, operational parameters, and cost limits.
+  - Implemented direct loading of specific environment variables (e.g., `OPENAI_API_KEY`, `MCP_<NAME>_URL`) within the configuration system. Generic `${ENV_VAR}` style substitution within the YAML is not supported.
+  - New CLI option: `--config` to specify a custom configuration file path.
+
+- **Progress Reporting**:
+  - Implemented real-time, granular progress indicators for long-running operations such as file processing, API interactions, and tool executions, enhancing user experience for complex tasks.
+  - New CLI options: `--progress-level` (options: none, basic, detailed) and `--no-progress` to control the verbosity of progress updates.
+  - Core logic implemented in `src/ostruct/cli/progress_reporting.py`.
+
+- **Cost Estimation and Control**:
+  - Integrated token usage estimation based on `tiktoken` and model-specific pricing for OpenAI API calls.
+  - The `--dry-run` option has been enhanced to display estimated token counts and approximate costs without making actual API calls.
+  - Introduced configuration options in `ostruct.yaml` for `max_cost_per_run` (to fail operations exceeding a budget) and `warn_expensive_operations` (to alert users).
+  - Core logic implemented in `src/ostruct/cli/cost_estimation.py`.
+
+- **Security Enhancements**:
+  - Path Security: Strengthened file access controls through the `SecurityManager`. This includes mandatory validation of paths against explicitly allowed directories (specified via `-A`, `--allow`, or `--allowed-dir-file`) and a configurable base directory (`--base-dir`) for resolving relative paths.
+  - Symlink Resolution: Improved and safer symlink handling within `SecurityManager` to prevent path traversal vulnerabilities by resolving symlinks to their canonical paths before validation.
+  - Tool-Specific File Routing: Enforced strict file routing, requiring users to explicitly designate files for Code Interpreter or File Search. This prevents accidental uploading of sensitive files intended only for local template processing.
+  - MCP Security: Added validation for MCP server URLs (requiring HTTPS) and mechanisms for approval (`--mcp-require-approval`) and secure authentication via custom headers (`--mcp-headers`) when connecting to external MCP services.
+
+- **Template Filters and Globals**:
+  - Added a comprehensive suite of new Jinja2 filters for advanced text manipulation (e.g., `word_count`, `char_count`, `remove_comments`, `strip_markdown`, `wrap`), data processing (e.g., `to_json`, `from_json`, `sort_by`, `group_by`, `unique`, `single`), table formatting (`table`, `dict_to_table`), and code processing (e.g., `format_code`, `strip_comments`).
+  - Introduced new Jinja2 global functions for utility tasks such as `estimate_tokens`, `now` (current datetime), `validate_json`, `summarize`, and `pivot_table`.
+
+- **CLI Improvements**:
+  - Enhanced `--help` output across commands for improved clarity, providing better descriptions and examples for the new, extensive options.
+  - Introduced the `ostruct quick-ref` command, offering users a concise summary of the new file routing options and their syntaxes.
+  - Added new utility commands: `ostruct list-models` to display available OpenAI models from the registry and `ostruct update-registry` to refresh the local model registry.
+  - Improved error handling with more specific error messages and standardized exit codes, providing better context for troubleshooting and integration into automated workflows.
+  - Added new debugging options: `--debug-validation` (for detailed schema validation errors) and `--debug-openai-stream` (for inspecting raw OpenAI API stream data).
+  - Comprehensive template debugging infrastructure (`--debug-template`, `--show-templates`, etc.).
+  - `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS` environment variable to control update notifications.
+
+- **Documentation**:
+  - Developed comprehensive user guides covering new features, including an updated CLI reference, guides for tool integration (Code Interpreter, File Search, MCP), security best practices, CI/CD automation patterns, and containerization.
+  - Added a rich set of examples in the `examples/` directory, demonstrating practical use cases for the new multi-tool capabilities, configuration system, and advanced CLI options.
+  - Meta-Schema Generator example for automated JSON schema creation.
+
+- **Template System**:
+  - Template Optimization: Automatic prompt optimization for better LLM performance.
+  - Shared System Prompts: New `include_system:` feature for sharing common system prompt content.
+
+- **File Handling**:
+  - Binary File Handling: Restored lazy loading for binary files in dry-run.
+  - Windows Compatibility: Enhanced file routing for Windows.
+
+- **Token Management**:
+  - Added 90% token usage warning threshold.
 
 ### Changed
 
-- **Breaking**: Removed openai-structured dependency in favor of direct OpenAI SDK integration
-- **Breaking**: Replaced Windows-incompatible colon syntax in `--file-for` flag with two-argument format (`--file-for tool:path` → `--file-for tool path`)
-- **Enhanced**: Updated all examples with new multi-tool syntax options
-- **Enhanced**: Improved error messages with actionable file routing guidance
-- **Enhanced**: Template context now includes files from all routing options
+- **File Routing (Critical Change)**: The legacy file input flags (`-f`, `-d`, `-p`) are now considered aliases, primarily for template-only access (equivalent to `-ft`, `-dt`). While backward compatibility is maintained, users are **strongly encouraged** to adopt the new explicit routing flags (e.g., `-ft`, `-fc`, `-fs`, and their directory/alias counterparts like `--fca`, `-ds`) for clarity, security, and to leverage new tool integrations. This change is fundamental to how ostruct handles files, especially concerning data uploads to OpenAI services.
+- **Default Model**: The default OpenAI model has been updated to `gpt-4o`.
+- **Error Handling**: Standardized error messages and exit codes across the application to provide more consistent and actionable feedback for users and automation scripts. Enhanced error messages provide actionable file routing guidance.
+- **Logging**: Enhanced logging capabilities with more granular control. Verbose logging now offers deeper insights into internal operations and API interactions.
+- **Dependencies**:
+  - Removed `openai-structured` dependency in favor of direct OpenAI SDK integration (`openai==1.81.0`).
+  - Updated `tiktoken` (to `v0.9.0`) and `openai-model-registry` (to `v0.7.0`).
+  - Introduced new dependencies such as `aiohttp` and `python-magic`.
+- **Project Structure**: Reorganized the `src/ostruct/cli/` directory into a more modular structure, with dedicated subdirectories for commands and security, and new modules for each major feature.
+- **Schema Validation**: Schema validation against the provided JSON Schema is now more aligned with OpenAI\'s specific requirements for structured outputs, such as enforcing a root object type and `additionalProperties: false`.
+- **Template Context**: Template context now includes files from all routing options.
 
 ### Fixed
 
-- **Critical**: Resolved Click framework limitations for variable argument file routing
-- **Critical**: Fixed template variable collision issues with comprehensive file naming
-- **Critical**: Resolved directory routing design flaw - generic templates can now use stable variable names with directory alias syntax
-- **Critical**: Fixed FileInfoList API inconsistency - added adaptive `.name` property that returns scalar for single files, list for multiple files
-- **BREAKING**: Made FileInfoList scalar properties (.content, .path, .abs_path, .size, .name) strict single-file only, raising ValueError for multiple files to prevent accidental data exposure. **Migration required**: Use `.names` property for lists, or access specific files with `files[0].content` syntax
-- **Enhancement**: Added always-list `.names` property to FileInfoList for explicit list access
-- **Enhancement**: Added `|single` Jinja2 filter for safe single-item extraction from lists with clear error messages
-- **Enhancement**: Improved error messages when accessing FileInfo attributes on multi-file lists with specific guidance
-- **Enhancement**: Fixed template optimization bug that was removing required variables
-- **Enhancement**: Enhanced file routing with better error handling and validation
-- **Enhancement**: Restored binary-safe lazy loading to prevent unnecessary content loading during dry-run mode
-- **Enhancement**: Replaced Windows-incompatible colon syntax in `--file-for` with two-argument format
-- **Enhancement**: Added 90% token usage warning threshold to help users avoid hard limits
-- **Enhancement**: Improved template variable optimization with proper file attribute references ('extension' vs 'ext'/'suffix')
-- **Enhancement**: Standardized Python version requirements across CI/CD (Python 3.10+)
-- **Enhancement**: Removed hardcoded debug output from web search functionality
-- **Security**: Maintained all existing path validation and security controls
-- **Performance**: Optimized file processing and template rendering with lazy evaluation
+- **Critical**: Resolved Click framework limitations for variable argument file routing.
+- **Critical**: Fixed template variable collision issues with comprehensive file naming.
+- **Critical**: Resolved directory routing design flaw - generic templates can now use stable variable names with directory alias syntax.
+- **Critical**: Made `FileInfoList` scalar properties (`.content`, `.path`, `.abs_path`, `.size`, `.name`) strict single-file only, raising `ValueError` for multiple files. **Migration required**: Use `.names` for lists, iterate, or use `|single` filter.
+- Improved handling of large template files, reducing the likelihood of exceeding token limits by more efficient internal processing.
+- Enhanced input validation for various CLI arguments, providing clearer error messages for incorrect usage.
+- Addressed issues related to special characters in file paths causing errors on certain operating systems.
+- Refined logging mechanisms for API calls to aid in debugging.
+- Corrected path traversal detection in Unicode safety patterns to correctly handle valid filenames that contain multiple dots, while still preventing malicious inputs.
+- Fixed whitespace handling in variable (`-V`) and JSON variable (`-J`) validators.
+- Resolved a potential infinite recursion issue within the `PathSecurityError.details` property getter.
+- Restored binary-safe lazy loading to prevent unnecessary content loading during dry-run.
+- Enhanced file routing with better error handling and validation.
+- Improved template variable optimization with proper file attribute references.
+- Standardized Python version requirements across CI/CD (Python 3.10+).
 
-### Migration
+### Removed
 
-- **Template Compatibility**: Most existing `-f`, `-d`, `-p` commands work unchanged, but templates accessing `.content`/`.path` on directory mappings need updates
-- **Error-Driven Migration**: Clear guidance when commands exceed context limits or encounter breaking changes
-- **CLI Commands**: Replace `--file-for tool:path` syntax with `--file-for tool path` (Windows compatibility)
-- **Progressive Enhancement**: Add new capabilities to existing workflows incrementally
+- The `ostruct init` command has been deprecated and removed. Project initialization is now achieved through manual creation of template/schema files and the optional `ostruct.yaml` configuration file.
+- Implicit file routing behaviors have been removed. Files intended for Code Interpreter or File Search must now be explicitly routed using the appropriate flags (e.g., `-fc`, `-fs`). This change enhances security by preventing unintentional data uploads.
+- The `--verbose-schema` option has been removed. Detailed schema validation information is now part of the `--debug-validation` output.
+- The generic directory extension flag `--ext` has been renamed to `--dir-ext` to clarify its application to directory processing only.
 
-### Breaking Change Examples
+### Security
 
-**FileInfoList API Migration**:
+- Enhanced overall path security with more comprehensive validation logic within the `SecurityManager`, including stricter checks for allowed directories and base path resolution.
+- Improved prevention of directory traversal attacks through robust path normalization and safe joining utilities.
+- Strengthened symlink resolution mechanisms to detect and block potentially malicious symlinks pointing outside of allowed areas.
+- Introduced explicit CLI flags for routing files to external services (Code Interpreter, File Search), ensuring users make conscious decisions about data uploads and reducing the risk of accidental data exposure.
+- Added security considerations for MCP server integration, including support for custom headers (e.g., for API keys/Bearer tokens) and controls for restricting allowed tools per server (`--mcp-allowed-tools`, `--mcp-require-approval`).
 
-```jinja
-{# v0.7.2 (worked) #}
-{{ my_directory.content }}
+### Migration Notes
 
-{# v0.8.0 (breaks) - Use these instead: #}
-{{ my_directory[0].content }}     {# Access first file #}
-{{ my_directory.names }}          {# Get all filenames #}
-{{ my_directory|single|attr('content') }}  {# Ensure single file #}
-```
-
-**CLI Command Migration**:
-
-```bash
-# v0.7.2 (Windows-incompatible)
-ostruct run template.j2 schema.json --file-for code-interpreter:analysis.py
-
-# v0.8.0 (Windows-compatible)
-ostruct run template.j2 schema.json --file-for code-interpreter analysis.py
-```
-
-### Technical
-
-- **Validated Implementation**: All features validated through comprehensive probe testing
-- **Performance Baseline**: Code Interpreter (10-16s), File Search (7-8s), basic operations (1-2s)
-- **Architecture**: Explicit file routing system with tool-specific processing
-- **Testing**: Enhanced test suite with proper OpenAI SDK mocking patterns
-- **Type Safety**: Complete MyPy type checking overhaul across 102 source files for maintainability
-- **Linting Consolidation**: Simplified toolchain using Ruff for import sorting and linting, replacing isort
-- **Template Processing**: Enhanced with lazy evaluation, binary file detection, and token validation warnings
-
-### Developer Experience
-
-- **API Consistency**: FileInfoList now provides consistent adaptive behavior across all properties (name, content, path, abs_path, size)
-- **Template Clarity**: All file variables are now explicitly FileInfoList instances with documented adaptive properties
-- **Error Guidance**: Enhanced error messages include template variable names and suggest correct syntax patterns
-- **Filter Safety**: New `|single` filter provides explicit validation for single-item expectations with descriptive errors
-- **Debugging Tools**: Comprehensive template debugging with CLI flags, expansion analysis, and optimization insights
-- **Schema Automation**: Meta-schema generator for automatic schema creation and OpenAI compliance validation
-- **File Access UX**: Improved FileInfoList string representation with helpful guidance for template variable access
+- **FileInfoList API**: The `.content`, `.path`, `.name`, etc. properties on `FileInfoList` objects are now strict single-file only. Accessing them on a list with multiple files will raise a `ValueError`.
+  - To get a list of names: `{{ my_files.names }}`
+  - To access content of the first file: `{{ my_files[0].content }}`
+  - To ensure a single file and get its content: `{{ (my_files|single).content }}`
+- **CLI `--file-for` syntax**: Changed from `tool:path` to `tool path` for Windows compatibility.
+- **Dependencies**: `openai-structured` has been removed.
 
 ## [0.7.2] - 2025-03-07
 

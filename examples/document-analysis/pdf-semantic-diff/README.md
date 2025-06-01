@@ -4,22 +4,28 @@ This example demonstrates ostruct's ability to perform complex document analysis
 
 ## 🔒 Security & Data Privacy Notice
 
-**⚠️ IMPORTANT**: This example uses Code Interpreter (`-fc`) features that **upload your PDF files to OpenAI's services** for processing.
+Please be aware of the following when using `ostruct` with different file routing options:
 
-**Before using with your documents:**
+* **File Uploads to OpenAI Tools**:
+  * Flags like `-fc`, `--fca`, `-dc`, `--dca` (for Code Interpreter) and `-fs`, `--fsa`, `-ds`, `--dsa` (for File Search) **will upload your files** to OpenAI's services for processing.
+  * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
-- **Review data sensitivity** - Do not upload confidential, proprietary, or sensitive documents
-- **Consider document content** - PDFs may contain personal information, business secrets, or legal details
-- **Check data governance policies** - Verify your organization allows document uploads to external services
+* **Template-Only Access & Prompt Content**:
+  * Flags like `-ft`, `--fta`, `-dt`, `--dta` (and legacy `-f`, `-d`) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
+  * **However, if your Jinja2 template includes the content of these files (e.g., using `{{ my_file.content }}`), that file content WILL become part of the prompt sent to the main OpenAI Chat Completions API.**
+  * For large files or sensitive data that should not be part of the main prompt, even if used with `-ft`, avoid rendering their full content in the template or use redaction techniques.
+  * If a large file is intended for analysis or search, prefer using `-fc`/`-fs` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
 
-**For detailed information about data handling and security best practices**, see the [Security Overview](../../docs/source/security/overview.rst) documentation.
+Always review which files are being routed to which tools and how their content is used in your templates to manage data privacy and API costs effectively.
+
+For detailed information about data handling and security best practices, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
 
 ## Overview
 
-- **Input**: Two PDF files (old and new versions)
-- **Processing**: Code Interpreter extracts text and performs semantic analysis
-- **Output**: Structured JSON with categorized changes
-- **Tools Used**: Code Interpreter for PDF processing and text analysis
+* **Input**: Two PDF files (old and new versions)
+* **Processing**: Code Interpreter extracts text and performs semantic analysis
+* **Output**: Structured JSON with categorized changes
+* **Tools Used**: Code Interpreter for PDF processing and text analysis
 
 ## Quick Start
 
@@ -36,11 +42,11 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 
 ## Features
 
-- **Multi-tool Integration**: Demonstrates file routing to Code Interpreter
-- **Semantic Analysis**: Identifies meaningful changes beyond textual differences
-- **Structured Output**: JSON schema validation ensures consistent results
-- **Change Categorization**: Classifies changes as added, deleted, reworded, or changed_in_meaning
-- **Comprehensive Testing**: Includes validation scripts and expected outputs
+* **Multi-tool Integration**: Demonstrates file routing to Code Interpreter
+* **Semantic Analysis**: Identifies meaningful changes beyond textual differences
+* **Structured Output**: JSON schema validation ensures consistent results
+* **Change Categorization**: Classifies changes as added, deleted, reworded, or changed_in_meaning
+* **Comprehensive Testing**: Includes validation scripts and expected outputs
 
 ## Usage
 
@@ -59,11 +65,11 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 
 ### Command-Line Options
 
-- `-fc old_pdf <file>`: Route old PDF to Code Interpreter as `old_pdf` variable
-- `-fc new_pdf <file>`: Route new PDF to Code Interpreter as `new_pdf` variable
-- `--model gpt-4o`: Recommended model for best results
-- `--temperature 0`: Ensures consistent, deterministic output
-- `--output-file <file>`: Save results to specified JSON file
+* `-fc old_pdf <file>`: Route old PDF to Code Interpreter as `old_pdf` variable
+* `-fc new_pdf <file>`: Route new PDF to Code Interpreter as `new_pdf` variable
+* `--model gpt-4o`: Recommended model for best results
+* `--temperature 0`: Ensures consistent, deterministic output
+* `--output-file <file>`: Save results to specified JSON file
 
 ### Using the Test Data
 
@@ -100,10 +106,10 @@ The analysis produces a JSON object with the following structure:
 
 ### Change Types
 
-- **added**: Content appears only in the new version
-- **deleted**: Content appears only in the old version
-- **reworded**: Same meaning expressed differently
-- **changed_in_meaning**: Semantic content has been altered
+* **added**: Content appears only in the new version
+* **deleted**: Content appears only in the old version
+* **reworded**: Same meaning expressed differently
+* **changed_in_meaning**: Semantic content has been altered
 
 ### Example Output
 
@@ -140,20 +146,20 @@ The analysis produces a JSON object with the following structure:
 
 The Jinja2 template (`prompts/pdf_semantic_diff.j2`) includes:
 
-- **YAML Frontmatter**: System instructions for the LLM
-- **Step-by-step Process**: Clear instructions for PDF extraction and analysis
-- **Error Handling**: Guidance for common PDF processing issues
-- **Output Format**: Explicit JSON structure requirements
-- **Variable Access**: Uses `{{ old_pdf.name }}` and `{{ new_pdf.name }}` with explicit file naming
+* **YAML Frontmatter**: System instructions for the LLM
+* **Step-by-step Process**: Clear instructions for PDF extraction and analysis
+* **Error Handling**: Guidance for common PDF processing issues
+* **Output Format**: Explicit JSON structure requirements
+* **Variable Access**: Uses `{{ old_pdf.name }}` and `{{ new_pdf.name }}` with explicit file naming
 
 ### Schema Design
 
 The JSON schema (`schemas/semantic_diff.schema.json`) enforces:
 
-- **Required Fields**: All changes must have type, description, and snippets
-- **String Constraints**: Length limits for descriptions (≤150 chars) and snippets (≤250 chars)
-- **Enum Validation**: Change types restricted to four valid options
-- **Strict Mode**: `additionalProperties: false` prevents extra fields
+* **Required Fields**: All changes must have type, description, and snippets
+* **String Constraints**: Length limits for descriptions (≤150 chars) and snippets (≤250 chars)
+* **Enum Validation**: Change types restricted to four valid options
+* **Strict Mode**: `additionalProperties: false` prevents extra fields
 
 ## File Structure
 
@@ -178,10 +184,10 @@ examples/enhanced/pdf-semantic-diff/
 
 ## Requirements
 
-- **ostruct**: v0.7.0 or later
-- **OpenAI API**: Access required for gpt-4o model
-- **Python Libraries**: pdfplumber, PyPDF2, or pymupdf (installed automatically by Code Interpreter)
-- **Optional**: jsonschema for validation script
+* **ostruct**: v0.7.0 or later
+* **OpenAI API**: Access required for gpt-4o model
+* **Python Libraries**: pdfplumber, PyPDF2, or pymupdf (installed automatically by Code Interpreter)
+* **Optional**: jsonschema for validation script
 
 ## Usage
 
@@ -214,10 +220,10 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 
 ### Key Features
 
-- **Explicit File Naming**: Uses `--fca old_pdf` and `--fca new_pdf` for predictable variable names
-- **Template Variables**: Access files via `{{ old_pdf.name }}`, `{{ old_pdf.content }}`, etc.
-- **Code Interpreter Integration**: Files are uploaded for Python-based PDF processing
-- **Structured Output**: JSON results validated against schema
+* **Explicit File Naming**: Uses `--fca old_pdf` and `--fca new_pdf` for predictable variable names
+* **Template Variables**: Access files via `{{ old_pdf.name }}`, `{{ old_pdf.content }}`, etc.
+* **Code Interpreter Integration**: Files are uploaded for Python-based PDF processing
+* **Structured Output**: JSON results validated against schema
 
 ## Troubleshooting
 
@@ -225,39 +231,39 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 
 **Template Variable Errors**
 
-- Ensure you use `--fca old_pdf` and `--fca new_pdf` (not auto-naming with `-fc`)
-- Template expects exactly these variable names: `old_pdf` and `new_pdf`
-- Check that file paths are correct and files exist
+* Ensure you use `--fca old_pdf` and `--fca new_pdf` (not auto-naming with `-fc`)
+* Template expects exactly these variable names: `old_pdf` and `new_pdf`
+* Check that file paths are correct and files exist
 
 **PDF Extraction Failures**
 
-- Ensure PDFs contain selectable text (not image-based)
-- Try different PDF libraries if extraction fails
-- Check file permissions and accessibility
+* Ensure PDFs contain selectable text (not image-based)
+* Try different PDF libraries if extraction fails
+* Check file permissions and accessibility
 
 **Schema Validation Errors**
 
-- Verify JSON output is properly formatted
-- Check that all required fields are present
-- Ensure string lengths are within limits
+* Verify JSON output is properly formatted
+* Check that all required fields are present
+* Ensure string lengths are within limits
 
 **Inconsistent Results**
 
-- Use `--temperature 0` for deterministic output
-- Ensure model has sufficient context window
-- Consider using gpt-4o for best performance
+* Use `--temperature 0` for deterministic output
+* Ensure model has sufficient context window
+* Consider using gpt-4o for best performance
 
 ### Model Recommendations
 
-- **Primary**: gpt-4o (best balance of capability and cost)
-- **Alternative**: gpt-4o-32k (for very large documents)
-- **Budget**: gpt-4o-mini (may have reduced accuracy)
+* **Primary**: gpt-4o (best balance of capability and cost)
+* **Alternative**: gpt-4o-32k (for very large documents)
+* **Budget**: gpt-4o-mini (may have reduced accuracy)
 
 ### Performance Considerations
 
-- **File Size**: Larger PDFs may require more processing time
-- **Complexity**: Documents with complex layouts may need manual review
-- **API Limits**: Consider rate limiting for batch processing
+* **File Size**: Larger PDFs may require more processing time
+* **Complexity**: Documents with complex layouts may need manual review
+* **API Limits**: Consider rate limiting for batch processing
 
 ## Integration Examples
 
@@ -289,9 +295,9 @@ python scripts/validate_output.py diff.json
 
 ## Related Examples
 
-- **Multi-tool Analysis**: Demonstrates similar file routing patterns
-- **Data Processing**: Shows structured output validation
-- **Document Analysis**: Related document processing workflows
+* **Multi-tool Analysis**: Demonstrates similar file routing patterns
+* **Data Processing**: Shows structured output validation
+* **Document Analysis**: Related document processing workflows
 
 ## Contributing
 

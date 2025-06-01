@@ -115,12 +115,14 @@ def expand_path(path: str, force_absolute: bool = False) -> str:
 def collect_files_from_pattern(
     pattern: str,
     security_manager: SecurityManager,
+    routing_type: Optional[str] = None,
 ) -> List[FileInfo]:
     """Collect files matching a glob pattern or exact file path.
 
     Args:
         pattern: Glob pattern or file path to match
         security_manager: Security manager for path validation
+        routing_type: How the file was routed
 
     Returns:
         List of FileInfo objects for matched files
@@ -131,7 +133,9 @@ def collect_files_from_pattern(
     # First check if it's an exact file path
     if os.path.isfile(pattern):
         try:
-            file_info = FileInfo.from_path(pattern, security_manager)
+            file_info = FileInfo.from_path(
+                pattern, security_manager, routing_type=routing_type
+            )
             return [file_info]
         except PathSecurityError:
             raise
@@ -149,7 +153,9 @@ def collect_files_from_pattern(
     files: List[FileInfo] = []
     for path in matched_paths:
         try:
-            file_info = FileInfo.from_path(path, security_manager)
+            file_info = FileInfo.from_path(
+                path, security_manager, routing_type=routing_type
+            )
             files.append(file_info)
         except PathSecurityError:
             # Let security errors propagate
@@ -165,6 +171,7 @@ def collect_files_from_directory(
     security_manager: SecurityManager,
     recursive: bool = False,
     allowed_extensions: Optional[List[str]] = None,
+    routing_type: Optional[str] = None,
     **kwargs: Any,
 ) -> List[FileInfo]:
     """Collect files from a directory.
@@ -174,6 +181,7 @@ def collect_files_from_directory(
         security_manager: Security manager for path validation
         recursive: Whether to process subdirectories
         allowed_extensions: List of allowed file extensions (without dot)
+        routing_type: How the file was routed
         **kwargs: Additional arguments passed to FileInfo.from_path
 
     Returns:
@@ -272,7 +280,10 @@ def collect_files_from_directory(
                 try:
                     # Use absolute path when creating FileInfo
                     file_info = FileInfo.from_path(
-                        abs_path, security_manager=security_manager, **kwargs
+                        abs_path,
+                        security_manager=security_manager,
+                        routing_type=routing_type,
+                        **kwargs,
                     )
                     files.append(file_info)
                     logger.debug("Added file to list: %s", abs_path)
@@ -335,6 +346,7 @@ def collect_files(
     dir_recursive: bool = False,
     dir_extensions: Optional[List[str]] = None,
     security_manager: Optional[SecurityManager] = None,
+    routing_type: Optional[str] = None,
     **kwargs: Any,
 ) -> Dict[str, FileInfoList]:
     """Collect files from multiple sources.
@@ -346,6 +358,7 @@ def collect_files(
         dir_recursive: Whether to process directories recursively
         dir_extensions: List of file extensions to include in directory processing
         security_manager: Security manager instance
+        routing_type: How the files were routed (passed to FileInfo)
         **kwargs: Additional arguments passed to FileInfo.from_path
 
     Returns:
@@ -395,7 +408,10 @@ def collect_files(
                 )
 
             file_info = FileInfo.from_path(
-                str(path), security_manager=security_manager, **kwargs
+                str(path),
+                security_manager=security_manager,
+                routing_type=routing_type,
+                **kwargs,
             )
             files[name] = FileInfoList(
                 [file_info], from_dir=False, var_alias=name
@@ -414,7 +430,10 @@ def collect_files(
 
             try:
                 matched_files = collect_files_from_pattern(
-                    str(pattern), security_manager=security_manager, **kwargs
+                    str(pattern),
+                    security_manager=security_manager,
+                    routing_type=routing_type,
+                    **kwargs,
                 )
             except PathSecurityError as e:
                 logger.debug("Security error in pattern mapping: %s", str(e))
@@ -456,6 +475,7 @@ def collect_files(
                     security_manager=security_manager,
                     recursive=dir_recursive,
                     allowed_extensions=dir_extensions,
+                    routing_type=routing_type,
                     **kwargs,
                 )
             except PathSecurityError as e:
