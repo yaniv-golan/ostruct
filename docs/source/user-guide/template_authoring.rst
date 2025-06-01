@@ -329,7 +329,7 @@ Here are the most common patterns for working with file variables:
    {% endif %}
 
 Troubleshooting File Variables
------------------------------
+------------------------------
 
 **Problem: "FileInfoList(['path'])" appears in output**
 
@@ -366,7 +366,7 @@ Use ``--show-context`` to see all available variables:
    {% endif %}
 
 Troubleshooting Directory Variables
-----------------------------------
+-----------------------------------
 
 **Problem: Template variable changes between runs**
 
@@ -483,7 +483,7 @@ Use auto-naming when your template is designed for a specific directory structur
    {% endfor %}
 
 **Alias Access (Stable Variables)**
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use aliases when your template needs to work with different directory structures:
 
@@ -568,7 +568,7 @@ The same template works with different project structures when using aliases:
    ostruct run analysis.j2 schema.json --dca code ./app --dta configs ./env
 
 **Checking Directory Contents**
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jinja
 
@@ -1093,7 +1093,7 @@ Organizational Patterns
    ---
 
 Path Resolution Rules
---------------------
+---------------------
 
 The ``include_system:`` path is resolved using these rules:
 
@@ -1121,7 +1121,7 @@ The ``include_system:`` path is resolved using these rules:
 **Best practice:** Use relative paths from template directory for portability.
 
 Template Composition Example
----------------------------
+----------------------------
 
 **Template using shared prompts:**
 
@@ -1590,7 +1590,7 @@ Template optimization happens automatically when:
 - Files explicitly marked to stay inline
 
 Optimization Benefits
---------------------
+---------------------
 
 **Performance Improvements:**
 
@@ -1608,7 +1608,7 @@ Optimization Benefits
    Savings:             43% reduction
 
 Understanding Optimization Results
----------------------------------
+----------------------------------
 
 When optimization occurs, you'll see details in the output:
 

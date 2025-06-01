@@ -42,7 +42,7 @@ The meta-schema generator automatically creates and validates JSON schemas for y
 - Validating existing schemas for compliance
 - Learning proper schema structure through examples
 
-See the `Meta-Schema Generator README <https://github.com/yaniv-golan/ostruct/blob/main/examples/meta-schema-generator/README.md>`_ for detailed usage instructions.
+See the Meta-Schema Generator README in ``examples/meta-schema-generator/README.md`` for detailed usage instructions.
 
 Available Examples
 ==================
@@ -396,7 +396,7 @@ Use ``--dry-run`` to estimate costs before running:
    ostruct run template.j2 schema.json -ft file.txt --dry-run
 
 Contributing Examples
-====================
+=====================
 
 We welcome contributions of new examples! Please follow these guidelines:
 
@@ -406,7 +406,7 @@ We welcome contributions of new examples! Please follow these guidelines:
 4. **Test Thoroughly**: Ensure examples are self-contained and runnable
 5. **Include Costs**: Provide cost estimates where possible
 
-See the `Contributing Guide <https://github.com/yaniv-golan/ostruct/blob/main/CONTRIBUTING.md>`_ for detailed instructions.
+See the project repository for contributing guidelines.
 
 Next Steps
 ==========
