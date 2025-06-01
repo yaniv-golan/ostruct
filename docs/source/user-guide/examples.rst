@@ -224,6 +224,35 @@ Advanced PDF comparison with Code Interpreter integration for semantic document 
 - Semantic analysis with structured output
 - Complete validation workflow
 
+**Documentation Example Validator** (``document-analysis/doc-example-validator/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Automated documentation example testing with File Search integration for comprehensive project validation.
+
+**Features**:
+- Intelligent example detection in documentation
+- Multi-format support (Markdown, RST, plain text)
+- AI agent-compatible task list generation
+- Large-scale documentation processing
+- Project-type aware analysis (CLI, API, Library, Framework)
+
+**Use Cases**: Documentation quality assurance, CI/CD integration, project migration validation, example testing automation
+
+**Quick Start**:
+
+.. code-block:: bash
+
+   cd examples/document-analysis/doc-example-validator
+
+   # Basic documentation analysis
+   ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
+     -ds test_data/sample_project/ \
+     -V project_name="MyProject" \
+     -V project_type="CLI"
+
+   # Large-scale project analysis
+   ./scripts/large_scale_example.sh
+
 Data Analysis Examples
 ----------------------
 
