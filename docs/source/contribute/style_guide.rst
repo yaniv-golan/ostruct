@@ -440,20 +440,35 @@ Use mocking effectively for external dependencies:
 
 .. code-block:: python
 
-   @patch('ostruct.cli.openai_client.OpenAI')
-   def test_api_call_success(self, mock_openai):
-       """Test successful API call with mocked client."""
+   @patch('ostruct.cli.runner.AsyncOpenAI')
+   def test_responses_api_call_success(self, mock_openai):
+       """Test successful Responses API call with mocked client."""
        # Setup mock
-       mock_client = MagicMock()
+       mock_client = AsyncMock()
        mock_openai.return_value = mock_client
-       mock_client.chat.completions.create.return_value = mock_response
+
+       # Create mock streaming response for Responses API
+       async def mock_stream():
+           yield Mock(response=Mock(body='{"result": "test response"}'))
+
+       mock_client.responses.create.return_value = mock_stream()
 
        # Test implementation
-       result = call_openai_api("test prompt")
+       result = await stream_structured_output(
+           client=mock_client,
+           model="gpt-4o",
+           system_prompt="System prompt",
+           user_prompt="User prompt",
+           output_schema=TestSchema
+       )
 
        # Verify behavior
-       mock_client.chat.completions.create.assert_called_once()
-       assert result.content == "expected response"
+       mock_client.responses.create.assert_called_once()
+       # Verify API parameters
+       call_args = mock_client.responses.create.call_args
+       assert call_args[1]["model"] == "gpt-4o"
+       assert "input" in call_args[1]  # Responses API uses 'input' not 'messages'
+       assert "text" in call_args[1]   # Responses API uses 'text' format
 
 Documentation Standards
 =======================
