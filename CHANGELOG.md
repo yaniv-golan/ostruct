@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2025-06-01
+
+### Fixed
+
+- **Documentation Accuracy**: Audit and correction of all documentation files to ensure they accurately reflect the actual codebase implementation
+- **Style Guide**: Updated coding standards to match actual project configuration (Black line-length 79 vs documented 88, correct error class names, actual API patterns)
+- **CLI Examples**: Fixed several CLI syntax examples throughout documentation to use correct flag syntax (--fta instead of incorrect -ft two-argument usage)
+- **API Documentation**: Corrected mocking examples to use OpenAI Responses API instead of Completions API, matching actual ostruct implementation
+- **Cross-References**: Fixed broken documentation cross-references and removed references to non-existent files
+- **Sphinx Warnings**: Resolved all Sphinx build warnings including title underline length issues
+- **Code Examples**: Updated all code examples to use the updated classes, functions, and import paths from the codebase
+
 ## [0.8.1] - 2025-06-01
 
 ### Added
