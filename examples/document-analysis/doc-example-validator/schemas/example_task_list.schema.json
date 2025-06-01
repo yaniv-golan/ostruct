@@ -1,0 +1,188 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+        "project_info",
+        "task_management",
+        "tasks"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "project_info": {
+            "type": "object",
+            "required": [
+                "name",
+                "type",
+                "documentation_files_analyzed",
+                "total_examples_found",
+                "analysis_timestamp",
+                "validation_level"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "documentation_files_analyzed": {
+                    "type": "integer"
+                },
+                "total_examples_found": {
+                    "type": "integer"
+                },
+                "analysis_timestamp": {
+                    "type": "string"
+                },
+                "validation_level": {
+                    "type": "string"
+                }
+            }
+        },
+        "task_management": {
+            "type": "object",
+            "required": [
+                "instructions",
+                "status_legend",
+                "dependency_rules",
+                "ai_agent_instructions"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "instructions": {
+                    "type": "string"
+                },
+                "status_legend": {
+                    "type": "object",
+                    "required": [
+                        "PENDING",
+                        "IN_PROGRESS",
+                        "COMPLETED",
+                        "FAILED",
+                        "BLOCKED",
+                        "SKIPPED"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "PENDING": {
+                            "type": "string"
+                        },
+                        "IN_PROGRESS": {
+                            "type": "string"
+                        },
+                        "COMPLETED": {
+                            "type": "string"
+                        },
+                        "FAILED": {
+                            "type": "string"
+                        },
+                        "BLOCKED": {
+                            "type": "string"
+                        },
+                        "SKIPPED": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "dependency_rules": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ai_agent_instructions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tasks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "title",
+                    "status",
+                    "priority",
+                    "dependencies",
+                    "example_location",
+                    "example_content",
+                    "validation_criteria",
+                    "test_instructions",
+                    "expected_output_pattern",
+                    "automation_ready",
+                    "category"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "priority": {
+                        "type": "string"
+                    },
+                    "dependencies": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "example_location": {
+                        "type": "object",
+                        "required": [
+                            "file",
+                            "section",
+                            "line_range"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "file": {
+                                "type": "string"
+                            },
+                            "section": {
+                                "type": "string"
+                            },
+                            "line_range": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "example_content": {
+                        "type": "string"
+                    },
+                    "validation_criteria": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "test_instructions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "expected_output_pattern": {
+                        "type": "string"
+                    },
+                    "automation_ready": {
+                        "type": "boolean"
+                    },
+                    "category": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

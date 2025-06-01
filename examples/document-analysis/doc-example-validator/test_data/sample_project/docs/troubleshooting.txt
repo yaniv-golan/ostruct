@@ -1,0 +1,399 @@
+AWESOME CLI TROUBLESHOOTING GUIDE
+=================================
+
+This is a plain text troubleshooting guide for AwesomeCLI.
+Last updated: January 2024
+
+TABLE OF CONTENTS
+-----------------
+1. Installation Issues
+2. Common Error Messages
+3. Performance Problems
+4. Configuration Issues
+5. Platform-Specific Problems
+6. Debug Commands
+7. Getting Help
+
+================================================================================
+
+1. INSTALLATION ISSUES
+======================
+
+Problem: "Command not found: awesome-cli"
+Solution: Ensure installation was successful and PATH is configured
+
+    # Check if installed
+    pip list | grep awesome-cli
+
+    # Reinstall if missing
+    pip uninstall awesome-cli
+    pip install awesome-cli
+
+    # Add to PATH (if needed)
+    export PATH=$PATH:~/.local/bin
+
+Problem: Permission denied during installation
+Solution: Use user installation or virtual environment
+
+    # User installation
+    pip install --user awesome-cli
+
+    # Virtual environment (recommended)
+    python -m venv awesome_env
+    source awesome_env/bin/activate  # Linux/Mac
+    awesome_env\Scripts\activate     # Windows
+    pip install awesome-cli
+
+Problem: "ModuleNotFoundError: No module named '_ssl'"
+Solution: Install SSL support for Python
+
+    # Ubuntu/Debian
+    sudo apt-get install libssl-dev
+
+    # CentOS/RHEL
+    sudo yum install openssl-devel
+
+    # macOS
+    brew install openssl
+
+================================================================================
+
+2. COMMON ERROR MESSAGES
+========================
+
+Error: "Invalid input format"
+Cause: File format not supported or corrupted
+Solution:
+
+    # Check supported formats
+    awesome-cli --list-formats
+
+    # Validate file integrity
+    file input.txt
+    head -5 input.txt
+
+    # Convert format if needed
+    awesome-cli convert input.xlsx --to csv
+
+Error: "Configuration file not found"
+Cause: Missing or mislocated config file
+Solution:
+
+    # Create default config
+    awesome-cli --init-config
+
+    # Check config location
+    awesome-cli --show-config-path
+
+    # Verify config syntax
+    awesome-cli --validate-config
+
+Error: "Memory error during processing"
+Cause: File too large for available memory
+Solution:
+
+    # Process in chunks
+    awesome-cli process large_file.csv --chunk-size 1000
+
+    # Use streaming mode
+    awesome-cli process large_file.csv --stream
+
+    # Increase memory limit (if available)
+    awesome-cli process large_file.csv --memory-limit 4GB
+
+Error: "API rate limit exceeded"
+Cause: Too many requests to external service
+Solution:
+
+    # Add delay between requests
+    awesome-cli process files/ --delay 1
+
+    # Use batch mode
+    awesome-cli batch-process files/
+
+    # Check rate limit status
+    awesome-cli --check-limits
+
+================================================================================
+
+3. PERFORMANCE PROBLEMS
+=======================
+
+Problem: Slow processing speed
+Diagnosis commands:
+
+    # Profile performance
+    awesome-cli process input.csv --profile
+
+    # Check system resources
+    awesome-cli --system-info
+
+    # Monitor progress
+    awesome-cli process input.csv --verbose --progress
+
+Optimization strategies:
+
+    # Use multiple workers
+    awesome-cli process input.csv --workers 4
+
+    # Enable caching
+    awesome-cli process input.csv --cache
+
+    # Optimize output format
+    awesome-cli process input.csv --format binary
+
+    # Disable unnecessary features
+    awesome-cli process input.csv --no-validation --no-backup
+
+Problem: High memory usage
+Solutions:
+
+    # Use streaming processing
+    awesome-cli process large_file.csv --stream
+
+    # Reduce buffer size
+    awesome-cli process large_file.csv --buffer-size 1MB
+
+    # Process in batches
+    split -l 10000 large_file.csv chunk_
+    for chunk in chunk_*; do
+        awesome-cli process $chunk
+    done
+
+================================================================================
+
+4. CONFIGURATION ISSUES
+=======================
+
+Problem: Settings not taking effect
+Debug steps:
+
+    # Show active configuration
+    awesome-cli --show-config
+
+    # List config sources
+    awesome-cli --config-sources
+
+    # Test specific setting
+    awesome-cli --test-config timeout
+
+Common config fixes:
+
+    # Reset to defaults
+    awesome-cli --reset-config
+
+    # Reload configuration
+    awesome-cli --reload-config
+
+    # Validate syntax
+    awesome-cli --validate-config
+
+    # Edit config file
+    awesome-cli --edit-config
+
+Example working configuration:
+
+    [general]
+    timeout = 30
+    workers = 2
+    cache_enabled = true
+
+    [output]
+    format = json
+    compression = gzip
+
+    [logging]
+    level = INFO
+    file = /var/log/awesome-cli.log
+
+================================================================================
+
+5. PLATFORM-SPECIFIC PROBLEMS
+=============================
+
+WINDOWS ISSUES
+--------------
+
+Problem: "The system cannot find the path specified"
+Solution:
+
+    # Use forward slashes or escape backslashes
+    awesome-cli process C:/data/input.csv
+    awesome-cli process C:\\data\\input.csv
+
+    # Use relative paths
+    cd C:\data
+    awesome-cli process input.csv
+
+Problem: Unicode/encoding errors
+Solution:
+
+    # Set UTF-8 encoding
+    set PYTHONIOENCODING=utf-8
+    awesome-cli process input.csv --encoding utf-8
+
+    # Use Windows-1252 for legacy files
+    awesome-cli process input.csv --encoding cp1252
+
+MACOS ISSUES
+-----------
+
+Problem: "Operation not permitted" on macOS Catalina+
+Solution:
+
+    # Grant full disk access in Security & Privacy
+    # Or use alternative location
+    cp input.csv ~/Documents/
+    awesome-cli process ~/Documents/input.csv
+
+Problem: SSL certificate errors
+Solution:
+
+    # Update certificates
+    /Applications/Python\ 3.x/Install\ Certificates.command
+
+    # Or bypass SSL (not recommended for production)
+    awesome-cli process input.csv --no-ssl-verify
+
+LINUX ISSUES
+------------
+
+Problem: Permission denied accessing files
+Solution:
+
+    # Check file permissions
+    ls -la input.csv
+
+    # Fix permissions
+    chmod 644 input.csv
+
+    # Run with appropriate user
+    sudo -u datauser awesome-cli process input.csv
+
+================================================================================
+
+6. DEBUG COMMANDS
+================
+
+Basic debugging:
+
+    # Enable verbose output
+    awesome-cli process input.csv --verbose
+
+    # Show debug information
+    awesome-cli process input.csv --debug
+
+    # Dry run mode
+    awesome-cli process input.csv --dry-run
+
+    # Check environment
+    awesome-cli --check-env
+
+Advanced debugging:
+
+    # Enable trace logging
+    AWESOME_DEBUG=1 awesome-cli process input.csv
+
+    # Profile execution
+    awesome-cli process input.csv --profile > profile.txt
+
+    # Generate debug report
+    awesome-cli --debug-report debug_info.zip
+
+    # Test connectivity
+    awesome-cli --test-connection
+
+Log file locations:
+
+    # Linux/Mac
+    ~/.awesome-cli/logs/
+    /var/log/awesome-cli/
+
+    # Windows
+    %APPDATA%\awesome-cli\logs\
+    C:\ProgramData\awesome-cli\logs\
+
+================================================================================
+
+7. GETTING HELP
+===============
+
+Self-help commands:
+
+    # Show all options
+    awesome-cli --help
+
+    # Show command-specific help
+    awesome-cli process --help
+
+    # Show version information
+    awesome-cli --version
+
+    # Check for updates
+    awesome-cli --check-updates
+
+Online resources:
+
+    # Documentation
+    https://awesome-cli.readthedocs.io/
+
+    # GitHub Issues
+    https://github.com/awesome-org/awesome-cli/issues
+
+    # Community Forum
+    https://forum.awesome-cli.org/
+
+    # Stack Overflow Tag
+    https://stackoverflow.com/questions/tagged/awesome-cli
+
+Reporting bugs:
+
+    # Generate diagnostic info
+    awesome-cli --diagnostic > diagnostic.txt
+
+    # Include in bug report:
+    # - awesome-cli version
+    # - Operating system and version
+    # - Python version
+    # - Input file sample (if possible)
+    # - Complete error message
+    # - Steps to reproduce
+
+Contact information:
+
+    Email: support@awesome-cli.org
+    Twitter: @awesome_cli
+    Discord: https://discord.gg/awesome-cli
+
+================================================================================
+
+QUICK REFERENCE COMMANDS
+========================
+
+Installation:
+    pip install awesome-cli
+
+Basic usage:
+    awesome-cli process input.csv
+
+With options:
+    awesome-cli process input.csv --format json --output result.json
+
+Configuration:
+    awesome-cli --init-config
+    awesome-cli --show-config
+
+Debugging:
+    awesome-cli process input.csv --debug --verbose
+
+Help:
+    awesome-cli --help
+    awesome-cli process --help
+
+Version:
+    awesome-cli --version
+
+================================================================================
+
+End of troubleshooting guide. For more help, visit our documentation at:
+https://awesome-cli.readthedocs.io/troubleshooting/
