@@ -459,7 +459,7 @@ Example Documentation
 
        See Also:
            :func:`related_function`: For related functionality.
-           :doc:`../user-guide/advanced-usage`: For advanced usage patterns.
+           :doc:`../user-guide/template_authoring`: For advanced template patterns.
        """
 
 Community Guidelines
