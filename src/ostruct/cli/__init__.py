@@ -1,5 +1,12 @@
 """Command-line interface for making structured OpenAI API calls."""
 
+# Import modules for test mocking support
+from . import (
+    config,
+    mcp_integration,
+    model_validation,
+    runner,
+)
 from .cli import (
     ExitCode,
     create_cli,
@@ -24,4 +31,9 @@ __all__ = [
     "validate_variable_mapping",
     "get_update_notification",
     "OstructRunner",
+    # Modules for test mocking
+    "config",
+    "mcp_integration",
+    "model_validation",
+    "runner",
 ]
