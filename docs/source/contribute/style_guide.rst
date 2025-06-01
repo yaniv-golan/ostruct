@@ -20,8 +20,8 @@ We use **Black** for code formatting with these settings:
 
    # pyproject.toml
    [tool.black]
-   line-length = 88
-   target-version = ['py310']
+   line-length = 79
+   target-version = ["py310"]
    include = '\.pyi?$'
    extend-exclude = '''
    /(
@@ -37,7 +37,7 @@ We use **Black** for code formatting with these settings:
 
 **Key formatting rules:**
 
-- Maximum line length: 88 characters
+- Maximum line length: 79 characters
 - Use double quotes for strings
 - Trailing commas in multi-line structures
 - Consistent indentation (4 spaces)
@@ -217,26 +217,27 @@ Use the structured exception hierarchy from ``cli/errors.py``:
 .. code-block:: python
 
    from ostruct.cli.errors import (
-       OstructError,           # Base exception
-       ValidationError,        # Input validation errors
-       TemplateError,         # Template processing errors
-       SecurityError,         # Security-related errors
-       ConfigurationError,    # Configuration errors
+       CLIError,              # Base exception
+       VariableError,         # Variable-related errors
+       TaskTemplateError,     # Template processing errors
+       PathSecurityError,     # Security-related errors
+       SchemaError,          # Schema validation errors
    )
+   from ostruct.cli.base_errors import OstructFileNotFoundError
 
    # Good - specific exception types
    def validate_file_path(path: str) -> Path:
        """Validate and return a Path object."""
        if not path:
-           raise ValidationError("File path cannot be empty")
+           raise VariableError("File path cannot be empty")
 
        try:
            file_path = Path(path).resolve()
        except (OSError, ValueError) as e:
-           raise ValidationError(f"Invalid file path '{path}': {e}")
+           raise PathSecurityError(f"Invalid file path '{path}': {e}")
 
        if not file_path.exists():
-           raise ValidationError(f"File not found: {file_path}")
+           raise OstructFileNotFoundError(path)
 
        return file_path
 
@@ -248,14 +249,14 @@ Provide clear, actionable error messages:
 .. code-block:: python
 
    # Good - specific and actionable
-   raise ValidationError(
+   raise TaskTemplateError(
        f"Template file '{template_path}' is too large "
        f"({file_size} bytes). Maximum allowed size is {MAX_SIZE} bytes. "
        f"Consider splitting the template into smaller files."
    )
 
    # Bad - vague and unhelpful
-   raise ValidationError("Template error")
+   raise TaskTemplateError("Template error")
 
 **Error message guidelines:**
 
@@ -333,18 +334,22 @@ Use secure path operations:
 
 .. code-block:: python
 
-   from ostruct.cli.security.safe_joiner import SafeJoiner
-   from ostruct.cli.security.symlink_resolver import SymlinkResolver
+   from ostruct.cli.security import safe_join
+   from ostruct.cli.security.symlink_resolver import _resolve_symlink
 
    def build_safe_path(base_dir: Path, user_path: str) -> Path:
        """Build a safe path within the base directory."""
-       # Use SafeJoiner to prevent directory traversal
-       safe_joiner = SafeJoiner(base_dir)
-       joined_path = safe_joiner.join(user_path)
+       # Use safe_join to prevent directory traversal
+       joined_path = safe_join(str(base_dir), user_path)
+       if joined_path is None:
+           raise PathSecurityError(f"Unsafe path: {user_path}")
 
        # Resolve symlinks securely
-       resolver = SymlinkResolver()
-       resolved_path = resolver.resolve_safely(joined_path)
+       resolved_path = _resolve_symlink(
+           Path(joined_path),
+           max_depth=16,
+           allowed_dirs=[base_dir]
+       )
 
        return resolved_path
 
@@ -370,37 +375,35 @@ Organize tests by functionality and scope:
    from unittest.mock import patch, MagicMock
    from pathlib import Path
 
-   from ostruct.cli.template_rendering import TemplateRenderer
-   from ostruct.cli.errors import TemplateError
+   from ostruct.cli.template_utils import render_template
+   from ostruct.cli.errors import TaskTemplateError
 
 
-   class TestTemplateRenderer:
+   class TestTemplateRendering:
        """Tests for template rendering functionality."""
 
        @pytest.fixture
-       def sample_template_dir(self, tmp_path):
-           """Create a temporary directory with sample templates."""
-           template_dir = tmp_path / "templates"
-           template_dir.mkdir()
-
-           (template_dir / "simple.j2").write_text("Hello, {{ name }}!")
-           return template_dir
+       def sample_template(self):
+           """Create a sample template string."""
+           return "Hello, {{ name }}!"
 
        @pytest.fixture
-       def renderer(self, sample_template_dir):
-           """Create a TemplateRenderer instance."""
-           return TemplateRenderer(sample_template_dir)
+       def template_env(self):
+           """Create a Jinja2 environment."""
+           import jinja2
+           return jinja2.Environment()
 
-       def test_render_simple_template(self, renderer):
+       def test_render_simple_template(self, sample_template, template_env):
            """Test rendering a simple template."""
            context = {"name": "World"}
-           result = renderer.render("simple.j2", context)
+           result = render_template(sample_template, context, template_env)
            assert result == "Hello, World!"
 
-       def test_render_missing_template(self, renderer):
-           """Test error handling for missing templates."""
-           with pytest.raises(TemplateError, match="Template not found"):
-               renderer.render("missing.j2", {})
+       def test_render_missing_variable(self, template_env):
+           """Test error handling for missing variables."""
+           template = "Hello, {{ missing_var }}!"
+           with pytest.raises(TaskTemplateError):
+               render_template(template, {}, template_env)
 
 Test Coverage
 -------------
@@ -538,31 +541,38 @@ Document all public APIs comprehensively:
 
 .. code-block:: python
 
-   class TemplateRenderer:
-       """Renders Jinja2 templates with security controls.
+   def render_template_with_context(
+       template_content: str,
+       context: Dict[str, Any],
+       env: jinja2.Environment
+   ) -> str:
+       """Render a Jinja2 template with the provided context.
 
-       The TemplateRenderer provides a secure interface for rendering
+       This function provides a secure interface for rendering
        Jinja2 templates with file content access. It includes built-in
-       security validation and caching for improved performance.
+       security validation and optimization.
+
+       Args:
+           template_content: The template content as a string.
+           context: Dictionary containing template variables.
+           env: Jinja2 environment for rendering.
+
+       Returns:
+           The rendered template as a string.
+
+       Raises:
+           TaskTemplateError: If template rendering fails.
 
        Example:
-           >>> renderer = TemplateRenderer(template_dir)
-           >>> result = renderer.render("template.j2", {"var": "value"})
+           >>> import jinja2
+           >>> env = jinja2.Environment()
+           >>> context = {"name": "ostruct", "version": "0.8.1"}
+           >>> result = render_template_with_context(
+           ...     "Hello, {{ name }} v{{ version }}!", context, env
+           ... )
+           >>> print(result)
+           Hello, ostruct v0.8.1!
        """
-
-       def render(self, template_name: str, context: Dict[str, Any]) -> str:
-           """Render a template with the provided context.
-
-           Args:
-               template_name: Name of the template file to render.
-               context: Dictionary containing template variables.
-
-           Returns:
-               The rendered template as a string.
-
-           Raises:
-               TemplateError: If template rendering fails.
-           """
 
 Performance Guidelines
 ======================
@@ -599,20 +609,43 @@ Implement appropriate caching for performance:
 
 .. code-block:: python
 
-   from functools import lru_cache
-   from typing import Dict
+   from ostruct.cli.cache_manager import FileCache
 
-   class TemplateCache:
-       """Template caching with size limits."""
+   class TemplateManager:
+       """Template management with file caching."""
 
-       def __init__(self, max_size: int = 128):
-           self._cache: Dict[str, str] = {}
-           self._max_size = max_size
+       def __init__(self, max_cache_size: int = 50 * 1024 * 1024):
+           self._file_cache = FileCache(max_cache_size)
 
-       @lru_cache(maxsize=128)
-       def get_compiled_template(self, template_path: str) -> str:
-           """Get compiled template with caching."""
-           return self._compile_template(template_path)
+       def get_template_content(self, template_path: str) -> str:
+           """Get template content with caching."""
+           from pathlib import Path
+
+           path = Path(template_path)
+           stat = path.stat()
+
+           # Try to get from cache
+           cached = self._file_cache.get(
+               str(path.absolute()),
+               stat.st_mtime_ns,
+               stat.st_size
+           )
+
+           if cached:
+               return cached.content
+
+           # Read and cache
+           content = path.read_text(encoding='utf-8')
+           self._file_cache.put(
+               str(path.absolute()),
+               content,
+               'utf-8',
+               None,  # hash_value
+               stat.st_mtime_ns,
+               stat.st_size
+           )
+
+           return content
 
 **Performance practices:**
 
