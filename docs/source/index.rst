@@ -61,7 +61,7 @@ Quick Start
    .. code-block:: bash
 
       ostruct run task.j2 schema.json \
-        -f content input.txt \
+        --fta content input.txt \
         -m gpt-4o
 
 Documentation
@@ -127,7 +127,6 @@ Requirements
 
 - Python 3.10 or higher
 - OpenAI API key
-- ``openai-structured`` >= 2.0.0
 
 Logging
 -------
@@ -178,13 +177,43 @@ The CLI revolves around a single subcommand called ``run``. Basic usage:
 
    ostruct run <TASK_TEMPLATE> <SCHEMA_FILE> [OPTIONS]
 
-File & Directory Inputs
-~~~~~~~~~~~~~~~~~~~~~~~
+File & Directory Routing
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``-f <NAME> <PATH>``: Map a single file to a variable name
-- ``-d <NAME> <DIR>``: Map a directory to a variable name
-- ``-p <NAME> <PATTERN>``: Map files matching a glob pattern to a variable name
-- ``-R, --recursive``: Enable recursive directory/pattern scanning
+**Template Access (Local Only)**:
+
+- ``-ft, --file-for-template FILE``: Files available in template only (auto-naming)
+- ``--fta, --file-for-template-alias NAME PATH``: Files for template with custom aliases
+- ``-dt, --dir-for-template DIR``: Directories for template access (auto-naming)
+- ``--dta, --dir-for-template-alias NAME PATH``: Directories for template with custom aliases
+
+**Code Interpreter (Execution & Analysis)**:
+
+- ``-fc, --file-for-code-interpreter FILE``: Upload files for code execution (auto-naming)
+- ``--fca, --file-for-code-interpreter-alias NAME PATH``: Files for code execution with custom aliases
+- ``-dc, --dir-for-code-interpreter DIR``: Upload directories for analysis (auto-naming)
+- ``--dca, --dir-for-code-interpreter-alias NAME PATH``: Directories for code execution with custom aliases
+
+**File Search (Document Retrieval)**:
+
+- ``-fs, --file-for-search FILE``: Upload files for semantic vector search (auto-naming)
+- ``--fsa, --file-for-search-alias NAME PATH``: Files for search with custom aliases
+- ``-ds, --dir-for-search DIR``: Upload directories for semantic search (auto-naming)
+- ``--dsa, --dir-for-search-alias NAME PATH``: Directories for search with custom aliases
+
+**Advanced Routing**:
+
+- ``--file-for TOOL PATH``: Route files to specific tools (code-interpreter, file-search, template)
+
+**Legacy Compatibility**:
+
+- ``-f, --file NAME PATH``: Associate a file with a variable name (template access only)
+- ``-d, --dir NAME DIR``: Associate a directory with a variable name (template access only)
+- ``-p, --pattern NAME PATTERN``: Associate a glob pattern with a variable name
+
+**Security & Path Control**:
+
+- ``-R, --recursive``: Process directories and patterns recursively
 - ``--base-dir DIR``: Base directory for resolving relative paths
 - ``-A, --allow DIR``: Add an allowed directory for security (repeatable)
 - ``--allowed-dir-file FILE``: File containing allowed directory paths
@@ -192,18 +221,49 @@ File & Directory Inputs
 Variables
 ~~~~~~~~~
 
-- ``-V name=value``: Define a simple string variable
-- ``-J name='{"key":"value"}'``: Define a JSON variable
+- ``-V, --var name=value``: Define a simple string variable
+- ``-J, --json-var name='{"key":"value"}'``: Define a JSON variable
+
+Multi-Tool Integration
+~~~~~~~~~~~~~~~~~~~~~~
+
+**Web Search**:
+
+- ``--web-search``: Enable OpenAI web search tool for up-to-date information
+- ``--no-web-search``: Explicitly disable web search
+- ``--search-context-size [low|medium|high]``: Control content retrieval amount
+- ``--user-country TEXT``: Specify user country for geographically tailored results
+- ``--user-region TEXT``: Specify user region/state for search results
+- ``--user-city TEXT``: Specify user city for search results
+
+**MCP Servers**:
+
+- ``--mcp-server [LABEL@]URL``: Connect to Model Context Protocol server
+- ``--mcp-headers TEXT``: JSON string of headers for MCP servers
+- ``--mcp-require-approval [always|never]``: Approval level for MCP tool usage
+- ``--mcp-allowed-tools TEXT``: Allowed tools per server
+
+**Code Interpreter Options**:
+
+- ``--code-interpreter-cleanup``: Clean up uploaded files after execution (default: True)
+- ``--code-interpreter-download-dir DIR``: Directory to save generated files
+
+**File Search Options**:
+
+- ``--file-search-cleanup``: Clean up uploaded files and vector stores (default: True)
+- ``--file-search-vector-store-name TEXT``: Name for the vector store
+- ``--file-search-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
+- ``--file-search-retry-count INT``: Number of retry attempts (default: 3)
 
 Model Parameters
 ~~~~~~~~~~~~~~~~
 
-- ``-m, --model MODEL``: Select the OpenAI model (supported: gpt-4o, o1, o3-mini)
-- ``--temperature FLOAT``: Set sampling temperature (0.0-2.0)
-- ``--max-output-tokens INT``: Set maximum output tokens
-- ``--top-p FLOAT``: Set top-p sampling parameter (0.0-1.0)
-- ``--frequency-penalty FLOAT``: Adjust frequency penalty (-2.0-2.0)
-- ``--presence-penalty FLOAT``: Adjust presence penalty (-2.0-2.0)
+- ``-m, --model TEXT``: OpenAI model (supported: gpt-4o, o1, o3-mini) (default: gpt-4o)
+- ``--temperature FLOAT``: Sampling temperature (0.0-2.0)
+- ``--max-output-tokens INT``: Maximum output tokens
+- ``--top-p FLOAT``: Top-p sampling parameter (0.0-1.0)
+- ``--frequency-penalty FLOAT``: Frequency penalty (-2.0-2.0)
+- ``--presence-penalty FLOAT``: Presence penalty (-2.0-2.0)
 - ``--reasoning-effort [low|medium|high]``: Control model reasoning effort
 
 System Prompt
@@ -216,8 +276,9 @@ System Prompt
 API Configuration
 ~~~~~~~~~~~~~~~~~
 
-- ``--api-key KEY``: OpenAI API key (defaults to OPENAI_API_KEY env var)
+- ``--api-key TEXT``: OpenAI API key (defaults to OPENAI_API_KEY env var)
 - ``--timeout FLOAT``: API timeout in seconds (default: 60.0)
+- ``--config PATH``: Configuration file path (default: ostruct.yaml)
 
 Output Control
 ~~~~~~~~~~~~~~
@@ -228,12 +289,31 @@ Output Control
 Debug & Progress
 ~~~~~~~~~~~~~~~~
 
-- ``--debug-validation``: Show detailed schema validation debugging
-- ``--debug-openai-stream``: Enable low-level debug output for OpenAI streaming
-- ``--progress-level {none,basic,detailed}``: Set progress reporting level
-  - ``none``: No progress indicators
-  - ``basic``: Show key operation steps (default)
-  - ``detailed``: Show all steps with additional info
-- ``--show-model-schema``: Display the generated Pydantic model schema
-- ``--verbose``: Enable verbose logging
+**Progress Control**:
+
+- ``--progress-level [none|basic|detailed]``: Set progress reporting level (default: basic)
 - ``--no-progress``: Disable all progress indicators
+- ``--verbose``: Enable verbose logging
+
+**Template Debugging**:
+
+- ``--debug-templates``: Enable detailed template expansion debugging
+- ``--show-templates``: Show expanded templates before sending to API
+- ``--show-context``: Show template variable context summary
+- ``--show-context-detailed``: Show detailed template variable context
+- ``--help-debug``: Show comprehensive template debugging help
+
+**Optimization Debugging**:
+
+- ``--no-optimization``: Skip template optimization entirely
+- ``--show-optimization-diff``: Show template optimization changes
+- ``--show-optimization-steps``: Show detailed optimization step tracking
+- ``--optimization-step-detail [summary|detailed]``: Level of optimization detail
+- ``--show-pre-optimization``: Show template content before optimization
+
+**Validation & Schema**:
+
+- ``--debug-validation``: Show detailed schema validation debugging
+- ``--show-model-schema``: Display the generated Pydantic model schema
+- ``--debug-openai-stream``: Enable low-level debug output for OpenAI streaming
+- ``--debug``: Enable debug-level logging including template expansion

@@ -598,7 +598,7 @@ Syntax Selection Best Practices
 - Building reusable templates that others will use
 - File names contain special characters or are very long
 
-**When to Use Two-Argument Syntax (``-ft name path``)**
+**When to Use Alias Syntax (``--fta name path``)**
 
 ✅ **Good for:**
 
@@ -610,12 +610,12 @@ Syntax Selection Best Practices
 
    # Clear, semantic variable names
    ostruct run project_report.j2 schema.json \
-     -ft project_config ./config/complex-project-settings.yaml \
-     -fc quarterly_data ./data/Q4-2024/sales/regional-breakdown.xlsx
+     --fta project_config ./config/complex-project-settings.yaml \
+     --fca quarterly_data ./data/Q4-2024/sales/regional-breakdown.xlsx
 
-**When to Use Alias Syntax (``--fta name path``)**
+**Additional Benefits of Alias Syntax**
 
-✅ **Good for:**
+✅ **Also good for:**
 
 - Interactive use where you want tab completion for paths
 - Complex directory structures
@@ -638,7 +638,7 @@ For maximum clarity, use a combination of syntaxes:
    ostruct run comprehensive_analysis.j2 schema.json \
      -ft simple_config.yaml \                     # Auto-naming for simple files
      --fta database_config ./config/db/prod.yaml \  # Alias for complex paths
-     -fc analysis ./data/clean_dataset.csv \        # Two-arg for semantic clarity
+     --fca analysis ./data/clean_dataset.csv \        # Alias for semantic clarity
      -V environment=production                       # CLI variables as needed
 
 Error Prevention and Debugging
@@ -705,9 +705,9 @@ Template Usage Patterns
 
    # Use descriptive names to distinguish files
    ostruct run compare.j2 schema.json \
-     -ft baseline_config ./configs/baseline.yaml \
-     -ft production_config ./configs/production.yaml \
-     -ft staging_config ./configs/staging.yaml
+     --fta baseline_config ./configs/baseline.yaml \
+     --fta production_config ./configs/production.yaml \
+     --fta staging_config ./configs/staging.yaml
 
 .. code-block:: jinja
 
