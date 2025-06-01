@@ -816,6 +816,59 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
             return cls._instance
 
     # Replace the ModelRegistry class with our mock
+    # Patch the original module
     monkeypatch.setattr(
         "openai_model_registry.ModelRegistry", MockModelRegistry
     )
+
+    # Patch all the local references where ModelRegistry is imported with 'from'
+    # These are the actual module paths, not the command objects
+    try:
+        monkeypatch.setattr(
+            "ostruct.cli.registry_updates.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass  # Module might not be imported yet
+
+    try:
+        monkeypatch.setattr(
+            "ostruct.cli.cost_estimation.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass
+
+    try:
+        monkeypatch.setattr(
+            "ostruct.cli.commands.list_models.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass
+
+    try:
+        monkeypatch.setattr(
+            "ostruct.cli.commands.update_registry.ModelRegistry",
+            MockModelRegistry,
+        )
+    except AttributeError:
+        pass
+
+    try:
+        monkeypatch.setattr(
+            "ostruct.cli.schema_utils.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass
+
+    try:
+        monkeypatch.setattr(
+            "ostruct.cli.runner.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass
+
+    try:
+        monkeypatch.setattr(
+            "ostruct.cli.model_validation.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass

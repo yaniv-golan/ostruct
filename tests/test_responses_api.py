@@ -86,10 +86,14 @@ class TestResponsesAPIIntegration:
     """Test OpenAI Responses API integration and streaming."""
 
     @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
+    @patch("openai_model_registry.ModelRegistry")
     def test_responses_api_basic_call(
         self,
         mock_registry_class: Mock,
+        mock_runner_registry: Mock,
+        mock_validation_registry: Mock,
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -106,7 +110,11 @@ class TestResponsesAPIIntegration:
         }
         mock_capabilities.validate_parameter = Mock()
         mock_registry.get_capabilities.return_value = mock_capabilities
+
+        # Apply the same mock to all registry instances
         mock_registry_class.get_instance.return_value = mock_registry
+        mock_runner_registry.get_instance.return_value = mock_registry
+        mock_validation_registry.get_instance.return_value = mock_registry
 
         cli_runner = CliTestRunner()
 
@@ -160,10 +168,14 @@ class TestResponsesAPIIntegration:
         assert "text" in call_args[1]  # Responses API uses 'text' format
 
     @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
+    @patch("openai_model_registry.ModelRegistry")
     def test_responses_api_streaming(
         self,
         mock_registry_class: Mock,
+        mock_runner_registry: Mock,
+        mock_validation_registry: Mock,
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -180,7 +192,11 @@ class TestResponsesAPIIntegration:
         }
         mock_capabilities.validate_parameter = Mock()
         mock_registry.get_capabilities.return_value = mock_capabilities
+
+        # Apply the same mock to all registry instances
         mock_registry_class.get_instance.return_value = mock_registry
+        mock_runner_registry.get_instance.return_value = mock_registry
+        mock_validation_registry.get_instance.return_value = mock_registry
 
         cli_runner = CliTestRunner()
 
@@ -251,10 +267,14 @@ class TestResponsesAPIIntegration:
         mock_client.responses.create.assert_called_once()
 
     @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
+    @patch("openai_model_registry.ModelRegistry")
     def test_responses_api_with_tools(
         self,
         mock_registry_class: Mock,
+        mock_runner_registry: Mock,
+        mock_validation_registry: Mock,
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -271,7 +291,11 @@ class TestResponsesAPIIntegration:
         }
         mock_capabilities.validate_parameter = Mock()
         mock_registry.get_capabilities.return_value = mock_capabilities
+
+        # Apply the same mock to all registry instances
         mock_registry_class.get_instance.return_value = mock_registry
+        mock_runner_registry.get_instance.return_value = mock_registry
+        mock_validation_registry.get_instance.return_value = mock_registry
 
         cli_runner = CliTestRunner()
 
@@ -323,10 +347,14 @@ class TestResponsesAPIIntegration:
         assert call_args is not None
 
     @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
+    @patch("openai_model_registry.ModelRegistry")
     def test_responses_api_error_handling(
         self,
         mock_registry_class: Mock,
+        mock_runner_registry: Mock,
+        mock_validation_registry: Mock,
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -343,7 +371,11 @@ class TestResponsesAPIIntegration:
         }
         mock_capabilities.validate_parameter = Mock()
         mock_registry.get_capabilities.return_value = mock_capabilities
+
+        # Apply the same mock to all registry instances
         mock_registry_class.get_instance.return_value = mock_registry
+        mock_runner_registry.get_instance.return_value = mock_registry
+        mock_validation_registry.get_instance.return_value = mock_registry
 
         cli_runner = CliTestRunner()
 
@@ -385,10 +417,14 @@ class TestResponsesAPIIntegration:
         mock_client.responses.create.assert_called_once()
 
     @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
+    @patch("openai_model_registry.ModelRegistry")
     def test_responses_api_token_optimization(
         self,
         mock_registry_class: Mock,
+        mock_runner_registry: Mock,
+        mock_validation_registry: Mock,
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -405,7 +441,11 @@ class TestResponsesAPIIntegration:
         }
         mock_capabilities.validate_parameter = Mock()
         mock_registry.get_capabilities.return_value = mock_capabilities
+
+        # Apply the same mock to all registry instances
         mock_registry_class.get_instance.return_value = mock_registry
+        mock_runner_registry.get_instance.return_value = mock_registry
+        mock_validation_registry.get_instance.return_value = mock_registry
 
         cli_runner = CliTestRunner()
 
@@ -455,10 +495,14 @@ class TestResponsesAPIIntegration:
         mock_client.responses.create.assert_called_once()
 
     @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
+    @patch("openai_model_registry.ModelRegistry")
     def test_responses_api_model_parameters(
         self,
         mock_registry_class: Mock,
+        mock_runner_registry: Mock,
+        mock_validation_registry: Mock,
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -475,7 +519,11 @@ class TestResponsesAPIIntegration:
         }
         mock_capabilities.validate_parameter = Mock()
         mock_registry.get_capabilities.return_value = mock_capabilities
+
+        # Apply the same mock to all registry instances
         mock_registry_class.get_instance.return_value = mock_registry
+        mock_runner_registry.get_instance.return_value = mock_registry
+        mock_validation_registry.get_instance.return_value = mock_registry
 
         cli_runner = CliTestRunner()
 
