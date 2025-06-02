@@ -50,6 +50,7 @@ Notes:
 """
 
 import logging
+import re
 from typing import (
     Any,
     Callable,
@@ -148,6 +149,45 @@ def find_loop_vars(nodes: List[Node]) -> Set[str]:
         if hasattr(node, "else_"):
             loop_vars.update(find_loop_vars(cast(List[Node], node.else_)))
     return loop_vars
+
+
+def _extract_variable_name_from_jinja_error(error_message: str) -> str:
+    """Extract the actual variable name from a Jinja2 UndefinedError message.
+
+    Handles various Jinja2 error message formats:
+    - "'variable_name' is undefined"
+    - "'object_description' has no attribute 'property_name'"
+    - Other formats
+
+    Args:
+        error_message: The string representation of the Jinja2 UndefinedError
+
+    Returns:
+        The extracted variable name, or a sanitized version if parsing fails
+    """
+    # Pattern 1: Standard undefined variable: "'variable_name' is undefined"
+    match = re.match(r"'([^']+)' is undefined", error_message)
+    if match:
+        return match.group(1)
+
+    # Pattern 2: Attribute access on object: "'object' has no attribute 'property'"
+    # In this case, we want to extract just the property name, not the object description
+    match = re.match(r"'[^']+' has no attribute '([^']+)'", error_message)
+    if match:
+        property_name = match.group(1)
+        return property_name
+
+    # Pattern 3: Try to find any quoted identifier that looks like a variable name
+    # Look for quoted strings that contain only valid Python identifier characters
+    quoted_parts: List[str] = re.findall(r"'([^']+)'", error_message)
+    for part in quoted_parts:
+        # Check if this looks like a variable name (not a class name or description)
+        if re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", part) and "." not in part:
+            return part
+
+    # Fallback: If we can't parse it properly, return a generic message
+    # This avoids exposing internal class names to users
+    return "unknown_variable"
 
 
 def validate_template_placeholders(
@@ -343,9 +383,7 @@ def validate_template_placeholders(
             env.from_string(template).render(validation_context)
         except jinja2.UndefinedError as e:
             # Convert Jinja2 undefined errors to TaskTemplateVariableError with helpful message
-            var_name = str(e).split("'")[
-                1
-            ]  # Extract variable name from error message
+            var_name = _extract_variable_name_from_jinja_error(str(e))
             error_msg = (
                 f"Missing required template variable: {var_name}\n"
                 f"Available variables: {', '.join(sorted(available_vars))}\n"
