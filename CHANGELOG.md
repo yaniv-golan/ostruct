@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **File Routing Intent Bug**: Fixed incorrect large file warnings for Code Interpreter and File Search files. Also fixed duplicate file mapping error that occurred when the same file was processed twice from both CLI args and routing result by adding proper deduplication logic.
+- **Template Error Messages**: Fixed issue where internal class names like `ostruct.cli.file_list.FileInfoList` were appearing in user-facing template error messages. Error messages now properly extract variable names from Jinja2 errors and provide clean, actionable feedback.
+- **Large File Warning Timing**: Fixed large file warnings to trigger when file content is actually accessed (via `.content` property) rather than during FileInfo initialization, ensuring warnings appear at the appropriate time and are properly captured by test frameworks.
 
 ## [0.8.2] - 2025-06-01
 
