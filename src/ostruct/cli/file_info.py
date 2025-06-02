@@ -149,32 +149,6 @@ class FileInfo:
                 f"Permission denied: {os.path.basename(str(path))}"
             ) from e
 
-        # Add warning for large template-only files accessed via .content
-        # Use intent-based logic with fallback to routing_type for backward compatibility
-        template_only_intents = {FileRoutingIntent.TEMPLATE_ONLY}
-
-        # Determine if this is template-only routing
-        is_template_only = False
-        if self.routing_intent is not None:
-            # Use intent if available (new logic)
-            is_template_only = self.routing_intent in template_only_intents
-        else:
-            # Fallback to old logic for backward compatibility
-            is_template_only = (
-                self.routing_type == "template" or self.routing_type is None
-            )
-
-        if (
-            is_template_only and self.size and self.size > 100 * 1024
-        ):  # 100KB threshold
-            logger.warning(
-                f"File '{self.path}' ({self.size / 1024:.1f}KB) was routed for template-only access "
-                f"but its .content is being accessed. This will include the entire file content "
-                f"in the prompt sent to the AI. For large files intended for analysis or search, "
-                f"consider using -fc (Code Interpreter) or -fs (File Search) to optimize token usage, "
-                f"cost, and avoid exceeding model context limits."
-            )
-
     @property
     def path(self) -> str:
         """Get the path relative to security manager's base directory.
@@ -284,6 +258,32 @@ class FileInfo:
             FileReadError: If the file cannot be read, wrapping the underlying cause
                          (FileNotFoundError, UnicodeDecodeError, etc)
         """
+        # Add warning for large template-only files accessed via .content
+        # Use intent-based logic with fallback to routing_type for backward compatibility
+        template_only_intents = {FileRoutingIntent.TEMPLATE_ONLY}
+
+        # Determine if this is template-only routing
+        is_template_only = False
+        if self.routing_intent is not None:
+            # Use intent if available (new logic)
+            is_template_only = self.routing_intent in template_only_intents
+        else:
+            # Fallback to old logic for backward compatibility
+            is_template_only = (
+                self.routing_type == "template" or self.routing_type is None
+            )
+
+        if (
+            is_template_only and self.size and self.size > 100 * 1024
+        ):  # 100KB threshold
+            logger.warning(
+                f"File '{self.path}' ({self.size / 1024:.1f}KB) was routed for template-only access "
+                f"but its .content is being accessed. This will include the entire file content "
+                f"in the prompt sent to the AI. For large files intended for analysis or search, "
+                f"consider using -fc (Code Interpreter) or -fs (File Search) to optimize token usage, "
+                f"cost, and avoid exceeding model context limits."
+            )
+
         if self.__content is None:
             try:
                 self._read_file()
