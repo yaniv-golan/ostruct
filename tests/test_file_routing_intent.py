@@ -11,6 +11,34 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from tests.conftest import MockSecurityManager
 
 
+class LogCapture(logging.Handler):
+    """Custom log capture handler for testing."""
+
+    def __init__(self):
+        super().__init__()
+        self.records = []
+
+    def emit(self, record):
+        """Capture a log record."""
+        self.records.append(record)
+
+    def setup(self, logger_name: str, level: int = logging.WARNING):
+        """Set up log capture for a specific logger."""
+        self.records.clear()
+        logger = logging.getLogger(logger_name)
+
+        # Set level and add handler
+        self.setLevel(level)
+        logger.addHandler(self)
+        logger.setLevel(level)
+        logger.propagate = True
+
+    def teardown(self, logger_name: str):
+        """Clean up the log capture."""
+        logger = logging.getLogger(logger_name)
+        logger.removeHandler(self)
+
+
 class TestFileRoutingIntent:
     """Test FileRoutingIntent enum and its usage."""
 
@@ -90,16 +118,26 @@ class TestLargeFileWarnings:
             routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
         )
 
-        with caplog.at_level(logging.WARNING):
+        # Use custom log capture to ensure we catch the warning
+        log_capture = LogCapture()
+        log_capture.setup("ostruct.cli.file_info", logging.WARNING)
+
+        try:
             # Access content to trigger warning
             _ = file_info.content
 
-        # Check that warning was logged
-        warning_records: List[logging.LogRecord] = [
-            r for r in caplog.records if r.levelname == "WARNING"
-        ]
-        assert len(warning_records) > 0
-        assert any("large file" in r.message.lower() for r in warning_records)
+            # Check that warning was logged
+            warning_messages = [
+                record.getMessage()
+                for record in log_capture.records
+                if record.levelname == "WARNING"
+                and "large file" in record.getMessage().lower()
+            ]
+            assert (
+                len(warning_messages) > 0
+            ), f"Expected warning message not found. All records: {[r.getMessage() for r in log_capture.records]}"
+        finally:
+            log_capture.teardown("ostruct.cli.file_info")
 
     def test_large_file_no_warning_code_interpreter(
         self,
@@ -183,16 +221,26 @@ class TestLargeFileWarnings:
             routing_type="template",  # Set during initialization
         )
 
-        with caplog.at_level(logging.WARNING):
+        # Use custom log capture to ensure we catch the warning
+        log_capture = LogCapture()
+        log_capture.setup("ostruct.cli.file_info", logging.WARNING)
+
+        try:
             # Access content to trigger warning
             _ = file_info.content
 
-        # Check that warning was logged (fallback to old logic)
-        warning_records: List[logging.LogRecord] = [
-            r for r in caplog.records if r.levelname == "WARNING"
-        ]
-        assert len(warning_records) > 0
-        assert any("large file" in r.message.lower() for r in warning_records)
+            # Check that warning was logged (fallback to old logic)
+            warning_messages = [
+                record.getMessage()
+                for record in log_capture.records
+                if record.levelname == "WARNING"
+                and "large file" in record.getMessage().lower()
+            ]
+            assert (
+                len(warning_messages) > 0
+            ), f"Expected warning message not found. All records: {[r.getMessage() for r in log_capture.records]}"
+        finally:
+            log_capture.teardown("ostruct.cli.file_info")
 
     def test_small_file_no_warning(
         self,
@@ -254,15 +302,26 @@ class TestIntentMappingEdgeCases:
             routing_type="template",  # Set during initialization
         )
 
-        with caplog.at_level(logging.WARNING):
+        # Use custom log capture to ensure we catch the warning
+        log_capture = LogCapture()
+        log_capture.setup("ostruct.cli.file_info", logging.WARNING)
+
+        try:
             # Access content to trigger warning
             _ = file_info.content
 
-        # Should trigger warning due to fallback logic
-        warning_records: List[logging.LogRecord] = [
-            r for r in caplog.records if r.levelname == "WARNING"
-        ]
-        assert len(warning_records) > 0
+            # Should trigger warning due to fallback logic
+            warning_messages = [
+                record.getMessage()
+                for record in log_capture.records
+                if record.levelname == "WARNING"
+                and "large file" in record.getMessage().lower()
+            ]
+            assert (
+                len(warning_messages) > 0
+            ), f"Expected warning message not found. All records: {[r.getMessage() for r in log_capture.records]}"
+        finally:
+            log_capture.teardown("ostruct.cli.file_info")
 
     def test_none_routing_intent_with_non_template_routing_type(
         self,
