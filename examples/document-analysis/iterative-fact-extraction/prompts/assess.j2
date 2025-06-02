@@ -1,0 +1,112 @@
+---
+system: |
+  You are a coverage analysis specialist. Your task is to assess how well the extracted facts represent the source documents.
+  Output ONLY JSON that matches the attached schema. No extra commentary or markdown.
+
+  **IMPORTANT: File-Only Architecture**
+  - Source documents contain "content_file" field with filename reference
+  - You MUST read the actual content from the specified file first
+  - Use semantic comparison between complete source content and extracted facts
+  - This ensures accurate coverage analysis of the full document content
+
+  Key requirements:
+  - Read complete content from files before analysis
+  - Compare extracted facts against full source content
+  - Identify gaps in coverage and suggest improvements
+  - Provide quantitative coverage score and qualitative assessment
+  - Output must be valid JSON matching the provided schema
+---
+
+Analyze the coverage of extracted facts against the source documents:
+
+{% if source_documents is defined %}
+**SOURCE DOCUMENTS:**
+Document corpus available via File Search for semantic analysis.
+Total documents in corpus: {{ source_documents | length if source_documents is iterable else "File Search enabled" }}
+
+**CURRENT EXTRACTED FACTS:**
+{% set current_facts_file = None %}
+{% for doc in source_documents %}
+  {% if 'current_facts.json' in doc.name %}
+    {% set current_facts_file = doc %}
+  {% endif %}
+{% endfor %}
+{% if current_facts_file %}
+{% set current_facts_content = current_facts_file.content | from_json %}
+{% for fact in current_facts_content.extracted_facts %}
+- {{ fact.id }}: {{ fact.text }} ({{ fact.category }}, confidence: {{ fact.confidence }})
+{% endfor %}
+{% else %}
+No current facts file found in corpus.
+{% endif %}
+
+**MANDATORY PROCESSING STEPS:**
+1. **Use File Search**: Access the complete document corpus through File Search
+2. **Semantic Comparison**: Compare extracted facts against complete source content
+3. **Coverage Analysis**: Identify what's covered and what's missing
+
+{% else %}
+No source documents provided. For validation purposes, demonstrate the coverage analysis process with example assessment of hypothetical facts against a business document corpus.
+{% endif %}
+
+**Step-by-step instructions:**
+
+1. **Access Complete Source Content**
+   - Read the full text from the content_file specified in the source documents
+   - Use semantic search to understand the complete document content
+   - Identify all major themes, entities, and factual content in the source
+   - Note the scope and depth of information available
+
+2. **Analyze Current Facts Coverage**
+   - Review each extracted fact against the source content
+   - Assess how well facts represent the source material
+   - Identify areas of strong coverage and gaps
+   - Consider both breadth (topic coverage) and depth (detail level)
+
+3. **Identify Specific Issues**
+   - Find specific facts that are missing from the source content
+   - Identify facts that are incorrect or inaccurate
+   - Note facts that are duplicates or should be merged
+   - Look for facts that don't exist in the source and should be removed
+   - Focus on concrete, actionable findings rather than subjective scoring
+
+4. **Identify Missing Information**
+   - List specific topics, entities, or facts not captured
+   - Prioritize missing information by importance
+   - Suggest categories for missing facts
+   - Note any factual errors or inaccuracies
+
+5. **Provide Improvement Suggestions**
+   - Recommend specific areas for additional fact extraction
+   - Suggest refinements to existing facts
+   - Identify opportunities for better categorization
+   - Propose ways to improve coverage score
+
+**Quality Guidelines:**
+- Be objective and specific in assessment
+- Focus on factual content, not opinions or interpretations
+- Consider the intended use case for the facts
+- Balance comprehensiveness with relevance
+
+**Expected JSON format:**
+```json
+{
+  "coverage_analysis": {
+    "missing_facts": [
+      "Specific fact about X found in section Y",
+      "Important detail about Z mentioned in paragraph 3"
+    ],
+    "incorrect_facts": [
+      "fact_003 states incorrect date - should be 2023 not 2022",
+      "fact_007 confidence too high - source is speculative"
+    ],
+    "recommendations": [
+      "Add fact about market share from section 3",
+      "Correct the date in fact_003",
+      "Lower confidence for fact_007"
+    ]
+  }
+}
+```
+
+**Output only the JSON object - no explanations, no markdown formatting.**

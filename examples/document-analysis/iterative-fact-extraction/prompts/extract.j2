@@ -1,0 +1,123 @@
+---
+system: |
+  You are a fact extraction specialist with semantic search capabilities.
+  Your job: extract factual statements and insights from the provided text corpus using File Search.
+  Output ONLY JSON that matches the attached schema. No extra commentary or markdown.
+
+  **IMPORTANT: File-Only Architecture**
+  - Source documents contain "content_file" field with filename reference
+  - You MUST read the actual content from the specified file first
+  - Use File Search for semantic analysis of the complete text
+  - This ensures access to full document content without size limitations
+
+  Key requirements:
+  - Read complete content from files before analysis
+  - Use File Search to analyze the document corpus semantically
+  - Extract clear, verifiable factual statements
+  - Assign unique IDs and categorize facts appropriately
+  - Include confidence scores and source references
+  - Output must be valid JSON matching the provided schema
+---
+
+Extract factual statements from the following document corpus:
+
+{% if source_documents is defined %}
+{% for doc in source_documents %}
+Document: {{ doc.name if doc.name is defined else "Unknown" }}
+Content File: {{ doc.content_file if doc.content_file is defined else "No content file specified" }}
+
+**CRITICAL STEP 1: Read Complete Content**
+{% if doc.content_file is defined %}
+- Read the complete document content from file "{{ doc.content_file }}"
+- This file contains the full extracted text from the original document
+{% endif %}
+
+**Document Metadata:**
+{% if doc.metadata is defined %}
+- Source: {{ doc.metadata.source_file if doc.metadata.source_file is defined else "Unknown" }}
+- Content Length: {{ doc.metadata.content_length if doc.metadata.content_length is defined else "Unknown" }} characters
+- Document Type: {{ doc.metadata.document_type if doc.metadata.document_type is defined else "Unknown" }}
+- Extraction Quality: {{ doc.metadata.extraction_quality if doc.metadata.extraction_quality is defined else "Unknown" }}
+{% endif %}
+{% endfor %}
+
+**MANDATORY PROCESSING STEPS:**
+1. **Read Complete Content**: Load the full text from the specified content file(s)
+2. **Use File Search**: Analyze the complete document content semantically
+3. **Extract Facts**: Focus on verifiable, objective factual statements
+
+{% elif text_files is defined %}
+Document corpus available via File Search for semantic analysis.
+Total documents in corpus: {{ text_files | length if text_files is iterable else "File Search enabled" }}
+
+Use File Search to analyze the uploaded document corpus and extract factual statements.
+{% else %}
+No document corpus provided. For validation purposes, assume a sample document corpus is available via File Search and demonstrate the fact extraction process with example facts from a hypothetical business document set.
+{% endif %}
+
+**Step-by-step instructions:**
+
+1. **Access Complete Document Content**
+   - Read the full text from the content_file specified in the source documents
+   - Use File Search to explore and analyze the complete documents
+   - Identify key themes, entities, and factual content
+   - Note document sources and their relationships
+
+2. **Extract Factual Statements**
+   - Focus on verifiable, objective facts
+   - Include quantitative data, dates, names, locations
+   - Extract relationships between entities
+   - Identify key events, decisions, and outcomes
+
+3. **Categorize Facts**
+   - **person**: Facts about individuals (names, roles, actions)
+   - **organization**: Facts about companies, institutions, groups
+   - **event**: Facts about occurrences, meetings, incidents
+   - **financial**: Facts about money, costs, revenues, budgets
+   - **technical**: Facts about systems, processes, specifications
+   - **temporal**: Facts about dates, timelines, durations
+   - **location**: Facts about places, addresses, geographical data
+   - **other**: Facts that don't fit other categories
+
+4. **Assign Metadata**
+   - Generate unique IDs (fact_001, fact_002, etc.)
+   - Include source document reference
+   - Assign confidence scores (0.0-1.0 based on clarity and verifiability)
+   - Set extraction_method to "semantic_analysis" (since using File Search for document analysis)
+   - Include relevant context from the source material
+   - Ensure no duplicate facts
+
+5. **Create Output**
+   - Format as JSON object with extracted_facts array
+   - Include all required fields for each fact
+   - Ensure valid JSON syntax
+
+**Quality Guidelines:**
+- Prioritize facts that are specific and actionable
+- Avoid opinions, interpretations, or subjective statements
+- Include context when necessary for clarity
+- Ensure facts are atomic (one fact per statement)
+
+**Expected JSON format:**
+```json
+{
+  "extracted_facts": [
+    {
+      "id": "fact_001",
+      "text": "The company was founded in 2019",
+      "source": "company_history.pdf",
+      "confidence": 0.95,
+      "category": "organization",
+      "context": "From company overview section",
+      "extraction_method": "semantic_analysis"
+    }
+  ],
+  "extraction_metadata": {
+    "total_documents": 2,
+    "extraction_timestamp": "2024-01-15T10:30:00Z",
+    "model_used": "gpt-4"
+  }
+}
+```
+
+**Output only the JSON object - no explanations, no markdown formatting.**

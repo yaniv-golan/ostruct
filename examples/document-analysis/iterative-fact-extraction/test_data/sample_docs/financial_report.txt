@@ -1,0 +1,57 @@
+TechCorp Inc. Financial Report Q4 2023
+
+Executive Summary:
+TechCorp Inc. achieved record revenue of $2.5 million in 2023, representing a 39% increase from the previous year. The company maintained strong profitability with a 15% profit margin in Q4 2023.
+
+Revenue Breakdown by Quarter:
+- Q1 2023: $580,000
+- Q2 2023: $620,000
+- Q3 2023: $650,000
+- Q4 2023: $650,000
+Total 2023: $2,500,000
+
+Revenue by Product Line:
+- CloudSync: $1,200,000 (48%)
+- DataVault: $900,000 (36%)
+- TeamFlow: $400,000 (16%)
+
+Customer Metrics:
+- Total customers: 1,047 (as of Dec 31, 2023)
+- New customers in 2023: 312
+- Customer retention rate: 94%
+- Average revenue per customer: $2,388
+
+Operating Expenses:
+- Salaries and benefits: $1,650,000
+- Technology infrastructure: $320,000
+- Marketing and sales: $180,000
+- Office and facilities: $125,000
+- Other operating expenses: $85,000
+Total expenses: $2,360,000
+
+Net Income: $140,000 (5.6% net margin)
+
+Cash Flow:
+- Operating cash flow: $185,000
+- Investing cash flow: -$75,000
+- Financing cash flow: $0
+- Net cash flow: $110,000
+
+Balance Sheet Highlights:
+- Total assets: $1,850,000
+- Cash and equivalents: $425,000
+- Accounts receivable: $180,000
+- Total liabilities: $320,000
+- Shareholders' equity: $1,530,000
+
+Key Financial Ratios:
+- Current ratio: 2.8
+- Debt-to-equity ratio: 0.21
+- Return on equity: 9.2%
+- Gross margin: 68%
+
+2024 Projections:
+- Revenue target: $3.2M (28% growth)
+- Planned hiring: 15 additional employees
+- R&D investment: $400,000
+- Marketing budget increase: 25%

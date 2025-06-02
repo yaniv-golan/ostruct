@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "converted_text": {
+            "type": "object",
+            "properties": {
+                "content_file": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "properties": {
+                        "source_file": {
+                            "type": "string"
+                        },
+                        "page_count": {
+                            "type": "integer"
+                        },
+                        "conversion_method": {
+                            "type": "string"
+                        },
+                        "file_size": {
+                            "type": "integer"
+                        },
+                        "conversion_timestamp": {
+                            "type": "string"
+                        },
+                        "content_length": {
+                            "type": "integer"
+                        },
+                        "document_type": {
+                            "type": "string"
+                        },
+                        "extraction_quality": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "source_file",
+                        "conversion_method",
+                        "content_length"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "content_file",
+                "metadata"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "converted_text"
+    ],
+    "additionalProperties": false
+}

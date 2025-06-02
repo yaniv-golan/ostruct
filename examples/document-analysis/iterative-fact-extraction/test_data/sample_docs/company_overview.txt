@@ -1,0 +1,40 @@
+TechCorp Inc. Company Overview
+
+Founded: 2019
+Headquarters: San Francisco, CA
+CEO: Sarah Johnson (appointed January 2022)
+Employees: 47 (as of Q4 2023)
+
+Business Overview:
+TechCorp Inc. is a software development company specializing in cloud-based solutions for small and medium businesses. The company was incorporated in Delaware on March 15, 2019, by founders Sarah Johnson and Michael Chen.
+
+Financial Performance:
+- 2021 Revenue: $1.2M
+- 2022 Revenue: $1.8M
+- 2023 Revenue: $2.5M
+- Q4 2023 Profit Margin: 15%
+
+Key Milestones:
+- March 2019: Company incorporation
+- June 2019: First product launch (CloudSync)
+- January 2022: Sarah Johnson appointed as CEO
+- September 2022: Series A funding round ($5M)
+- March 2023: Office relocation to New York
+- December 2023: Reached 1000+ customers
+
+Products:
+1. CloudSync - File synchronization service
+2. DataVault - Secure cloud storage
+3. TeamFlow - Collaboration platform (launched Q3 2023)
+
+Office Locations:
+- Primary: New York, NY (since March 2023)
+- Secondary: San Francisco, CA (original headquarters)
+- Remote workforce: 60% of employees work remotely
+
+Technology Stack:
+- Backend: Python, Django
+- Frontend: React, TypeScript
+- Database: PostgreSQL
+- Cloud: AWS
+- DevOps: Docker, Kubernetes

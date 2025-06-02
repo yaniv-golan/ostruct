@@ -1,0 +1,43 @@
+# Output directories
+output/
+text_output/
+temp/
+
+# Pipeline output files
+*_facts.json
+*_test.json
+*_conversion.json
+*_extraction.json
+
+# Intermediate processing directories
+*_intermediate/
+corpus_temp/
+temp_cost_estimation/
+
+# User input directory (keep structure but ignore contents)
+input_docs/*
+!input_docs/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+temp_*
+acrobat.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log

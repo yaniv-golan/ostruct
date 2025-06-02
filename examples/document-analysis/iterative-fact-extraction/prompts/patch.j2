@@ -1,0 +1,190 @@
+---
+system: |
+  You are a JSON Patch specialist. Your task is to generate RFC-6902 JSON Patch operations to improve fact extraction based on coverage analysis.
+  Output ONLY JSON that matches the attached schema. No extra commentary or markdown.
+
+  **IMPORTANT: File-Only Architecture**
+  - Source documents contain "content_file" field with filename reference
+  - You MUST read the actual content from the specified file first
+  - Use complete source content to identify specific improvements
+  - This ensures accurate patch generation based on full document content
+
+  Key requirements:
+  - Read complete content from files before analysis
+  - Generate specific JSON Patch operations (add, remove, replace)
+  - Base improvements on coverage analysis and complete source content
+  - Include proper path references and values for each operation
+  - Output must be valid JSON matching the provided schema
+---
+
+Generate JSON Patch operations to improve the fact extraction based on coverage analysis:
+
+{% if source_documents is defined and current_facts is defined and coverage_analysis is defined %}
+**SOURCE DOCUMENTS:**
+{% for doc in source_documents %}
+Document: {{ doc.name if doc.name is defined else "Unknown" }}
+Content File: {{ doc.content_file if doc.content_file is defined else "No content file specified" }}
+
+**CRITICAL STEP 1: Read Complete Content**
+{% if doc.content_file is defined %}
+- Read the complete document content from file "{{ doc.content_file }}"
+- This file contains the full extracted text from the original document
+{% endif %}
+
+**Document Metadata:**
+{% if doc.metadata is defined %}
+- Source: {{ doc.metadata.source_file if doc.metadata.source_file is defined else "Unknown" }}
+- Content Length: {{ doc.metadata.content_length if doc.metadata.content_length is defined else "Unknown" }} characters
+- Document Type: {{ doc.metadata.document_type if doc.metadata.document_type is defined else "Unknown" }}
+- Extraction Quality: {{ doc.metadata.extraction_quality if doc.metadata.extraction_quality is defined else "Unknown" }}
+{% endif %}
+{% endfor %}
+
+**CURRENT FACTS:**
+{% for fact in current_facts_json.extracted_facts %}
+- {{ fact.id }}: {{ fact.text }} ({{ fact.category }}, confidence: {{ fact.confidence }})
+{% endfor %}
+
+**COVERAGE ANALYSIS:**
+- Missing Facts: {{ coverage_analysis.missing_facts | join(", ") if coverage_analysis.missing_facts is defined else "None" }}
+- Incorrect Facts: {{ coverage_analysis.incorrect_facts | join(", ") if coverage_analysis.incorrect_facts is defined else "None" }}
+- Recommendations:
+{% if coverage_analysis.recommendations is defined %}
+{% for recommendation in coverage_analysis.recommendations %}
+  - {{ recommendation }}
+{% endfor %}
+{% endif %}
+
+**MANDATORY PROCESSING STEPS:**
+1. **Read Complete Content**: Load the full text from the specified content file(s)
+2. **Analyze Gaps**: Review coverage analysis against complete source content
+3. **Generate Patches**: Create specific JSON Patch operations for improvements
+
+{% elif analysis_corpus is defined %}
+Document corpus available via File Search for semantic analysis.
+Total documents in corpus: {{ analysis_corpus | length if analysis_corpus is iterable else "File Search enabled" }}
+
+**CURRENT FACTS:**
+{% set current_facts_file = None %}
+{% for doc in analysis_corpus %}
+  {% if 'current_facts.json' in doc.name %}
+    {% set current_facts_file = doc %}
+  {% endif %}
+{% endfor %}
+{% if current_facts_file %}
+{% set current_facts_content = current_facts_file.content | from_json %}
+{% for fact in current_facts_content.extracted_facts %}
+- {{ fact.id }}: {{ fact.text }} ({{ fact.category }}, confidence: {{ fact.confidence }})
+{% endfor %}
+{% else %}
+No current facts file found in corpus.
+{% endif %}
+
+**COVERAGE ANALYSIS:**
+{% set coverage_analysis_file = None %}
+{% for doc in analysis_corpus %}
+  {% if 'assessment' in doc.name and '.json' in doc.name %}
+    {% set coverage_analysis_file = doc %}
+  {% endif %}
+{% endfor %}
+{% if coverage_analysis_file %}
+{% set coverage_analysis_content = coverage_analysis_file.content | from_json %}
+- Missing Facts: {{ coverage_analysis_content.coverage_analysis.missing_facts | join(", ") if coverage_analysis_content.coverage_analysis.missing_facts is defined else "None" }}
+- Incorrect Facts: {{ coverage_analysis_content.coverage_analysis.incorrect_facts | join(", ") if coverage_analysis_content.coverage_analysis.incorrect_facts is defined else "None" }}
+{% else %}
+No coverage analysis file found in corpus.
+{% endif %}
+
+Use File Search to analyze the uploaded document corpus and generate improvement patches.
+
+{% else %}
+No source documents, current facts, or coverage analysis provided. For validation purposes, demonstrate the patch generation process with example JSON Patch operations for improving fact extraction.
+{% endif %}
+
+**Step-by-step instructions:**
+
+1. **Access Complete Source Content**
+   - Read the full text from the content_file specified in the source documents
+   - Use the complete source content to identify specific missing facts
+   - Cross-reference coverage analysis suggestions with actual source content
+   - Identify exact text passages that should be extracted as facts
+
+2. **Analyze Required Improvements**
+   - Review coverage analysis recommendations
+   - Identify specific facts to add based on missing topics
+   - Find facts that need correction or refinement
+   - Determine facts that should be removed (duplicates, errors)
+
+3. **Generate JSON Patch Operations**
+   - **"add"** operations: Add new facts to the extracted_facts array
+     * Use path "/extracted_facts/-" to append to array
+     * Include complete fact object with all required fields
+     * Serialize complex values as JSON strings
+   - **"replace"** operations: Update existing facts
+     * Use path "/extracted_facts/{index}/field" for specific field updates
+     * Include new value for the field being replaced
+   - **"remove"** operations: Remove incorrect or duplicate facts
+     * Use path "/extracted_facts/{index}" to remove entire fact
+     * Do not include value field for remove operations
+
+4. **Ensure Patch Quality**
+   - Base all operations on actual source content
+   - Generate unique IDs for new facts (continue sequence)
+   - Include proper confidence scores and categories
+   - Reference correct source documents
+   - Ensure all required fact fields are present
+
+5. **Create Output**
+   - Format as JSON object with patch array
+   - Ensure valid JSON syntax
+   - Keep output simple and focused
+
+**JSON Patch Operation Types:**
+
+**Add new fact:**
+```json
+{
+  "op": "add",
+  "path": "/extracted_facts/-",
+  "value": "{\"id\": \"fact_011\", \"text\": \"Company revenue increased 25% in Q3 2023\", \"source\": \"financial_report.pdf\", \"confidence\": 0.9, \"category\": \"financial\", \"context\": \"From quarterly earnings section\", \"extraction_method\": \"semantic_analysis\"}"
+}
+```
+
+**Replace existing fact:**
+```json
+{
+  "op": "replace",
+  "path": "/extracted_facts/2/confidence",
+  "value": "0.85"
+}
+```
+
+**Remove incorrect fact:**
+```json
+{
+  "op": "remove",
+  "path": "/extracted_facts/5"
+}
+```
+
+**Quality Guidelines:**
+- Only generate patches for improvements that can be verified in source content
+- Prioritize high-impact additions that address coverage gaps
+- Ensure new facts follow the same format as existing facts
+- Include specific source references and context
+- Maintain fact ID sequence and uniqueness
+
+**Expected JSON format:**
+```json
+{
+  "patch": [
+    {
+      "op": "add",
+      "path": "/extracted_facts/-",
+      "value": "{\"id\": \"fact_011\", \"text\": \"New fact from source\", \"source\": \"document.pdf\", \"confidence\": 0.9, \"category\": \"organization\", \"context\": \"From section 2\", \"extraction_method\": \"semantic_analysis\"}"
+    }
+  ]
+}
+```
+
+**Output only the JSON object - no explanations, no markdown formatting.**
