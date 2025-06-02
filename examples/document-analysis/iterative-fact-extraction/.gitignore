@@ -41,3 +41,5 @@ __pycache__/
 
 # Logs
 *.log
+# Large test files (keep locally for testing)
+mc/
