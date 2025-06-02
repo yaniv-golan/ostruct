@@ -58,7 +58,7 @@ from ostruct.cli.errors import (
     PathSecurityError,
 )
 
-from .file_info import FileInfo
+from .file_info import FileInfo, FileRoutingIntent
 from .file_list import FileInfoList
 from .security import SecurityManager
 from .security.types import SecurityManagerProtocol
@@ -116,6 +116,7 @@ def collect_files_from_pattern(
     pattern: str,
     security_manager: SecurityManager,
     routing_type: Optional[str] = None,
+    routing_intent: Optional["FileRoutingIntent"] = None,
 ) -> List[FileInfo]:
     """Collect files matching a glob pattern or exact file path.
 
@@ -123,6 +124,7 @@ def collect_files_from_pattern(
         pattern: Glob pattern or file path to match
         security_manager: Security manager for path validation
         routing_type: How the file was routed
+        routing_intent: The intended use of the file in the pipeline
 
     Returns:
         List of FileInfo objects for matched files
@@ -134,7 +136,10 @@ def collect_files_from_pattern(
     if os.path.isfile(pattern):
         try:
             file_info = FileInfo.from_path(
-                pattern, security_manager, routing_type=routing_type
+                pattern,
+                security_manager,
+                routing_type=routing_type,
+                routing_intent=routing_intent,
             )
             return [file_info]
         except PathSecurityError:
@@ -154,7 +159,10 @@ def collect_files_from_pattern(
     for path in matched_paths:
         try:
             file_info = FileInfo.from_path(
-                path, security_manager, routing_type=routing_type
+                path,
+                security_manager,
+                routing_type=routing_type,
+                routing_intent=routing_intent,
             )
             files.append(file_info)
         except PathSecurityError:
@@ -172,6 +180,7 @@ def collect_files_from_directory(
     recursive: bool = False,
     allowed_extensions: Optional[List[str]] = None,
     routing_type: Optional[str] = None,
+    routing_intent: Optional[FileRoutingIntent] = None,
     **kwargs: Any,
 ) -> List[FileInfo]:
     """Collect files from a directory.
@@ -182,6 +191,7 @@ def collect_files_from_directory(
         recursive: Whether to process subdirectories
         allowed_extensions: List of allowed file extensions (without dot)
         routing_type: How the file was routed
+        routing_intent: The intended use of the file in the pipeline
         **kwargs: Additional arguments passed to FileInfo.from_path
 
     Returns:
@@ -283,6 +293,7 @@ def collect_files_from_directory(
                         abs_path,
                         security_manager=security_manager,
                         routing_type=routing_type,
+                        routing_intent=routing_intent,
                         **kwargs,
                     )
                     files.append(file_info)
@@ -347,6 +358,7 @@ def collect_files(
     dir_extensions: Optional[List[str]] = None,
     security_manager: Optional[SecurityManager] = None,
     routing_type: Optional[str] = None,
+    routing_intent: Optional[FileRoutingIntent] = None,
     **kwargs: Any,
 ) -> Dict[str, FileInfoList]:
     """Collect files from multiple sources.
@@ -359,6 +371,7 @@ def collect_files(
         dir_extensions: List of file extensions to include in directory processing
         security_manager: Security manager instance
         routing_type: How the files were routed (passed to FileInfo)
+        routing_intent: The intended use of the file in the pipeline
         **kwargs: Additional arguments passed to FileInfo.from_path
 
     Returns:
@@ -411,6 +424,7 @@ def collect_files(
                 str(path),
                 security_manager=security_manager,
                 routing_type=routing_type,
+                routing_intent=routing_intent,
                 **kwargs,
             )
             files[name] = FileInfoList(
@@ -433,6 +447,7 @@ def collect_files(
                     str(pattern),
                     security_manager=security_manager,
                     routing_type=routing_type,
+                    routing_intent=routing_intent,
                     **kwargs,
                 )
             except PathSecurityError as e:
@@ -476,6 +491,7 @@ def collect_files(
                     recursive=dir_recursive,
                     allowed_extensions=dir_extensions,
                     routing_type=routing_type,
+                    routing_intent=routing_intent,
                     **kwargs,
                 )
             except PathSecurityError as e:

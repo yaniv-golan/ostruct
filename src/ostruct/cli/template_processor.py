@@ -23,6 +23,7 @@ from .errors import (
     VariableNameError,
 )
 from .explicit_file_processor import ProcessingResult
+from .file_info import FileRoutingIntent
 from .file_utils import FileInfoList, collect_files
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
@@ -779,25 +780,44 @@ async def create_template_context_from_routing(
             "file-search", []
         )
 
-        # Convert to the format expected by create_template_context
-        # For legacy compatibility, we need (name, path) tuples
-        files_tuples = []
-        seen_files = set()  # Track files to avoid duplicates
+        # Intent mapping is implemented directly in the file categorization logic below
+        # This ensures files from different CLI flags get the correct routing intent
 
-        # Add template files - now single-argument auto-naming only
+        # Process files by intent groups instead of lumping them all together
+        files_dict = {}
+
+        # Group files by their intent
+        files_by_intent: Dict[FileRoutingIntent, List[Tuple[str, str]]] = {
+            FileRoutingIntent.TEMPLATE_ONLY: [],
+            FileRoutingIntent.CODE_INTERPRETER: [],
+            FileRoutingIntent.FILE_SEARCH: [],
+        }
+
+        dirs_by_intent: Dict[FileRoutingIntent, List[Tuple[str, str]]] = {
+            FileRoutingIntent.TEMPLATE_ONLY: [],
+            FileRoutingIntent.CODE_INTERPRETER: [],
+            FileRoutingIntent.FILE_SEARCH: [],
+        }
+
+        # Track processed files to avoid duplicates between CLI args and routing result
+        seen_files: Set[str] = set()
+
+        # Categorize files by their source and assign appropriate intent
+        # Template files from CLI args
         template_file_paths = args.get("template_files", [])
         for template_file_path in template_file_paths:
             if isinstance(template_file_path, (str, Path)):
-                # Auto-generate name for single-arg form: -ft config.yaml
                 file_name = _generate_template_variable_name(
                     str(template_file_path)
                 )
                 file_path_str = str(template_file_path)
                 if file_path_str not in seen_files:
-                    files_tuples.append((file_name, file_path_str))
+                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
+                        (file_name, file_path_str)
+                    )
                     seen_files.add(file_path_str)
 
-        # Add template file aliases (from --fta) - two-argument explicit naming
+        # Template file aliases from CLI args
         template_file_aliases = args.get("template_file_aliases", [])
         for name_path_tuple in template_file_aliases:
             if (
@@ -805,51 +825,26 @@ async def create_template_context_from_routing(
                 and len(name_path_tuple) == 2
             ):
                 custom_name, file_path_raw = name_path_tuple
-                file_path = str(file_path_raw)
-                file_name = str(
-                    custom_name
-                )  # Always use custom name for aliases
-
-                if file_path not in seen_files:
-                    files_tuples.append((file_name, file_path))
-                    seen_files.add(file_path)
-
-        # Also process template_files from routing result (for compatibility)
-        for template_file_item in template_files:
-            if isinstance(template_file_item, (str, Path)):
-                file_name = _generate_template_variable_name(
-                    str(template_file_item)
-                )
-                file_path_str = str(template_file_item)
+                file_path_str = str(file_path_raw)
                 if file_path_str not in seen_files:
-                    files_tuples.append((file_name, file_path_str))
+                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
+                        (str(custom_name), file_path_str)
+                    )
                     seen_files.add(file_path_str)
-            elif (
-                isinstance(template_file_item, tuple)
-                and len(template_file_item) == 2
-            ):
-                # Handle tuple format (name, path)
-                _, template_file_path = template_file_item
-                template_file_path_str = str(template_file_path)
-                file_name = _generate_template_variable_name(
-                    template_file_path_str
-                )
-                if template_file_path_str not in seen_files:
-                    files_tuples.append((file_name, template_file_path_str))
-                    seen_files.add(template_file_path_str)
 
-        # Add code interpreter files - now single-argument auto-naming only
+        # Code interpreter files from CLI args
         code_interpreter_file_paths = args.get("code_interpreter_files", [])
         for ci_file_path in code_interpreter_file_paths:
             if isinstance(ci_file_path, (str, Path)):
-                # Auto-generate name: -fc data.csv
                 file_name = _generate_template_variable_name(str(ci_file_path))
                 file_path_str = str(ci_file_path)
                 if file_path_str not in seen_files:
-                    files_tuples.append((file_name, file_path_str))
+                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
+                        (file_name, file_path_str)
+                    )
                     seen_files.add(file_path_str)
 
-        # Add code interpreter file aliases (from --fca) - two-argument explicit naming
+        # Code interpreter file aliases from CLI args
         code_interpreter_file_aliases = args.get(
             "code_interpreter_file_aliases", []
         )
@@ -859,44 +854,26 @@ async def create_template_context_from_routing(
                 and len(name_path_tuple) == 2
             ):
                 custom_name, file_path_raw = name_path_tuple
-                file_path = str(file_path_raw)
-                file_name = str(
-                    custom_name
-                )  # Always use custom name for aliases
-
-                if file_path not in seen_files:
-                    files_tuples.append((file_name, file_path))
-                    seen_files.add(file_path)
-
-        # Also process code_interpreter_files from routing result (for compatibility)
-        for ci_file_item in code_interpreter_files:
-            if isinstance(ci_file_item, (str, Path)):
-                file_name = _generate_template_variable_name(str(ci_file_item))
-                file_path_str = str(ci_file_item)
+                file_path_str = str(file_path_raw)
                 if file_path_str not in seen_files:
-                    files_tuples.append((file_name, file_path_str))
+                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
+                        (str(custom_name), file_path_str)
+                    )
                     seen_files.add(file_path_str)
-            elif isinstance(ci_file_item, tuple) and len(ci_file_item) == 2:
-                # Handle tuple format (name, path)
-                _, ci_file_path = ci_file_item
-                ci_file_path_str = str(ci_file_path)
-                file_name = _generate_template_variable_name(ci_file_path_str)
-                if ci_file_path_str not in seen_files:
-                    files_tuples.append((file_name, ci_file_path_str))
-                    seen_files.add(ci_file_path_str)
 
-        # Add file search files - now single-argument auto-naming only
+        # File search files from CLI args
         file_search_file_paths = args.get("file_search_files", [])
         for fs_file_path in file_search_file_paths:
             if isinstance(fs_file_path, (str, Path)):
-                # Auto-generate name: -fs docs.pdf
                 file_name = _generate_template_variable_name(str(fs_file_path))
                 file_path_str = str(fs_file_path)
                 if file_path_str not in seen_files:
-                    files_tuples.append((file_name, file_path_str))
+                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
+                        (file_name, file_path_str)
+                    )
                     seen_files.add(file_path_str)
 
-        # Add file search file aliases (from --fsa) - two-argument explicit naming
+        # File search file aliases from CLI args
         file_search_file_aliases = args.get("file_search_file_aliases", [])
         for name_path_tuple in file_search_file_aliases:
             if (
@@ -904,79 +881,131 @@ async def create_template_context_from_routing(
                 and len(name_path_tuple) == 2
             ):
                 custom_name, file_path_raw = name_path_tuple
-                file_path = str(file_path_raw)
-                file_name = str(
-                    custom_name
-                )  # Always use custom name for aliases
+                file_path_str = str(file_path_raw)
+                if file_path_str not in seen_files:
+                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
+                        (str(custom_name), file_path_str)
+                    )
+                    seen_files.add(file_path_str)
 
-                if file_path not in seen_files:
-                    files_tuples.append((file_name, file_path))
-                    seen_files.add(file_path)
+        # Process files from routing result and map to their proper intents
+        # Only add files that haven't been processed from CLI args
+        for template_file_item in template_files:
+            if isinstance(template_file_item, (str, Path)):
+                file_name = _generate_template_variable_name(
+                    str(template_file_item)
+                )
+                file_path_str = str(template_file_item)
+                if file_path_str not in seen_files:
+                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
+                        (file_name, file_path_str)
+                    )
+                    seen_files.add(file_path_str)
+            elif (
+                isinstance(template_file_item, tuple)
+                and len(template_file_item) == 2
+            ):
+                _, template_file_path = template_file_item
+                file_path_str = str(template_file_path)
+                file_name = _generate_template_variable_name(file_path_str)
+                if file_path_str not in seen_files:
+                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
+                        (file_name, file_path_str)
+                    )
+                    seen_files.add(file_path_str)
 
-        # Also process file_search_files from routing result (for compatibility)
+        for ci_file_item in code_interpreter_files:
+            if isinstance(ci_file_item, (str, Path)):
+                file_name = _generate_template_variable_name(str(ci_file_item))
+                file_path_str = str(ci_file_item)
+                if file_path_str not in seen_files:
+                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
+                        (file_name, file_path_str)
+                    )
+                    seen_files.add(file_path_str)
+            elif isinstance(ci_file_item, tuple) and len(ci_file_item) == 2:
+                _, ci_file_path = ci_file_item
+                file_path_str = str(ci_file_path)
+                file_name = _generate_template_variable_name(file_path_str)
+                if file_path_str not in seen_files:
+                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
+                        (file_name, file_path_str)
+                    )
+                    seen_files.add(file_path_str)
+
         for fs_file_item in file_search_files:
             if isinstance(fs_file_item, (str, Path)):
                 file_name = _generate_template_variable_name(str(fs_file_item))
                 file_path_str = str(fs_file_item)
                 if file_path_str not in seen_files:
-                    files_tuples.append((file_name, file_path_str))
+                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
+                        (file_name, file_path_str)
+                    )
                     seen_files.add(file_path_str)
             elif isinstance(fs_file_item, tuple) and len(fs_file_item) == 2:
-                # Handle tuple format (name, path)
                 _, fs_file_path = fs_file_item
-                fs_file_path_str = str(fs_file_path)
-                file_name = _generate_template_variable_name(fs_file_path_str)
-                if fs_file_path_str not in seen_files:
-                    files_tuples.append((file_name, fs_file_path_str))
-                    seen_files.add(fs_file_path_str)
+                file_path_str = str(fs_file_path)
+                file_name = _generate_template_variable_name(file_path_str)
+                if file_path_str not in seen_files:
+                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
+                        (file_name, file_path_str)
+                    )
+                    seen_files.add(file_path_str)
 
-        # Handle directory aliases - create stable template variables for directories
-        dir_mappings = []
-
-        # Get directory aliases from routing result (these are already processed from CLI args)
+        # Categorize directories by their intent
         routing = routing_result.routing
         for alias_name, dir_path in routing.template_dir_aliases:
-            dir_mappings.append((alias_name, str(dir_path)))
+            dirs_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
+                (alias_name, str(dir_path))
+            )
         for alias_name, dir_path in routing.code_interpreter_dir_aliases:
-            dir_mappings.append((alias_name, str(dir_path)))
+            dirs_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
+                (alias_name, str(dir_path))
+            )
         for alias_name, dir_path in routing.file_search_dir_aliases:
-            dir_mappings.append((alias_name, str(dir_path)))
+            dirs_by_intent[FileRoutingIntent.FILE_SEARCH].append(
+                (alias_name, str(dir_path))
+            )
 
-        # Auto-naming directories (from -dt, -dc, -ds)
+        # Auto-naming directories from CLI args
         template_dirs = args.get("template_dirs", [])
         for dir_path in template_dirs:
             dir_name = _generate_template_variable_name(str(dir_path))
-            dir_mappings.append((dir_name, str(dir_path)))
+            dirs_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
+                (dir_name, str(dir_path))
+            )
 
         code_interpreter_dirs = args.get("code_interpreter_dirs", [])
         for dir_path in code_interpreter_dirs:
             dir_name = _generate_template_variable_name(str(dir_path))
-            dir_mappings.append((dir_name, str(dir_path)))
+            dirs_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
+                (dir_name, str(dir_path))
+            )
 
         file_search_dirs = args.get("file_search_dirs", [])
         for dir_path in file_search_dirs:
             dir_name = _generate_template_variable_name(str(dir_path))
-            dir_mappings.append((dir_name, str(dir_path)))
+            dirs_by_intent[FileRoutingIntent.FILE_SEARCH].append(
+                (dir_name, str(dir_path))
+            )
 
-        # Process files from explicit routing
-        files_dict = collect_files(
-            file_mappings=cast(
-                List[Tuple[str, Union[str, Path]]], files_tuples
-            ),
-            dir_mappings=cast(
-                List[Tuple[str, Union[str, Path]]], dir_mappings
-            ),
-            dir_recursive=args.get("recursive", False),
-            security_manager=security_manager,
-            routing_type="template",  # Explicitly set routing_type for files processed here
-            # This needs careful thought as files_tuples can come from various sources
-            # For now, we assume files directly added to files_tuples are 'template' routed
-            # if not overridden by a more specific tool routing later.
-            # This is a simplification. A more robust way would be to track routing type
-            # for each path as it's parsed from CLI args.
-            # For the large file warning, FileInfo will default routing_type to None
-            # which FileInfo.content interprets as potentially template-routed.
-        )
+        # Process files by intent groups with appropriate routing_intent
+        for intent, file_mappings in files_by_intent.items():
+            if file_mappings or dirs_by_intent[intent]:
+                intent_files_dict = collect_files(
+                    file_mappings=cast(
+                        List[Tuple[str, Union[str, Path]]], file_mappings
+                    ),
+                    dir_mappings=cast(
+                        List[Tuple[str, Union[str, Path]]],
+                        dirs_by_intent[intent],
+                    ),
+                    dir_recursive=args.get("recursive", False),
+                    security_manager=security_manager,
+                    routing_type="template",  # Keep routing_type for template context accessibility
+                    routing_intent=intent,  # Use intent for warning logic
+                )
+                files_dict.update(intent_files_dict)
 
         # Handle legacy files and directories separately to preserve variable names
         legacy_files = args.get("files", [])
@@ -997,6 +1026,7 @@ async def create_template_context_from_routing(
                 dir_recursive=args.get("recursive", False),
                 security_manager=security_manager,
                 routing_type="template",  # Legacy flags are considered template-only
+                routing_intent=FileRoutingIntent.TEMPLATE_ONLY,  # Legacy files use template-only intent
             )
             # Merge legacy results into the main template context
             files_dict.update(legacy_files_dict)

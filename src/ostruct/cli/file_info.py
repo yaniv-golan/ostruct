@@ -3,11 +3,25 @@
 import hashlib
 import logging
 import os
+from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
 from .errors import FileReadError, OstructFileNotFoundError, PathSecurityError
 from .security import SecurityManager
+
+
+class FileRoutingIntent(Enum):
+    """Represents the intended use of a file in the ostruct pipeline.
+
+    This enum helps distinguish between different file routing intentions
+    to provide appropriate warnings and optimizations.
+    """
+
+    TEMPLATE_ONLY = "template_only"  # -ft, --fta, legacy -f, -d
+    CODE_INTERPRETER = "code_interpreter"  # -fc, --fca
+    FILE_SEARCH = "file_search"  # -fs, --fsa
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +49,7 @@ class FileInfo:
         encoding: Optional[str] = None,
         hash_value: Optional[str] = None,
         routing_type: Optional[str] = None,
+        routing_intent: Optional[FileRoutingIntent] = None,
     ) -> None:
         """Initialize FileInfo instance.
 
@@ -45,6 +60,7 @@ class FileInfo:
             encoding: Optional cached encoding
             hash_value: Optional cached hash value
             routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
+            routing_intent: The intended use of the file in the pipeline
 
         Raises:
             FileNotFoundError: If the file does not exist
@@ -59,6 +75,7 @@ class FileInfo:
         self.__size: Optional[int] = None
         self.__mtime: Optional[float] = None
         self.routing_type = routing_type
+        self.routing_intent = routing_intent
 
         logger.debug(
             "Creating FileInfo for path: %s, routing_type: %s",
@@ -133,13 +150,22 @@ class FileInfo:
             ) from e
 
         # Add warning for large template-only files accessed via .content
-        # Check if routing_type is 'template' or if it's part of a legacy -f/-d mapping
-        # For simplicity now, let's assume if routing_type is None it could be legacy template
-        is_template_routed = (
-            self.routing_type == "template" or self.routing_type is None
-        )
+        # Use intent-based logic with fallback to routing_type for backward compatibility
+        template_only_intents = {FileRoutingIntent.TEMPLATE_ONLY}
+
+        # Determine if this is template-only routing
+        is_template_only = False
+        if self.routing_intent is not None:
+            # Use intent if available (new logic)
+            is_template_only = self.routing_intent in template_only_intents
+        else:
+            # Fallback to old logic for backward compatibility
+            is_template_only = (
+                self.routing_type == "template" or self.routing_type is None
+            )
+
         if (
-            is_template_routed and self.size and self.size > 100 * 1024
+            is_template_only and self.size and self.size > 100 * 1024
         ):  # 100KB threshold
             logger.warning(
                 f"File '{self.path}' ({self.size / 1024:.1f}KB) was routed for template-only access "
@@ -384,6 +410,7 @@ class FileInfo:
         path: str,
         security_manager: SecurityManager,
         routing_type: Optional[str] = None,
+        routing_intent: Optional[FileRoutingIntent] = None,
     ) -> "FileInfo":
         """Create FileInfo instance from path.
 
@@ -391,6 +418,7 @@ class FileInfo:
             path: Path to file
             security_manager: Security manager for path validation
             routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
+            routing_intent: The intended use of the file in the pipeline
 
         Returns:
             FileInfo instance
@@ -399,7 +427,12 @@ class FileInfo:
             FileNotFoundError: If file does not exist
             PathSecurityError: If path is not allowed
         """
-        return cls(path, security_manager, routing_type=routing_type)
+        return cls(
+            path,
+            security_manager,
+            routing_type=routing_type,
+            routing_intent=routing_intent,
+        )
 
     def __str__(self) -> str:
         """String representation showing path."""
@@ -419,8 +452,10 @@ class FileInfo:
 
         Internal methods can modify private attributes, but external access is prevented.
         """
-        # Allow setting routing_type if it's not already set (i.e., during __init__)
-        if name == "routing_type" and not hasattr(self, name):
+        # Allow setting routing_type and routing_intent if they're not already set (i.e., during __init__)
+        if name in ("routing_type", "routing_intent") and not hasattr(
+            self, name
+        ):
             object.__setattr__(self, name, value)
             return
 

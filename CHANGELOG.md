@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - Unreleased yet
+
+### Fixed
+
+- **File Routing Intent Bug**: Fixed incorrect large file warnings for Code Interpreter and File Search files. Also fixed duplicate file mapping error that occurred when the same file was processed twice from both CLI args and routing result by adding proper deduplication logic.
+
 ## [0.8.2] - 2025-06-01
 
 ### Fixed
