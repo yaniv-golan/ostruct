@@ -24,6 +24,7 @@ from .errors import (
 from .exit_codes import ExitCode
 from .explicit_file_processor import ProcessingResult
 from .file_search import FileSearchManager
+from .json_extract import split_json_and_text
 from .mcp_integration import MCPConfiguration, MCPServerManager
 from .progress_reporting import (
     configure_progress_reporter,
@@ -525,11 +526,11 @@ async def stream_structured_output(
         )
 
         # Use the Responses API with streaming
-        response = await client.responses.create(**api_params)
+        api_response = await client.responses.create(**api_params)
 
         # Process streaming response
         accumulated_content = ""
-        async for chunk in response:
+        async for chunk in api_response:
             if on_log:
                 on_log(logging.DEBUG, f"Received chunk: {chunk}", {})
 
@@ -607,23 +608,61 @@ async def stream_structured_output(
             # Try to parse and validate accumulated content as complete JSON
             try:
                 if accumulated_content.strip():
-                    # Attempt to parse as complete JSON
-                    data = json.loads(accumulated_content.strip())
+                    # Try new JSON extraction logic first
+                    try:
+                        data, markdown_text = split_json_and_text(
+                            accumulated_content
+                        )
+                    except ValueError:
+                        # Fallback to original parsing for non-fenced JSON
+                        data = json.loads(accumulated_content.strip())
+                        markdown_text = ""
+
                     validated = output_schema.model_validate(data)
+
+                    # Store full raw text for downstream processing (debug logs, etc.)
+                    setattr(validated, "_raw_text", accumulated_content)
+                    # Store markdown text for annotation processing
+                    setattr(validated, "_markdown_text", markdown_text)
+                    # Store full API response for file download access
+                    setattr(validated, "_api_response", api_response)
+
                     yield validated
                     # Reset for next complete response (if any)
-                    accumulated_content = ""
-            except (json.JSONDecodeError, ValueError):
+                    # Guard against resetting if markdown link might be split across chunks
+                    if "](" not in markdown_text or markdown_text.count(
+                        "]("
+                    ) >= markdown_text.count("["):
+                        accumulated_content = ""
+                    # If potential incomplete link, keep accumulating
+            except ValueError:
                 # Not yet complete JSON, continue accumulating
                 continue
 
         # Handle any remaining content
         if accumulated_content.strip():
             try:
-                data = json.loads(accumulated_content.strip())
+                # Try new JSON extraction logic first
+                try:
+                    data, markdown_text = split_json_and_text(
+                        accumulated_content
+                    )
+                except ValueError:
+                    # Fallback to original parsing for non-fenced JSON
+                    data = json.loads(accumulated_content.strip())
+                    markdown_text = ""
+
                 validated = output_schema.model_validate(data)
+
+                # Store full raw text for downstream processing (debug logs, etc.)
+                setattr(validated, "_raw_text", accumulated_content)
+                # Store markdown text for annotation processing
+                setattr(validated, "_markdown_text", markdown_text)
+                # Store full API response for file download access
+                setattr(validated, "_api_response", api_response)
+
                 yield validated
-            except (json.JSONDecodeError, ValueError) as e:
+            except ValueError as e:
                 logger.error(f"Failed to parse final accumulated content: {e}")
                 raise StreamParseError(
                     f"Failed to parse response as valid JSON: {e}"
@@ -1043,26 +1082,60 @@ async def execute_model(
                 print(json_output)
 
         # Handle file downloads from Code Interpreter if any were generated
-        if (
-            code_interpreter_info
-            and hasattr(response, "file_ids")
-            and response.file_ids
-        ):
+        if code_interpreter_info and output_buffer:
             try:
-                download_dir = args.get(
-                    "code_interpreter_download_dir", "./downloads"
-                )
-                manager = code_interpreter_info["manager"]
-                # Type ignore since we know this is a CodeInterpreterManager
-                downloaded_files = await manager.download_generated_files(  # type: ignore[attr-defined]
-                    response.file_ids, download_dir
-                )
-                if downloaded_files:
-                    logger.info(
-                        f"Downloaded {len(downloaded_files)} generated files to {download_dir}"
+                # Get the API response from the last output item
+                last_response = output_buffer[-1]
+                if hasattr(last_response, "_api_response"):
+                    api_response = getattr(last_response, "_api_response")
+                    if hasattr(api_response, "messages"):
+                        download_dir = args.get(
+                            "code_interpreter_download_dir", "./downloads"
+                        )
+                        manager = code_interpreter_info["manager"]
+
+                        # Debug: Log response structure
+                        logger.debug(
+                            f"Response has {len(api_response.messages)} messages"
+                        )
+                        for i, msg in enumerate(api_response.messages):
+                            logger.debug(f"Message {i}: {type(msg)}")
+                            if hasattr(msg, "annotations"):
+                                logger.debug(
+                                    f"  Annotations: {msg.annotations}"
+                                )
+                            if hasattr(msg, "file_ids"):
+                                logger.debug(f"  File IDs: {msg.file_ids}")
+                            if hasattr(msg, "content"):
+                                content_str = (
+                                    str(msg.content)[:200] + "..."
+                                    if len(str(msg.content)) > 200
+                                    else str(msg.content)
+                                )
+                                logger.debug(
+                                    f"  Content preview: {content_str}"
+                                )
+
+                        # Type ignore since we know this is a CodeInterpreterManager
+                        downloaded_files = await manager.download_generated_files(  # type: ignore[attr-defined]
+                            api_response.messages, download_dir
+                        )
+                        if downloaded_files:
+                            logger.info(
+                                f"Downloaded {len(downloaded_files)} generated files to {download_dir}"
+                            )
+                            for file_path in downloaded_files:
+                                logger.info(f"  - {file_path}")
+                        else:
+                            logger.debug(
+                                "No files were downloaded from Code Interpreter"
+                            )
+                    else:
+                        logger.debug("API response has no messages attribute")
+                else:
+                    logger.debug(
+                        "Last response has no _api_response attribute"
                     )
-                    for file_path in downloaded_files:
-                        logger.info(f"  - {file_path}")
             except Exception as e:
                 logger.warning(f"Failed to download generated files: {e}")
 

@@ -137,10 +137,32 @@ class TestCodeInterpreterManager:
                 mock_content2,
             ]
 
+            # Create mock messages with annotations (new API format)
+            mock_msg1 = Mock()
+            mock_msg1.annotations = [
+                {
+                    "type": "container_file_citation",
+                    "file_id": "file-output-123",
+                    "container_id": "container-123",
+                    "filename": "chart.png",
+                }
+            ]
+
+            mock_msg2 = Mock()
+            mock_msg2.annotations = [
+                {
+                    "type": "container_file_citation",
+                    "file_id": "file-output-456",
+                    "container_id": "container-456",
+                    "filename": "results.csv",
+                }
+            ]
+
+            messages = [mock_msg1, mock_msg2]
+
             # Test download
-            file_ids = ["file-output-123", "file-output-456"]
             downloaded_paths = await self.manager.download_generated_files(
-                file_ids, temp_dir
+                messages, temp_dir
             )
 
             assert len(downloaded_paths) == 2
@@ -173,15 +195,71 @@ class TestCodeInterpreterManager:
             self.mock_client.files.retrieve.return_value = mock_file_info
             self.mock_client.files.content.return_value = mock_content
 
+            # Create mock message with annotation but no filename
+            mock_msg = Mock()
+            mock_msg.annotations = [
+                {
+                    "type": "container_file_citation",
+                    "file_id": "file-output-123",
+                    "container_id": "container-123",
+                    "filename": None,
+                }
+            ]
+            messages = [mock_msg]
+
             # Test download
-            file_ids = ["file-output-123"]
             downloaded_paths = await self.manager.download_generated_files(
-                file_ids, temp_dir
+                messages, temp_dir
             )
 
             assert len(downloaded_paths) == 1
-            # Should use generated filename
-            assert "generated_file_file-out.dat" in downloaded_paths[0]
+            # Should use file_id as filename when no other filename is available
+            assert "file-output-123" in downloaded_paths[0]
+
+    @pytest.mark.asyncio
+    async def test_download_generated_files_legacy_fallback(self):
+        """Test downloading files using legacy file_ids fallback."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Mock file info and content
+            mock_file_info = Mock()
+            mock_file_info.filename = "legacy_file.txt"
+
+            mock_content = Mock()
+            mock_content.read.return_value = b"legacy content"
+
+            self.mock_client.files.retrieve.return_value = mock_file_info
+            self.mock_client.files.content.return_value = mock_content
+
+            # Create mock message with legacy file_ids (no annotations)
+            mock_msg = Mock()
+            mock_msg.annotations = None  # No annotations
+            mock_msg.file_ids = ["file-legacy-123"]
+            messages = [mock_msg]
+
+            # Test download
+            downloaded_paths = await self.manager.download_generated_files(
+                messages, temp_dir
+            )
+
+            assert len(downloaded_paths) == 1
+            assert "legacy_file.txt" in downloaded_paths[0]
+
+    @pytest.mark.asyncio
+    async def test_download_generated_files_no_files(self):
+        """Test downloading when no files are present."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create mock message with no annotations or file_ids
+            mock_msg = Mock()
+            mock_msg.annotations = None
+            mock_msg.file_ids = None
+            messages = [mock_msg]
+
+            # Test download
+            downloaded_paths = await self.manager.download_generated_files(
+                messages, temp_dir
+            )
+
+            assert len(downloaded_paths) == 0
 
     @pytest.mark.asyncio
     async def test_cleanup_uploaded_files(self):
