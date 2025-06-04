@@ -33,6 +33,7 @@ ostruct = "ostruct.cli.cli:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.4,<9.0",
+    "pytest-rerunfailures>=12.0,<13.0",
     "flake8>=6.0,<7.0",
     "flake8-pyproject>=1.2.3,<2.0",
     "black==24.8.0",
@@ -54,6 +55,7 @@ dev = [
     "types-requests>=2.32.0.20241016",
     "pre-commit>=4.1.0,<5.0",
     "psutil>=7.0.0,<8.0",
+    "hypothesis>=6.0.0,<7.0",
 ]
 docs = [
     "sphinx>=7.0,<8.0",
@@ -111,12 +113,16 @@ include = ["py.typed"]
     testpaths = ["tests"]
     python_files = ["test_*.py"]
     markers = [
-        "live: mark test as a live test that should use real API key",
+        "live: mark test as a live test that makes real API calls or runs actual ostruct commands",
         "asyncio: mark test as requiring async loop",
-        "no_pyfakefs: mark test to disable pyfakefs",
-        "slow: mark test as slow performance/stress test"
+        "no_fs: mark test to disable pyfakefs and use real filesystem",
+        "slow: mark test as slow performance/stress test",
+        "flaky: mark test as flaky (may need reruns)",
+        "mock_openai: mark test to use mock OpenAI client"
     ]
     asyncio_default_fixture_loop_scope = "function"
+    # By default, skip live tests unless explicitly requested
+    addopts = "-m 'not live'"
 
     [tool.ruff]
     target-version = "py310"

@@ -1,2 +1,5 @@
-models:
-  default: gpt-4o-mini
+version: 1
+tools:
+  code_interpreter:
+    auto_download: true
+    output_directory: "./dl"

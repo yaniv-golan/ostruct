@@ -119,3 +119,4 @@ migration_plan_tests/
 docs/dev/
 docs_migration_tasks.md
 temp_verify/
+examples/document-analysis/iterative-fact-extraction/
