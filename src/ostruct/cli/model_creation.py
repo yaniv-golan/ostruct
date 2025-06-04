@@ -197,7 +197,7 @@ def _get_type_with_constraints(
             field_type_cls = Union[tuple(union_types)]
 
         # Apply constraints based on the base type (non-null type)
-        if base_type == str:
+        if base_type is str:
             # Add string-specific constraints to field_kwargs
             if "pattern" in field_schema:
                 field_kwargs["pattern"] = field_schema["pattern"]
