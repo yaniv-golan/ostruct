@@ -81,6 +81,11 @@ Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
 
 - [web-search](web-search/): **Real-time information retrieval with web search integration** - Current events analysis, technology updates, market research with live data and source citations
 
+### Argumentation Examples
+
+- [arg_to_aif](arg_to_aif/): **Natural-language argument extraction to AIFdb format** - Convert free-text arguments into AIFdb-compatible JSON with proper node/edge structure and metadata
+- [multi_agent_debate](multi_agent_debate/): **Two-agent evidence-seeking debate with live visualization** - Structured PRO vs CON debate with web search, argument mapping, and auto-generated Mermaid diagrams
+
 ### Security Examples
 
 - [vulnerability-scan](security/vulnerability-scan/): **Three-approach automated security vulnerability scanning** - Static Analysis ($0.18), Code Interpreter ($0.18), and Hybrid Analysis ($0.20) with comprehensive directory-based project analysis
