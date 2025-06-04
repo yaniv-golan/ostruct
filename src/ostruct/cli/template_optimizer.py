@@ -251,19 +251,15 @@ class TemplateOptimizer:
         if match:
             return match.group(1)
 
-        # Pattern 2: variable.content where variable is likely a file
+        # Pattern 2: variable.content - handle ALL single-file variables
         match = re.search(r"(\w+)\.content", content_expr)
         if match:
             var_name = match.group(1)
             # Skip if this is a loop variable
             if var_name in loop_variables:
                 return None
-            # Common file variable patterns
-            if any(
-                keyword in var_name.lower()
-                for keyword in ["file", "config", "data", "script", "code"]
-            ):
-                return f"${var_name}"  # Use variable name as placeholder
+            # Return placeholder for ANY .content access to prevent directory misclassification
+            return f"${var_name}"
 
         # Pattern 3: files['filename'].content
         match = re.search(
@@ -373,6 +369,14 @@ class TemplateOptimizer:
         # Skip if this is a loop variable
         if dir_var in loop_variables:
             return full_match
+
+        # Skip if this is a single-file variable accessed via .content
+        # These should be handled by the file pattern, not directory pattern
+        if content_expr.endswith(".content"):
+            # Check if this would be handled by _extract_file_path
+            file_path = self._extract_file_path(content_expr, loop_variables)
+            if file_path:
+                return full_match  # Let file pattern handle it
 
         reference = f"the files and subdirectories in <dir:{dir_var}>"
         self.dir_references[dir_var] = reference
