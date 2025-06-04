@@ -290,7 +290,9 @@ class TestCLIExecution:
         mock_code_interpreter_instance = Mock()
         mock_code_interpreter.return_value = mock_code_interpreter_instance
         # Mock the actual methods that CodeInterpreter uses
-        mock_code_interpreter_instance.validate_files_for_upload.return_value = []  # No validation errors
+        mock_code_interpreter_instance.validate_files_for_upload.return_value = (
+            []
+        )  # No validation errors
         mock_code_interpreter_instance.upload_files_for_code_interpreter = (
             AsyncMock(return_value=["file_id_123"])
         )

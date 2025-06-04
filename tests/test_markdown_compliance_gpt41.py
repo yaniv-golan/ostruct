@@ -5,9 +5,9 @@ follows markdown link instructions by running controlled experiments with
 deterministic prompts and controlled stochasticity.
 """
 
-import pytest
 import random
-import statistics
+
+import pytest
 from openai import OpenAI
 
 client = OpenAI()
@@ -90,9 +90,9 @@ def test_gpt41_markdown_link_compliance():
         results[temp] = rate
 
         # Require ≥ 90% compliance for each temperature bucket
-        assert rate >= 0.9, (
-            f"Markdown link compliance {rate:.0%} < 90% at temperature={temp}"
-        )
+        assert (
+            rate >= 0.9
+        ), f"Markdown link compliance {rate:.0%} < 90% at temperature={temp}"
 
     # Log for visibility
     print("GPT-4.1 compliance rates:", results)

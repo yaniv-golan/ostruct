@@ -2,6 +2,7 @@
 
 import json
 import os
+
 import pytest
 from click.testing import CliRunner
 from ostruct.cli.cli import create_cli
