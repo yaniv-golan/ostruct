@@ -1,0 +1,145 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "AIF": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "string"
+                },
+                "analyst": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "version",
+                "analyst",
+                "created"
+            ],
+            "additionalProperties": false
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "nodeID": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "I",
+                            "RA",
+                            "CA",
+                            "PA",
+                            "MA"
+                        ]
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "nodeID",
+                    "text",
+                    "type",
+                    "timestamp"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "edges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "edgeID": {
+                        "type": "string"
+                    },
+                    "fromID": {
+                        "type": "string"
+                    },
+                    "toID": {
+                        "type": "string"
+                    },
+                    "formEdgeID": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "edgeID",
+                    "fromID",
+                    "toID",
+                    "formEdgeID"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "locutions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "nodeID": {
+                        "type": "string"
+                    },
+                    "personID": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "nodeID",
+                    "personID",
+                    "timestamp",
+                    "source"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "participants": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "participantID": {
+                        "type": "string"
+                    },
+                    "firstname": {
+                        "type": "string"
+                    },
+                    "surname": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "participantID",
+                    "firstname",
+                    "surname"
+                ],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": [
+        "AIF",
+        "nodes",
+        "edges",
+        "locutions",
+        "participants"
+    ],
+    "additionalProperties": false
+}

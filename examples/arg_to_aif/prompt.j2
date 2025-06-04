@@ -1,0 +1,84 @@
+{#  prompt.j2  —  feed to ostruct #}
+You are an *argument-graph extraction* specialist with expertise in the **Argument Interchange Format (AIF)** specification.
+
+**Task**
+Convert the natural-language passage in <input> into a **complete AIFdb-compatible JSON** that can be viewed in online AIF viewers.
+
+**AIFdb JSON Format Specification:**
+
+**Required Structure:**
+```json
+{
+  "AIF": {
+    "version": "1.0",
+    "analyst": "AI Assistant",
+    "created": "2024-01-01T00:00:00Z"
+  },
+  "nodes": [
+    {
+      "nodeID": "1",
+      "text": "actual claim text from input",
+      "type": "I",
+      "timestamp": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "edges": [
+    {
+      "edgeID": "1",
+      "fromID": "1",
+      "toID": "2",
+      "formEdgeID": ""
+    }
+  ],
+  "locutions": [],
+  "participants": []
+}
+```
+
+**Node Types:**
+* **I**: Information nodes containing propositions, claims, statements
+* **RA**: Rule Application nodes representing inference relations
+* **CA**: Conflict Application nodes representing conflict relations
+* **PA**: Preference Application nodes representing preference relations
+* **MA**: Missing Application nodes for implicit reasoning
+
+**Graph Construction Rules:**
+1. **nodeID** must be string (not integer) - this is critical for AIFdb compatibility
+2. **edgeID** must be string (not integer) - this is critical for AIFdb compatibility
+3. I-nodes contain the actual textual content of claims/propositions from the input text
+4. S-nodes (RA/CA/PA) represent applications of reasoning and should have descriptive text
+5. For inference: premises → RA-node → conclusion
+6. For conflict: attacking claim → CA-node → attacked claim
+7. **IMPORTANT**: Extract the actual claims from the input text, don't create generic placeholder text
+8. Use current timestamp in ISO format for all timestamp fields (e.g., "2024-01-01T00:00:00Z")
+9. Include AIF metadata header with version and analyst information
+10. **formEdgeID** should be empty string ("") when not applicable
+11. **locutions** and **participants** arrays can be empty but must be present
+
+**Example Argument Pattern:**
+- Premise (I-node) → Inference Application (RA-node) → Conclusion (I-node)
+- Conflicting Claim (I-node) → Conflict Application (CA-node) → Original Claim (I-node)
+
+**Critical Requirements for Online Viewer Compatibility:**
+- All IDs must be strings, not integers
+- Include AIF metadata header with version "1.0"
+- Use proper AIFdb field names (nodeID, edgeID, fromID, toID)
+- Include timestamp fields in ISO format
+- Ensure valid JSON structure
+- All required fields must be present (even if empty)
+- formEdgeID should be empty string ("") when not used
+- locutions and participants arrays must be present (can be empty)
+
+**Important Notes:**
+- Extract actual text from the input, don't create generic placeholders
+- Use sequential string IDs: "1", "2", "3", etc.
+- Make sure every edge connects valid node IDs
+- Include descriptive text for reasoning nodes (RA/CA/PA)
+
+Return **only** valid JSON conforming to the AIFdb specification that will work in online AIF viewers.
+
+---
+
+<input>
+{{ argument_text.content }}
+</input>
