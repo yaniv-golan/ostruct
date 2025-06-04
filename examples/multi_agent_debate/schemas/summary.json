@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "winning_side": {
+            "type": "string",
+            "enum": [
+                "pro",
+                "con",
+                "undecided"
+            ]
+        },
+        "strongest_point": {
+            "type": "string"
+        },
+        "weakest_point": {
+            "type": "string"
+        },
+        "contradictions": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "verdict": {
+            "type": "string"
+        },
+        "sources_audited": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "required": [
+        "winning_side",
+        "verdict"
+    ]
+}

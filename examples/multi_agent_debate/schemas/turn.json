@@ -1,0 +1,73 @@
+{
+    "type": "object",
+    "properties": {
+        "round": {
+            "type": "integer"
+        },
+        "agent": {
+            "type": "string",
+            "enum": [
+                "pro",
+                "con"
+            ]
+        },
+        "stance": {
+            "type": "string"
+        },
+        "response": {
+            "type": "string"
+        },
+        "supports": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "attacks": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "research_used": {
+            "type": "boolean"
+        },
+        "research_queries": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "citations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "snippet": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "url",
+                    "title"
+                ]
+            }
+        }
+    },
+    "required": [
+        "round",
+        "agent",
+        "response",
+        "research_used"
+    ]
+}

@@ -1,0 +1,40 @@
+---
+topic: "{{ topic }}"
+agent: con
+round: "{{ next_round }}"
+---
+
+You are the **CON** side opposing:
+"{{ topic }}"
+
+## Transcript so far
+{{ transcript.content }}
+
+## TASK
+1. If helpful, issue up to **2** web searches using the web search tool
+   (tool already enabled). Choose reputable sources (.gov, .edu, peer-reviewed, or major media).
+2. Produce your argument. You **must** cite any source you rely on.
+
+## OUTPUT (strict JSON)
+Return JSON with round={{ next_round }} and agent="con":
+
+{% raw %}
+{
+  "round": 1,
+  "agent": "con",
+  "stance": "one-line statement",
+  "response": "argument paragraph (may embed [id] inline refs)",
+  "supports": [/* turn numbers you support */],
+  "attacks":  [/* turn numbers you attack */],
+  "research_used": true|false,
+  "research_queries": ["..."],
+  "citations": [
+    {
+      "id":      "short_id",
+      "url":     "https://...",
+      "title":   "Source title",
+      "snippet": "1-line quotation"
+    }
+  ]
+}
+{% endraw %}
