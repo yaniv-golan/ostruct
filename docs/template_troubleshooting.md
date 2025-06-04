@@ -2,15 +2,113 @@
 
 This guide helps you diagnose and fix common template issues using ostruct's debugging features.
 
+## 🔄 File Download Migration (v0.8.1+)
+
+### Template Migration for Code Interpreter File Downloads
+
+If you're updating templates that use Code Interpreter file downloads, follow this migration guide:
+
+#### Before (Old Format)
+
+```jinja2
+# Old template format - DON'T USE
+Return your analysis as JSON with this structure:
+{
+  "analysis": "...",
+  "download_link": "link_to_file"
+}
+```
+
+```json
+// Old schema - DON'T USE
+{
+  "type": "object",
+  "properties": {
+    "analysis": {"type": "string"},
+    "download_link": {"type": "string"}
+  }
+}
+```
+
+#### After (New Format)
+
+```jinja2
+# New template format - USE THIS
+Return your analysis in this exact format:
+
+```json
+{
+  "analysis": "your analysis here"
+}
+```
+
+[Download filename.txt](sandbox:/mnt/data/filename.txt)
+
+```
+
+```json
+// New schema - USE THIS
+{
+  "type": "object",
+  "properties": {
+    "analysis": {"type": "string"}
+  },
+  "additionalProperties": false
+}
+```
+
+#### Key Changes
+
+1. **Remove `download_link` from JSON schema** - Files are now downloaded via annotations
+2. **Use fenced JSON blocks** - Wrap JSON in ````json ...````
+3. **Place markdown link outside JSON** - Link must be plain text after the JSON block
+4. **Use exact link format** - `[filename](sandbox:/mnt/data/filename)`
+
+#### Troubleshooting File Downloads
+
+**Files not downloading?**
+
+1. **Check template format**:
+
+   ```bash
+   ostruct run template.j2 schema.json --debug --show-templates
+   ```
+
+   Verify the template instructs fenced JSON + markdown link
+
+2. **Check model response**:
+
+   ```bash
+   ostruct run template.j2 schema.json --debug
+   ```
+
+   Look for "markdown_text" in debug output
+
+3. **Check annotations**:
+
+   ```bash
+   ostruct run template.j2 schema.json --debug
+   ```
+
+   Look for "container_file_citation" annotations in logs
+
+**Common Issues:**
+
+- **Markdown link inside JSON** → Move link outside JSON block
+- **No fenced JSON** → Wrap JSON in ````json ...````
+- **Wrong link format** → Use `[name](sandbox:/mnt/data/name)`
+- **Model doesn't follow instructions** → Try different model (GPT-4o-mini works well)
+
 ## Quick Diagnostic Checklist
 
 When encountering template issues, follow this checklist:
 
-1. **Template not expanding?** → [Template Expansion Issues](#template-expansion-issues)
-2. **Undefined variable errors?** → [Undefined Variable Errors](#undefined-variable-errors)
-3. **Syntax errors?** → [Jinja2 Syntax Errors](#jinja2-syntax-errors)
-4. **Optimization problems?** → [Optimization Issues](#optimization-issues)
-5. **Performance issues?** → [Performance Problems](#performance-problems)
+1. **File downloads not working?** → [File Download Migration](#file-download-migration-v081)
+2. **Template not expanding?** → [Template Expansion Issues](#template-expansion-issues)
+3. **Undefined variable errors?** → [Undefined Variable Errors](#undefined-variable-errors)
+4. **Syntax errors?** → [Jinja2 Syntax Errors](#jinja2-syntax-errors)
+5. **Optimization problems?** → [Optimization Issues](#optimization-issues)
+6. **Performance issues?** → [Performance Problems](#performance-problems)
 
 ## Template Expansion Issues
 

@@ -229,8 +229,8 @@ Multi-Tool Integration
 
 **Web Search**:
 
-- ``--web-search``: Enable OpenAI web search tool for up-to-date information
-- ``--no-web-search``: Explicitly disable web search
+- ``--enable-tool web-search``: Enable OpenAI web search tool for up-to-date information
+- ``--disable-tool web-search``: Explicitly disable web search
 - ``--search-context-size [low|medium|high]``: Control content retrieval amount
 - ``--user-country TEXT``: Specify user country for geographically tailored results
 - ``--user-region TEXT``: Specify user region/state for search results

@@ -1358,7 +1358,7 @@ When files are routed to File Search (``-fs``), they're available for semantic s
 Web Search Context
 ------------------
 
-When web search is enabled (``--web-search``), the ``web_search_enabled`` variable is available:
+When web search is enabled (``--enable-tool web-search``), the ``web_search_enabled`` variable is available:
 
 .. code-block:: jinja
 

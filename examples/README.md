@@ -60,6 +60,7 @@ Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
 
 - [pdf-semantic-diff](document-analysis/pdf-semantic-diff/): **Advanced PDF comparison with Code Interpreter integration** - Semantic document analysis with change categorization (added, deleted, reworded, changed_in_meaning)
 - [doc-example-validator](document-analysis/doc-example-validator/): **Automated documentation example testing with File Search integration** - Extracts and validates all code examples from project documentation, generates AI agent-compatible task lists
+- [iterative-fact-extraction](document-analysis/iterative-fact-extraction/): **Production-ready pipeline for extracting factual statements from document sets** - Multi-phase pipeline with Code Interpreter, File Search, and iterative refinement using JSON Patch operations
 
 ### Infrastructure Examples
 

@@ -208,7 +208,7 @@ Web Search Data Handling
 -------------------------
 
 .. important::
-   **Search Query Privacy**: When using ``--web-search``, search queries may be sent to external search services via OpenAI. These queries can be derived from your prompts and template content.
+   **Search Query Privacy**: When using ``--enable-tool web-search``, search queries may be sent to external search services via OpenAI. These queries can be derived from your prompts and template content.
 
 **What happens during web search:**
 - Search queries are generated based on your prompt and template content
@@ -241,7 +241,7 @@ Web Search Data Handling
 - Consider the query implications of your template variables
 
 **Opt-in requirement:**
-Web search is always opt-in and requires explicit use of the ``--web-search`` flag. This ensures users are aware when external search services may be accessed.
+Web search is always opt-in and requires explicit use of the ``--enable-tool web-search`` flag. This ensures users are aware when external search services may be accessed.
 
 Template File Security
 ----------------------
@@ -276,7 +276,7 @@ Tool Routing Security Matrix
      - ✅ Yes
      - ⚠️ Yes
      - Document search, knowledge bases
-   * - ``--web-search`` (Web Search)
+   * - ``--enable-tool web-search`` (Web Search)
      - ❌ No
      - ⚠️ Query Data
      - Current information, research

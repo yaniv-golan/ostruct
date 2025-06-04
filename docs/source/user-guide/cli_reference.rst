@@ -203,6 +203,17 @@ Code Interpreter Options
    --code-interpreter-download-dir DIRECTORY    # Where to save generated files (default: ./downloads)
    --code-interpreter-cleanup                   # Clean up uploaded files after execution (default: true)
 
+.. note::
+   **File Download Issue**: When using Code Interpreter with structured output (JSON schemas), OpenAI's API may not generate file download annotations, preventing automatic file downloads. Use the feature flag workaround if you encounter this issue.
+
+.. code-block:: bash
+
+   # Enable reliable file downloads (workaround for OpenAI bug)
+   ostruct run template.j2 schema.json -fc data.csv --enable-feature ci-download-hack
+
+   # Force single-pass mode (disable workaround)
+   ostruct run template.j2 schema.json -fc data.csv --disable-feature ci-download-hack
+
 File Search Files (🔍 Vector Search + Retrieval)
 -------------------------------------------------
 
@@ -968,25 +979,94 @@ Directory Processing
 
    -R, --recursive                              # Process directories recursively
 
+Universal Tool Control
+======================
+
+ostruct provides universal flags to enable or disable any built-in tool for the current run, overriding all other configuration methods.
+
+.. note::
+   **New in v0.8.3**: Universal tool toggle flags provide a standardized way to control tool enablement across all built-in tools.
+
+Basic Tool Toggle Usage
+-----------------------
+
+.. code-block:: bash
+
+   --enable-tool TOOL                           # Enable a specific tool (repeatable)
+   --disable-tool TOOL                          # Disable a specific tool (repeatable)
+
+**Supported Tools:**
+
+- ``code-interpreter`` - Python execution and data analysis
+- ``web-search`` - Real-time web search capabilities
+- ``file-search`` - Vector-based document search
+- ``mcp`` - Model Context Protocol server integration
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Enable web search for this run only
+   ostruct run research.j2 schema.json --enable-tool web-search
+
+   # Disable code interpreter even if files are provided
+   ostruct run task.j2 schema.json -fc data.csv --disable-tool code-interpreter
+
+   # Enable multiple tools
+   ostruct run analysis.j2 schema.json --enable-tool web-search --enable-tool file-search
+
+   # Override configuration defaults
+   ostruct run task.j2 schema.json --disable-tool web-search --enable-tool code-interpreter
+
+Tool Toggle Precedence
+-----------------------
+
+Universal tool toggles take **highest precedence** over all other configuration methods:
+
+1. **Universal toggles** (``--enable-tool``, ``--disable-tool``) - **Highest priority**
+2. Legacy tool flags (``--web-search``, ``--no-web-search``) - **Deprecated**
+3. Configuration file settings (``ostruct.yaml``)
+4. Implicit activation (providing files auto-enables tools)
+
+.. warning::
+   **Conflict Detection**: Using both ``--enable-tool`` and ``--disable-tool`` for the same tool will result in an error.
+
+   .. code-block:: bash
+
+      # This will fail with an error
+      ostruct run task.j2 schema.json --enable-tool web-search --disable-tool web-search
+
+Legacy Tool Flags (Deprecated)
+-------------------------------
+
+.. deprecated:: 0.8.3
+   The ``--web-search`` and ``--no-web-search`` flags are deprecated. Use ``--enable-tool web-search`` and ``--disable-tool web-search`` instead. Legacy flags will be removed in v0.9.0.
+
+.. code-block:: bash
+
+   # Deprecated (will show warning)
+   --web-search                                 # Use --enable-tool web-search
+   --no-web-search                              # Use --disable-tool web-search
+
 Web Search Integration
 ======================
 
 ostruct integrates with OpenAI's web search tool to provide real-time information and current data in your structured outputs.
 
 .. note::
-   **Privacy Notice**: When using ``--web-search``, search queries derived from your prompts and template content may be sent to external search services via OpenAI.
+   **Privacy Notice**: When using ``--enable-tool web-search``, search queries derived from your prompts and template content may be sent to external search services via OpenAI.
 
 Basic Web Search Usage
 ----------------------
 
 .. code-block:: bash
 
-   --web-search                                 # Enable web search tool
-   --no-web-search                              # Explicitly disable web search
+   --enable-tool web-search                     # Enable web search tool
+   --disable-tool web-search                    # Explicitly disable web search
 
    # Examples
-   ostruct run research.j2 schema.json --web-search -V topic="latest AI developments"
-   ostruct run analysis.j2 schema.json --web-search --no-web-search  # Disable if enabled by default
+   ostruct run research.j2 schema.json --enable-tool web-search -V topic="latest AI developments"
+   ostruct run analysis.j2 schema.json --disable-tool web-search  # Disable if enabled by default
 
 Web Search Configuration
 ------------------------
@@ -1003,13 +1083,13 @@ Web Search Configuration
 .. code-block:: bash
 
    # Location-specific search
-   ostruct run news.j2 schema.json --web-search \\
+   ostruct run news.j2 schema.json --enable-tool web-search \\
      --user-country "US" \\
      --user-city "San Francisco" \\
      --user-region "California"
 
    # High-detail content retrieval
-   ostruct run research.j2 schema.json --web-search \\
+   ostruct run research.j2 schema.json --enable-tool web-search \\
      --search-context-size high
 
 Web Search in Templates
@@ -1542,6 +1622,46 @@ Use **alias syntax** (``--dta``, ``--dca``, ``--dsa``) when:
 • Variable names must be stable regardless of directory contents
 • Template doesn't know specific filenames in advance
 • Creating reusable workflows and CI/CD automation
+
+Feature Flags
+=============
+
+ostruct supports experimental feature flags that can be enabled or disabled on a per-run basis:
+
+**Syntax**
+
+.. code-block:: bash
+
+   --enable-feature FEATURE_NAME     # Enable an experimental feature
+   --disable-feature FEATURE_NAME    # Disable an experimental feature
+
+**Available Features**
+
+- ``ci-download-hack``: Enable two-pass sentinel mode for reliable Code Interpreter file downloads when using structured output (JSON schemas). This works around an OpenAI API bug where file download annotations are not generated in structured output mode.
+
+**Examples**
+
+.. code-block:: bash
+
+   # Enable reliable Code Interpreter file downloads
+   ostruct run analysis.j2 schema.json -fc data.csv --enable-feature ci-download-hack
+
+   # Force single-pass mode (disable workaround)
+   ostruct run analysis.j2 schema.json -fc data.csv --disable-feature ci-download-hack
+
+   # Multiple features can be specified
+   ostruct run template.j2 schema.json --enable-feature ci-download-hack --enable-feature other-feature
+
+**Configuration Override**
+
+Feature flags override configuration file settings for that specific run. For persistent settings, use the configuration file instead:
+
+.. code-block:: yaml
+
+   # ostruct.yaml
+   tools:
+     code_interpreter:
+       download_strategy: "two_pass_sentinel"  # Equivalent to --enable-feature ci-download-hack
 
 Environment Variables
 =====================

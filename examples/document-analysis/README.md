@@ -58,6 +58,33 @@ This directory contains examples for document processing, PDF analysis, text ext
 
 **Best For:** Documentation quality assurance, CI/CD integration, project migration validation, example testing automation
 
+### [Iterative Fact Extraction Pipeline](iterative-fact-extraction/)
+
+**Production-ready pipeline for extracting factual statements from document sets** - Multi-phase pipeline with iterative refinement:
+
+**Features:**
+
+- **Multi-Tool Integration**: Code Interpreter for document conversion, File Search for semantic indexing
+- **Document Conversion**: Automatic conversion of PDF, DOCX, TXT to structured text
+- **Iterative Refinement**: JSON Patch-based improvement cycles with convergence detection
+- **Comprehensive Validation**: Schema validation and quality checks at each stage
+- **Error Handling**: Robust error recovery and rollback mechanisms
+
+**Pipeline Architecture:**
+
+- **Phase 1**: Document conversion using Code Interpreter
+- **Phase 2**: Semantic indexing with File Search
+- **Phase 3**: Iterative extraction and refinement with JSON Patch operations
+
+**Validation Results:**
+
+- **Convergence**: Automatic stopping when improvements plateau or maximum iterations reached
+- **Quality**: Comprehensive coverage analysis with missing/incorrect fact identification
+- **Cost Effective**: Optimized token usage through File Search for large document corpora
+- **Production Ready**: Complete error handling, validation, and monitoring
+
+**Best For:** Knowledge extraction, document analysis, fact verification, content mining, research automation
+
 ## Key Features
 
 ### Multi-Tool Document Processing

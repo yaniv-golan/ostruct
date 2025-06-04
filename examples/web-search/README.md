@@ -272,16 +272,16 @@ When using these schemas, include clear instructions in your templates:
 
 ```bash
 # Basic research (requires 'question' variable)
-ostruct run basic_research.j2 basic_research_schema.json --web-search -V question="What are the new features in Python 3.13?"
+ostruct run basic_research.j2 basic_research_schema.json --enable-tool web-search -V question="What are the new features in Python 3.13?"
 
 # Current events analysis (requires 'topic' variable)
-ostruct run current_events.j2 current_events_schema.json --web-search -V topic="AI developments"
+ostruct run current_events.j2 current_events_schema.json --enable-tool web-search -V topic="AI developments"
 
 # Flexible analysis with optional parameters (requires 'topic' variable)
-ostruct run flexible_analysis.j2 enhanced_sources_schema.json --web-search -V topic="climate change" -V depth="detailed" -V timeframe="60 days"
+ostruct run flexible_analysis.j2 enhanced_sources_schema.json --enable-tool web-search -V topic="climate change" -V depth="detailed" -V timeframe="60 days"
 
 # Dry run to validate without API costs
-ostruct run basic_research.j2 basic_research_schema.json --web-search --dry-run -V question="Any research question"
+ostruct run basic_research.j2 basic_research_schema.json --enable-tool web-search --dry-run -V question="Any research question"
 ```
 
 ## Model Compatibility
@@ -301,7 +301,7 @@ Models that do NOT support web search:
 
 ### Data Privacy and Search Queries
 
-**⚠️ Important**: When using `--web-search`, search queries derived from your prompts and templates may be sent to external search services via OpenAI.
+**⚠️ Important**: When using `--enable-tool web-search`, search queries derived from your prompts and templates may be sent to external search services via OpenAI.
 
 #### What Gets Searched
 
@@ -335,9 +335,9 @@ Find information about recent acquisitions in the {{ industry_sector }} sector.
 
 #### Opt-in Requirement
 
-- Web search is **always opt-in** - you must explicitly use `--web-search`
+- Web search is **always opt-in** - you must explicitly use `--enable-tool web-search`
 - This ensures you're aware when external services may be accessed
-- Use `--no-web-search` to explicitly disable if needed
+- Use `--disable-tool web-search` to explicitly disable if needed
 
 #### Platform Protections
 
@@ -362,10 +362,10 @@ Web search is supported by the following models:
 
 ```bash
 # Check model compatibility with basic research
-ostruct run basic_research.j2 basic_research_schema.json --web-search --model gpt-4o --dry-run -V question="test question"
+ostruct run basic_research.j2 basic_research_schema.json --enable-tool web-search --model gpt-4o --dry-run -V question="test question"
 
 # Verbose logging for debugging current events
-ostruct run current_events.j2 current_events_schema.json --web-search --verbose -V topic="test topic"
+ostruct run current_events.j2 current_events_schema.json --enable-tool web-search --verbose -V topic="test topic"
 
 # Test without web search for comparison
 ostruct run basic_research.j2 basic_research_schema.json -V question="same research question"
