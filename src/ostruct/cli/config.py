@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ class ToolsConfig(BaseModel):
         default_factory=lambda: {
             "auto_download": True,
             "output_directory": "./output",
+            "download_strategy": "single_pass",  # "single_pass" | "two_pass_sentinel"
         }
     )
     file_search: Dict[str, Any] = Field(
@@ -90,6 +91,24 @@ class OstructConfig(BaseModel):
     mcp: Dict[str, str] = Field(default_factory=dict)
     operation: OperationConfig = Field(default_factory=OperationConfig)
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_download_strategy(cls, values: Any) -> Any:
+        """Validate download_strategy in code_interpreter config."""
+        if isinstance(values, dict):
+            tools_config = values.get("tools", {})
+            if isinstance(tools_config, dict):
+                ci_config = tools_config.get("code_interpreter", {})
+                if isinstance(ci_config, dict):
+                    strategy = ci_config.get(
+                        "download_strategy", "single_pass"
+                    )
+                    if strategy not in {"single_pass", "two_pass_sentinel"}:
+                        raise ValueError(
+                            "download_strategy must be 'single_pass' or 'two_pass_sentinel'"
+                        )
+        return values
 
     @classmethod
     def load(

@@ -35,7 +35,6 @@ class CLIParams(TypedDict, total=False):
     no_progress: bool
     api_key: Optional[str]
     verbose: bool
-    debug_openai_stream: bool
     show_model_schema: bool
     debug_validation: bool
     temperature: Optional[float]
@@ -76,3 +75,17 @@ class CLIParams(TypedDict, total=False):
     tool_files: List[
         Tuple[str, str]
     ]  # List of (tool, path) tuples from --file-for
+    web_search: bool
+    debug: bool
+    show_templates: bool
+    debug_templates: bool
+    show_context: bool
+    show_context_detailed: bool
+    show_pre_optimization: bool
+    show_optimization_diff: bool
+    no_optimization: bool
+    show_optimization_steps: bool
+    optimization_step_detail: str
+    help_debug: bool
+    enabled_features: List[str]  # List of feature names to enable
+    disabled_features: List[str]  # List of feature names to disable

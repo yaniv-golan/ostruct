@@ -264,6 +264,31 @@ def process_system_prompt(
         )
         base_prompt += web_search_instructions
 
+    # Add Code Interpreter download instructions if CI is enabled and auto_download is true
+    code_interpreter_enabled = template_context.get(
+        "code_interpreter_enabled", False
+    )
+    auto_download_enabled = template_context.get("auto_download_enabled", True)
+
+    if code_interpreter_enabled and auto_download_enabled:
+        ci_download_instructions = (
+            "\n\nWhen using Code Interpreter to create files, always include markdown download links "
+            "in your response using this exact format: [Download filename.ext](sandbox:/mnt/data/filename.ext). "
+            "This enables automatic file download for the user. Include the download link immediately "
+            "after creating each file."
+        )
+
+        # Add sentinel instructions for two-pass mode
+        ci_config = template_context.get("code_interpreter_config", {})
+        if ci_config.get("download_strategy") == "two_pass_sentinel":
+            ci_download_instructions += (
+                "\n\nAfter saving your files and printing the download links, output "
+                "your JSON response between exactly these markers:\n"
+                "===BEGIN_JSON===\n{ ... }\n===END_JSON===\n"
+            )
+
+        base_prompt += ci_download_instructions
+
     return base_prompt
 
 
@@ -1072,8 +1097,18 @@ async def create_template_context_from_routing(
         config = OstructConfig.load(config_path)
         web_search_config = config.get_web_search_config()
 
+        # Apply universal tool toggle overrides (Step 3: Config override hook)
+        enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
+        disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
+
         # Determine if web search should be enabled
-        if web_search_from_cli:
+        if "web-search" in enabled_tools:
+            # Universal --enable-tool web-search takes highest precedence
+            web_search_enabled = True
+        elif "web-search" in disabled_tools:
+            # Universal --disable-tool web-search takes highest precedence
+            web_search_enabled = False
+        elif web_search_from_cli:
             # Explicit --web-search flag takes precedence
             web_search_enabled = True
         elif no_web_search_from_cli:
@@ -1084,6 +1119,69 @@ async def create_template_context_from_routing(
             web_search_enabled = web_search_config.enable_by_default
 
         context["web_search_enabled"] = web_search_enabled
+
+        # Add Code Interpreter context variables
+        # Check if Code Interpreter is enabled by looking for CI files or tools
+        ci_enabled_by_routing = bool(
+            args.get("code_interpreter_files")
+            or args.get("code_interpreter_file_aliases")
+            or args.get("code_interpreter_dirs")
+            or args.get("code_interpreter_dir_aliases")
+            or args.get("code_interpreter", False)
+        )
+
+        # Apply universal tool toggle overrides for code-interpreter
+        if "code-interpreter" in enabled_tools:
+            # Universal --enable-tool takes highest precedence
+            code_interpreter_enabled = True
+        elif "code-interpreter" in disabled_tools:
+            # Universal --disable-tool takes highest precedence
+            code_interpreter_enabled = False
+        else:
+            # Fall back to routing-based enablement
+            code_interpreter_enabled = ci_enabled_by_routing
+        context["code_interpreter_enabled"] = code_interpreter_enabled
+
+        # Add auto_download setting from configuration
+        if code_interpreter_enabled:
+            ci_config = config.get_code_interpreter_config()
+            context["auto_download_enabled"] = ci_config.get(
+                "auto_download", True
+            )
+
+            # Determine effective download strategy (config + feature flags)
+            effective_ci_config = dict(
+                ci_config
+            )  # Copy to avoid modifying original
+            enabled_features = args.get("enabled_features", [])
+            disabled_features = args.get("disabled_features", [])
+
+            if enabled_features or disabled_features:
+                try:
+                    from .click_options import parse_feature_flags
+
+                    parsed_flags = parse_feature_flags(
+                        tuple(enabled_features), tuple(disabled_features)
+                    )
+                    ci_hack_flag = parsed_flags.get("ci-download-hack")
+                    if ci_hack_flag == "on":
+                        effective_ci_config["download_strategy"] = (
+                            "two_pass_sentinel"
+                        )
+                    elif ci_hack_flag == "off":
+                        effective_ci_config["download_strategy"] = (
+                            "single_pass"
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to parse feature flags in template processor: {e}"
+                    )
+
+            # Add the effective CI config for template processing
+            context["code_interpreter_config"] = effective_ci_config
+        else:
+            context["auto_download_enabled"] = False
+            context["code_interpreter_config"] = {}
 
         return context
 

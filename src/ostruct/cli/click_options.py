@@ -29,6 +29,56 @@ CommandDecorator = Callable[[F], Command]
 DecoratedCommand = Union[Command, Callable[..., Any]]
 
 
+def parse_feature_flags(
+    enabled_features: tuple[str, ...], disabled_features: tuple[str, ...]
+) -> dict[str, str]:
+    """Parse feature flags from CLI arguments.
+
+    Args:
+        enabled_features: Tuple of feature names to enable
+        disabled_features: Tuple of feature names to disable
+
+    Returns:
+        Dictionary mapping feature names to "on" or "off"
+
+    Raises:
+        click.BadParameter: If flag format is invalid or conflicts exist
+    """
+    parsed = {}
+
+    # Process enabled features
+    for feature in enabled_features:
+        feature = feature.strip()
+        if not feature:
+            raise click.BadParameter("Feature name cannot be empty")
+
+        # Validate known feature flags
+        if feature == "ci-download-hack":
+            parsed[feature] = "on"
+        else:
+            raise click.BadParameter(f"Unknown feature: {feature}")
+
+    # Process disabled features
+    for feature in disabled_features:
+        feature = feature.strip()
+        if not feature:
+            raise click.BadParameter("Feature name cannot be empty")
+
+        # Check for conflicts
+        if feature in parsed:
+            raise click.BadParameter(
+                f"Feature '{feature}' cannot be both enabled and disabled"
+            )
+
+        # Validate known feature flags
+        if feature == "ci-download-hack":
+            parsed[feature] = "off"
+        else:
+            raise click.BadParameter(f"Unknown feature: {feature}")
+
+    return parsed
+
+
 def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add debug-related CLI options."""
     # Initial conversion to Command if needed
@@ -573,6 +623,31 @@ def code_interpreter_options(f: Union[Command, Callable[..., Any]]) -> Command:
         help="""Clean up uploaded files after execution to save storage quota.""",
     )(cmd)
 
+    # Feature flags for experimental features
+    cmd = click.option(
+        "--enable-feature",
+        "enabled_features",
+        multiple=True,
+        metavar="<FEATURE>",
+        help="""🔧 [EXPERIMENTAL] Enable experimental features.
+        Available features:
+        • ci-download-hack - Enable two-pass sentinel mode for reliable Code Interpreter
+          file downloads with structured output. Overrides config file setting.
+        Example: --enable-feature ci-download-hack""",
+    )(cmd)
+
+    cmd = click.option(
+        "--disable-feature",
+        "disabled_features",
+        multiple=True,
+        metavar="<FEATURE>",
+        help="""🔧 [EXPERIMENTAL] Disable experimental features.
+        Available features:
+        • ci-download-hack - Force single-pass mode for Code Interpreter downloads.
+          Overrides config file setting.
+        Example: --disable-feature ci-download-hack""",
+    )(cmd)
+
     return cast(Command, cmd)
 
 
@@ -685,13 +760,17 @@ def web_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
         is_flag=True,
         help="""🌐 [WEB SEARCH] Enable OpenAI web search tool for up-to-date information.
         Allows the model to search the web for current events, recent updates, and real-time data.
-        Note: Search queries may be sent to external services via OpenAI.""",
+        Note: Search queries may be sent to external services via OpenAI.
+
+        ⚠️  DEPRECATED: Use --enable-tool web-search instead. Will be removed in v0.9.0.""",
     )(cmd)
 
     cmd = click.option(
         "--no-web-search",
         is_flag=True,
-        help="""Explicitly disable web search even if enabled by default in configuration.""",
+        help="""Explicitly disable web search even if enabled by default in configuration.
+
+        ⚠️  DEPRECATED: Use --disable-tool web-search instead. Will be removed in v0.9.0.""",
     )(cmd)
 
     cmd = click.option(
@@ -725,6 +804,35 @@ def web_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
+def tool_toggle_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add universal tool toggle CLI options."""
+    cmd: Any = f if isinstance(f, Command) else f
+
+    cmd = click.option(
+        "--enable-tool",
+        "enabled_tools",
+        multiple=True,
+        metavar="<TOOL>",
+        help="""🔧 [TOOL TOGGLES] Enable a tool for this run (repeatable).
+        Overrides configuration file and implicit activation.
+        Available tools: code-interpreter, file-search, web-search, mcp
+        Example: --enable-tool code-interpreter --enable-tool web-search""",
+    )(cmd)
+
+    cmd = click.option(
+        "--disable-tool",
+        "disabled_tools",
+        multiple=True,
+        metavar="<TOOL>",
+        help="""🔧 [TOOL TOGGLES] Disable a tool for this run (repeatable).
+        Overrides configuration file and implicit activation.
+        Available tools: code-interpreter, file-search, web-search, mcp
+        Example: --disable-tool web-search --disable-tool mcp""",
+    )(cmd)
+
+    return cast(Command, cmd)
+
+
 def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add debugging and progress CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
@@ -744,12 +852,6 @@ def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
     cmd = click.option(
         "--verbose", is_flag=True, help="Enable verbose logging"
-    )(cmd)
-
-    cmd = click.option(
-        "--debug-openai-stream",
-        is_flag=True,
-        help="Debug OpenAI streaming process",
     )(cmd)
 
     cmd = click.option(
@@ -777,6 +879,7 @@ def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
     cmd = code_interpreter_options(cmd)
     cmd = file_search_options(cmd)
     cmd = web_search_options(cmd)
+    cmd = tool_toggle_options(cmd)
     cmd = debug_options(cmd)
     cmd = debug_progress_options(cmd)
 

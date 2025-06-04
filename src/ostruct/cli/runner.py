@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from openai import AsyncOpenAI, OpenAIError
 from openai_model_registry import ModelRegistry
@@ -18,8 +18,6 @@ from .errors import (
     APIErrorMapper,
     CLIError,
     SchemaValidationError,
-    StreamInterruptedError,
-    StreamParseError,
 )
 from .exit_codes import ExitCode
 from .explicit_file_processor import ProcessingResult
@@ -31,6 +29,7 @@ from .progress_reporting import (
     get_progress_reporter,
     report_success,
 )
+from .sentinel import extract_json_block
 from .serialization import LogSerializer
 from .services import ServiceContainer
 from .types import CLIParams
@@ -39,7 +38,7 @@ from .unattended_operation import (
 )
 
 
-# Error classes for streaming operations (duplicated from cli.py for now)
+# Error classes for API operations
 class APIResponseError(Exception):
     pass
 
@@ -49,10 +48,6 @@ class EmptyResponseError(Exception):
 
 
 class InvalidResponseFormatError(Exception):
-    pass
-
-
-class StreamBufferError(Exception):
     pass
 
 
@@ -84,6 +79,18 @@ def supports_structured_output(model: str) -> bool:
     except Exception:
         # Default to True for backward compatibility
         return True
+
+
+def _assistant_text(response: Any) -> str:
+    """Extract text content from API response (Responses API format)."""
+    text_parts = []
+    for item in response.output:
+        if getattr(item, "type", None) == "message":
+            for content_block in item.content or []:
+                if hasattr(content_block, "text"):
+                    # For Responses API, text content is directly in the text attribute
+                    text_parts.append(content_block.text)
+    return "\n".join(text_parts)
 
 
 logger = logging.getLogger(__name__)
@@ -244,8 +251,17 @@ async def process_code_interpreter_configuration(
     if not files_to_upload:
         return None
 
+    # Load configuration for Code Interpreter
+    from typing import Union, cast
+
+    from .config import OstructConfig
+
+    config_path = cast(Union[str, Path, None], args.get("config"))
+    config = OstructConfig.load(config_path)
+    ci_config = config.get_code_interpreter_config()
+
     # Create Code Interpreter manager
-    manager = CodeInterpreterManager(client)
+    manager = CodeInterpreterManager(client, ci_config)
 
     # Validate files before upload
     validation_errors = manager.validate_files_for_upload(files_to_upload)
@@ -421,7 +437,7 @@ async def process_file_search_configuration(
         raise mapped_error
 
 
-async def stream_structured_output(
+async def create_structured_output(
     client: AsyncOpenAI,
     model: str,
     system_prompt: str,
@@ -430,8 +446,8 @@ async def stream_structured_output(
     output_file: Optional[str] = None,
     tools: Optional[List[dict]] = None,
     **kwargs: Any,
-) -> AsyncGenerator[BaseModel, None]:
-    """Stream structured output from OpenAI API using Responses API.
+) -> BaseModel:
+    """Create structured output from OpenAI Responses API.
 
     This function uses the OpenAI Responses API with strict mode schema validation
     to generate structured output that matches the provided Pydantic model.
@@ -442,16 +458,15 @@ async def stream_structured_output(
         system_prompt: The system prompt to use
         user_prompt: The user prompt to use
         output_schema: The Pydantic model to validate responses against
-        output_file: Optional file to write output to
+        output_file: Optional file to write output to (unused, kept for compatibility)
         tools: Optional list of tools (e.g., MCP, Code Interpreter) to include
         **kwargs: Additional parameters to pass to the API
 
     Returns:
-        An async generator yielding validated model instances
+        A validated model instance
 
     Raises:
         ValueError: If the model does not support structured output or parameters are invalid
-        StreamInterruptedError: If the stream is interrupted
         APIResponseError: If there is an API error
     """
     try:
@@ -466,7 +481,7 @@ async def stream_structured_output(
         on_log = kwargs.pop("on_log", None)
 
         # Handle model-specific parameters
-        stream_kwargs = {}
+        api_kwargs = {}
         registry = ModelRegistry.get_instance()
         capabilities = registry.get_capabilities(model)
 
@@ -475,7 +490,7 @@ async def stream_structured_output(
             if param_name in capabilities.supported_parameters:
                 # Validate the parameter value
                 capabilities.validate_parameter(param_name, value)
-                stream_kwargs[param_name] = value
+                api_kwargs[param_name] = value
             else:
                 logger.warning(
                     f"Parameter {param_name} is not supported by model {model} and will be ignored"
@@ -504,8 +519,8 @@ async def stream_structured_output(
                     "strict": True,
                 }
             },
-            "stream": True,
-            **stream_kwargs,
+            "stream": False,
+            **api_kwargs,
         }
 
         # Add tools if provided
@@ -517,7 +532,7 @@ async def stream_structured_output(
         logger.debug("Making OpenAI Responses API request with:")
         logger.debug("Model: %s", model)
         logger.debug("Combined prompt: %s", combined_prompt)
-        logger.debug("Parameters: %s", json.dumps(stream_kwargs, indent=2))
+        logger.debug("Parameters: %s", json.dumps(api_kwargs, indent=2))
         logger.debug("Schema: %s", json.dumps(strict_schema, indent=2))
         logger.debug("Tools being passed to API: %s", tools)
         logger.debug(
@@ -525,152 +540,51 @@ async def stream_structured_output(
             json.dumps(api_params, indent=2, default=str),
         )
 
-        # Use the Responses API with streaming
+        # Use the Responses API
         api_response = await client.responses.create(**api_params)
 
-        # Process streaming response
-        accumulated_content = ""
-        async for chunk in api_response:
-            if on_log:
-                on_log(logging.DEBUG, f"Received chunk: {chunk}", {})
+        if on_log:
+            on_log(logging.DEBUG, f"Received response: {api_response.id}", {})
 
-            # Check for tool calls (including web search)
-            if hasattr(chunk, "choices") and chunk.choices:
-                choice = chunk.choices[0]
-                # Log tool calls if present
-                if (
-                    hasattr(choice, "delta")
-                    and hasattr(choice.delta, "tool_calls")
-                    and choice.delta.tool_calls
-                ):
-                    for tool_call in choice.delta.tool_calls:
-                        if (
-                            hasattr(tool_call, "type")
-                            and tool_call.type == "web_search_preview"
-                        ):
-                            tool_id = getattr(tool_call, "id", "unknown")
-                            logger.debug(
-                                f"Web search tool invoked (id={tool_id})"
-                            )
-                        elif hasattr(tool_call, "function") and hasattr(
-                            tool_call.function, "name"
-                        ):
-                            # Handle other tool types for completeness
-                            tool_name = tool_call.function.name
-                            tool_id = getattr(tool_call, "id", "unknown")
-                            logger.debug(
-                                f"Tool '{tool_name}' invoked (id={tool_id})"
-                            )
+        # Get the complete response content directly
+        content = api_response.output_text
 
-            # Handle different response formats based on the chunk structure
-            content_added = False
+        if on_log:
+            on_log(
+                logging.DEBUG,
+                f"Response content length: {len(content)}",
+                {},
+            )
 
-            # Try different possible response formats
-            if hasattr(chunk, "choices") and chunk.choices:
-                # Standard chat completion format
-                choice = chunk.choices[0]
-                if (
-                    hasattr(choice, "delta")
-                    and hasattr(choice.delta, "content")
-                    and choice.delta.content
-                ):
-                    accumulated_content += choice.delta.content
-                    content_added = True
-                elif (
-                    hasattr(choice, "message")
-                    and hasattr(choice.message, "content")
-                    and choice.message.content
-                ):
-                    accumulated_content += choice.message.content
-                    content_added = True
-            elif hasattr(chunk, "response") and hasattr(
-                chunk.response, "body"
-            ):
-                # Responses API format
-                accumulated_content += chunk.response.body
-                content_added = True
-            elif hasattr(chunk, "content"):
-                # Direct content
-                accumulated_content += chunk.content
-                content_added = True
-            elif hasattr(chunk, "text"):
-                # Text content
-                accumulated_content += chunk.text
-                content_added = True
-
-            if on_log and content_added:
-                on_log(
-                    logging.DEBUG,
-                    f"Added content, total length: {len(accumulated_content)}",
-                    {},
-                )
-
-            # Try to parse and validate accumulated content as complete JSON
+        # Parse and validate the complete response
+        try:
+            # Try new JSON extraction logic first
             try:
-                if accumulated_content.strip():
-                    # Try new JSON extraction logic first
-                    try:
-                        data, markdown_text = split_json_and_text(
-                            accumulated_content
-                        )
-                    except ValueError:
-                        # Fallback to original parsing for non-fenced JSON
-                        data = json.loads(accumulated_content.strip())
-                        markdown_text = ""
-
-                    validated = output_schema.model_validate(data)
-
-                    # Store full raw text for downstream processing (debug logs, etc.)
-                    setattr(validated, "_raw_text", accumulated_content)
-                    # Store markdown text for annotation processing
-                    setattr(validated, "_markdown_text", markdown_text)
-                    # Store full API response for file download access
-                    setattr(validated, "_api_response", api_response)
-
-                    yield validated
-                    # Reset for next complete response (if any)
-                    # Guard against resetting if markdown link might be split across chunks
-                    if "](" not in markdown_text or markdown_text.count(
-                        "]("
-                    ) >= markdown_text.count("["):
-                        accumulated_content = ""
-                    # If potential incomplete link, keep accumulating
+                data, markdown_text = split_json_and_text(content)
             except ValueError:
-                # Not yet complete JSON, continue accumulating
-                continue
+                # Fallback to original parsing for non-fenced JSON
+                data = json.loads(content.strip())
+                markdown_text = ""
 
-        # Handle any remaining content
-        if accumulated_content.strip():
-            try:
-                # Try new JSON extraction logic first
-                try:
-                    data, markdown_text = split_json_and_text(
-                        accumulated_content
-                    )
-                except ValueError:
-                    # Fallback to original parsing for non-fenced JSON
-                    data = json.loads(accumulated_content.strip())
-                    markdown_text = ""
+            validated = output_schema.model_validate(data)
 
-                validated = output_schema.model_validate(data)
+            # Store full raw text for downstream processing (debug logs, etc.)
+            setattr(validated, "_raw_text", content)
+            # Store markdown text for annotation processing
+            setattr(validated, "_markdown_text", markdown_text)
+            # Store full API response for file download access
+            setattr(validated, "_api_response", api_response)
 
-                # Store full raw text for downstream processing (debug logs, etc.)
-                setattr(validated, "_raw_text", accumulated_content)
-                # Store markdown text for annotation processing
-                setattr(validated, "_markdown_text", markdown_text)
-                # Store full API response for file download access
-                setattr(validated, "_api_response", api_response)
+            return validated
 
-                yield validated
-            except ValueError as e:
-                logger.error(f"Failed to parse final accumulated content: {e}")
-                raise StreamParseError(
-                    f"Failed to parse response as valid JSON: {e}"
-                )
+        except ValueError as e:
+            logger.error(f"Failed to parse response content: {e}")
+            raise InvalidResponseFormatError(
+                f"Failed to parse response as valid JSON: {e}"
+            )
 
     except Exception as e:
         # Map OpenAI errors using the error mapper
-
         if isinstance(e, OpenAIError):
             mapped_error = APIErrorMapper.map_openai_error(e)
             logger.error(f"OpenAI API error mapped: {mapped_error}")
@@ -719,10 +633,6 @@ async def stream_structured_output(
         else:
             logger.error(f"Unmapped API error: {e}")
             raise APIResponseError(str(e))
-    finally:
-        # Note: We don't close the client here as it may be reused
-        # The caller is responsible for client lifecycle management
-        pass
 
 
 # Note: validation functions are defined in cli.py to avoid circular imports
@@ -748,6 +658,193 @@ async def process_templates(
     )
 
 
+async def _execute_two_pass_sentinel(
+    client: AsyncOpenAI,
+    args: CLIParams,
+    system_prompt: str,
+    user_prompt: str,
+    output_model: Type[BaseModel],
+    tools: List[dict],
+    log_cb: Any,
+    ci_config: Dict[str, Any],
+    code_interpreter_info: Optional[Dict[str, Any]],
+) -> tuple[BaseModel, List[str]]:
+    """Execute two-pass sentinel approach for file downloads."""
+    import json
+
+    # ---- pass 1 (raw) ----
+    logger.debug("Starting two-pass execution: Pass 1 (raw mode)")
+    raw_resp = await client.responses.create(
+        model=args["model"],
+        input=f"{system_prompt}\n\n{user_prompt}",
+        tools=tools,  # type: ignore[arg-type]
+        # No text format - this allows annotations
+    )
+
+    logger.debug(f"Raw response structure: {type(raw_resp)}")
+    logger.debug(
+        f"Raw response output: {getattr(raw_resp, 'output', 'No output attr')}"
+    )
+    raw_text = _assistant_text(raw_resp)
+    logger.debug(
+        f"Raw response from first pass (first 500 chars): {raw_text[:500]}"
+    )
+    data = extract_json_block(raw_text) or {}
+    logger.debug(f"Extracted JSON from sentinel markers: {bool(data)}")
+
+    # Validate sentinel extraction
+    if not data:
+        logger.warning(
+            "No sentinel JSON found in first pass, falling back to single-pass"
+        )
+        return await _fallback_single_pass(
+            client,
+            args,
+            system_prompt,
+            user_prompt,
+            output_model,
+            tools,
+            log_cb,
+        )
+
+    # download files from first pass
+    downloaded_files = []
+    if code_interpreter_info and code_interpreter_info.get("manager"):
+        cm = code_interpreter_info["manager"]
+        # Use output directory from config, fallback to args, then default
+        download_dir = (
+            ci_config.get("output_directory")
+            or args.get("code_interpreter_download_dir")
+            or "./downloads"
+        )
+        logger.debug(f"Downloading files to: {download_dir}")
+        downloaded_files = await cm.download_generated_files(
+            raw_resp, download_dir
+        )
+        if downloaded_files:
+            logger.info(
+                f"Downloaded {len(downloaded_files)} files from first pass"
+            )
+
+    # ---- pass 2 (strict) ----
+    logger.debug("Starting two-pass execution: Pass 2 (structured mode)")
+    strict_sys = (
+        system_prompt
+        + "\n\nReuse ONLY these values; do not repeat external calls:\n"
+        + json.dumps(data, indent=2)
+    )
+
+    # Prepare schema for strict mode
+    schema = output_model.model_json_schema()
+    strict_schema = copy.deepcopy(schema)
+    make_strict(strict_schema)
+    schema_name = output_model.__name__.lower()
+
+    strict_resp = await client.responses.create(
+        model=args["model"],
+        input=f"{strict_sys}\n\n{user_prompt}",
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": schema_name,
+                "schema": strict_schema,
+                "strict": True,
+            }
+        },
+        tools=[],  # No tools needed for formatting
+        stream=False,
+    )
+
+    # Parse and validate the structured response
+    content = strict_resp.output_text
+    try:
+        # Try new JSON extraction logic first
+        try:
+            data_final, markdown_text = split_json_and_text(content)
+        except ValueError:
+            # Fallback to original parsing for non-fenced JSON
+            data_final = json.loads(content.strip())
+            markdown_text = ""
+
+        validated = output_model.model_validate(data_final)
+
+        # Store full raw text for downstream processing (debug logs, etc.)
+        setattr(validated, "_raw_text", content)
+        # Store markdown text for annotation processing
+        setattr(validated, "_markdown_text", markdown_text)
+        # Store full API response for file download access
+        setattr(validated, "_api_response", strict_resp)
+
+        return validated, downloaded_files
+
+    except ValueError as e:
+        logger.error(f"Failed to parse structured response content: {e}")
+        raise InvalidResponseFormatError(
+            f"Failed to parse response as valid JSON: {e}"
+        )
+
+
+async def _fallback_single_pass(
+    client: AsyncOpenAI,
+    args: CLIParams,
+    system_prompt: str,
+    user_prompt: str,
+    output_model: Type[BaseModel],
+    tools: List[dict],
+    log_cb: Any,
+) -> tuple[BaseModel, List[str]]:
+    """Fallback to single-pass execution."""
+    logger.debug("Executing single-pass fallback")
+    response = await create_structured_output(
+        client=client,
+        model=args["model"],
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        output_schema=output_model,
+        output_file=args.get("output_file"),
+        on_log=log_cb,
+        tools=tools,
+    )
+    return response, []  # No files downloaded in fallback
+
+
+def _get_effective_download_strategy(
+    args: CLIParams, ci_config: Dict[str, Any]
+) -> str:
+    """Determine the effective download strategy from config and feature flags.
+
+    Args:
+        args: CLI parameters including enabled_features and disabled_features
+        ci_config: Code interpreter configuration
+
+    Returns:
+        Either "single_pass" or "two_pass_sentinel"
+    """
+    # Start with config default
+    strategy: str = ci_config.get("download_strategy", "single_pass")
+
+    # Check for feature flag override
+    enabled_features = args.get("enabled_features", [])
+    disabled_features = args.get("disabled_features", [])
+
+    if enabled_features or disabled_features:
+        from .click_options import parse_feature_flags
+
+        try:
+            parsed_flags = parse_feature_flags(
+                tuple(enabled_features), tuple(disabled_features)
+            )
+            ci_hack_flag = parsed_flags.get("ci-download-hack")
+            if ci_hack_flag == "on":
+                strategy = "two_pass_sentinel"
+            elif ci_hack_flag == "off":
+                strategy = "single_pass"
+        except Exception as e:
+            logger.warning(f"Failed to parse feature flags: {e}")
+
+    return strategy
+
+
 async def execute_model(
     args: CLIParams,
     params: Dict[str, Any],
@@ -755,22 +852,7 @@ async def execute_model(
     system_prompt: str,
     user_prompt: str,
 ) -> ExitCode:
-    """Execute the model and handle the response.
-
-    Args:
-        args: Command line arguments
-        params: Validated model parameters
-        output_model: Generated Pydantic model
-        system_prompt: Processed system prompt
-        user_prompt: Processed user prompt
-
-    Returns:
-        Exit code indicating success or failure
-
-    Raises:
-        CLIError: For execution errors
-        UnattendedOperationTimeoutError: For operation timeouts
-    """
+    """Execute the model with the given parameters."""
     logger.debug("=== Execution Phase ===")
 
     # Initialize unattended operation manager
@@ -809,7 +891,7 @@ async def execute_model(
 
     # Create detailed log callback
     def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
-        if args.get("debug_openai_stream", False):
+        if args.get("verbose", False):
             if extra:
                 extra_str = LogSerializer.serialize_log_extra(extra)
                 if extra_str:
@@ -828,8 +910,31 @@ async def execute_model(
         tools = []
         nonlocal code_interpreter_info, file_search_info
 
+        # Get universal tool toggle overrides first
+        enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
+        disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
+
         # Process MCP configuration if provided
-        if services.is_configured("mcp"):
+        # Apply universal tool toggle overrides for mcp
+        mcp_enabled_by_config = services.is_configured("mcp")
+        mcp_enabled_by_toggle = "mcp" in enabled_tools
+        mcp_disabled_by_toggle = "mcp" in disabled_tools
+
+        # Determine final enablement state
+        mcp_should_enable = False
+        if mcp_enabled_by_toggle:
+            # Universal --enable-tool takes highest precedence
+            mcp_should_enable = True
+            logger.debug("MCP enabled via --enable-tool")
+        elif mcp_disabled_by_toggle:
+            # Universal --disable-tool takes highest precedence
+            mcp_should_enable = False
+            logger.debug("MCP disabled via --disable-tool")
+        else:
+            # Fall back to config-based enablement
+            mcp_should_enable = mcp_enabled_by_config
+
+        if mcp_should_enable and services.is_configured("mcp"):
             mcp_manager = await services.get_mcp_manager()
             if mcp_manager:
                 tools.extend(mcp_manager.get_tools_for_responses_api())
@@ -843,10 +948,29 @@ async def execute_model(
         routing_result_typed: Optional[ProcessingResult] = routing_result
 
         # Process Code Interpreter configuration if enabled
-        if (
+        # Apply universal tool toggle overrides for code-interpreter
+        ci_enabled_by_routing = (
             routing_result_typed
             and "code-interpreter" in routing_result_typed.enabled_tools
-        ):
+        )
+        ci_enabled_by_toggle = "code-interpreter" in enabled_tools
+        ci_disabled_by_toggle = "code-interpreter" in disabled_tools
+
+        # Determine final enablement state
+        ci_should_enable = False
+        if ci_enabled_by_toggle:
+            # Universal --enable-tool takes highest precedence
+            ci_should_enable = True
+            logger.debug("Code Interpreter enabled via --enable-tool")
+        elif ci_disabled_by_toggle:
+            # Universal --disable-tool takes highest precedence
+            ci_should_enable = False
+            logger.debug("Code Interpreter disabled via --disable-tool")
+        else:
+            # Fall back to routing-based enablement
+            ci_should_enable = bool(ci_enabled_by_routing)
+
+        if ci_should_enable and routing_result_typed:
             code_interpreter_files = routing_result_typed.validated_files.get(
                 "code-interpreter", []
             )
@@ -893,10 +1017,29 @@ async def execute_model(
                         )
 
         # Process File Search configuration if enabled
-        if (
+        # Apply universal tool toggle overrides for file-search
+        fs_enabled_by_routing = (
             routing_result_typed
             and "file-search" in routing_result_typed.enabled_tools
-        ):
+        )
+        fs_enabled_by_toggle = "file-search" in enabled_tools
+        fs_disabled_by_toggle = "file-search" in disabled_tools
+
+        # Determine final enablement state
+        fs_should_enable = False
+        if fs_enabled_by_toggle:
+            # Universal --enable-tool takes highest precedence
+            fs_should_enable = True
+            logger.debug("File Search enabled via --enable-tool")
+        elif fs_disabled_by_toggle:
+            # Universal --disable-tool takes highest precedence
+            fs_should_enable = False
+            logger.debug("File Search disabled via --disable-tool")
+        else:
+            # Fall back to routing-based enablement
+            fs_should_enable = bool(fs_enabled_by_routing)
+
+        if fs_should_enable and routing_result_typed:
             file_search_files = routing_result_typed.validated_files.get(
                 "file-search", []
             )
@@ -959,7 +1102,15 @@ async def execute_model(
 
         # Determine if web search should be enabled
         web_search_enabled = False
-        if web_search_from_cli:
+        if "web-search" in enabled_tools:
+            # Universal --enable-tool web-search takes highest precedence
+            web_search_enabled = True
+            logger.debug("Web search enabled via --enable-tool")
+        elif "web-search" in disabled_tools:
+            # Universal --disable-tool web-search takes highest precedence
+            web_search_enabled = False
+            logger.debug("Web search disabled via --disable-tool")
+        elif web_search_from_cli:
             # Explicit --web-search flag takes precedence
             web_search_enabled = True
         elif no_web_search_from_cli:
@@ -1034,19 +1185,61 @@ async def execute_model(
         # Debug log the final tools array
         logger.debug(f"Final tools array being passed to API: {tools}")
 
-        # Stream the response
-        logger.debug(f"Tools being passed to API: {tools}")
-        async for response in stream_structured_output(
-            client=client,
-            model=args["model"],
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            output_schema=output_model,
-            output_file=args.get("output_file"),
-            on_log=log_callback,
-            tools=tools,
+        # Check for two-pass sentinel mode
+        ci_config = config.get_code_interpreter_config()
+        effective_strategy = _get_effective_download_strategy(args, ci_config)
+        if (
+            effective_strategy == "two_pass_sentinel"
+            and output_model
+            and code_interpreter_info
         ):
-            output_buffer.append(response)
+            try:
+                logger.debug(
+                    "Using two-pass sentinel mode for Code Interpreter file downloads"
+                )
+                resp, downloaded_files = await _execute_two_pass_sentinel(
+                    client,
+                    args,
+                    system_prompt,
+                    user_prompt,
+                    output_model,
+                    tools,
+                    log_callback,
+                    ci_config,
+                    code_interpreter_info,
+                )
+                response = resp
+                # Store downloaded files info for later use
+                if downloaded_files:
+                    setattr(response, "_downloaded_files", downloaded_files)
+            except Exception as e:
+                logger.warning(
+                    f"Two-pass execution failed, falling back to single-pass: {e}"
+                )
+                resp, _ = await _fallback_single_pass(
+                    client,
+                    args,
+                    system_prompt,
+                    user_prompt,
+                    output_model,
+                    tools,
+                    log_callback,
+                )
+                response = resp
+        else:
+            # Create the response using the API (single-pass mode)
+            logger.debug(f"Tools being passed to API: {tools}")
+            response = await create_structured_output(
+                client=client,
+                model=args["model"],
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                output_schema=output_model,
+                output_file=args.get("output_file"),
+                on_log=log_callback,
+                tools=tools,
+            )
+        output_buffer.append(response)
 
         # Handle final output
         output_file = args.get("output_file")
@@ -1088,37 +1281,55 @@ async def execute_model(
                 last_response = output_buffer[-1]
                 if hasattr(last_response, "_api_response"):
                     api_response = getattr(last_response, "_api_response")
-                    if hasattr(api_response, "messages"):
+                    # Responses API has 'output' attribute, not 'messages'
+                    if hasattr(api_response, "output"):
                         download_dir = args.get(
                             "code_interpreter_download_dir", "./downloads"
                         )
                         manager = code_interpreter_info["manager"]
 
-                        # Debug: Log response structure
+                        # Debug: Log response structure for Responses API
                         logger.debug(
-                            f"Response has {len(api_response.messages)} messages"
+                            f"Response has {len(api_response.output)} output items"
                         )
-                        for i, msg in enumerate(api_response.messages):
-                            logger.debug(f"Message {i}: {type(msg)}")
-                            if hasattr(msg, "annotations"):
-                                logger.debug(
-                                    f"  Annotations: {msg.annotations}"
-                                )
-                            if hasattr(msg, "file_ids"):
-                                logger.debug(f"  File IDs: {msg.file_ids}")
-                            if hasattr(msg, "content"):
+                        for i, item in enumerate(api_response.output):
+                            logger.debug(f"Output item {i}: {type(item)}")
+                            if hasattr(item, "type"):
+                                logger.debug(f"  Type: {item.type}")
+                            if hasattr(item, "content"):
                                 content_str = (
-                                    str(msg.content)[:200] + "..."
-                                    if len(str(msg.content)) > 200
-                                    else str(msg.content)
+                                    str(item.content)[:200] + "..."
+                                    if len(str(item.content)) > 200
+                                    else str(item.content)
                                 )
                                 logger.debug(
                                     f"  Content preview: {content_str}"
                                 )
+                            # Debug tool call outputs for file detection
+                            if hasattr(item, "outputs"):
+                                logger.debug(
+                                    f"  Outputs: {len(item.outputs or [])} items"
+                                )
+                                for j, output in enumerate(item.outputs or []):
+                                    logger.debug(
+                                        f"    Output {j}: {type(output)}"
+                                    )
+                                    if hasattr(output, "type"):
+                                        logger.debug(
+                                            f"      Type: {output.type}"
+                                        )
+                                    if hasattr(output, "file_id"):
+                                        logger.debug(
+                                            f"      File ID: {output.file_id}"
+                                        )
+                                    if hasattr(output, "filename"):
+                                        logger.debug(
+                                            f"      Filename: {output.filename}"
+                                        )
 
                         # Type ignore since we know this is a CodeInterpreterManager
                         downloaded_files = await manager.download_generated_files(  # type: ignore[attr-defined]
-                            api_response.messages, download_dir
+                            api_response, download_dir
                         )
                         if downloaded_files:
                             logger.info(
@@ -1131,7 +1342,7 @@ async def execute_model(
                                 "No files were downloaded from Code Interpreter"
                             )
                     else:
-                        logger.debug("API response has no messages attribute")
+                        logger.debug("API response has no output attribute")
                 else:
                     logger.debug(
                         "Last response has no _api_response attribute"
@@ -1149,17 +1360,14 @@ async def execute_model(
         # The result should be an ExitCode from execute_main_operation
         return result  # type: ignore[no-any-return]
     except (
-        StreamInterruptedError,
-        StreamBufferError,
-        StreamParseError,
         APIResponseError,
         EmptyResponseError,
         InvalidResponseFormatError,
     ) as e:
-        logger.error("Stream error: %s", str(e))
+        logger.error("API error: %s", str(e))
         raise CLIError(str(e), exit_code=ExitCode.API_ERROR)
     except Exception as e:
-        logger.exception("Unexpected error during streaming")
+        logger.exception("Unexpected error during execution")
         raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
     finally:
         # Clean up Code Interpreter files if requested
