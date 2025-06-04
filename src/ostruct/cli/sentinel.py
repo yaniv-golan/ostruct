@@ -2,8 +2,7 @@
 
 import json
 import re
-from typing import Dict, Optional, Any
-
+from typing import Any, Dict, Optional
 
 _SENT_RE = re.compile(r"===BEGIN_JSON===\s*(\{.*?})\s*===END_JSON===", re.S)
 

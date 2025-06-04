@@ -392,24 +392,6 @@ class ModelNotSupportedError(CLIError):
     pass
 
 
-class StreamInterruptedError(CLIError):
-    """Exception raised when a stream is interrupted."""
-
-    pass
-
-
-class StreamBufferError(CLIError):
-    """Exception raised when there's an error with the stream buffer."""
-
-    pass
-
-
-class StreamParseError(CLIError):
-    """Exception raised when there's an error parsing the stream."""
-
-    pass
-
-
 class APIResponseError(CLIError):
     """Exception raised when there's an error with the API response."""
 
@@ -788,15 +770,8 @@ def handle_error(e: Exception) -> None:
             logger.debug(
                 f"Error details:\nType: {type(e).__name__}\n{context_str.rstrip()}"
             )
-    elif not isinstance(
-        e,
-        (
-            click.UsageError,
-            DuplicateFileMappingError,
-            VariableNameError,
-            VariableValueError,
-        ),
-    ):
+    elif not isinstance(e, (CLIError, click.UsageError)):
+        # Only show tracebacks for truly unexpected errors (not CLIError subclasses)
         logger.error(msg, exc_info=True)
 
     # 3. User output
@@ -820,9 +795,6 @@ __all__ = [
     "InvalidJSONError",
     "ModelCreationError",
     "ModelNotSupportedError",
-    "StreamInterruptedError",
-    "StreamBufferError",
-    "StreamParseError",
     "APIResponseError",
     "EmptyResponseError",
     "InvalidResponseFormatError",
