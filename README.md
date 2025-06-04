@@ -241,7 +241,7 @@ ostruct run analysis.j2 schema.json -fc data.csv
 ostruct run search.j2 schema.json -fs documentation.pdf
 
 # Web Search (real-time information)
-ostruct run research.j2 schema.json --web-search -V topic="latest AI developments"
+ostruct run research.j2 schema.json --enable-tool web-search -V topic="latest AI developments"
 
 # Multiple tools with one file
 ostruct run template.j2 schema.json --file-for code-interpreter shared.json --file-for file-search shared.json
@@ -309,6 +309,7 @@ tools:
   code_interpreter:
     auto_download: true
     output_directory: "./output"
+    download_strategy: "two_pass_sentinel"  # Enable reliable file downloads
 
 mcp:
   custom_server: "https://my-mcp-server.com"
@@ -322,6 +323,35 @@ Load custom configuration:
 ```bash
 ostruct --config my-config.yaml run template.j2 schema.json
 ```
+
+### Code Interpreter File Downloads
+
+**Important**: If you're using Code Interpreter with structured output (JSON schemas), you may need to enable the two-pass download strategy to ensure files are downloaded reliably.
+
+#### Option 1: CLI Flags (Recommended for one-off usage)
+
+```bash
+# Enable reliable file downloads for this run
+ostruct run template.j2 schema.json -fc data.csv --enable-feature ci-download-hack
+
+# Force single-pass mode (override config)
+ostruct run template.j2 schema.json -fc data.csv --disable-feature ci-download-hack
+```
+
+#### Option 2: Configuration File (Recommended for persistent settings)
+
+```yaml
+# ostruct.yaml
+tools:
+  code_interpreter:
+    download_strategy: "two_pass_sentinel"  # Enables reliable file downloads
+    auto_download: true
+    output_directory: "./downloads"
+```
+
+**Why this is needed**: OpenAI's structured output mode can prevent file download annotations from being generated. The two-pass strategy works around this by making two API calls: one to generate files (without structured output), then another to ensure schema compliance. For detailed technical information, see [docs/known-issues/2025-06-responses-ci-file-output.md](docs/known-issues/2025-06-responses-ci-file-output.md).
+
+**Performance**: The two-pass strategy approximately doubles token usage but ensures reliable file downloads when using structured output with Code Interpreter.
 
 ## Get Started Quickly
 
@@ -566,6 +596,60 @@ This is especially useful when:
 The registry file is stored at `~/.openai_structured/config/models.yml` and is automatically referenced when validating model parameters and token limits.
 
 The update command uses HTTP conditional requests (If-Modified-Since headers) to check if the remote registry has changed before downloading, ensuring efficient updates.
+
+# Testing
+
+## Running Tests
+
+The test suite is divided into two categories:
+
+### Regular Tests (Default)
+
+```bash
+# Run all tests (skips live tests by default)
+pytest
+
+# Run specific test file
+pytest tests/test_config.py
+
+# Run with verbose output
+pytest -v
+```
+
+### Live Tests
+
+Live tests make real API calls to OpenAI and require a valid API key. They are skipped by default.
+
+```bash
+# Run only live tests (requires OPENAI_API_KEY)
+pytest -m live
+
+# Run all tests including live tests
+pytest -m "live or not live"
+
+# Run specific live test
+pytest tests/test_responses_annotations.py -m live
+```
+
+**Live tests include:**
+
+- Tests that make actual OpenAI API calls
+- Tests that run `ostruct` commands via subprocess
+- Tests that verify real API behavior and file downloads
+
+**Requirements for live tests:**
+
+- Valid `OPENAI_API_KEY` environment variable
+- Internet connection
+- May incur API costs
+
+## Test Markers
+
+- `@pytest.mark.live` - Tests that make real API calls or run actual commands
+- `@pytest.mark.no_fs` - Tests that need real filesystem (not pyfakefs)
+- `@pytest.mark.slow` - Performance/stress tests
+- `@pytest.mark.flaky` - Tests that may need reruns
+- `@pytest.mark.mock_openai` - Tests using mocked OpenAI client
 
 <!--
 MAINTAINER NOTE: After editing this README, please test GitHub rendering by:
