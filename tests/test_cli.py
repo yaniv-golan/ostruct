@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import subprocess
 from io import StringIO
 from typing import Any, Dict, List, Optional, Union, cast
 from unittest.mock import Mock, patch
@@ -1345,6 +1346,142 @@ class TestTemplateContext:
         # Verify other variables
         assert context["var"] == "value"
         assert context["json"] == {"key": "value"}
+
+
+# Code Interpreter Download Tests (Developer Brief Implementation)
+# =================================================================
+
+
+# --- C-01  No markdown → expect NO file ------------------------------
+@pytest.mark.live
+@pytest.mark.no_fs
+def test_yaml_autodownload_true_but_no_markdown():
+    """Test that without markdown link, no file is downloaded."""
+    import os
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        proj_dir = os.path.join(tmpdir, "test_proj")
+        os.makedirs(proj_dir)
+
+        # Create ostruct.yaml
+        with open(os.path.join(proj_dir, "ostruct.yaml"), "w") as f:
+            f.write(
+                """
+version: 1
+tools:
+  code_interpreter:
+    auto_download: true
+    output_directory: "./dl"
+"""
+            )
+
+        # Create template without markdown
+        with open(os.path.join(proj_dir, "task.j2"), "w") as f:
+            f.write(
+                """
+---
+system: |
+  You are a Code-Interpreter assistant.
+  Create ci_output.txt with 'TEST'. Do NOT link.
+---
+Create the file now.
+"""
+            )
+
+        # Create schema
+        with open(os.path.join(proj_dir, "schema.json"), "w") as f:
+            f.write(
+                """
+{"type":"object",
+ "properties":{"confirmation_message":{"type":"string"}},
+ "required":["confirmation_message"]}
+"""
+            )
+
+        # Run ostruct
+        result = subprocess.run(
+            ["ostruct", "run", "task.j2", "schema.json"],
+            cwd=proj_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        # Should succeed
+        assert result.returncode == 0, f"ostruct failed: {result.stderr}"
+
+        # Should not create download directory
+        dl_dir = os.path.join(proj_dir, "dl")
+        assert not os.path.exists(
+            dl_dir
+        ), "Download directory was created unexpectedly"
+
+
+# --- C-02  Markdown present → should download file (fixed) --------------
+@pytest.mark.live
+@pytest.mark.no_fs
+def test_markdown_annotation_but_cli_does_not_download():
+    """Test that with markdown link, ostruct downloads the file (fixed)."""
+    import os
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        proj_dir = os.path.join(tmpdir, "test_proj")
+        os.makedirs(proj_dir)
+
+        # Create ostruct.yaml
+        with open(os.path.join(proj_dir, "ostruct.yaml"), "w") as f:
+            f.write(
+                """
+version: 1
+tools:
+  code_interpreter:
+    auto_download: true
+    output_directory: "./dl"
+"""
+            )
+
+        # Create template with markdown
+        with open(os.path.join(proj_dir, "task.j2"), "w") as f:
+            f.write(
+                """
+---
+system: |
+  You are a Code-Interpreter assistant.
+  Create ci_output.txt with 'TEST'. Include markdown link.
+---
+Create the file now.
+
+[Download file](sandbox:/mnt/data/ci_output.txt)
+"""
+            )
+
+        # Create schema
+        with open(os.path.join(proj_dir, "schema.json"), "w") as f:
+            f.write(
+                """
+{"type":"object",
+ "properties":{"confirmation_message":{"type":"string"}},
+ "required":["confirmation_message"]}
+"""
+            )
+
+        # Run ostruct
+        result = subprocess.run(
+            ["ostruct", "run", "task.j2", "schema.json"],
+            cwd=proj_dir,
+            capture_output=True,
+            text=True,
+        )
+
+        # Should succeed
+        assert result.returncode == 0, f"ostruct failed: {result.stderr}"
+
+        # Should create the file (this should now work with the fix)
+        dl_file = os.path.join(proj_dir, "dl", "ci_output.txt")
+        assert os.path.isfile(
+            dl_file
+        ), "File was not downloaded despite markdown link"
 
 
 @pytest.mark.mock_openai

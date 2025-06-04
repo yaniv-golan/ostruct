@@ -17,6 +17,28 @@ class MockResponsesAPIHelper:
     """Helper class for mocking OpenAI Responses API calls following best practices."""
 
     @staticmethod
+    def create_non_streaming_response(
+        output_text, response_id="test-response-id"
+    ):
+        """Create a proper non-streaming response object for the Responses API."""
+
+        class MockNonStreamingResponse:
+            def __init__(self, output_text, response_id):
+                self.id = response_id
+                self.output_text = output_text
+                self.text = output_text  # Alternative access method
+                self.model = "gpt-4o"
+                self.created_at = 1234567890
+                self.usage = Mock()
+                self.usage.input_tokens = 10
+                self.usage.output_tokens = 20
+                self.usage.total_tokens = 30
+                # Add messages attribute for file download compatibility
+                self.messages = []
+
+        return MockNonStreamingResponse(output_text, response_id)
+
+    @staticmethod
     def create_streaming_response(chunks):
         """Create a proper async iterator for streaming responses."""
 
@@ -64,8 +86,28 @@ class MockResponsesAPIHelper:
         return chunk
 
     @staticmethod
-    def setup_mock_client(mock_openai_class, response_chunks):
-        """Set up a complete mock client with responses."""
+    def setup_mock_client(
+        mock_openai_class, output_text, response_id="test-response-id"
+    ):
+        """Set up a complete mock client with non-streaming responses."""
+        mock_client = AsyncMock()
+        mock_openai_class.return_value = mock_client
+
+        # Create the non-streaming response
+        response = MockResponsesAPIHelper.create_non_streaming_response(
+            output_text, response_id
+        )
+
+        # Set up the responses.create mock as an async mock
+        mock_responses = Mock()
+        mock_responses.create = AsyncMock(return_value=response)
+        mock_client.responses = mock_responses
+
+        return mock_client
+
+    @staticmethod
+    def setup_mock_client_streaming(mock_openai_class, response_chunks):
+        """Set up a complete mock client with streaming responses (legacy)."""
         mock_client = AsyncMock()
         mock_openai_class.return_value = mock_client
 
@@ -118,14 +160,9 @@ class TestResponsesAPIIntegration:
 
         cli_runner = CliTestRunner()
 
-        # Set up mock client using the helper
-        response_chunks = [
-            MockResponsesAPIHelper.create_mock_chunk(
-                output_text='{"result": "API response"}'
-            )
-        ]
+        # Set up mock client using the helper for non-streaming response
         mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, response_chunks
+            mock_openai_class, '{"result": "API response"}'
         )
 
         # Create test files
@@ -171,7 +208,7 @@ class TestResponsesAPIIntegration:
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
-    def test_responses_api_streaming(
+    def test_responses_api_non_streaming(
         self,
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
@@ -179,7 +216,7 @@ class TestResponsesAPIIntegration:
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
-        """Test streaming responses work correctly."""
+        """Test non-streaming responses work correctly."""
         # Mock model registry and capabilities
         mock_registry = Mock()
         mock_capabilities = Mock()
@@ -200,40 +237,10 @@ class TestResponsesAPIIntegration:
 
         cli_runner = CliTestRunner()
 
-        # Setup mock client
-        mock_client = AsyncMock()
-        mock_openai_class.return_value = mock_client
-
-        # Mock streaming response with multiple chunks using Responses API format
-        mock_chunks = [
-            MockResponsesAPIHelper.create_mock_chunk(
-                output_text='{"result": "'
-            ),
-            MockResponsesAPIHelper.create_mock_chunk(output_text="streaming "),
-            MockResponsesAPIHelper.create_mock_chunk(output_text='response"}'),
-        ]
-
-        # Reuse the MockStreamingResponse class
-        class MockStreamingResponse:
-            def __init__(self, chunks):
-                self.chunks = chunks
-                self.index = 0
-
-            def __aiter__(self):
-                return self
-
-            async def __anext__(self):
-                if self.index >= len(self.chunks):
-                    raise StopAsyncIteration
-                chunk = self.chunks[self.index]
-                self.index += 1
-                return chunk
-
-        mock_responses = Mock()
-        mock_responses.create = AsyncMock(
-            return_value=MockStreamingResponse(mock_chunks)
+        # Set up mock client for non-streaming response (streaming is no longer used)
+        mock_client = MockResponsesAPIHelper.setup_mock_client(
+            mock_openai_class, '{"result": "streaming response"}'
         )
-        mock_client.responses = mock_responses
 
         # Create test files
         schema_content = {
@@ -299,14 +306,9 @@ class TestResponsesAPIIntegration:
 
         cli_runner = CliTestRunner()
 
-        # Set up mock client using the helper
-        response_chunks = [
-            MockResponsesAPIHelper.create_mock_chunk(
-                output_text='{"result": "Tool analysis complete"}'
-            )
-        ]
+        # Set up mock client using the helper for non-streaming response
         mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, response_chunks
+            mock_openai_class, '{"result": "Tool analysis complete"}'
         )
 
         # Create test files
@@ -449,14 +451,9 @@ class TestResponsesAPIIntegration:
 
         cli_runner = CliTestRunner()
 
-        # Set up mock client using the helper
-        response_chunks = [
-            MockResponsesAPIHelper.create_mock_chunk(
-                output_text='{"result": "Optimized response"}'
-            )
-        ]
+        # Set up mock client using the helper for non-streaming response
         mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, response_chunks
+            mock_openai_class, '{"result": "Optimized response"}'
         )
 
         # Create test files with content that should be optimized
@@ -527,14 +524,9 @@ class TestResponsesAPIIntegration:
 
         cli_runner = CliTestRunner()
 
-        # Set up mock client using the helper
-        response_chunks = [
-            MockResponsesAPIHelper.create_mock_chunk(
-                output_text='{"result": "Parameter test"}'
-            )
-        ]
+        # Set up mock client using the helper for non-streaming response
         mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, response_chunks
+            mock_openai_class, '{"result": "Parameter test"}'
         )
 
         # Create test files

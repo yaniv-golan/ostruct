@@ -182,10 +182,16 @@ class TestOstructConfig:
         with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
-        # Mock Path.home() to return our fake home
-        with patch("pathlib.Path.home", return_value=fake_home):
-            config = OstructConfig.load()
-            assert config.models.default == "gpt-4o-mini"
+        # Change to a temporary directory to avoid loading project's ostruct.yaml
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            # Mock Path.home() to return our fake home
+            with patch("pathlib.Path.home", return_value=fake_home):
+                config = OstructConfig.load()
+                assert config.models.default == "gpt-4o-mini"
+        finally:
+            os.chdir(original_cwd)
 
 
 class TestGetConfig:

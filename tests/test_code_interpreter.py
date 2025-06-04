@@ -137,32 +137,38 @@ class TestCodeInterpreterManager:
                 mock_content2,
             ]
 
-            # Create mock messages with annotations (new API format)
+            # Create mock response with new Responses API structure
+            mock_response = Mock()
+            mock_response.output = []
+
+            # Create mock message items with annotations
             mock_msg1 = Mock()
-            mock_msg1.annotations = [
-                {
-                    "type": "container_file_citation",
-                    "file_id": "file-output-123",
-                    "container_id": "container-123",
-                    "filename": "chart.png",
-                }
-            ]
+            mock_msg1.type = "message"
+            mock_msg1.content = [Mock()]
+            mock_msg1.content[0].annotations = [Mock()]
+            mock_msg1.content[0].annotations[
+                0
+            ].type = "container_file_citation"
+            mock_msg1.content[0].annotations[0].file_id = "file-output-123"
+            mock_msg1.content[0].annotations[0].container_id = "container-123"
+            mock_msg1.content[0].annotations[0].filename = "chart.png"
 
             mock_msg2 = Mock()
-            mock_msg2.annotations = [
-                {
-                    "type": "container_file_citation",
-                    "file_id": "file-output-456",
-                    "container_id": "container-456",
-                    "filename": "results.csv",
-                }
-            ]
+            mock_msg2.type = "message"
+            mock_msg2.content = [Mock()]
+            mock_msg2.content[0].annotations = [Mock()]
+            mock_msg2.content[0].annotations[
+                0
+            ].type = "container_file_citation"
+            mock_msg2.content[0].annotations[0].file_id = "file-output-456"
+            mock_msg2.content[0].annotations[0].container_id = "container-456"
+            mock_msg2.content[0].annotations[0].filename = "results.csv"
 
-            messages = [mock_msg1, mock_msg2]
+            mock_response.output = [mock_msg1, mock_msg2]
 
             # Test download
             downloaded_paths = await self.manager.download_generated_files(
-                messages, temp_dir
+                mock_response, temp_dir
             )
 
             assert len(downloaded_paths) == 2
@@ -195,21 +201,22 @@ class TestCodeInterpreterManager:
             self.mock_client.files.retrieve.return_value = mock_file_info
             self.mock_client.files.content.return_value = mock_content
 
-            # Create mock message with annotation but no filename
+            # Create mock response with annotation but no filename
+            mock_response = Mock()
             mock_msg = Mock()
-            mock_msg.annotations = [
-                {
-                    "type": "container_file_citation",
-                    "file_id": "file-output-123",
-                    "container_id": "container-123",
-                    "filename": None,
-                }
-            ]
-            messages = [mock_msg]
+            mock_msg.type = "message"
+            mock_msg.content = [Mock()]
+            mock_msg.content[0].annotations = [Mock()]
+            mock_msg.content[0].annotations[0].type = "container_file_citation"
+            mock_msg.content[0].annotations[0].file_id = "file-output-123"
+            mock_msg.content[0].annotations[0].container_id = "container-123"
+            mock_msg.content[0].annotations[0].filename = None
+
+            mock_response.output = [mock_msg]
 
             # Test download
             downloaded_paths = await self.manager.download_generated_files(
-                messages, temp_dir
+                mock_response, temp_dir
             )
 
             assert len(downloaded_paths) == 1
@@ -217,46 +224,37 @@ class TestCodeInterpreterManager:
             assert "file-output-123" in downloaded_paths[0]
 
     @pytest.mark.asyncio
-    async def test_download_generated_files_legacy_fallback(self):
-        """Test downloading files using legacy file_ids fallback."""
+    async def test_download_generated_files_no_annotations(self):
+        """Test downloading files when no annotations are present."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Mock file info and content
-            mock_file_info = Mock()
-            mock_file_info.filename = "legacy_file.txt"
-
-            mock_content = Mock()
-            mock_content.read.return_value = b"legacy content"
-
-            self.mock_client.files.retrieve.return_value = mock_file_info
-            self.mock_client.files.content.return_value = mock_content
-
-            # Create mock message with legacy file_ids (no annotations)
+            # Create mock response with no annotations
+            mock_response = Mock()
             mock_msg = Mock()
-            mock_msg.annotations = None  # No annotations
-            mock_msg.file_ids = ["file-legacy-123"]
-            messages = [mock_msg]
+            mock_msg.type = "message"
+            mock_msg.content = [Mock()]
+            mock_msg.content[0].annotations = []  # No annotations
+
+            mock_response.output = [mock_msg]
 
             # Test download
             downloaded_paths = await self.manager.download_generated_files(
-                messages, temp_dir
+                mock_response, temp_dir
             )
 
-            assert len(downloaded_paths) == 1
-            assert "legacy_file.txt" in downloaded_paths[0]
+            # Should return empty list when no annotations are found
+            assert len(downloaded_paths) == 0
 
     @pytest.mark.asyncio
     async def test_download_generated_files_no_files(self):
         """Test downloading when no files are present."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Create mock message with no annotations or file_ids
-            mock_msg = Mock()
-            mock_msg.annotations = None
-            mock_msg.file_ids = None
-            messages = [mock_msg]
+            # Create mock response with no output
+            mock_response = Mock()
+            mock_response.output = []
 
             # Test download
             downloaded_paths = await self.manager.download_generated_files(
-                messages, temp_dir
+                mock_response, temp_dir
             )
 
             assert len(downloaded_paths) == 0
