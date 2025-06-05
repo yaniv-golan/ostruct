@@ -49,6 +49,9 @@ def generate_install_script(
             "{{OSTRUCT_VERSION}}", version
         )
 
+        # Ensure output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
         # Write final script
         output_path.write_text(final_content, encoding="utf-8")
 
