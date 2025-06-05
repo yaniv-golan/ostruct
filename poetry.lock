@@ -1948,10 +1948,9 @@ pytest = ">=6.2"
 name = "python-dotenv"
 version = "1.0.1"
 description = "Read key-value pairs from a .env file and set them as environment variables"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"dev\""
 files = [
     {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
     {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
@@ -3033,4 +3032,4 @@ examples = ["asyncio-throttle", "tenacity"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "954544a1c108209bb1f5e3ebacf7126e047fd95049cee34ee7c32e309074417f"
+content-hash = "e33e95238eec82dbf0b110674ecd9122d9958690fb9d78a80c61e1c9b1aab485"
