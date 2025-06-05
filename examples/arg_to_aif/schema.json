@@ -13,6 +13,13 @@
                 },
                 "created": {
                     "type": "string"
+                },
+                "extensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of AIF extensions used in this document"
                 }
             },
             "required": [
@@ -45,6 +52,20 @@
                     },
                     "timestamp": {
                         "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string",
+                        "description": "AIF Extension: Short display name for visualization (max 60 chars)"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "AIF Extension: Semantic category for enhanced visualization"
+                    },
+                    "strength": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "AIF Extension: Argument strength for visualization weighting"
                     }
                 },
                 "required": [
@@ -72,6 +93,17 @@
                     },
                     "formEdgeID": {
                         "type": "string"
+                    },
+                    "relationshipType": {
+                        "type": "string",
+                        "enum": [
+                            "supports",
+                            "conflicts",
+                            "infers",
+                            "attacks",
+                            "relates"
+                        ],
+                        "description": "AIF Extension: Semantic relationship type for enhanced edge visualization"
                     }
                 },
                 "required": [

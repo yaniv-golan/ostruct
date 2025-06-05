@@ -1,0 +1,10 @@
+# Ignore all generated files in output directory
+*.aif.json
+*.mmd
+*.svg
+*.png
+*.pdf
+
+# But keep the directory structure
+!.gitkeep
+!.gitignore

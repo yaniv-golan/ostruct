@@ -1,0 +1,79 @@
+{
+  "AIF": {
+    "version": "1.0",
+    "analyst": "AI Assistant",
+    "created": "2024-01-01T00:00:00Z"
+  },
+  "nodes": [
+    {
+      "nodeID": "1",
+      "text": "The argument that Protagoras presents to Euathlus is fallacious.",
+      "type": "I",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "nodeID": "2",
+      "text": "Euathlus counters Protagoras's argument effectively, stating he owes nothing in either outcome.",
+      "type": "I",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "nodeID": "3",
+      "text": "The jurors could not decide, leading to the case being postponed.",
+      "type": "I",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "nodeID": "4",
+      "text": "Protagoras argues that judgment for either party results in him being paid.",
+      "type": "I",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "nodeID": "5",
+      "text": "Euathlus argues that if the jury rules in his favor, nothing is due, and if they rule against him, he still owes nothing.",
+      "type": "I",
+      "timestamp": "2024-01-01T00:00:00Z"
+    },
+    {
+      "nodeID": "6",
+      "text": "Euathlus defeats Protagoras by using his own argument against him.",
+      "type": "I",
+      "timestamp": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "edges": [
+    {
+      "edgeID": "1",
+      "fromID": "1",
+      "toID": "4",
+      "formEdgeID": ""
+    },
+    {
+      "edgeID": "2",
+      "fromID": "4",
+      "toID": "2",
+      "formEdgeID": ""
+    },
+    {
+      "edgeID": "3",
+      "fromID": "2",
+      "toID": "5",
+      "formEdgeID": ""
+    },
+    {
+      "edgeID": "4",
+      "fromID": "5",
+      "toID": "3",
+      "formEdgeID": ""
+    },
+    {
+      "edgeID": "5",
+      "fromID": "6",
+      "toID": "1",
+      "formEdgeID": ""
+    }
+  ],
+  "locutions": [],
+  "participants": []
+}
