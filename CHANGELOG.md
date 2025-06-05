@@ -11,6 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **macOS Installation Script**: Added comprehensive installation script with dynamic version management and industry-standard organization. The script automatically handles Python installation, PATH configuration, and ostruct setup on macOS. Features include Python 3.10+ installation via Homebrew or python.org, shell PATH configuration, pip cache clearing, and version verification. The script uses a template-based build system that automatically extracts the current version from `pyproject.toml`. Scripts are organized following industry best practices with separate directories for build automation, platform-specific installation, and categorized testing (unit/integration/docker). Users can install with: `curl -sSL https://raw.githubusercontent.com/yaniv-golan/ostruct/main/scripts/generated/install-macos.sh | bash`
 
+- **Centralized Dependency Installation Utilities**: Added comprehensive dependency management system in `scripts/install/dependencies/` with reusable utilities for installing common tools across examples. Features include `ensure_jq.sh` and `ensure_mermaid.sh` with multiple installation strategies (system package managers, direct binary downloads, Docker wrappers), cross-platform support (Linux, macOS, Windows), environment variable controls (`OSTRUCT_SKIP_AUTO_INSTALL`, `OSTRUCT_PREFER_DOCKER`), and comprehensive testing framework. This eliminates code duplication across examples and provides consistent, reliable tool installation.
+
+- **Enhanced Argument Interchange Format (AIF) Support**: Major enhancement to the `arg_to_aif` example with a complete AIF extension system for advanced argument visualization. Features include:
+  - **AIF Extension System**: Backward-compatible extensions with semantic categories (premise, evidence, conclusion, inference, conflict), relationship types (supports, conflicts, infers, attacks, relates), and display names for compact visualization
+  - **Advanced Mermaid Visualization**: Color-coded diagrams with semantic node styling, enhanced edge labels showing argument relationships, smaller fonts allowing 80 characters per node, and automatic SVG generation
+  - **Enhanced Prompt Engineering**: Balanced prompt for complex academic arguments, explicit node-type guidance, proper use of all AIF node types (I, RA, CA, PA, MA), and support for 20-35 node structures for academic texts
+  - **Model Parameter Support**: Configurable model selection with GPT-4.1 default for sophisticated reasoning
+  - **Comprehensive Documentation**: Complete AIF extension specification in `AIF_EXTENSIONS.md` with usage examples and compatibility guidelines
+
+- **Multi-Agent Debate GPT-4.1 Upgrade**: Upgraded the multi-agent debate example to use GPT-4.1 as the default model, providing 1M+ context window (vs 128k for GPT-4o), 32k max output (vs 16k), and enhanced reasoning capabilities for more sophisticated debate quality and handling of larger, more complex discussions.
+
+- **Professional Build System**: Implemented comprehensive build automation and testing infrastructure:
+  - **Makefile Integration**: Added dependency testing targets to main Makefile with `test-dependencies` for automated validation
+  - **Cross-Platform Scripts**: Organized script structure with platform-specific installation, build automation, and categorized testing (unit/integration/docker)
+  - **Template-Based Build System**: Dynamic version management that automatically extracts current version from `pyproject.toml`
+
+### Changed
+
+- **Dependency Management**: Migrated from scattered `ensure_*.sh` scripts across examples to centralized utilities in `scripts/install/dependencies/`. Examples now source shared utilities instead of maintaining duplicate installation logic, reducing maintenance overhead and ensuring consistency.
+
+- **Documentation Structure**: Added `DEPENDENCY_UTILITIES.md` (renamed from `DEPENDENCY_MANAGEMENT.md`) with comprehensive documentation for the new dependency installation system, including usage patterns, environment variables, and testing procedures.
+
+### Fixed
+
+- **Code Duplication**: Eliminated duplicate dependency installation scripts across examples (removed `examples/multi_agent_debate/scripts/ensure_*.sh` files) in favor of centralized utilities.
+
+- **Build System Organization**: Restructured scripts directory following industry best practices with separate directories for build automation (`scripts/build/`), platform-specific installation (`scripts/install/`), and categorized testing (`scripts/test/`).
+
+### Security
+
+- **Dependency Installation**: Enhanced security in dependency installation utilities with proper error handling, validation of download sources, and fallback mechanisms to prevent installation of compromised tools.
+
 ## [0.8.4] - 2025-06-05
 
 ### Added
