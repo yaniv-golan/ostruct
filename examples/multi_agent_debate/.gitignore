@@ -1,0 +1,20 @@
+# Multi-Agent Debate Example .gitignore
+
+# Ignore all files in output/ directory
+output/*
+
+# But keep the directory structure
+!output/.gitkeep
+
+# Ignore macOS system files
+.DS_Store
+.DS_Store?
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore editor files
+*.swp
+*.swo
+*~

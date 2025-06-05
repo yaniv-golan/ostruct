@@ -122,6 +122,8 @@ All generated files are placed in the `output/` directory:
 - **`output/debate_detailed.html`** - Interactive detailed view with full arguments and citations
 - **`output/debate_overview.svg`** - Clean argument flow diagram for structure overview
 
+**Note**: The `output/` directory is preserved in git with a `.gitkeep` file, but the actual output files are ignored (via `.gitignore`) to avoid cluttering the repository with generated content.
+
 ## Cost Considerations
 
 Approximate cost per debate:
