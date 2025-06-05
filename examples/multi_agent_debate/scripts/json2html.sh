@@ -34,18 +34,41 @@ cat > "$OUTPUT" << 'EOF'
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
         }
         .header h1 {
-            margin: 0 0 10px 0;
+            margin: 0 0 20px 0;
             font-size: 2.5em;
             font-weight: 300;
         }
-        .header p {
+        .topic-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .topic-label {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .topic-text {
+            font-size: 1.4em;
+            font-weight: 400;
+            line-height: 1.4;
             margin: 0;
-            opacity: 0.9;
-            font-size: 1.1em;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .header .subtitle {
+            margin: 15px 0 0 0;
+            opacity: 0.8;
+            font-size: 1em;
         }
         .debate-flow {
             padding: 30px;
@@ -206,7 +229,11 @@ cat > "$OUTPUT" << 'EOF'
     <div class="container">
         <div class="header">
             <h1>🎯 Multi-Agent Debate</h1>
-            <p id="topic-text">Loading debate topic...</p>
+            <div class="topic-section">
+                <div class="topic-label">📋 Debate Topic</div>
+                <div class="topic-text" id="topic-text">Loading debate topic...</div>
+            </div>
+            <p class="subtitle">Evidence-based structured argumentation</p>
         </div>
 
         <div class="debate-flow">
@@ -252,11 +279,24 @@ cat >> "$OUTPUT" << 'EOF'
 
         // Populate the page
         document.addEventListener('DOMContentLoaded', function() {
-            // Set topic
+            // Set topic - extract from debate data
             const topicElement = document.getElementById('topic-text');
-            if (debateData.topic) {
-                topicElement.textContent = debateData.topic;
+            let topic = '';
+
+            // Try to get topic from the JSON topic field first
+            if (debateData.topic && debateData.topic.trim() !== '') {
+                topic = debateData.topic;
             }
+            // If no topic field, extract from the first turn's stance
+            else if (debateData.turns && debateData.turns.length > 0 && debateData.turns[0].stance) {
+                topic = debateData.turns[0].stance.trim();
+            }
+            // Fallback to placeholder that will be replaced by shell script
+            else {
+                topic = 'TOPIC_PLACEHOLDER';
+            }
+
+            topicElement.textContent = topic;
 
             // Populate turns
             const turnsContainer = document.getElementById('turns-container');
@@ -334,6 +374,13 @@ cat >> "$OUTPUT" << 'EOF'
 </body>
 </html>
 EOF
+
+# Read topic from topic.txt if available and inject it as fallback
+if [ -f "topic.txt" ]; then
+    TOPIC_TEXT=$(cat topic.txt | tr -d '\n' | sed 's/"/\\"/g')
+    sed -i.bak "s|TOPIC_PLACEHOLDER|${TOPIC_TEXT}|" "$OUTPUT"
+    rm -f "${OUTPUT}.bak"
+fi
 
 # Embed SVG if available
 if [ -f "$SVG_FILE" ]; then
