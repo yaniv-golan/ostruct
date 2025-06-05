@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.6] - 2025-06-06
+
+### Changed
+
+- **Installation Script Distribution**: Modified GitHub Actions publish workflow to upload macOS installation script as release asset instead of committing to repository. Installation URL changed from raw GitHub URL to release asset: `https://github.com/yaniv-golan/ostruct/releases/download/v{VERSION}/install-macos.sh`
+
 ## [0.8.5] - 2025-06-06
 
 ### Added
