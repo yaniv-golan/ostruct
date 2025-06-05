@@ -156,7 +156,7 @@ Break down words into their components, showing their origins, meanings, and hie
 For macOS users, we provide a one-line installer that handles everything automatically:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yaniv-golan/ostruct/main/scripts/install-macos.sh | bash
+curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash
 ```
 
 This script will:

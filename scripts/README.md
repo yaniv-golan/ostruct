@@ -37,7 +37,7 @@ scripts/
 
 ```bash
 # macOS one-line installer
-curl -sSL https://raw.githubusercontent.com/yaniv-golan/ostruct/main/scripts/generated/install-macos.sh | bash
+curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash
 ```
 
 ### For Developers - Build Scripts

@@ -5,7 +5,7 @@ This directory contains the macOS-specific installation components for ostruct.
 ## Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yaniv-golan/ostruct/main/scripts/generated/install-macos.sh | bash
+curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash
 ```
 
 ## Files
