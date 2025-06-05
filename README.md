@@ -151,7 +151,27 @@ Break down words into their components, showing their origins, meanings, and hie
 
 ## Installation
 
-### For Users
+### Quick Install (macOS)
+
+For macOS users, we provide a one-line installer that handles everything automatically:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/yaniv-golan/ostruct/main/scripts/install-macos.sh | bash
+```
+
+This script will:
+
+- Install Python 3.10+ if needed (via Homebrew or python.org)
+- Install Homebrew if needed
+- Install ostruct-cli via pip
+- Configure your shell PATH automatically
+- Verify the installation works
+
+After installation, restart your terminal and test with `ostruct --version`.
+
+### Manual Installation
+
+#### For Users
 
 To install the latest stable version from PyPI:
 
@@ -159,7 +179,9 @@ To install the latest stable version from PyPI:
 pip install ostruct-cli
 ```
 
-### For Developers
+**Note**: If the `ostruct` command isn't found after installation, you may need to add Python's user bin directory to your PATH. See the [troubleshooting guide](scripts/README.md#troubleshooting) for details.
+
+#### For Developers
 
 If you plan to contribute to the project, see the [Development Setup](#development-setup) section below for instructions on setting up the development environment with Poetry.
 
