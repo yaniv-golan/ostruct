@@ -291,75 +291,98 @@ main() {
     fi
     echo ""
 
-    # Upgrade pip
-    log_info "Upgrading pip..."
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "[DRY-RUN] Would run: $python_cmd -m pip install --upgrade pip --user"
-        log_success "[DRY-RUN] pip upgrade simulated"
-    else
-        if ! $python_cmd -m pip install --upgrade pip --user; then
-            log_warning "Failed to upgrade pip, continuing anyway..."
-        else
-            log_success "pip upgraded successfully"
-        fi
-    fi
-    echo ""
-
-    # Install ostruct-cli
+    # Install ostruct-cli using appropriate method
     log_info "Installing ostruct-cli..."
     if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "[DRY-RUN] Would run: $python_cmd -m pip install --user --no-cache-dir --upgrade ostruct-cli"
+        log_info "[DRY-RUN] Would try pipx first, then pip with appropriate flags"
         log_success "[DRY-RUN] ostruct-cli installation simulated"
     else
-        # Clear cache and install latest version to avoid version issues
-        log_info "Clearing pip cache to ensure latest version..."
-        $python_cmd -m pip cache purge 2>/dev/null || true
-
-        if ! $python_cmd -m pip install --user --no-cache-dir --upgrade ostruct-cli; then
-            log_error "Failed to install ostruct-cli"
-            log_error "Trying alternative installation method..."
-
-            # Try with explicit PyPI index
-            if ! $python_cmd -m pip install --user --index-url https://pypi.org/simple/ --upgrade ostruct-cli; then
-                log_error "Failed to install ostruct-cli from PyPI"
-                exit 1
+        # Try pipx first (recommended for CLI applications)
+        if command_exists pipx; then
+            log_info "Using pipx for installation..."
+            if pipx install ostruct-cli; then
+                log_success "ostruct-cli installed successfully with pipx"
+            else
+                log_warning "pipx installation failed, trying pip..."
+            fi
+        else
+            # Check if we can install pipx via brew
+            if command_exists brew; then
+                log_info "Installing pipx via Homebrew..."
+                if brew install pipx && pipx install ostruct-cli; then
+                    log_success "ostruct-cli installed successfully with pipx"
+                else
+                    log_warning "pipx installation failed, trying pip..."
+                fi
             fi
         fi
-        log_success "ostruct-cli installed successfully"
+
+        # If pipx didn't work or isn't available, try pip with appropriate flags
+        if ! command_exists ostruct; then
+            log_info "Falling back to pip installation..."
+
+            # Clear cache first
+            log_info "Clearing pip cache to ensure latest version..."
+            $python_cmd -m pip cache purge 2>/dev/null || true
+
+            # Try --user first (PEP 668 compliant)
+            if $python_cmd -m pip install --user --no-cache-dir --upgrade ostruct-cli 2>/dev/null; then
+                log_success "ostruct-cli installed successfully with pip --user"
+            else
+                log_warning "User installation failed, trying with --break-system-packages..."
+                # Fallback to --break-system-packages for externally-managed environments
+                if $python_cmd -m pip install --break-system-packages --no-cache-dir --upgrade ostruct-cli; then
+                    log_success "ostruct-cli installed successfully with pip --break-system-packages"
+                else
+                    log_error "Failed to install ostruct-cli with pip"
+                    exit 1
+                fi
+            fi
+        fi
     fi
     echo ""
 
-    # Get Python user bin directory
-    local python_user_bin
-    if [[ "$DRY_RUN" == "true" ]]; then
-        python_user_bin="$HOME/.local/bin"  # Default location for dry-run
-        log_info "[DRY-RUN] Python user bin directory: $python_user_bin"
-        log_success "[DRY-RUN] ostruct executable check simulated"
-    else
-        if ! python_user_bin=$(get_python_user_bin "$python_cmd"); then
-            log_error "Failed to determine Python user bin directory"
-            exit 1
-        fi
-        log_info "Python user bin directory: $python_user_bin"
-
-        # Check if ostruct executable exists
-        if [[ ! -f "$python_user_bin/ostruct" ]]; then
-            log_error "ostruct executable not found at $python_user_bin/ostruct"
-            log_error "Installation may have failed. Please check the pip install output above."
-            exit 1
-        fi
-        log_success "ostruct executable found at $python_user_bin/ostruct"
-    fi
-    echo ""
-
-    # Add to PATH
+    # Configure PATH for ostruct
     log_info "Configuring PATH..."
     if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "[DRY-RUN] Would add $python_user_bin to PATH in $shell_config"
+        log_info "[DRY-RUN] Would configure PATH for ostruct"
         log_success "[DRY-RUN] PATH configuration simulated"
     else
-        add_to_path "$python_user_bin" "$shell_config" "$shell_type"
-        log_success "PATH configured successfully"
+        local bin_dirs_to_add=()
+
+        # Check if installed via pipx
+        if command_exists pipx; then
+            local pipx_bin_dir="$HOME/.local/bin"
+            if [[ -f "$pipx_bin_dir/ostruct" ]]; then
+                bin_dirs_to_add+=("$pipx_bin_dir")
+                log_info "Found ostruct in pipx directory: $pipx_bin_dir"
+            fi
+        fi
+
+        # Check Python user bin directory (for pip --user installations)
+        local python_user_bin
+        if python_user_bin=$(get_python_user_bin "$python_cmd"); then
+            if [[ -f "$python_user_bin/ostruct" ]]; then
+                bin_dirs_to_add+=("$python_user_bin")
+                log_info "Found ostruct in Python user bin: $python_user_bin"
+            fi
+        fi
+
+        # Add directories to PATH
+        for bin_dir in "${bin_dirs_to_add[@]}"; do
+            add_to_path "$bin_dir" "$shell_config" "$shell_type"
+        done
+
+        if [[ ${#bin_dirs_to_add[@]} -eq 0 ]]; then
+            # Check if ostruct is available system-wide (--break-system-packages installation)
+            if command_exists ostruct; then
+                log_success "ostruct is available system-wide, no PATH configuration needed"
+            else
+                log_warning "ostruct installation location unknown, may need manual PATH configuration"
+            fi
+        else
+            log_success "PATH configured successfully"
+        fi
     fi
     echo ""
 
