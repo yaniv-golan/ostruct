@@ -174,6 +174,8 @@ ostruct-cli respects the following environment variables:
 - `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
 - `MCP_<NAME>_URL`: Custom MCP server URLs (e.g., `MCP_STRIPE_URL=https://mcp.stripe.com`)
 
+**💡 Tip**: ostruct automatically loads `.env` files from the current directory. Environment variables take precedence over `.env` file values.
+
 <details>
 <summary><strong>Shell Completion Setup</strong> (Click to expand)</summary>
 
@@ -364,7 +366,11 @@ tools:
 1. Set your OpenAI API key:
 
 ```bash
+# Environment variable
 export OPENAI_API_KEY=your-api-key
+
+# Or create a .env file
+echo 'OPENAI_API_KEY=your-api-key' > .env
 ```
 
 ### Example 1: Basic Text Extraction (Simplest)

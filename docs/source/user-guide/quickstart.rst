@@ -21,7 +21,11 @@ Set up your OpenAI API key:
 
 .. code-block:: bash
 
+   # Environment variable
    export OPENAI_API_KEY="your-api-key-here"
+
+   # Or create a .env file
+   echo 'OPENAI_API_KEY=your-api-key-here' > .env
 
 Tutorial: Meet Juno the Beagle
 -------------------------------

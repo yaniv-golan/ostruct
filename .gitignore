@@ -120,3 +120,9 @@ docs/dev/
 docs_migration_tasks.md
 temp_verify/
 examples/document-analysis/iterative-fact-extraction/
+examples/multi_agent_debate/output/debate_detailed_fixed.html
+examples/multi_agent_debate/output/debate_detailed_updated.html
+examples/multi_agent_debate/output/debate_detailed.html
+examples/multi_agent_debate/output/debate_init.json
+examples/multi_agent_debate/output/debate_overview.svg
+examples/multi_agent_debate/output/summary.json

@@ -4,6 +4,7 @@ import sys
 from typing import Optional
 
 import click
+from dotenv import load_dotenv
 
 from .. import __version__
 from .commands import create_command_group
@@ -107,6 +108,9 @@ def create_cli() -> click.Command:
 
 def main() -> None:
     """Main entry point for the CLI."""
+    # Load environment variables from .env file
+    load_dotenv()
+
     try:
         cli(standalone_mode=False)
     except (

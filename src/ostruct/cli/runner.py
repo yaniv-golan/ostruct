@@ -867,7 +867,14 @@ async def execute_model(
 
     api_key = args.get("api_key") or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        msg = "No API key provided. Set OPENAI_API_KEY environment variable or use --api-key"
+        msg = (
+            "No OpenAI API key found. Please:\n"
+            "  • Set OPENAI_API_KEY environment variable, or\n"
+            "  • Create a .env file with OPENAI_API_KEY=your-key-here, or\n"
+            "  • Use --api-key option (not recommended for production)\n"
+            "\n"
+            "Get your API key from: https://platform.openai.com/api-keys"
+        )
         logger.error(msg)
         raise CLIError(msg, exit_code=ExitCode.API_ERROR)
 

@@ -814,6 +814,9 @@ with the following order of precedence (highest priority first):
     - ``MCP_<NAME>_URL``: URLs for named MCP servers (e.g., ``MCP_STRIPE_URL=https://mcp.stripe.com``).
     - ``OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS``: Disable model registry update checks.
 
+    .. tip::
+       ostruct automatically loads ``.env`` files from the current directory. Environment variables take precedence over ``.env`` file values.
+
 3.  **Configuration File via ``--config`` Flag**: If you specify a configuration file using the ``--config /path/to/your/ostruct.yaml`` flag, settings from this file override any project-specific or global user configurations.
 
 4.  **Project-Specific Configuration (``./ostruct.yaml``)**: An ``ostruct.yaml`` file located in the current working directory is loaded next. This allows for project-specific default settings.

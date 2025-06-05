@@ -35,6 +35,17 @@ ostruct never logs or stores API keys. Credentials are handled through:
    export OPENAI_API_KEY="your-api-key-here"
    ostruct run template.j2 schema.json
 
+**.env Files (Convenient for Development):**
+
+.. code-block:: bash
+
+   # Create .env file in your project directory
+   echo 'OPENAI_API_KEY=your-api-key-here' > .env
+   ostruct run template.j2 schema.json
+
+.. note::
+   ostruct automatically loads ``.env`` files from the current directory. Environment variables take precedence over ``.env`` file values.
+
 **Command Line (Development Only):**
 
 .. code-block:: bash

@@ -149,7 +149,11 @@ example-name/
 2. Set your OpenAI API key:
 
    ```bash
+   # Environment variable
    export OPENAI_API_KEY='your-api-key'
+
+   # Or create a .env file
+   echo 'OPENAI_API_KEY=your-api-key' > .env
    ```
 
 3. Navigate to any example directory:

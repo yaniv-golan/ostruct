@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.4] - Unreleased yet
 
+### Added
+
+- **Environment File Support**: Added automatic loading of `.env` files from the current directory. Environment variables defined in `.env` files are automatically loaded at startup, with command-line environment variables taking precedence over `.env` file values. This provides a convenient way to manage API keys and configuration without exposing them in command history or process lists.
+
 ### Changed
 
 - **Simplified Timeout Parameters**: Streamlined timeout handling to use a single `--timeout` parameter for OpenAI API calls (default: 60 seconds). Removed the complex dual timeout system that previously caused parameter conflicts and user confusion. The CLI now has cleaner, more intuitive timeout behavior.

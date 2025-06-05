@@ -123,7 +123,13 @@ class CliTestRunner:
 
             # For Click usage errors (exit code 2), always create a UsageError
             if result.exit_code == 2:
-                error_text = str(result.stderr or result.stdout or "").strip()
+                try:
+                    error_text = str(
+                        result.stderr or result.stdout or ""
+                    ).strip()
+                except ValueError:
+                    # stderr not available, use stdout
+                    error_text = str(result.stdout or "").strip()
                 result.exception = click.UsageError(error_text)
                 return result
 
@@ -239,9 +245,12 @@ class CliTestRunner:
 
         # 1. Handle Click errors (exit code 2)
         if result.exit_code == 2:
-            error_sources.extend(
-                [str(result.stderr or ""), str(result.stdout or "")]
-            )
+            # Try to get stderr, but fall back to stdout if not available
+            try:
+                stderr_text = str(result.stderr or "")
+            except ValueError:
+                stderr_text = ""
+            error_sources.extend([stderr_text, str(result.stdout or "")])
 
         # 2. Handle our custom errors
         elif isinstance(result.exception, CLIError):
@@ -269,8 +278,13 @@ class CliTestRunner:
         # 5. Include stdout/stderr if available
         if result.stdout:
             error_sources.append(str(result.stdout))
-        if result.stderr:
-            error_sources.append(str(result.stderr))
+        # Try to get stderr, but don't fail if not available
+        try:
+            if result.stderr:
+                error_sources.append(str(result.stderr))
+        except ValueError:
+            # stderr not separately captured, skip it
+            pass
 
         # Combine all error sources and convert to lowercase
         error_text = "\n".join(filter(None, error_sources)).lower()
