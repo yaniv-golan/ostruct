@@ -355,92 +355,118 @@ class TestCLIExecution:
         # The actual integration is working as demonstrated by manual testing.
 
 
-# Code Interpreter Download Tests (Developer Brief Implementation)
-# =================================================================
-
-PROJ = "tmp_ostruct_proj"
-TPL = "task.j2"
-SCH = "schema.json"
-DL = "dl"
+# Code Interpreter Download Tests
+# =================================
 
 
-def _w(rel, txt):
-    """Write a file in the test project."""
-    os.makedirs(os.path.join(PROJ, os.path.dirname(rel)), exist_ok=True)
-    with open(os.path.join(PROJ, rel), "w", encoding="utf-8") as f:
-        f.write(textwrap.dedent(txt).lstrip())
+@pytest.mark.live
+@pytest.mark.no_fs
+class TestCodeInterpreterDownloads:
+    """Test Code Interpreter file download functionality."""
 
+    @pytest.fixture(autouse=True)
+    def _requires_openai(self, requires_openai: None) -> None:
+        """Ensure OpenAI API key is available."""
+        pass
 
-def _run_ostruct():
-    """Run ostruct with the test template and schema."""
-    cp = subprocess.run(
-        ["ostruct", "run", TPL, SCH], cwd=PROJ, capture_output=True, text=True
-    )
-    assert cp.returncode == 0, cp.stderr
+    @pytest.fixture
+    def test_project(self, tmp_path):
+        """Create a temporary test project with ostruct configuration."""
+        project_dir = tmp_path / "test_ostruct_proj"
+        project_dir.mkdir()
 
-
-def _scaffold(markdown: bool):
-    """Create template and schema files for testing."""
-    link = (
-        ("\n[Download file](sandbox:/mnt/data/ci_output.txt)\n")
-        if markdown
-        else ""
-    )
-    _w(
-        TPL,
-        f"""
-    ---
-    system: |
-      You are a Code-Interpreter assistant.
-      Create ci_output.txt with 'TEST'. {"Include markdown link." if markdown else "Do NOT link."}
-    ---
-    Create the file now.{link}
-    """,
-    )
-    _w(
-        SCH,
+        # Create ostruct.yaml configuration
+        config_content = textwrap.dedent(
+            """
+            version: 1
+            tools:
+              code_interpreter:
+                auto_download: true
+                output_directory: "./dl"
         """
-    {"type":"object",
-     "properties":{"confirmation_message":{"type":"string"}},
-     "required":["confirmation_message"]}
-    """,
-    )
+        ).strip()
 
+        (project_dir / "ostruct.yaml").write_text(config_content)
 
-def setup_module(_):
-    """Set up the test project directory and configuration."""
-    shutil.rmtree(PROJ, ignore_errors=True)
-    os.makedirs(PROJ)
-    _w(
-        "ostruct.yaml",
-        f"""
-    version: 1
-    tools:
-      code_interpreter:
-        auto_download: true
-        output_directory: "./{DL}"
-    """,
-    )
+        return project_dir
 
+    def _write_file(self, project_dir, rel_path: str, content: str):
+        """Write a file in the test project."""
+        file_path = project_dir / rel_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(textwrap.dedent(content).strip())
 
-# --- C-01  No markdown → expect NO file ------------------------------
-@pytest.mark.live
-@pytest.mark.no_fs
-def test_yaml_autodownload_true_but_no_markdown():
-    """Test that without markdown link, no file is downloaded."""
-    shutil.rmtree(f"{PROJ}/{DL}", ignore_errors=True)
-    _scaffold(markdown=False)
-    _run_ostruct()
-    assert not os.path.exists(f"{PROJ}/{DL}/ci_output.txt")
+    def _run_ostruct(self, project_dir):
+        """Run ostruct with the test template and schema."""
+        result = subprocess.run(
+            ["ostruct", "run", "task.j2", "schema.json"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, f"ostruct failed: {result.stderr}"
+        return result
 
+    def _scaffold_project(self, project_dir, include_markdown: bool):
+        """Create template and schema files for testing."""
+        link = (
+            "\n[Download file](sandbox:/mnt/data/ci_output.txt)\n"
+            if include_markdown
+            else ""
+        )
 
-# --- C-02  Markdown present → still NO file (known bug) --------------
-@pytest.mark.live
-@pytest.mark.no_fs
-@pytest.mark.xfail(reason="ostruct only inspects legacy .file_ids")
-def test_markdown_annotation_but_cli_does_not_download():
-    """Test that even with markdown link, ostruct still doesn't download (known bug)."""
-    shutil.rmtree(f"{PROJ}/{DL}", ignore_errors=True)
-    _scaffold(markdown=True)
-    _run_ostruct()
-    assert os.path.isfile(f"{PROJ}/{DL}/ci_output.txt")
+        # Create task template
+        task_content = f"""
+            ---
+            system: |
+              You are a Code-Interpreter assistant.
+              Create ci_output.txt with 'TEST'. {"Include markdown link." if include_markdown else "Do NOT link."}
+            ---
+            Create the file now.{link}
+        """
+        self._write_file(project_dir, "task.j2", task_content)
+
+        # Create schema
+        schema_content = """
+            {
+                "type": "object",
+                "properties": {
+                    "confirmation_message": {"type": "string"}
+                },
+                "required": ["confirmation_message"]
+            }
+        """
+        self._write_file(project_dir, "schema.json", schema_content)
+
+    def test_yaml_autodownload_true_but_no_markdown(self, test_project):
+        """Test that without markdown link, no file is downloaded."""
+        # Clean any existing download directory
+        download_dir = test_project / "dl"
+        if download_dir.exists():
+            shutil.rmtree(download_dir)
+
+        # Set up project without markdown link
+        self._scaffold_project(test_project, include_markdown=False)
+
+        # Run ostruct
+        self._run_ostruct(test_project)
+
+        # Verify no file was downloaded
+        assert not (download_dir / "ci_output.txt").exists()
+
+    @pytest.mark.xfail(reason="ostruct only inspects legacy .file_ids")
+    def test_markdown_annotation_but_cli_does_not_download(self, test_project):
+        """Test that even with markdown link, ostruct still doesn't download (known bug)."""
+        # Clean any existing download directory
+        download_dir = test_project / "dl"
+        if download_dir.exists():
+            shutil.rmtree(download_dir)
+
+        # Set up project with markdown link
+        self._scaffold_project(test_project, include_markdown=True)
+
+        # Run ostruct
+        self._run_ostruct(test_project)
+
+        # Verify file was downloaded (this should pass once the bug is fixed)
+        assert (download_dir / "ci_output.txt").is_file()

@@ -113,7 +113,7 @@ class CliTestRunner:
         try:
             # Let Click catch exceptions but ensure we get the original exception
             kwargs["catch_exceptions"] = True
-            runner = CliRunner(mix_stderr=False)
+            runner = CliRunner()
             result = runner.invoke(*args, **kwargs)
 
             # For debugging, print captured logs
