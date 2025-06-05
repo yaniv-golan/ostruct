@@ -12,9 +12,13 @@ scripts/
 │   ├── validate-release.py      # Release validation
 │   └── README.md                # Build tools documentation
 ├── install/               # Installation scripts by platform
-│   └── macos/
-│       ├── install.sh.template  # macOS installation template
-│       └── README.md            # macOS-specific documentation
+│   ├── macos/
+│   │   ├── install.sh.template  # macOS installation template
+│   │   └── README.md            # macOS-specific documentation
+│   └── dependencies/     # Reusable dependency installation utilities
+│       ├── ensure_jq.sh         # JSON processor installation
+│       ├── ensure_mermaid.sh    # Mermaid CLI installation
+│       └── README.md            # Dependency utilities documentation
 ├── test/                  # Testing utilities organized by type
 │   ├── unit/              # Unit tests for individual components
 │   │   └── test-version-compare.sh
@@ -61,9 +65,11 @@ python3 scripts/build/validate-release.py
 ### 📦 **Platform-Specific Installation** (`install/`)
 
 - **macOS Support**: Complete automated setup for macOS (Intel + Apple Silicon)
+- **Dependency Installation**: Centralized utilities for common tools (jq, Mermaid CLI)
 - **Extensible**: Structure ready for Windows, Linux support
 - **Smart Detection**: Automatically handles Python, Homebrew, PATH configuration
 - **Error Recovery**: Multiple installation strategies with fallbacks
+- **Reusable Components**: DRY principle applied to dependency installation
 
 ### 🧪 **Comprehensive Testing** (`test/`)
 
