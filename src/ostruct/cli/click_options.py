@@ -492,12 +492,13 @@ def api_options(f: Union[Command, Callable[..., Any]]) -> Command:
         environment variable.""",
     )(cmd)
 
+    # API timeout for OpenAI calls
     cmd = click.option(
         "--timeout",
         type=click.FloatRange(1.0, None),
         default=60.0,
         show_default=True,
-        help="API timeout in seconds.",
+        help="Timeout in seconds for OpenAI API calls.",
     )(cmd)
 
     return cast(Command, cmd)
@@ -852,13 +853,6 @@ def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
     cmd = click.option(
         "--verbose", is_flag=True, help="Enable verbose logging"
-    )(cmd)
-
-    cmd = click.option(
-        "--timeout",
-        type=int,
-        default=3600,
-        help="Operation timeout in seconds (default: 3600 = 1 hour)",
     )(cmd)
 
     return cast(Command, cmd)

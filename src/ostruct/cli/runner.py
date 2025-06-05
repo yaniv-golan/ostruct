@@ -33,9 +33,6 @@ from .sentinel import extract_json_block
 from .serialization import LogSerializer
 from .services import ServiceContainer
 from .types import CLIParams
-from .unattended_operation import (
-    UnattendedOperationManager,
-)
 
 
 # Error classes for API operations
@@ -855,10 +852,6 @@ async def execute_model(
     """Execute the model with the given parameters."""
     logger.debug("=== Execution Phase ===")
 
-    # Initialize unattended operation manager
-    timeout_seconds = int(args.get("timeout", 3600))
-    operation_manager = UnattendedOperationManager(timeout_seconds)
-
     # Pre-validate unattended compatibility
     # Note: MCP validation is handled during MCP configuration processing
     # mcp_servers = args.get("mcp_servers", [])
@@ -878,8 +871,11 @@ async def execute_model(
         logger.error(msg)
         raise CLIError(msg, exit_code=ExitCode.API_ERROR)
 
+    # Get API timeout
+    api_timeout = args.get("timeout", 60.0)
     client = AsyncOpenAI(
-        api_key=api_key, timeout=min(args.get("timeout", 60.0), 300.0)
+        api_key=api_key,
+        timeout=min(float(api_timeout), 300.0),
     )  # Cap at 5 min for client timeout
 
     # Create service container for dependency management
@@ -1352,13 +1348,10 @@ async def execute_model(
 
         return ExitCode.SUCCESS
 
-    # Execute main operation with timeout safeguards
+    # Execute main operation
     try:
-        result = await operation_manager.execute_with_safeguards(
-            execute_main_operation, "model execution"
-        )
-        # The result should be an ExitCode from execute_main_operation
-        return result  # type: ignore[no-any-return]
+        result = await execute_main_operation()
+        return result
     except (
         APIResponseError,
         EmptyResponseError,

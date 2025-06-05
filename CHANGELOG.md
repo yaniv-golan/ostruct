@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.3] - Unreleased yet
+## [0.8.4] - Unreleased yet
+
+### Changed
+
+- **Simplified Timeout Parameters**: Streamlined timeout handling to use a single `--timeout` parameter for OpenAI API calls (default: 60 seconds). Removed the complex dual timeout system that previously caused parameter conflicts and user confusion. The CLI now has cleaner, more intuitive timeout behavior.
+
+## [0.8.3] - 2025-06-05
 
 ### Added
 
