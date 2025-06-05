@@ -10,8 +10,6 @@ import random
 import pytest
 from openai import OpenAI
 
-client = OpenAI()
-
 MODEL = "gpt-4.1"  # alias already points to 2025-04-14 snapshot
 N_RUNS = 5  # sample size per temperature (reduced from 50)
 TEMPS = [0.0, 0.2]  # low-stochastic and slightly creative
@@ -23,7 +21,7 @@ PROMPT_TEMPLATE = (
 )
 
 
-def _call_ci(prompt, temp, seed):
+def _call_ci(prompt, temp, seed, client):
     """Make a Code Interpreter call with controlled parameters.
 
     Note: Responses API doesn't support temperature/seed parameters,
@@ -65,7 +63,7 @@ def _has_link(resp):
 
 @pytest.mark.live
 @pytest.mark.flaky(reruns=2, reruns_delay=1)
-def test_gpt41_markdown_link_compliance():
+def test_gpt41_markdown_link_compliance(requires_openai):
     """Test GPT-4.1 compliance with markdown link instructions.
 
     Runs controlled experiments across multiple temperatures to establish
@@ -74,12 +72,13 @@ def test_gpt41_markdown_link_compliance():
     Fails if compliance < 90% for any temperature, indicating the model
     is not reliable enough for auto-download functionality.
     """
+    client = OpenAI()
     results = {}
     for temp in TEMPS:
         hits = 0
         for run_idx in range(N_RUNS):
             seed = random.randint(1, 1_000_000_000)
-            resp = _call_ci(PROMPT_TEMPLATE, temp, seed)
+            resp = _call_ci(PROMPT_TEMPLATE, temp, seed, client)
             if _has_link(resp):
                 hits += 1
             print(
