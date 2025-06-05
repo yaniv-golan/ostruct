@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Model Parameter Support**: Configurable model selection with GPT-4.1 default for sophisticated reasoning
   - **Comprehensive Documentation**: Complete AIF extension specification in `AIF_EXTENSIONS.md` with usage examples and compatibility guidelines
 
+- **Multi-Agent Debate Citation Enhancement**: Enhanced the multi-agent debate example with smart citation post-processing that automatically converts any AI citation format to clean academic-style numbered references. Features include:
+  - **Smart Citation Processing**: Extracts inline citations from debate text and converts them to numbered references [1], [2], [3]
+  - **URL Parameter Handling**: Flexible URL matching that handles query parameters (e.g., `?utm_source=openai`) for reliable citation identification
+  - **Title Enhancement**: Merges inline citation positioning with structured citation metadata to provide meaningful titles instead of bare domain names
+  - **Perfect Correspondence**: Maintains 1:1 correspondence between text references and citation list for clean, academic-style presentation
+  - **Cross-Format Compatibility**: Works with any AI citation format, making debates more readable for technical audiences
+
 - **Multi-Agent Debate GPT-4.1 Upgrade**: Upgraded the multi-agent debate example to use GPT-4.1 as the default model, providing 1M+ context window (vs 128k for GPT-4o), 32k max output (vs 16k), and enhanced reasoning capabilities for more sophisticated debate quality and handling of larger, more complex discussions.
 
 - **Professional Build System**: Implemented comprehensive build automation and testing infrastructure:

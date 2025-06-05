@@ -10,8 +10,7 @@ jq -r --arg topic "$TOPIC" '
   ["    T0[\"📋 TOPIC: " + $topic + "\"]"] +
   [.turns[] |
     "    T" + (.round|tostring) +
-    "[\"" + (.agent|ascii_upcase) + ": " +
-    (.response|gsub("\"";"\\\"")|.[0:60]) + "…\"]"
+    "[\"" + (.response|gsub("\"";"\\\"")|.[0:80]) + "…\"]"
   ] +
   ["    T0 --> T1"] +
   ["    T0 --> T2"] +
@@ -23,9 +22,9 @@ jq -r --arg topic "$TOPIC" '
   ] +
   [""] +
   ["    %% Styling"] +
-  ["    classDef topicNode fill:#fff3e0,stroke:#ff9800,stroke-width:3px,color:#000"] +
-  ["    classDef proNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000"] +
-  ["    classDef conNode fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000"] +
+  ["    classDef topicNode fill:#fff3e0,stroke:#ff9800,stroke-width:3px,color:#000,font-size:11px"] +
+  ["    classDef proNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000,font-size:10px"] +
+  ["    classDef conNode fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000,font-size:10px"] +
   ["    class T0 topicNode"] +
   [.turns[] | select(.agent == "pro") |
     "    class T" + (.round|tostring) + " proNode"] +
