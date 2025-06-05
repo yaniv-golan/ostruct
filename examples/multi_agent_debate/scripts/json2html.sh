@@ -129,6 +129,15 @@ cat > "$OUTPUT" << 'EOF'
             background: #f8f9fa;
             border-radius: 4px;
             font-size: 0.9em;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .citation-number {
+            color: #666;
+            font-weight: bold;
+            min-width: 25px;
+            flex-shrink: 0;
         }
         .citation a {
             color: #1976d2;
@@ -136,6 +145,18 @@ cat > "$OUTPUT" << 'EOF'
         }
         .citation a:hover {
             text-decoration: underline;
+        }
+        .citation-link {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 1px 3px;
+            border-radius: 3px;
+            background-color: rgba(25, 118, 210, 0.1);
+        }
+        .citation-link:hover {
+            background-color: rgba(25, 118, 210, 0.2);
+            text-decoration: none;
         }
         .relationships {
             margin-top: 20px;
@@ -316,9 +337,72 @@ cat >> "$OUTPUT" << 'EOF'
                     });
                 }
 
-                const citations = turn.citations ? turn.citations.map(citation =>
-                    `<div class="citation">• <a href="${citation.url}" target="_blank">${citation.title}</a></div>`
-                ).join('') : '';
+                // Post-process citations: convert any format to numbered citations
+                let processedResponse = turn.response;
+                let allCitations = [];
+
+                // Extract inline citations from text: [text](url) or ([text](url))
+                const inlineLinkRegex = /\(?(\[([^\]]+)\]\(([^)]+)\))\)?/g;
+                let match;
+                const inlineMatches = [];
+
+                while ((match = inlineLinkRegex.exec(turn.response)) !== null) {
+                    const fullMatch = match[1]; // [text](url) part
+                    const linkText = match[2];  // text inside brackets
+                    const url = match[3];       // url inside parentheses
+
+                    inlineMatches.push({
+                        fullMatch: match[0], // includes potential outer parentheses
+                        linkMatch: fullMatch,
+                        text: linkText,
+                        url: url,
+                        source: 'inline'
+                    });
+
+                    // Check if we have a better title in structured citations
+                    let betterTitle = linkText;
+                    if (turn.citations) {
+                        // Remove query parameters for URL matching
+                        const cleanUrl = url.split('?')[0];
+                        const structuredCitation = turn.citations.find(c =>
+                            c.url === url || c.url === cleanUrl || c.url.split('?')[0] === cleanUrl
+                        );
+                        if (structuredCitation && structuredCitation.title && structuredCitation.title !== structuredCitation.url) {
+                            betterTitle = structuredCitation.title;
+                        }
+                    }
+
+                    // Add to citations list with best available title
+                    allCitations.push({
+                        url: url,
+                        title: betterTitle,
+                        source: 'inline'
+                    });
+                }
+
+                // Replace inline citations with numbered references
+                for (const inlineMatch of inlineMatches) {
+                    const citationIndex = allCitations.findIndex(c => c.url === inlineMatch.url);
+                    const citationNumber = citationIndex + 1;
+
+                    // Replace the inline citation with numbered link
+                    const replacement = `<a href="${inlineMatch.url}" target="_blank" class="citation-link">[${citationNumber}]</a>`;
+                    processedResponse = processedResponse.replace(inlineMatch.fullMatch, replacement);
+                }
+
+                // Also handle any existing numbered citations [1], [2], etc.
+                allCitations.forEach((citation, index) => {
+                    const citationNumber = index + 1;
+                    const numberRegex = new RegExp(`\\[${citationNumber}\\](?![^<]*>)`, 'g');
+                    processedResponse = processedResponse.replace(numberRegex,
+                        `<a href="${citation.url}" target="_blank" class="citation-link">[${citationNumber}]</a>`);
+                });
+
+                // Generate citations HTML
+                const citations = allCitations.map((citation, index) => {
+                    const citationNumber = index + 1;
+                    return `<div class="citation"><span class="citation-number">[${citationNumber}]</span> <a href="${citation.url}" target="_blank">${citation.title}</a></div>`;
+                }).join('');
 
                 turnDiv.innerHTML = `
                     <div class="turn-header">
@@ -327,7 +411,7 @@ cat >> "$OUTPUT" << 'EOF'
                     </div>
                     <div class="turn-content">
                         <div class="stance">${turn.stance}</div>
-                        <div class="argument">${turn.response}</div>
+                        <div class="argument">${processedResponse}</div>
                         ${citations ? `
                             <div class="citations">
                                 <h4>📚 Citations</h4>
