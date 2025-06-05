@@ -10,10 +10,10 @@ Run the automated validation script:
 
 ```bash
 # Full validation with clean installation tests
-python scripts/validate-release.py
+python scripts/build/validate-release.py
 
 # Quick validation (skip slow clean install tests)
-python scripts/validate-release.py --skip-clean-install
+python scripts/build/validate-release.py --skip-clean-install
 ```
 
 This script performs:
@@ -160,7 +160,7 @@ Ensure your GitHub Actions CI is passing:
 1. **Run comprehensive validation:**
 
    ```bash
-   python scripts/validate-release.py
+   python scripts/build/validate-release.py
    ```
 
 2. **Verify CI is green** on the main branch
