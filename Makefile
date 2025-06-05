@@ -1,4 +1,4 @@
-.PHONY: help build-install-script clean test test-unit test-integration test-docker lint format check-version
+.PHONY: help build-install-script clean test test-unit test-integration test-docker test-dependencies lint format check-version
 
 # Default target
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "  test-unit             Run unit tests only"
 	@echo "  test-integration      Run integration tests only"
 	@echo "  test-docker           Run Docker tests only"
+	@echo "  test-dependencies     Test dependency installation utilities"
 	@echo "  lint                  Run linting"
 	@echo "  format                Format code"
 	@echo "  check-version         Show current version from pyproject.toml"
@@ -31,7 +32,7 @@ check-version:
 	@grep 'version = ' pyproject.toml | head -1
 
 # Run all tests
-test: test-unit test-integration
+test: test-unit test-integration test-dependencies
 
 # Run unit tests
 test-unit:
@@ -50,6 +51,15 @@ test-docker:
 	@echo "🐳 Running Docker tests..."
 	@find scripts/test/docker -name "*.sh" -type f -exec {} \;
 	@echo "✅ Docker tests complete"
+
+# Test dependency utilities
+test-dependencies:
+	@echo "🔧 Testing dependency utilities..."
+	@echo "Testing jq utility (dry-run)..."
+	@OSTRUCT_SKIP_AUTO_INSTALL=1 scripts/install/dependencies/ensure_jq.sh || echo "jq test completed"
+	@echo "Testing Mermaid utility (dry-run)..."
+	@OSTRUCT_SKIP_AUTO_INSTALL=1 scripts/install/dependencies/ensure_mermaid.sh || echo "Mermaid test completed"
+	@echo "✅ Dependency tests complete"
 
 # Run Python tests
 test-python:
