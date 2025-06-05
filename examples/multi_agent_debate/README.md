@@ -5,6 +5,7 @@ This example demonstrates a structured debate between two AI agents (PRO and CON
 ## Features
 
 - **Two-agent debate**: PRO and CON sides with structured turns
+- **Advanced AI model**: Uses GPT-4.1 with 1M+ context window for sophisticated reasoning
 - **Evidence-based arguments**: Each agent can perform up to 2 web searches per turn
 - **Structured output**: All responses validate against JSON schemas
 - **Colorful visual mapping**: Auto-generated Mermaid diagrams with color-coded agents (blue PRO, red CON) and relationships (🤝 supports, ⚔️ attacks)
@@ -34,7 +35,9 @@ cat output/summary.json
 The script automatically installs required tools if missing:
 
 - **jq**: JSON processor (via package manager, GitHub binary, or Docker)
-- **Mermaid CLI**: Diagram generation (via npx or Docker)
+- **Mermaid CLI**: Diagram generation (via npx, npm, or Docker)
+
+Dependencies are managed by reusable utilities in `scripts/install/dependencies/` for cross-platform installation with multiple fallback strategies.
 
 No manual setup required - just run the script on a fresh system!
 
@@ -55,9 +58,7 @@ multi_agent_debate/
 ├── scripts/               # Utility scripts
 │   ├── run_round.sh      # Helper for individual turns
 │   ├── json2mermaid.sh   # Converts transcript to Mermaid diagram
-│   ├── json2html.sh      # Converts transcript to interactive HTML
-│   ├── ensure_mermaid.sh # Installs Mermaid CLI if needed
-│   └── ensure_jq.sh      # Installs jq JSON processor if needed
+│   └── json2html.sh      # Converts transcript to interactive HTML
 └── output/                # Generated files (created during run)
     ├── debate_init.json  # Full debate transcript
     ├── summary.json      # Judge analysis and verdict

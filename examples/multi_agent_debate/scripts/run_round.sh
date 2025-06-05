@@ -16,6 +16,7 @@ TURN_NUMBER=$((TURN_COUNT + 1))
 
 # Run ostruct in quiet mode
 ostruct run "$PROMPT" "$SCHEMA" \
+  --model gpt-4.1 \
   --enable-tool web-search \
   --progress-level none \
   -V topic="$TOPIC" \

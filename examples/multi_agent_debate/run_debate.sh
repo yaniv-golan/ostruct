@@ -44,7 +44,7 @@ PROGRESS_FLAG="--progress-level none"
 mkdir -p "$DIR/output"
 
 # Ensure required tools are available
-source "$DIR/scripts/ensure_jq.sh"
+source "$DIR/../../scripts/install/dependencies/ensure_jq.sh"
 
 # Determine topic source
 if [ -n "$TOPIC_ARG" ]; then
@@ -59,6 +59,7 @@ echo "🎯 MULTI-AGENT DEBATE SYSTEM"
 echo "=============================="
 echo "Topic: $TOPIC"
 echo "Rounds: $ROUNDS ($(($ROUNDS * 2)) total turns)"
+echo "Model: gpt-4.1 (1M+ context window)"
 echo "Web search: Enabled (up to 2 searches per turn)"
 echo ""
 
@@ -106,6 +107,7 @@ echo "⚖️  JUDGING PHASE"
 echo "=================="
 echo "Impartial AI judge analyzing $(jq '.turns | length' "$TRANSCRIPT") turns..."
 ostruct run "$DIR/prompts/summary.j2" "$DIR/schemas/summary.json" \
+  --model gpt-4.1 \
   -V topic="$TOPIC" \
   --fta transcript "$TRANSCRIPT" \
   $PROGRESS_FLAG \
@@ -134,22 +136,15 @@ echo "============================="
 
 # Generate overview SVG diagram first
 echo "Creating overview diagram..."
-# Try to generate Mermaid diagram with timeout
-if command -v mmdc >/dev/null 2>&1; then
-  echo "Using installed Mermaid CLI..."
+# Ensure Mermaid CLI is available and generate diagram
+echo "Ensuring Mermaid CLI is available..."
+if source "$DIR/../../scripts/install/dependencies/ensure_mermaid.sh"; then
+  echo "Generating overview diagram..."
   "$DIR/scripts/json2mermaid.sh" "$TRANSCRIPT" "$TOPIC" | mmdc -i - -o "$DIR/output/debate_overview.svg"
-elif command -v npx >/dev/null 2>&1; then
-  echo "Installing Mermaid CLI via npx..."
-  if timeout 30 npx --yes @mermaid-js/mermaid-cli mmdc --version >/dev/null 2>&1; then
-    "$DIR/scripts/json2mermaid.sh" "$TRANSCRIPT" "$TOPIC" | npx --yes @mermaid-js/mermaid-cli mmdc -i - -o "$DIR/output/debate_overview.svg"
-  else
-    echo "⚠️  Mermaid installation timed out, skipping overview diagram"
-    echo "   You can manually generate it later with:"
-    echo "   ./json2mermaid.sh debate_init.json | npx @mermaid-js/mermaid-cli mmdc -i - -o debate_overview.svg"
-  fi
 else
-  echo "⚠️  Node.js/npx not available, skipping overview diagram"
-  echo "   Install Node.js and run: ./json2mermaid.sh debate_init.json | npx @mermaid-js/mermaid-cli mmdc -i - -o debate_overview.svg"
+  echo "⚠️  Mermaid CLI not available, skipping overview diagram"
+  echo "   You can manually generate it later with:"
+  echo "   ./scripts/json2mermaid.sh output/debate_init.json | npx @mermaid-js/mermaid-cli mmdc -i - -o output/debate_overview.svg"
 fi
 
 # Generate detailed HTML view (after SVG so it can embed it)
