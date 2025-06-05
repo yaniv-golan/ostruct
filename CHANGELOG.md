@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.8] - 2025-06-06
+
+### Changed
+
+- **Installation Script Distribution**: Updated all documentation to use `latest` release URL (`https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh`) instead of version-specific URLs for future-proof installation instructions.
+- **macOS Installation Script**: Added dynamic Python version fetching using endoflife.date API
+  - Eliminates hardcoded Python URLs that require manual maintenance
+  - Automatically installs the latest stable Python version with security patches
+  - Uses fallback to Python 3.12.0 if API call fails
+  - Simplified to use universal2 installers supporting both Intel and Apple Silicon
+
+### Fixed
+
+- **Installation Script Logic**: Fixed double-installation issue where script would install ostruct-cli via both pipx and pip. Added proper installation method tracking to prevent redundant installations.
+- **pipx Fallback Support**: Added fallback to install pipx via pip when Homebrew is unavailable, improving installation success rate on systems without Homebrew.
+- **Error Visibility**: Removed error suppression (`2>/dev/null`) from critical pip and ostruct commands to provide better diagnostic information for troubleshooting.
+- **Version Checking**: Enhanced version verification with robust error handling and more cautious messaging when older versions are detected.
+- **Homebrew Updates**: Added `brew update` calls before package installations to ensure latest package information and reduce installation failures.
+- **User Communication**: Added warnings about Xcode Command Line Tools requirement and PEP 668 bypass when using `--break-system-packages`.
+- **Python Installation**: Improved Python.org installer with version tracking, better error messages, and guidance for manual updates.
+
 ## [0.8.7] - 2025-06-06
 
 ### Fixed
@@ -21,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **macOS Installation Script**: Added comprehensive installation script with dynamic version management and industry-standard organization. The script automatically handles Python installation, PATH configuration, and ostruct setup on macOS. Features include Python 3.10+ installation via Homebrew or python.org, shell PATH configuration, pip cache clearing, and version verification. The script uses a template-based build system that automatically extracts the current version from `pyproject.toml`. Scripts are organized following industry best practices with separate directories for build automation, platform-specific installation, and categorized testing (unit/integration/docker). Users can install with: `curl -sSL https://raw.githubusercontent.com/yaniv-golan/ostruct/main/scripts/generated/install-macos.sh | bash`
+- **macOS Installation Script**: Added comprehensive installation script with dynamic version management and industry-standard organization. The script automatically handles Python installation, PATH configuration, and ostruct setup on macOS. Features include Python 3.10+ installation via Homebrew or python.org, shell PATH configuration, pip cache clearing, and version verification. The script uses a template-based build system that automatically extracts the current version from `pyproject.toml`. Scripts are organized following industry best practices with separate directories for build automation, platform-specific installation, and categorized testing (unit/integration/docker). Users can install with: `curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash`
 
 - **Centralized Dependency Installation Utilities**: Added comprehensive dependency management system in `scripts/install/dependencies/` with reusable utilities for installing common tools across examples. Features include `ensure_jq.sh` and `ensure_mermaid.sh` with multiple installation strategies (system package managers, direct binary downloads, Docker wrappers), cross-platform support (Linux, macOS, Windows), environment variable controls (`OSTRUCT_SKIP_AUTO_INSTALL`, `OSTRUCT_PREFER_DOCKER`), and comprehensive testing framework. This eliminates code duplication across examples and provides consistent, reliable tool installation.
 

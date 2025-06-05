@@ -2,7 +2,7 @@
 
 # ostruct macOS Installation Script
 # This script sets up ostruct on macOS with proper Python and PATH configuration
-# Usage: curl -sSL https://raw.githubusercontent.com/yaniv-golan/ostruct/main/scripts/install-macos.sh | bash
+# Usage: curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash
 
 set -e  # Exit on any error
 
@@ -108,6 +108,10 @@ find_python() {
 # Install Homebrew
 install_homebrew() {
     log_info "Installing Homebrew..."
+    log_warning "Homebrew installation may require Xcode Command Line Tools"
+    log_info "You may be prompted for your password and to install developer tools"
+    log_info "This is normal and required for Homebrew to function properly"
+
     if ! /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
         log_error "Failed to install Homebrew"
         exit 1
@@ -133,6 +137,11 @@ install_python_homebrew() {
         install_homebrew
     fi
 
+    log_info "Updating Homebrew package information..."
+    if ! brew update; then
+        log_warning "Failed to update Homebrew, continuing with cached package info..."
+    fi
+
     if ! brew install python@3.12; then
         log_error "Failed to install Python via Homebrew"
         exit 1
@@ -144,24 +153,32 @@ install_python_homebrew() {
 # Install Python from python.org
 install_python_official() {
     log_info "Installing Python from python.org..."
+    log_info "Fetching latest Python version information..."
+
+    # Get latest Python version dynamically
+    local python_version
+    if python_version=$(curl -s 'https://endoflife.date/api/v1/products/python/releases/latest' | \
+        grep -o '"latest":{"name":"[^"]*"' | \
+        cut -d'"' -f6); then
+        log_info "Found latest Python version: $python_version"
+    else
+        log_warning "Failed to fetch latest version, falling back to Python 3.12.0"
+        python_version="3.12.0"
+    fi
 
     # Detect architecture
     local arch=$(uname -m)
     local installer_url
 
-    if [[ "$arch" == "arm64" ]]; then
-        # Apple Silicon
-        installer_url="https://www.python.org/ftp/python/3.12.0/python-3.12.0-macos11.pkg"
-    else
-        # Intel
-        installer_url="https://www.python.org/ftp/python/3.12.0/python-3.12.0-macosx10.9.pkg"
-    fi
+    # Modern Python versions use universal2 installers that support both Intel and Apple Silicon
+    installer_url="https://www.python.org/ftp/python/${python_version}/python-${python_version}-macos11.pkg"
 
     local temp_file="/tmp/python-installer.pkg"
 
-    log_info "Downloading Python installer..."
+    log_info "Downloading Python $python_version installer..."
     if ! curl -L -o "$temp_file" "$installer_url"; then
-        log_error "Failed to download Python installer"
+        log_error "Failed to download Python installer from $installer_url"
+        log_error "The installer URL may be outdated. Please visit https://www.python.org/downloads/macos/ to download manually."
         exit 1
     fi
 
@@ -174,7 +191,7 @@ install_python_official() {
     # Clean up
     rm -f "$temp_file"
 
-    log_success "Python installed from python.org"
+    log_success "Python $python_version installed from python.org"
 }
 
 # Get Python user bin directory
@@ -293,15 +310,19 @@ main() {
 
     # Install ostruct-cli using appropriate method
     log_info "Installing ostruct-cli..."
+    local install_method=""
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "[DRY-RUN] Would try pipx first, then pip with appropriate flags"
         log_success "[DRY-RUN] ostruct-cli installation simulated"
+        install_method="dry-run"
     else
         # Try pipx first (recommended for CLI applications)
         if command_exists pipx; then
             log_info "Using pipx for installation..."
             if pipx install ostruct-cli; then
                 log_success "ostruct-cli installed successfully with pipx"
+                install_method="pipx"
             else
                 log_warning "pipx installation failed, trying pip..."
             fi
@@ -309,16 +330,27 @@ main() {
             # Check if we can install pipx via brew
             if command_exists brew; then
                 log_info "Installing pipx via Homebrew..."
+                brew update 2>/dev/null || log_warning "Failed to update Homebrew"
                 if brew install pipx && pipx install ostruct-cli; then
                     log_success "ostruct-cli installed successfully with pipx"
+                    install_method="pipx"
+                else
+                    log_warning "pipx installation failed, trying pip..."
+                fi
+            else
+                # Try installing pipx via pip as fallback
+                log_info "Attempting to install pipx via pip..."
+                if $python_cmd -m pip install --user pipx && pipx install ostruct-cli; then
+                    log_success "ostruct-cli installed successfully with pipx"
+                    install_method="pipx"
                 else
                     log_warning "pipx installation failed, trying pip..."
                 fi
             fi
         fi
 
-        # If pipx didn't work or isn't available, try pip with appropriate flags
-        if ! command_exists ostruct; then
+        # If pipx didn't work, try pip with appropriate flags
+        if [[ -z "$install_method" ]]; then
             log_info "Falling back to pip installation..."
 
             # Clear cache first
@@ -326,15 +358,19 @@ main() {
             $python_cmd -m pip cache purge 2>/dev/null || true
 
             # Try --user first (PEP 668 compliant)
-            if $python_cmd -m pip install --user --no-cache-dir --upgrade ostruct-cli 2>/dev/null; then
+            if $python_cmd -m pip install --user --no-cache-dir --upgrade ostruct-cli; then
                 log_success "ostruct-cli installed successfully with pip --user"
+                install_method="pip-user"
             else
-                log_warning "User installation failed, trying with --break-system-packages..."
+                log_warning "User installation failed. Trying with --break-system-packages..."
+                log_warning "WARNING: This bypasses Python environment protection (PEP 668)"
                 # Fallback to --break-system-packages for externally-managed environments
                 if $python_cmd -m pip install --break-system-packages --no-cache-dir --upgrade ostruct-cli; then
                     log_success "ostruct-cli installed successfully with pip --break-system-packages"
+                    install_method="pip-system"
                 else
                     log_error "Failed to install ostruct-cli with pip"
+                    log_error "Consider using a Python virtual environment or installing via pipx"
                     exit 1
                 fi
             fi
@@ -392,7 +428,18 @@ main() {
         log_success "[DRY-RUN] ostruct installation test simulated"
     else
         if command_exists ostruct; then
-            local version=$(ostruct --version 2>/dev/null || echo "unknown")
+            local version_output
+            local version
+            if version_output=$(ostruct --version 2>&1); then
+                version=$(echo "$version_output" | sed 's/ostruct-cli //; s/ostruct //; s/.*[^0-9.]\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/')
+                if [[ -z "$version" || "$version" == "$version_output" ]]; then
+                    log_warning "Could not parse version from: $version_output"
+                    version="unknown (parsing failed)"
+                fi
+            else
+                log_warning "Failed to get ostruct version. Output: $version_output"
+                version="unknown (command failed)"
+            fi
             log_success "ostruct is working! Version: $version"
 
             # Check if we got the expected version or newer
@@ -400,7 +447,8 @@ main() {
                 log_success "✅ Version $version is current (expected $EXPECTED_VERSION or newer)"
             else
                 log_warning "⚠️  Version $version installed (expected $EXPECTED_VERSION or newer)"
-                log_info "This might be due to package index delays. The installation should still work."
+                log_warning "An older version was found. This may lead to unexpected behavior or missing features."
+                log_info "Consider checking for ostruct updates or reinstalling if issues occur."
             fi
         else
             log_warning "ostruct command not found in current session"
