@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.7] - 2025-06-06
+
+### Fixed
+
+- **Installation Script Build**: Fixed build script to create required directories during GitHub Actions workflow. The macOS installation script is now properly generated and available as a release asset.
+
 ## [0.8.6] - 2025-06-06
 
 ### Changed
