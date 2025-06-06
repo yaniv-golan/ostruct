@@ -236,14 +236,41 @@ add_to_path() {
     log_success "Added $dir_to_add to PATH in $shell_config"
 }
 
+# Update PATH immediately for current session
+update_current_path() {
+    local dir_to_add="$1"
+    if ! echo "$PATH" | grep -q "$dir_to_add"; then
+        export PATH="$dir_to_add:$PATH"
+        log_info "Updated PATH for current session: $dir_to_add"
+    fi
+}
+
+# Clean up conflicting Python installations from PATH
+cleanup_old_python_paths() {
+    local python_cmd="$1"
+    local current_python_bin
+
+    # Get the directory of the Python we want to use
+    current_python_bin=$(dirname "$(which "$python_cmd" 2>/dev/null)")
+
+    if [[ -n "$current_python_bin" ]]; then
+        log_info "Prioritizing Python installation at: $current_python_bin"
+        # Move current Python to front of PATH
+        export PATH="$current_python_bin:$(echo "$PATH" | sed "s|$current_python_bin:||g")"
+    fi
+}
+
 # Compare version strings (returns 0 if v1 >= v2)
 version_compare() {
     local v1="$1"
     local v2="$2"
 
-    # Extract just the version numbers (remove any prefixes like "ostruct-cli ")
-    v1=$(echo "$v1" | sed 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/')
-    v2=$(echo "$v2" | sed 's/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/')
+    # Extract just the version numbers (handle multiple formats)
+    # "ostruct, version 0.8.8" -> "0.8.8"
+    # "ostruct-cli 0.8.8" -> "0.8.8"
+    # "0.8.8" -> "0.8.8"
+    v1=$(echo "$v1" | sed -E 's/.*(version |ostruct-cli |ostruct |^)([0-9]+\.[0-9]+\.[0-9]+).*/\2/')
+    v2=$(echo "$v2" | sed -E 's/.*(version |ostruct-cli |ostruct |^)([0-9]+\.[0-9]+\.[0-9]+).*/\2/')
 
     # Use sort -V for version comparison
     if [[ "$(printf '%s\n' "$v1" "$v2" | sort -V | head -n1)" == "$v2" ]]; then
@@ -253,14 +280,281 @@ version_compare() {
     fi
 }
 
+# Detect all ostruct installations with metadata
+detect_ostruct_installations() {
+    local installations=()
+
+    # Search common installation locations
+    local search_paths=(
+        "$HOME/.local/bin"
+        "$HOME/Library/Python/*/bin"
+        "/usr/local/bin"
+        "/opt/homebrew/bin"
+    )
+
+    for search_pattern in "${search_paths[@]}"; do
+        for search_dir in $search_pattern; do
+            if [[ -f "$search_dir/ostruct" ]]; then
+                local install_info=""
+                local version=""
+                local install_method=""
+
+                # Try to get version
+                if version=$("$search_dir/ostruct" --version 2>/dev/null); then
+                    version=$(echo "$version" | sed -E 's/.*(version |ostruct-cli |ostruct |^)([0-9]+\.[0-9]+\.[0-9]+).*/\2/')
+                else
+                    version="unknown"
+                fi
+
+                # Determine installation method based on path
+                if [[ "$search_dir" == "$HOME/.local/bin" ]]; then
+                    install_method="pipx"
+                elif [[ "$search_dir" == "$HOME/Library/Python/"*"/bin" ]]; then
+                    local python_version=$(echo "$search_dir" | sed -E 's|.*/Python/([0-9.]+)/bin|\1|')
+                    install_method="pip-user (Python $python_version)"
+                elif [[ "$search_dir" == "/usr/local/bin" ]] || [[ "$search_dir" == "/opt/homebrew/bin" ]]; then
+                    install_method="system/homebrew"
+                else
+                    install_method="unknown"
+                fi
+
+                install_info="$search_dir/ostruct|$version|$install_method"
+                installations+=("$install_info")
+            fi
+        done
+    done
+
+    printf '%s\n' "${installations[@]}"
+}
+
+# Remove an ostruct installation safely
+remove_ostruct_installation() {
+    local install_path="$1"
+    local install_method="$2"
+    local dry_run="${3:-false}"
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_info "[DRY-RUN] Would remove: $install_path"
+        return 0
+    fi
+
+    local install_dir=$(dirname "$install_path")
+
+    if [[ "$install_method" == "pipx" ]]; then
+        # Use pipx to remove cleanly
+        if command_exists pipx; then
+            log_info "Removing ostruct via pipx..."
+            if pipx uninstall ostruct-cli; then
+                log_success "Removed ostruct via pipx"
+                return 0
+            else
+                log_warning "pipx uninstall failed, falling back to manual removal"
+            fi
+        fi
+    elif [[ "$install_method" == pip-user* ]]; then
+        # Extract Python version from method string
+        local python_version=$(echo "$install_method" | sed -E 's/pip-user \(Python ([0-9.]+)\)/\1/')
+        local python_cmd="python$python_version"
+
+        # Try to find the exact Python command
+        if ! command_exists "$python_cmd"; then
+            python_cmd="python3"
+        fi
+
+        if command_exists "$python_cmd"; then
+            log_info "Removing ostruct via pip (Python $python_version)..."
+            if "$python_cmd" -m pip uninstall -y ostruct-cli; then
+                log_success "Removed ostruct via pip"
+                return 0
+            else
+                log_warning "pip uninstall failed, falling back to manual removal"
+            fi
+        fi
+    fi
+
+    # Manual removal as fallback
+    log_info "Manually removing ostruct binary: $install_path"
+    if rm -f "$install_path"; then
+        log_success "Manually removed: $install_path"
+        return 0
+    else
+        log_error "Failed to remove: $install_path"
+        return 1
+    fi
+}
+
+# Interactive cleanup of old installations
+cleanup_old_installations() {
+    local current_install_path="$1"
+    local dry_run="${2:-false}"
+
+    log_info "Scanning for existing ostruct installations..."
+
+    local installations
+    mapfile -t installations < <(detect_ostruct_installations)
+
+    if [[ ${#installations[@]} -le 1 ]]; then
+        log_info "No conflicting installations found"
+        return 0
+    fi
+
+    echo ""
+    log_warning "Multiple ostruct installations detected:"
+    echo ""
+
+    local current_version=""
+    local removal_candidates=()
+
+    # Display all installations
+    local index=1
+    for install_info in "${installations[@]}"; do
+        IFS='|' read -r path version method <<< "$install_info"
+
+        if [[ "$path" == "$current_install_path" ]]; then
+            echo "  $index. $path (v$version) [$method] ← CURRENT INSTALLATION"
+            current_version="$version"
+        else
+            echo "  $index. $path (v$version) [$method]"
+            removal_candidates+=("$install_info")
+        fi
+        ((index++))
+    done
+
+    if [[ ${#removal_candidates[@]} -eq 0 ]]; then
+        log_info "No old installations to remove"
+        return 0
+    fi
+
+    echo ""
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_info "[DRY-RUN] Would offer to remove ${#removal_candidates[@]} old installation(s)"
+        return 0
+    fi
+
+    # Ask user if they want to remove old installations
+    log_warning "Old installations may cause conflicts and import errors."
+    log_info "The following installations will be removed:"
+
+    for install_info in "${removal_candidates[@]}"; do
+        IFS='|' read -r path version method <<< "$install_info"
+        echo "  • $path (v$version) [$method]"
+    done
+
+    echo ""
+    read -p "Would you like to remove these old installations? (y/N): " -r response
+
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        log_info "Keeping old installations. You may need to manage PATH manually."
+        log_info "To clean up later, run: curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash -s -- --cleanup-only"
+        return 0
+    fi
+
+    echo ""
+    log_info "Removing old installations..."
+
+    local removed_count=0
+    local failed_count=0
+
+    for install_info in "${removal_candidates[@]}"; do
+        IFS='|' read -r path version method <<< "$install_info"
+
+        # Safety check: don't remove the current installation
+        if [[ "$path" == "$current_install_path" ]]; then
+            log_warning "Skipping $path - this is the current installation"
+            continue
+        fi
+
+        # Skip if this is a newer version (safety check)
+        if [[ "$current_version" != "unknown" && "$version" != "unknown" ]]; then
+            if version_compare "$version" "$current_version"; then
+                log_warning "Skipping $path (v$version) - newer than current installation"
+                continue
+            fi
+        fi
+
+        if remove_ostruct_installation "$path" "$method" false; then
+            ((removed_count++))
+        else
+            ((failed_count++))
+        fi
+    done
+
+    echo ""
+    if [[ $removed_count -gt 0 ]]; then
+        log_success "Successfully removed $removed_count old installation(s)"
+    fi
+
+    if [[ $failed_count -gt 0 ]]; then
+        log_warning "$failed_count installation(s) could not be removed automatically"
+        log_info "You may need to remove them manually or check permissions"
+    fi
+
+    return 0
+}
+
 # Main installation function
 main() {
-    # Check for dry-run mode
+    # Check for special modes
     local DRY_RUN=false
-    if [[ "$1" == "--dry-run" || "$1" == "-n" ]]; then
-        DRY_RUN=true
+    local CLEANUP_ONLY=false
+
+    for arg in "$@"; do
+        case "$arg" in
+            "--dry-run"|"-n")
+                DRY_RUN=true
+                ;;
+            "--cleanup-only"|"-c")
+                CLEANUP_ONLY=true
+                ;;
+            "--help"|"-h")
+                echo "ostruct macOS Installation Script"
+                echo ""
+                echo "Usage: $0 [OPTIONS]"
+                echo ""
+                echo "Options:"
+                echo "  --dry-run, -n      Run in dry-run mode (no actual changes)"
+                echo "  --cleanup-only, -c Only clean up old installations"
+                echo "  --help, -h         Show this help message"
+                echo ""
+                exit 0
+                ;;
+        esac
+    done
+
+    if [[ "$DRY_RUN" == "true" ]]; then
         log_info "Running in DRY-RUN mode - no actual changes will be made"
         echo ""
+    fi
+
+    if [[ "$CLEANUP_ONLY" == "true" ]]; then
+        echo "🧹 ostruct Cleanup Mode"
+        echo "======================"
+        echo ""
+        log_info "Scanning for ostruct installations to clean up..."
+
+        # Find any ostruct installation to use as reference
+        local current_install_path=""
+        if command_exists ostruct; then
+            current_install_path=$(which ostruct 2>/dev/null)
+        else
+            # Find the first available installation
+            local installations
+            mapfile -t installations < <(detect_ostruct_installations)
+            if [[ ${#installations[@]} -gt 0 ]]; then
+                IFS='|' read -r current_install_path _ _ <<< "${installations[0]}"
+            fi
+        fi
+
+        if [[ -n "$current_install_path" ]]; then
+            cleanup_old_installations "$current_install_path" "$DRY_RUN"
+        else
+            log_info "No ostruct installations found"
+        fi
+
+        echo ""
+        log_success "Cleanup complete!"
+        exit 0
     fi
 
     echo "🚀 ostruct macOS Installation Script"
@@ -340,9 +634,20 @@ main() {
             else
                 # Try installing pipx via pip as fallback
                 log_info "Attempting to install pipx via pip..."
-                if $python_cmd -m pip install --user pipx && pipx install ostruct-cli; then
-                    log_success "ostruct-cli installed successfully with pipx"
-                    install_method="pipx"
+                if $python_cmd -m pip install --user pipx; then
+                    # Update PATH immediately so pipx is available
+                    local python_user_bin
+                    if python_user_bin=$(get_python_user_bin "$python_cmd"); then
+                        update_current_path "$python_user_bin"
+                    fi
+
+                    # Now try to use pipx
+                    if command_exists pipx && pipx install ostruct-cli; then
+                        log_success "ostruct-cli installed successfully with pipx"
+                        install_method="pipx"
+                    else
+                        log_warning "pipx installation failed, trying pip..."
+                    fi
                 else
                     log_warning "pipx installation failed, trying pip..."
                 fi
@@ -384,6 +689,9 @@ main() {
         log_info "[DRY-RUN] Would configure PATH for ostruct"
         log_success "[DRY-RUN] PATH configuration simulated"
     else
+        # Clean up conflicting Python installations
+        cleanup_old_python_paths "$python_cmd"
+
         local bin_dirs_to_add=()
 
         # Check if installed via pipx
@@ -431,7 +739,11 @@ main() {
             local version_output
             local version
             if version_output=$(ostruct --version 2>&1); then
-                version=$(echo "$version_output" | sed 's/ostruct-cli //; s/ostruct //; s/.*[^0-9.]\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/')
+                # Handle multiple version output formats:
+                # "ostruct, version 0.8.8" -> "0.8.8"
+                # "ostruct-cli 0.8.8" -> "0.8.8"
+                # "0.8.8" -> "0.8.8"
+                version=$(echo "$version_output" | sed -E 's/.*(version |ostruct-cli |ostruct |^)([0-9]+\.[0-9]+\.[0-9]+).*/\2/')
                 if [[ -z "$version" || "$version" == "$version_output" ]]; then
                     log_warning "Could not parse version from: $version_output"
                     version="unknown (parsing failed)"
@@ -442,21 +754,58 @@ main() {
             fi
             log_success "ostruct is working! Version: $version"
 
-            # Check if we got the expected version or newer
-            if version_compare "$version" "$EXPECTED_VERSION"; then
-                log_success "✅ Version $version is current (expected $EXPECTED_VERSION or newer)"
+            # Check if we got the expected version or newer (only if version was parsed successfully)
+            if [[ "$version" != "unknown"* ]]; then
+                if version_compare "$version" "$EXPECTED_VERSION"; then
+                    log_success "✅ Version $version is current (expected $EXPECTED_VERSION or newer)"
+                else
+                    log_warning "⚠️  Version $version installed (expected $EXPECTED_VERSION or newer)"
+                    log_warning "An older version was found. This may lead to unexpected behavior or missing features."
+                    log_info "Consider checking for ostruct updates or reinstalling if issues occur."
+                fi
             else
-                log_warning "⚠️  Version $version installed (expected $EXPECTED_VERSION or newer)"
-                log_warning "An older version was found. This may lead to unexpected behavior or missing features."
-                log_info "Consider checking for ostruct updates or reinstalling if issues occur."
+                log_info "Skipping version comparison due to parsing failure"
             fi
         else
             log_warning "ostruct command not found in current session"
+            log_info "This is normal - the PATH changes take effect in new terminal sessions"
             log_info "Please restart your terminal or run: source $shell_config"
             log_info "Then test with: ostruct --version"
+
+            # Try to find where ostruct was installed for troubleshooting
+            local ostruct_locations=()
+            for search_dir in "$HOME/.local/bin" "$HOME/Library/Python/*/bin"; do
+                if [[ -f "$search_dir/ostruct" ]]; then
+                    ostruct_locations+=("$search_dir/ostruct")
+                fi
+            done
+
+            if [[ ${#ostruct_locations[@]} -gt 0 ]]; then
+                log_info "ostruct found at: ${ostruct_locations[*]}"
+                if [[ ${#ostruct_locations[@]} -gt 1 ]]; then
+                    log_warning "Multiple ostruct installations detected!"
+                    log_warning "This may cause conflicts. Consider removing older installations."
+                fi
+                log_info "If issues persist, try running directly: ${ostruct_locations[0]} --version"
+            fi
         fi
     fi
     echo ""
+
+    # Check for and offer to clean up old installations
+    if [[ "$DRY_RUN" == "false" ]]; then
+        # Determine the current installation path
+        local current_install_path=""
+        if command_exists ostruct; then
+            current_install_path=$(which ostruct 2>/dev/null)
+        elif [[ ${#ostruct_locations[@]} -gt 0 ]]; then
+            current_install_path="${ostruct_locations[0]}"
+        fi
+
+        if [[ -n "$current_install_path" ]]; then
+            cleanup_old_installations "$current_install_path" false
+        fi
+    fi
 
     # Success message
     echo "🎉 Installation Complete!"
@@ -467,13 +816,19 @@ main() {
     echo "Next steps:"
     echo "1. Restart your terminal or run: source $shell_config"
     echo "2. Test the installation: ostruct --version"
-    echo "3. Get help: ostruct --help"
-    echo "4. Set up your OpenAI API key:"
+    echo "3. If you get import errors, ensure you're using the correct Python:"
+    echo "   which ostruct  # Should show the path we configured"
+    echo "   which python3  # Should match the Python version we installed"
+    echo "4. Get help: ostruct --help"
+    echo "5. Set up your OpenAI API key:"
     echo "   export OPENAI_API_KEY='your-api-key-here'"
     echo "   # Or create a .env file with: OPENAI_API_KEY=your-api-key-here"
     echo ""
     echo "📖 Documentation: https://ostruct.readthedocs.io"
     echo "🐛 Issues: https://github.com/yaniv-golan/ostruct/issues"
+    echo ""
+    echo "💡 Tip: If you encounter conflicts with old installations later,"
+    echo "   run the cleanup tool: curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash -s -- --cleanup-only"
     echo ""
 
     # Show what was installed
