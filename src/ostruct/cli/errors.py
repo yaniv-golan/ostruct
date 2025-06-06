@@ -291,7 +291,22 @@ class TemplateValidationError(TaskTemplateError):
 class SystemPromptError(TaskTemplateError):
     """Raised when there are issues with system prompt loading or processing."""
 
-    pass
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize system prompt error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+        """
+        super().__init__(
+            message,
+            context=context,
+            exit_code=ExitCode.VALIDATION_ERROR,
+        )
 
 
 class SchemaError(CLIError):
