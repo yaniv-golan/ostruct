@@ -77,7 +77,7 @@ Different file routing options make files available in different ways:
      - Use Cases
    * - ``-ft`` (Template)
      - ✅ Available
-     - ❌ Not uploaded
+     - ❌ Not uploaded (though embedded in the prompt sent to the model)
      - Config files, templates
    * - ``-fc`` (Code Interpreter)
      - ✅ Available
@@ -112,6 +112,9 @@ ostruct automatically generates variable names from file paths following these r
    * - ``123data.csv``
      - ``_123data_csv``
      - Prepend underscore if starts with digit
+
+.. note::
+   Frankly, auto-naming was probably not a good idea, and might get deprecated in the future. Probably the best way to go is to use aliases.
 
 Auto-Naming Examples
 --------------------

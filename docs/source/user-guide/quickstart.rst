@@ -117,8 +117,7 @@ Create ``pet_schema.json`` to specify exactly what information you want to extra
 
    .. code-block:: bash
 
-      cd examples/meta-schema-generator
-      ./scripts/generate_and_validate_schema.sh -o pet_schema.json analyze_pet.j2
+      examples/meta-schema-generator/scripts/generate_and_validate_schema.sh -o pet_schema.json analyze_pet.j2
 
    This tool analyzes your template and generates OpenAI-compliant schemas automatically. See :doc:`examples` for details.
 

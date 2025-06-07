@@ -381,6 +381,8 @@ tools:
 
 🚀 **New to ostruct?** Follow our [step-by-step quickstart guide](https://ostruct.readthedocs.io/en/latest/user-guide/quickstart.html) featuring Juno the beagle for a hands-on introduction.
 
+📝 **Template Scripting:** Learn ostruct's templating capabilities with the [template scripting guide](https://ostruct.readthedocs.io/en/latest/user-guide/ostruct_template_scripting_guide.html) - no prior Jinja2 knowledge required!
+
 📖 **Full Documentation:** <https://ostruct.readthedocs.io/>
 
 ### Quick Start

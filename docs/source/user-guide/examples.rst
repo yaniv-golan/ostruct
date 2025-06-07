@@ -23,11 +23,10 @@ The meta-schema generator automatically creates and validates JSON schemas for y
 .. code-block:: bash
 
    # Generate schema for your template
-   cd examples/meta-schema-generator
-   ./scripts/generate_and_validate_schema.sh my_template.j2
+   examples/meta-schema-generator/scripts/generate_and_validate_schema.sh my_template.j2
 
    # Save to file
-   ./scripts/generate_and_validate_schema.sh -o schema.json my_template.j2
+   examples/meta-schema-generator/scripts/generate_and_validate_schema.sh -o schema.json my_template.j2
 
 **Key Features**:
 

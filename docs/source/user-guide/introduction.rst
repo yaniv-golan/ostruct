@@ -102,8 +102,7 @@ The quickest way to understand ostruct is through a simple example:
 
       .. code-block:: bash
 
-         cd examples/meta-schema-generator
-         ./scripts/generate_and_validate_schema.sh -o summary.json summarize.j2
+         examples/meta-schema-generator/scripts/generate_and_validate_schema.sh -o summary.json summarize.j2
 
       See :doc:`examples` for complete documentation.
 

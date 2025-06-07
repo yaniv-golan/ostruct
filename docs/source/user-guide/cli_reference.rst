@@ -1427,8 +1427,8 @@ Legacy vs Enhanced Syntax
 
    # After (enhanced)
    ostruct run template.j2 schema.json \\
-     -ft config=config.yaml \\
-     -fc data=input.csv
+        --fta config config.yaml \\
+   --fca data input.csv
 
 Variable Naming Patterns
 ------------------------
@@ -1556,7 +1556,7 @@ Error Messages and Solutions
 • **Solution**: Use explicit variable names that are valid Python identifiers
 • **Prevention**: Avoid files with only special characters in names
 
-**"FileInfoList object in output"**
+**"Guidance message appears in output"**
 
 • **Cause**: Template uses ``{{ variable }}`` instead of ``{{ variable.content }}``
 • **Solution**: Always use ``.content`` to access file contents
