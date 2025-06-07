@@ -321,6 +321,45 @@ class FileInfoList(List[FileInfo]):
             return self[0].name
 
     @property
+    def extension(self) -> str:
+        """Get the file extension of a single file without dot.
+
+        Returns:
+            str: Extension of the single file from file mapping.
+
+        Raises:
+            ValueError: If the list is empty or contains multiple files.
+        """
+        with self._lock:
+            if not self:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"No files in '{var_name}'. Cannot access .extension property."
+                )
+
+            # Check for multiple files or directory mapping
+            if len(self) > 1:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains {len(self)} files. "
+                    f"Use '{{{{ {var_name}[0].extension }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.extension }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.extension }}}}{{%% endfor %%}}'."
+                )
+
+            if self._from_dir:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"'{var_name}' contains files from directory mapping. "
+                    f"Use '{{{{ {var_name}[0].extension }}}}' for the first file, "
+                    f"'{{{{ {var_name}|single.extension }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {var_name} %%}}{{{{ file.extension }}}}{{%% endfor %%}}'."
+                )
+
+            # Single file from file mapping
+            return self[0].extension
+
+    @property
     def names(self) -> List[str]:
         """Get all filenames as a list."""
         with self._lock:
