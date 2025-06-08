@@ -1,0 +1,107 @@
+---
+system_prompt: |
+  You are an expert document analysis specialist with deep knowledge of various document formats,
+  conversion tools, and processing requirements. Analyze documents thoroughly to determine the
+  best conversion strategy.
+---
+
+# Document Analysis Request
+
+Please analyze the uploaded document to determine its characteristics and conversion requirements.
+
+## Document Information
+
+**File Name**: {{ input_file.name }}
+**File Size**: {{ input_file.size }} bytes
+**File Extension**: {{ input_file.extension }}
+
+{% if document_metadata %}
+## Document Metadata
+```
+{{ document_metadata }}
+```
+{% endif %}
+
+{% if media_analysis %}
+## Embedded Media Analysis
+```
+{{ media_analysis }}
+```
+{% endif %}
+
+{% if text_sample %}
+## Sample Text Extraction
+```
+{{ text_sample }}
+```
+**Text Coverage**: {{ text_coverage_percent }}% of pages have extractable text
+{% endif %}
+
+{% if additional_analysis %}
+## Additional Analysis Data
+{{ additional_analysis }}
+{% endif %}
+
+## Analysis Tasks
+
+1. **Format Detection**: Determine the exact document format and version
+2. **Structure Analysis**: Count pages/slides/sheets and analyze layout complexity
+3. **Content Assessment**: Identify tables, images, charts, and special formatting
+4. **OCR Requirements**: Determine if OCR is needed for scanned content
+5. **Complexity Scoring**: Rate conversion complexity from 1-10 with reasoning
+6. **Tool Recommendations**: Suggest appropriate conversion tools
+7. **Semantic Structure**: Assess if the document has clear titles, headers, and hierarchical structure
+8. **Enhancement Needs**: Determine if semantic enhancement would improve the conversion quality
+
+## Document Content
+
+The document to analyze is uploaded and available for Code Interpreter analysis.
+
+Please examine the document structure, content, and formatting to provide a comprehensive analysis.
+
+{% if document_metadata or media_analysis or text_sample %}
+**Note**: Pre-analysis data above provides concrete information about the document. Use this data to make accurate determinations about OCR needs, media content, and text presence.
+{% endif %}
+
+## Available Tools for Recommendations
+
+{% for tool_file in tools_docs %}
+{% set tool_name = tool_file.name | replace('.md', '') %}
+{% set content_lines = tool_file.content.split('\n') %}
+{% set description = '' %}
+
+{# Simple frontmatter description extraction #}
+{% for line in content_lines %}
+  {% if line.strip().startswith('description:') and not description %}
+    {% set description = line.split('description:')[1] | trim | replace('"', '') | replace("'", '') %}
+  {% endif %}
+{% endfor %}
+
+{# Fallback: get first sentence after # heading if no description found #}
+{% if not description %}
+  {% set found_heading = false %}
+  {% for line in content_lines %}
+    {% if line.strip().startswith('# ') %}
+      {% set found_heading = true %}
+    {% elif found_heading and line.strip() and not line.strip().startswith('#') and not line.strip().startswith('---') and not description %}
+      {% set description = line.strip().split('.')[0] + '.' %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+- **{{ tool_name }}**: {{ description or 'Document processing tool' }}
+{% endfor %}
+
+## Output Requirements
+
+Provide a detailed analysis covering all aspects above, with specific focus on:
+- Exact page/slide/sheet count
+- Presence and complexity of tables, images, and charts
+- Text quality and OCR requirements
+- **Recommended tools** (array of tool names from the list above)
+- Recommended processing approach
+- Estimated processing time and complexity
+- File size in MB for chunking decisions
+- **needs_semantic_enhancement** (boolean): Whether the document would benefit from AI-powered structure enhancement
+- **has_clear_headers** (boolean): Whether the document has visually distinct headers and titles
+- **document_type** (string): Type of document (presentation, report, article, manual, etc.)

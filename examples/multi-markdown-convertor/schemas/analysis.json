@@ -1,0 +1,80 @@
+{
+    "type": "object",
+    "properties": {
+        "document_format": {
+            "type": "string",
+            "enum": [
+                "pdf",
+                "docx",
+                "pptx",
+                "xlsx",
+                "txt",
+                "html",
+                "unknown"
+            ]
+        },
+        "page_count": {
+            "type": "integer"
+        },
+        "has_tables": {
+            "type": "boolean"
+        },
+        "has_images": {
+            "type": "boolean"
+        },
+        "has_complex_layout": {
+            "type": "boolean"
+        },
+        "requires_ocr": {
+            "type": "boolean"
+        },
+        "complexity_score": {
+            "type": "integer"
+        },
+        "estimated_processing_time": {
+            "type": "integer"
+        },
+        "recommended_tools": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "analysis_notes": {
+            "type": "string"
+        },
+        "file_size_mb": {
+            "type": "number"
+        },
+        "language_detected": {
+            "type": "string"
+        },
+        "needs_semantic_enhancement": {
+            "type": "boolean"
+        },
+        "has_clear_headers": {
+            "type": "boolean"
+        },
+        "document_type": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "document_format",
+        "page_count",
+        "has_tables",
+        "has_images",
+        "has_complex_layout",
+        "requires_ocr",
+        "complexity_score",
+        "estimated_processing_time",
+        "recommended_tools",
+        "analysis_notes",
+        "file_size_mb",
+        "language_detected",
+        "needs_semantic_enhancement",
+        "has_clear_headers",
+        "document_type"
+    ],
+    "additionalProperties": false
+}

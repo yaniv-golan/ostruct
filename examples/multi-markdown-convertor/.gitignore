@@ -1,0 +1,43 @@
+# Temporary files
+temp/
+*.tmp
+*.temp
+
+# Output files
+output/
+
+# Log files
+*.log
+
+# Cache files
+cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local configuration
+config/local.conf
+
+# Test outputs
+test_output/
+*.test.md
+
+# Backup files
+*.bak
+*.backup
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Node modules (if any)
+node_modules/

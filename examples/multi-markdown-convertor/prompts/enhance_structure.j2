@@ -1,0 +1,59 @@
+# Semantic Structure Enhancement Prompt
+# This prompt takes plain text extracted from documents and enhances it with proper Markdown structure
+
+You are a document structure expert. Your task is to analyze plain text extracted from a document and convert it to well-structured Markdown with proper headers, lists, and formatting.
+
+## Input Text
+```
+{{ text_content }}
+```
+
+## Document Metadata
+{% if document_metadata %}
+- Original format: {{ document_metadata.format | default('unknown') }}
+- Page count: {{ document_metadata.pages | default('unknown') }}
+- Has images: {{ document_metadata.has_images | default(false) }}
+- Document type: {{ document_metadata.type | default('unknown') }}
+{% endif %}
+
+## Your Task
+
+Analyze the text above and convert it to properly structured Markdown by:
+
+1. **Identifying Headers**:
+   - Main titles (usually larger, centered, or at the beginning) should become # H1
+   - Section titles should become ## H2
+   - Subsections should become ### H3
+   - Look for patterns like:
+     - Text at the beginning of the document or sections
+     - Text that appears alone on a line or with significant spacing
+     - Text that seems to introduce content below it
+     - Text in a different style (even if we can't see styling, infer from context)
+
+2. **Preserving Structure**:
+   - Maintain paragraph breaks
+   - Identify and format lists (both bulleted and numbered)
+   - Preserve any table-like structures
+   - Keep code blocks or technical content properly formatted
+
+3. **Semantic Understanding**:
+   - Use context to determine heading levels
+   - If something looks like a title/subtitle pair (like text followed by slightly indented text), format accordingly
+   - Recognize common document patterns (title page, table of contents, chapters, etc.)
+
+4. **Special Considerations**:
+   - If the first few lines appear to be a title page, format them as:
+     - Main title as # H1
+     - Subtitle or author info as regular text or ## H2
+   - Don't over-format - if unsure whether something is a header, keep it as regular text
+   - Preserve the original text exactly - only add Markdown formatting
+
+## Output Format
+
+Provide the enhanced Markdown text that:
+- Uses proper header hierarchy (# ## ### etc.)
+- Maintains all original content
+- Adds appropriate formatting for better readability
+- Follows standard Markdown conventions
+
+Remember: You're enhancing structure, not rewriting content. Every word from the input should appear in your output.

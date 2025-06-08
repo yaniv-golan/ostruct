@@ -1,0 +1,94 @@
+---
+system_prompt: |
+  You are a meticulous document conversion quality assurance specialist. Your role is to validate
+  conversion outputs against the original document characteristics and identify any issues,
+  omissions, or quality degradations in detail.
+---
+
+# Conversion Output Validation
+
+## Original Document Analysis
+
+The original document had these characteristics:
+{{ original_analysis }}
+
+## Expected Content Checklist
+
+Based on the analysis, please verify the following elements are present and properly converted:
+
+{% if original_analysis.page_count %}
+- [ ] Document has approximately {{ original_analysis.page_count }} pages worth of content
+{% endif %}
+
+{% if original_analysis.has_tables %}
+- [ ] Tables are present and properly formatted as markdown tables (expected: {{ original_analysis.table_count | default("multiple") }} tables)
+{% endif %}
+
+{% if original_analysis.has_images %}
+- [ ] Images are included with proper `![alt](path)` markdown syntax (expected: {{ original_analysis.image_count | default("multiple") }} images)
+{% endif %}
+
+{% if original_analysis.has_clear_headers %}
+- [ ] Headers and document structure are preserved with proper markdown heading levels
+{% endif %}
+
+{% if original_analysis.has_footnotes %}
+- [ ] Footnotes or endnotes are converted and linked appropriately
+{% endif %}
+
+{% if original_analysis.has_lists %}
+- [ ] Lists (bullet and numbered) maintain proper nesting and formatting
+{% endif %}
+
+## Validation Tasks
+
+Please perform a thorough validation of the converted output:
+
+1. **Content Completeness Check**:
+   - Compare against the checklist above
+   - Identify any missing sections, pages, or content types
+   - Note if any content appears truncated or cut off
+
+2. **Formatting Fidelity Assessment**:
+   - Check if tables are properly formatted (not converted to images or plain text)
+   - Verify list indentation and nesting levels
+   - Ensure headers maintain hierarchical structure
+   - Confirm images have proper references and captions
+
+3. **Integration Error Detection**:
+   - Look for placeholder text (e.g., `<>`, `TODO`, `[PLACEHOLDER]`)
+   - Check for incomplete markdown syntax or broken formatting
+   - Identify any obvious merge artifacts or duplicated content
+   - Detect half-rendered markup or HTML tags that shouldn't be there
+   - Look for file path references that weren't properly converted
+
+4. **Structural Anomaly Check**:
+   - Verify no content appears out of order
+   - Check for proper section breaks and transitions
+   - Ensure no floating or orphaned content blocks
+
+## Output Requirements
+
+Provide a detailed validation report with:
+
+1. **Overall Assessment**: Success/failure determination
+2. **Quality Score**: 1-10 rating with justification
+3. **Enumerated Issues List**:
+   - List each issue as a separate, specific point
+   - Include location references (section, page, or line if possible)
+   - Categorize by severity (critical, major, minor)
+
+   Example format:
+   ```
+   - CRITICAL: Table 2 from page 5 is completely missing
+   - MAJOR: Bullet list nesting in Section 3.2 is flattened (was 3 levels, now 1)
+   - MINOR: Image "diagram.png" caption formatting is inconsistent
+   ```
+
+4. **Specific Recommendations**: For each issue, suggest how it could be fixed
+
+## Converted Output
+
+{{ output_file }}
+
+Please analyze this output thoroughly against the original document characteristics and provide your detailed validation report.

@@ -1,0 +1,193 @@
+---
+system_prompt: |
+  You are an expert document conversion architect. Create detailed, executable conversion plans
+  using the best tools and strategies for each document type. Generate precise command-line
+  instructions with proper error handling and dependencies.
+
+  IMPORTANT: You may and should use multiple tools in sequence to achieve complete, high-fidelity
+  conversions. Different tools excel at different aspects - combine them for best results.
+---
+
+# Document Conversion Planning
+
+## Analysis Summary
+
+{{ analysis }}
+
+## Target Output Format
+
+**Target Format**: {{ target_format | upper }}
+
+The conversion plan must produce output in **{{ target_format }}** format. Choose tools and steps that are appropriate for generating this specific output format.
+
+## Multi-Tool Strategy Guidelines
+
+**You are encouraged to use multiple tools in sequence** to handle different content types optimally:
+
+### Common Multi-Tool Patterns:
+
+1. **Documents with Mixed Content Types**:
+   - Step 1: Extract main text content using appropriate text extraction tool
+   - Step 2: Extract embedded media (images, diagrams) using media extraction tool
+   - Step 3: Process special content (tables, equations) with specialized tools
+   - Step 4: Merge all extracted content preserving document structure
+
+2. **Documents Requiring OCR**:
+   - Step 1: Extract/prepare images from document
+   - Step 2: Preprocess images for optimal OCR (adjust DPI, remove backgrounds)
+   - Step 3: Apply OCR to extract text
+   - Step 4: Post-process and structure the OCR output
+
+3. **Complex Formatted Documents**:
+   - Step 1: Try primary conversion tool for main content
+   - Step 2: Use high-fidelity converter for elements the first tool missed
+   - Step 3: Merge results preserving document structure
+
+### Tool Selection Principles:
+
+Based on the available tool documentation below, consider:
+- **Speed vs Quality tradeoff**: Some tools are faster but may lose formatting
+- **Format specialization**: Some tools excel at specific formats
+- **Content type handling**: Different tools handle tables, images, lists differently
+- **Fidelity requirements**: Choose tools that preserve the level of detail needed
+
+## Available Tools
+
+{% for tool_file in tools_docs %}
+### {{ tool_file.name | replace('.md', '') | title }}
+
+{{ tool_file.content }}
+
+---
+{% endfor %}
+
+## Planning Requirements
+
+Based on the document analysis above, create a detailed conversion plan that:
+
+1. **Selects optimal tools** from the available options
+2. **Defines clear steps** with proper command syntax
+3. **Manages dependencies** between processing steps
+4. **Specifies file paths** for inputs and outputs
+5. **Includes error recovery** and fallback strategies
+{% if allow_external_tools == "true" %}
+6. **May include external validation** using trusted services (e.g., W3C validator)
+{% else %}
+6. **Uses only local validation tools** appropriate for the target format:
+   - For HTML output: tidy, xmllint, htmlhint
+   - For PDF output: pdfinfo, pdftotext (to verify content)
+   - For other formats: basic file existence and size checks
+{% endif %}
+6. **INCLUDES MERGE/INTEGRATION STEPS** when using multiple tools:
+   - After extracting different content types, plan how to combine them
+   - Preserve original document structure and order
+   - Use placeholders or markers to maintain content positioning
+
+## Conversion Strategy
+
+Consider these factors from the analysis:
+- Processing time constraints
+- Quality requirements
+- Available system resources
+- **Semantic structure needs**: If analysis shows `needs_semantic_enhancement: true`, include a semantic enhancement step after text extraction
+- **Document type**: Use document type (presentation, report, etc.) to inform tool selection
+- **Content types present**: Plan separate extraction for text, images, tables if needed
+
+The analysis above contains complexity scores and tool recommendations to guide your planning.
+
+### Multi-Tool Pipeline Guidance
+
+For documents that need semantic enhancement:
+1. First extract text using appropriate tool (pdftotext, markitdown, etc.)
+2. Then apply semantic enhancement using ostruct-enhance
+3. Validate the enhanced output
+
+Example pipeline for PDF with poor structure:
+1. Extract text: `pdftotext -layout {{ "{{INPUT_FILE}}" }} $TEMP_DIR/extracted.txt`
+2. Enhance structure: `ostruct-enhance` (see tool documentation for exact command)
+3. Output final markdown
+
+**IMPORTANT**: When you need multiple operations with the same tool, create separate steps:
+- WRONG: Single step with multiple commands (will fail):
+  ```
+  command: "pdfimages -list input.pdf > list.txt\npdfimages input.pdf images"
+  ```
+- CORRECT: Two separate steps:
+  ```
+  Step 1: { id: "list_images", command: "pdfimages -list {{ "{{INPUT_FILE}}" }} > $TEMP_DIR/list.txt" }
+  Step 2: { id: "extract_images", command: "pdfimages {{ "{{INPUT_FILE}}" }} $TEMP_DIR/images", depends_on: "list_images" }
+  ```
+
+### Integration Step Guidance
+
+When using multiple tools, always include an integration step to combine outputs:
+
+**Option 1 - Script-based Integration**:
+```
+{
+  "id": "merge_outputs",
+  "tool": "merge_outputs",
+  "description": "Integrate extracted content into final output preserving document structure",
+  "command": "bash $PROJECT_ROOT/scripts/merge_outputs.sh $TEMP_DIR/text_content.md $TEMP_DIR/images/ {{ "{{OUTPUT_FILE}}" }}",
+  "depends_on": ["previous_extraction_steps"]
+}
+```
+
+**Option 2 - Targeted Content Insertion**:
+```
+{
+  "id": "insert_missing_content",
+  "tool": "insert_content",
+  "description": "Insert specific content at the correct location",
+  "command": "bash $PROJECT_ROOT/scripts/insert_content.sh {{ "{{OUTPUT_FILE}}" }} $TEMP_DIR/extracted_table.md --after '## Section 2'",
+  "depends_on": ["extract_table_step"]
+}
+```
+
+**Option 3 - AI-based Integration**:
+```
+{
+  "id": "integrate_content",
+  "tool": "ostruct",
+  "description": "Use AI to intelligently merge extracted content maintaining original structure",
+  "command": "ostruct run prompts/merge.j2 schemas/merge.json --fca main_content $TEMP_DIR/main.md --dca additional_content $TEMP_DIR/extras/ -o {{ "{{OUTPUT_FILE}}" }}",
+  "depends_on": ["content_extraction_steps"]
+}
+```
+
+## File Path Template Variables
+
+When creating commands, use these exact template variables for file paths:
+- **{{ "{{INPUT_FILE}}" }}** - for the source/input file (includes full path and extension)
+- **{{ "{{OUTPUT_FILE}}" }}** - for the target/output file (includes full path and extension)
+
+### Examples:
+- `pandoc {{ "{{INPUT_FILE}}" }} -o {{ "{{OUTPUT_FILE}}" }}`
+- `pdftotext {{ "{{INPUT_FILE}}" }} {{ "{{OUTPUT_FILE}}" }}`
+- `tesseract {{ "{{INPUT_FILE}}" }} {{ "{{OUTPUT_FILE}}" }}`
+
+**IMPORTANT**:
+- The template variables already include the complete file path with extension
+- **DO NOT** add extra extensions like `{{ "{{OUTPUT_FILE}}" }}.pdf`
+- **DO NOT** use literal filenames like `input.md`, `output.pdf`, etc.
+- Always use the template variables exactly as shown
+
+## Output Format
+
+Generate a comprehensive plan with:
+- Step-by-step commands using the documented tools and template variables
+- Clear input/output file specifications
+- Dependency relationships between steps
+- Timeout and retry configurations
+- Fallback strategies for common failures
+
+Focus on creating commands that are safe, efficient, and likely to succeed.
+
+**IMPORTANT**:
+1. Only use tools that are explicitly documented in the "Available Tools" section above
+2. Always use {{ "{{INPUT_FILE}}" }} and {{ "{{OUTPUT_FILE}}" }} template variables in commands
+3. Do not invent tools or use literal placeholder filenames
+4. **Keep commands simple** - avoid complex shell operators like `||`, `&&`, pipes, or conditional logic
+5. **One tool per step** - if you need multiple operations, create separate steps
+6. **Single command per step** - NEVER include multiple commands or newlines in the command field
+7. **If you need multiple commands**, create multiple steps with proper dependencies

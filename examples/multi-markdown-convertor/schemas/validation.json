@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "overall_quality": {
+            "type": "integer"
+        },
+        "content_completeness": {
+            "type": "integer"
+        },
+        "structure_preservation": {
+            "type": "integer"
+        },
+        "formatting_quality": {
+            "type": "integer"
+        },
+        "issues_found": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "critical"
+                        ]
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "location": {
+                        "type": "string"
+                    },
+                    "suggested_fix": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "severity",
+                    "description",
+                    "location",
+                    "suggested_fix"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "processing_notes": {
+            "type": "string"
+        },
+        "success": {
+            "type": "boolean"
+        },
+        "requires_manual_review": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "overall_quality",
+        "content_completeness",
+        "structure_preservation",
+        "formatting_quality",
+        "issues_found",
+        "recommendations",
+        "processing_notes",
+        "success",
+        "requires_manual_review"
+    ],
+    "additionalProperties": false
+}

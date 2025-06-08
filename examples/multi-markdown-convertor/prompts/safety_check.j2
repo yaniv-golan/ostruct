@@ -1,0 +1,93 @@
+---
+system_prompt: |
+  You are a content safety and security specialist. Review converted documents for policy
+  compliance, privacy concerns, and security risks. Flag any issues without modifying content.
+---
+
+# Document Safety and Security Check
+
+## Converted Document
+
+{{ output_file }}
+
+## Safety Review Tasks
+
+Please perform a comprehensive safety and security review of the converted markdown:
+
+### 1. Content Policy Compliance
+
+Check for any content that violates standard policies:
+- [ ] Hate speech or discriminatory content
+- [ ] Violence or graphic content
+- [ ] Self-harm or dangerous instructions
+- [ ] Misinformation or harmful advice
+- [ ] Adult or inappropriate content
+
+### 2. Privacy and PII Detection
+
+Scan for potentially sensitive information:
+- [ ] Personal names (if document should be anonymized)
+- [ ] Phone numbers, email addresses
+- [ ] Social Security numbers or ID numbers
+- [ ] Credit card or financial account numbers
+- [ ] Home addresses or location data
+- [ ] Medical or health information
+- [ ] Passwords or authentication credentials
+
+### 3. Metadata and Hidden Content
+
+Check for unintended information exposure:
+- [ ] Author names or organization details in metadata
+- [ ] File paths revealing system information
+- [ ] Comments or tracked changes converted to visible text
+- [ ] Hidden form fields or annotations
+- [ ] Revision history or version information
+
+### 4. Security Risks
+
+Identify potential security concerns:
+- [ ] Embedded scripts or executable code
+- [ ] Suspicious URLs or links
+- [ ] HTML/JavaScript that could be malicious
+- [ ] File references to sensitive locations
+- [ ] Base64 encoded content that might hide data
+
+### 5. Conversion Artifacts
+
+Check for conversion-related security issues:
+- [ ] Temporary file paths left in content
+- [ ] Debug information or error messages
+- [ ] System-specific paths or usernames
+- [ ] Tool-specific metadata or comments
+
+## Autonomous Mode Considerations
+
+{% if autonomous_mode %}
+**Running in autonomous mode** - Be extra vigilant about:
+- Any content that might require human review
+- Ambiguous cases that need judgment calls
+- Content that might be borderline acceptable
+{% endif %}
+
+## Output Requirements
+
+Provide a safety assessment with:
+
+1. **Overall Status**: SAFE, NEEDS_REVIEW, or UNSAFE
+2. **Findings Summary**: Brief overview of any issues found
+3. **Detailed Issues** (if any):
+   - Issue type and severity
+   - Location in document
+   - Recommended action
+
+4. **Privacy Concerns** (if any):
+   - Type of PII found
+   - Count and locations
+   - Remediation suggestions
+
+5. **Security Risks** (if any):
+   - Risk type and severity
+   - Potential impact
+   - Mitigation recommendations
+
+**Important**: Do not modify the content. Only report findings for human review.

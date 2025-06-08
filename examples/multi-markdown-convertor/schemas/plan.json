@@ -1,0 +1,86 @@
+{
+    "type": "object",
+    "properties": {
+        "plan_id": {
+            "type": "string"
+        },
+        "total_steps": {
+            "type": "integer"
+        },
+        "estimated_duration": {
+            "type": "integer"
+        },
+        "estimated_cost": {
+            "type": "number"
+        },
+        "steps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "command": {
+                        "type": "string"
+                    },
+                    "tool": {
+                        "type": "string"
+                    },
+                    "input_file": {
+                        "type": "string"
+                    },
+                    "output_file": {
+                        "type": "string"
+                    },
+                    "depends_on": {
+                        "type": "string"
+                    },
+                    "timeout": {
+                        "type": "integer"
+                    },
+                    "retry_count": {
+                        "type": "integer"
+                    },
+                    "expected_duration": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "description",
+                    "command",
+                    "tool",
+                    "input_file",
+                    "output_file",
+                    "timeout",
+                    "retry_count",
+                    "expected_duration"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "fallback_strategy": {
+            "type": "string"
+        },
+        "quality_checks": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "required": [
+        "plan_id",
+        "total_steps",
+        "estimated_duration",
+        "estimated_cost",
+        "steps",
+        "fallback_strategy",
+        "quality_checks"
+    ],
+    "additionalProperties": false
+}
