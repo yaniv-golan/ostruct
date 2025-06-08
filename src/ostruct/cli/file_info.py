@@ -156,23 +156,45 @@ class FileInfo:
         Returns a path relative to the security manager's base directory.
         This ensures consistent path handling across the entire codebase.
 
+        For paths outside the base directory but within allowed directories,
+        returns the absolute path.
+
         Example:
             security_manager = SecurityManager(base_dir="/base")
             file_info = FileInfo("/base/file.txt", security_manager)
             print(file_info.path)  # Outputs: "file.txt"
 
+            # With allowed directory outside base:
+            file_info = FileInfo("/tmp/file.txt", security_manager)
+            print(file_info.path)  # Outputs: "/tmp/file.txt"
+
         Returns:
-            str: Path relative to security manager's base directory
+            str: Path relative to security manager's base directory, or absolute path
+                 if outside base directory but within allowed directories
 
         Raises:
-            ValueError: If the path is not within the base directory
+            ValueError: If the path is not within the base directory or allowed directories
         """
+        abs_path = Path(self.abs_path)
+        base_dir = Path(self.__security_manager.base_dir)
+
         try:
-            abs_path = Path(self.abs_path)
-            base_dir = Path(self.__security_manager.base_dir)
             return str(abs_path.relative_to(base_dir))
-        except ValueError as e:
-            logger.error("Error making path relative: %s", e)
+        except ValueError:
+            # Path is outside base_dir, check if it's in allowed directories
+            if self.__security_manager.is_path_allowed(abs_path):
+                logger.debug(
+                    "Path outside base_dir but allowed, returning absolute path: %s",
+                    abs_path,
+                )
+                return str(abs_path)
+
+            # Should never reach here if SecurityManager validation was done properly
+            logger.error(
+                "Error making path relative: %s is not within base directory %s",
+                abs_path,
+                base_dir,
+            )
             raise ValueError(
                 f"Path {abs_path} must be within base directory {base_dir}"
             )
