@@ -390,8 +390,10 @@ cleanup_old_installations() {
 
     log_info "Scanning for existing ostruct installations..."
 
-    local installations
-    mapfile -t installations < <(detect_ostruct_installations)
+    local installations=()
+    while IFS= read -r line; do
+        installations+=("$line")
+    done < <(detect_ostruct_installations)
 
     if [[ ${#installations[@]} -le 1 ]]; then
         log_info "No conflicting installations found"
@@ -539,8 +541,10 @@ main() {
             current_install_path=$(which ostruct 2>/dev/null)
         else
             # Find the first available installation
-            local installations
-            mapfile -t installations < <(detect_ostruct_installations)
+            local installations=()
+            while IFS= read -r line; do
+                installations+=("$line")
+            done < <(detect_ostruct_installations)
             if [[ ${#installations[@]} -gt 0 ]]; then
                 IFS='|' read -r current_install_path _ _ <<< "${installations[0]}"
             fi
