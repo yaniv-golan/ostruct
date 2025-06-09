@@ -1,0 +1,50 @@
+{
+  "test_id": "07",
+  "test_name": "Merged-cell detection via `tblLook` flags is consistent",
+  "test_case": "Two DOCX tables: one with header row shading, one plain",
+  "success": true,
+  "error": null,
+  "details": {
+    "docx_path": "/var/folders/mb/jl1x71_j5_b3s74zwsvmr5h40000gn/T/tmp0u8c70fp.docx",
+    "table_analysis": {
+      "tables_found": 2,
+      "table_details": [
+        {
+          "table_index": 0,
+          "rows": 3,
+          "cols": 3,
+          "style": "Table Grid",
+          "has_header_row": false,
+          "tbl_look_flags": {
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}firstColumn": "1",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}firstRow": "1",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lastColumn": "0",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lastRow": "0",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}noHBand": "0",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}noVBand": "1",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val": "04A0"
+          }
+        },
+        {
+          "table_index": 1,
+          "rows": 3,
+          "cols": 3,
+          "style": "Normal Table",
+          "has_header_row": false,
+          "tbl_look_flags": {
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}firstColumn": "1",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}firstRow": "1",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lastColumn": "0",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lastRow": "0",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}noHBand": "0",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}noVBand": "1",
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val": "04A0"
+          }
+        }
+      ],
+      "has_header_flags": false,
+      "consistent_detection": true
+    },
+    "result": "PASS: Found 2 tables, can access properties"
+  }
+}

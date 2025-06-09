@@ -1,0 +1,58 @@
+{
+  "test_id": "08",
+  "test_name": "`python-pptx` retains text order matching visual order",
+  "test_case": "Slide with two textboxes: left/right",
+  "success": false,
+  "error": null,
+  "details": {
+    "pptx_path": "/var/folders/mb/jl1x71_j5_b3s74zwsvmr5h40000gn/T/tmpbveue88b.pptx",
+    "text_analysis": {
+      "slides_found": 1,
+      "slide_details": [
+        {
+          "slide_index": 0,
+          "shapes_found": 3,
+          "text_shapes": [
+            {
+              "shape_index": 0,
+              "text": "LEFT TEXTBOX - This should appear first",
+              "left": 914400,
+              "top": 1828800,
+              "width": 2743200,
+              "height": 914400
+            },
+            {
+              "shape_index": 1,
+              "text": "RIGHT TEXTBOX - This should appear second",
+              "left": 4572000,
+              "top": 1828800,
+              "width": 2743200,
+              "height": 914400
+            },
+            {
+              "shape_index": 2,
+              "text": "Text Order Test: Left then Right",
+              "left": 914400,
+              "top": 457200,
+              "width": 6400800,
+              "height": 914400
+            }
+          ],
+          "extraction_order": [
+            "LEFT TEXTBOX - This should appear first",
+            "RIGHT TEXTBOX - This should appear second",
+            "Text Order Test: Left then Right"
+          ],
+          "visual_order": [
+            "LEFT TEXTBOX - This should appear first",
+            "Text Order Test: Left then Right",
+            "RIGHT TEXTBOX - This should appear second"
+          ],
+          "matches_visual": false
+        }
+      ],
+      "text_order_preserved": false
+    },
+    "result": "FAIL: Text order does not match visual order"
+  }
+}

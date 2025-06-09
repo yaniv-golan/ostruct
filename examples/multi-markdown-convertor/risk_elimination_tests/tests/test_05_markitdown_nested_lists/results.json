@@ -1,0 +1,18 @@
+{
+  "test_id": "05",
+  "test_name": "MarkItDown preserves nested lists depth \u2265 3",
+  "test_case": "PPTX with deeply nested bullet slide",
+  "success": false,
+  "error": null,
+  "details": {
+    "pptx_path": "/var/folders/mb/jl1x71_j5_b3s74zwsvmr5h40000gn/T/tmpjdw0jsgp.pptx",
+    "markdown_output": "<!-- Slide number: 1 -->\n# Deeply Nested List Test\nLevel 1 Item A\nLevel 2 Item A.1\nLevel 3 Item A.1.a\nLevel 4 Item A.1.a.i\nLevel 5 Item A.1.a.i.\u03b1\nLevel 3 Item A.1.b\nLevel 2 Item A.2\nLevel 1 Item B",
+    "list_analysis": {
+      "has_lists": false,
+      "max_depth": 0,
+      "depth_distribution": {},
+      "preserves_deep_nesting": false
+    },
+    "result": "FAIL: No lists found in output"
+  }
+}

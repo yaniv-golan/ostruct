@@ -1,0 +1,48 @@
+{
+  "test_id": "04",
+  "test_name": "Pandoc keeps numbered-list start values",
+  "test_case": "DOCX with list starting at 7 \u2192 Pandoc \u2192 MD",
+  "success": true,
+  "error": null,
+  "details": {
+    "docx_path": "/var/folders/mb/jl1x71_j5_b3s74zwsvmr5h40000gn/T/tmpi2tmm6q7.docx",
+    "markdown_output": "This document contains a numbered list that starts at 7:\n\n1.  First item (should be 7)\n\n2.  Second item (should be 8)\n\n3.  Third item (should be 9)\n\n4.  Fourth item (should be 10)\n",
+    "list_analysis": {
+      "has_numbered_lists": true,
+      "list_patterns": [
+        [
+          [
+            1,
+            "First item (should be 7)"
+          ]
+        ],
+        [
+          [
+            2,
+            "Second item (should be 8)"
+          ]
+        ],
+        [
+          [
+            3,
+            "Third item (should be 9)"
+          ]
+        ],
+        [
+          [
+            4,
+            "Fourth item (should be 10)"
+          ]
+        ]
+      ],
+      "start_numbers": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "preserves_start_value": true
+    },
+    "result": "PASS: Pandoc preserves numbered list start values"
+  }
+}

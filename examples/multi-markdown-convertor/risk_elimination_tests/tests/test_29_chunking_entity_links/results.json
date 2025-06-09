@@ -1,0 +1,288 @@
+{
+  "test_id": "29",
+  "test_name": "Chunking large PDFs into \u2264 8K token hunks keeps entity links intact",
+  "document_created": true,
+  "document_size": 4477,
+  "chunks_created": 1,
+  "max_chunk_tokens": 8000,
+  "entities_extracted": true,
+  "total_entities": 35,
+  "broken_links": 0,
+  "continuity_score": 1.0,
+  "link_analysis": {
+    "total_chunks": 1,
+    "entities_per_chunk": [
+      {
+        "chunk_id": 0,
+        "entity_counts": {
+          "PERSON": 4,
+          "ORGANIZATION": 11,
+          "PRODUCT": 3,
+          "LOCATION": 5,
+          "MONEY": 12
+        }
+      }
+    ],
+    "cross_chunk_entities": {
+      "PERSON": {
+        "Sarah Johnson": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "John Smith": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Michael Brown": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Lisa Chen": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        }
+      },
+      "ORGANIZATION": {
+        "Founded Acme Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Oracle Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Strategic Partnerships\n\nAcme Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Global Widget Solutions": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Conclusion\n\nAcme Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Greentech Solutions": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Sustainability Initiatives\n\nAcme Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Microsoft Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Amazon Web Services": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Executive Summary\n\nAcme Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Acme Corporation": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        }
+      },
+      "PRODUCT": {
+        "Acme Analytics Platform": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Acme Widget Pro 2.0": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Acme Widget Pro": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        }
+      },
+      "LOCATION": {
+        "Berlin, Germany": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "New York City": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "London, United Kingdom": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Paris, France": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "Silicon Valley": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        }
+      },
+      "MONEY": {
+        "50": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "750": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "500 million": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "300 million": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "300": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "75": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "500": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "2 billion": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "750 million": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "2": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "50 million": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        },
+        "75 million": {
+          "chunks": [
+            0
+          ],
+          "total_appearances": 1,
+          "span": 1
+        }
+      }
+    },
+    "broken_links": [],
+    "continuity_score": 1.0
+  },
+  "success": true,
+  "error": null
+}

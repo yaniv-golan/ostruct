@@ -1,0 +1,63 @@
+{
+  "test_id": "16",
+  "test_name": "LLM can learn our custom bullet glyph mappings from 2 few-shot examples",
+  "test_case": "Prompt with 2 examples, ask for 3rd",
+  "success": true,
+  "error": null,
+  "details": {
+    "analysis": {
+      "test_implemented": true,
+      "test_case": "Prompt with 2 examples, ask for 3rd",
+      "success_criteria": "accuracy of mapping",
+      "results": {
+        "ostruct_available": true,
+        "test_results": [
+          {
+            "test_case": 1,
+            "input_bullet": "\u25aa",
+            "expected_mapping": "\u25b6",
+            "actual_mapping": "\u2023",
+            "exact_match": false,
+            "reasonable_mapping": false,
+            "confidence": 0.95,
+            "reasoning": "Following the provided pattern, each standard bullet is replaced with a visually similar, arrow-like or more pointed glyph. For the small square bullet '\u25aa', the closest common arrow-like or 'pointing' glyph that corresponds and is used in similar stylistic alternations is the triangular bullet '\u2023', which is frequently used to indicate a pointed or arrowhead motif analogous to the given mapping.",
+            "processing_time": 5.139261245727539,
+            "success": false
+          },
+          {
+            "test_case": 2,
+            "input_bullet": "\u2023",
+            "expected_mapping": "\u25b7",
+            "actual_mapping": "\u27a4",
+            "exact_match": false,
+            "reasonable_mapping": true,
+            "confidence": 0.95,
+            "reasoning": "The pattern shows that each bullet is mapped to a single, visually similar arrow glyph. '\u2022' becomes '\u2192', '\u25e6' becomes '\u25b8'. The '\u2023' (triangular bullet) should be replaced by an arrow glyph with a similar visual style; '\u27a4' is a triangular right arrow matching in shape and weight.",
+            "processing_time": 5.583789110183716,
+            "success": true
+          },
+          {
+            "test_case": 3,
+            "input_bullet": "\u2043",
+            "expected_mapping": "\u2192",
+            "actual_mapping": "\u2794",
+            "exact_match": false,
+            "reasonable_mapping": true,
+            "confidence": 0.98,
+            "reasoning": "The mapping consistently replaces generic bullet shapes with visually corresponding arrow glyphs. '\u2022' (filled bullet) was mapped to '\u2192' (right arrow), and '\u25e6' (hollow bullet) was mapped to '\u25b8' (hollow arrowhead). The '\u2043' hyphen bullet is horizontally minimal and commonly mapped to a simple arrow. '\u2794' resembles a straight arrow matching the minimal profile of the hyphen bullet, aligning with the established pattern.",
+            "processing_time": 6.413758039474487,
+            "success": true
+          }
+        ],
+        "total_tests": 3,
+        "successful_tests": 2,
+        "exact_matches": 0,
+        "reasonable_mappings": 2,
+        "accuracy_rate": 0.6666666666666666,
+        "exact_match_rate": 0.0,
+        "success": true
+      }
+    },
+    "result": "PASS: LLM learned bullet mappings (accuracy: 66.7%, exact: 0.0%)"
+  }
+}

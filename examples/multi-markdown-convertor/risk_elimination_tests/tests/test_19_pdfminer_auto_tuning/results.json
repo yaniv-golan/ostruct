@@ -1,0 +1,315 @@
+{
+  "test_id": "19",
+  "test_name": "PDFMiner auto-tuning: adjust extraction params based on PDF characteristics",
+  "test_case": "Adaptive parameter optimization",
+  "success": false,
+  "error": "Auto-tuning did not improve extraction quality",
+  "details": {
+    "analysis": {
+      "test_implemented": true,
+      "test_case": "Adaptive parameter optimization",
+      "success_criteria": "Improved extraction quality with tuned parameters",
+      "results": {
+        "total_files": 5,
+        "file_results": [
+          {
+            "filename": "f1040.pdf",
+            "file_exists": true,
+            "characteristics": {
+              "page_count": 3,
+              "has_images": false,
+              "has_tables": false,
+              "text_density": 1000.0,
+              "font_variety": 3,
+              "layout_complexity": 0.7
+            },
+            "default_extraction": {
+              "quality_score": 6.5,
+              "metrics": {
+                "extraction_time": 0.4986550807952881,
+                "text_length": 9099,
+                "line_count": 1438,
+                "word_count": 1861,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.5,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              }
+            },
+            "tuned_extraction": {
+              "quality_score": 6.5,
+              "metrics": {
+                "extraction_time": 0.5192837715148926,
+                "text_length": 9099,
+                "line_count": 1438,
+                "word_count": 1861,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.7,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              },
+              "optimized_params": {
+                "word_margin": 0.1,
+                "char_margin": 2.0,
+                "line_margin": 0.5,
+                "boxes_flow": 0.7,
+                "detect_vertical": false,
+                "all_texts": false,
+                "maxpages": null
+              }
+            },
+            "improvement": 0.0
+          },
+          {
+            "filename": "NIPS-2017-attention-is-all-you-need-Paper.pdf",
+            "file_exists": true,
+            "characteristics": {
+              "page_count": 11,
+              "has_images": false,
+              "has_tables": false,
+              "text_density": 1000.0,
+              "font_variety": 3,
+              "layout_complexity": 0.7
+            },
+            "default_extraction": {
+              "quality_score": 8.0,
+              "metrics": {
+                "extraction_time": 0.162031888961792,
+                "text_length": 33021,
+                "line_count": 890,
+                "word_count": 5020,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.5,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              }
+            },
+            "tuned_extraction": {
+              "quality_score": 8.0,
+              "metrics": {
+                "extraction_time": 0.1665792465209961,
+                "text_length": 33021,
+                "line_count": 890,
+                "word_count": 5020,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.7,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              },
+              "optimized_params": {
+                "word_margin": 0.1,
+                "char_margin": 2.0,
+                "line_margin": 0.5,
+                "boxes_flow": 0.7,
+                "detect_vertical": false,
+                "all_texts": false,
+                "maxpages": null
+              }
+            },
+            "improvement": 0.0
+          },
+          {
+            "filename": "World Bank Annual Report 2024.pdf",
+            "file_exists": true,
+            "characteristics": {
+              "page_count": 226,
+              "has_images": false,
+              "has_tables": true,
+              "text_density": 1000.0,
+              "font_variety": 3,
+              "layout_complexity": 0.7
+            },
+            "default_extraction": {
+              "quality_score": 8.0,
+              "metrics": {
+                "extraction_time": 1.8020660877227783,
+                "text_length": 216350,
+                "line_count": 8110,
+                "word_count": 30835,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.5,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              }
+            },
+            "tuned_extraction": {
+              "quality_score": 8.0,
+              "metrics": {
+                "extraction_time": 1.849142074584961,
+                "text_length": 216350,
+                "line_count": 8110,
+                "word_count": 30835,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.3,
+                  "detect_vertical": true,
+                  "all_texts": false,
+                  "maxpages": 50
+                }
+              },
+              "optimized_params": {
+                "word_margin": 0.1,
+                "char_margin": 2.0,
+                "line_margin": 0.5,
+                "boxes_flow": 0.3,
+                "detect_vertical": true,
+                "all_texts": false,
+                "maxpages": 50
+              }
+            },
+            "improvement": 0.0
+          },
+          {
+            "filename": "sample-invoice.pdf",
+            "file_exists": true,
+            "characteristics": {
+              "page_count": 7,
+              "has_images": false,
+              "has_tables": false,
+              "text_density": 1000.0,
+              "font_variety": 3,
+              "layout_complexity": 0.7
+            },
+            "default_extraction": {
+              "quality_score": 8.5,
+              "metrics": {
+                "extraction_time": 0.08389925956726074,
+                "text_length": 3230,
+                "line_count": 614,
+                "word_count": 579,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.5,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              }
+            },
+            "tuned_extraction": {
+              "quality_score": 8.5,
+              "metrics": {
+                "extraction_time": 0.07879900932312012,
+                "text_length": 3230,
+                "line_count": 614,
+                "word_count": 579,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.7,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              },
+              "optimized_params": {
+                "word_margin": 0.1,
+                "char_margin": 2.0,
+                "line_margin": 0.5,
+                "boxes_flow": 0.7,
+                "detect_vertical": false,
+                "all_texts": false,
+                "maxpages": null
+              }
+            },
+            "improvement": 0.0
+          },
+          {
+            "filename": "Deskewing.pdf",
+            "file_exists": true,
+            "characteristics": {
+              "page_count": 8,
+              "has_images": false,
+              "has_tables": false,
+              "text_density": 1000.0,
+              "font_variety": 3,
+              "layout_complexity": 0.7
+            },
+            "default_extraction": {
+              "quality_score": 7.0,
+              "metrics": {
+                "extraction_time": 0.022118806838989258,
+                "text_length": 1485,
+                "line_count": 86,
+                "word_count": 230,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.5,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              }
+            },
+            "tuned_extraction": {
+              "quality_score": 7.0,
+              "metrics": {
+                "extraction_time": 0.021559953689575195,
+                "text_length": 1485,
+                "line_count": 86,
+                "word_count": 230,
+                "params_used": {
+                  "word_margin": 0.1,
+                  "char_margin": 2.0,
+                  "line_margin": 0.5,
+                  "boxes_flow": 0.7,
+                  "detect_vertical": false,
+                  "all_texts": false,
+                  "maxpages": null
+                }
+              },
+              "optimized_params": {
+                "word_margin": 0.1,
+                "char_margin": 2.0,
+                "line_margin": 0.5,
+                "boxes_flow": 0.7,
+                "detect_vertical": false,
+                "all_texts": false,
+                "maxpages": null
+              }
+            },
+            "improvement": 0.0
+          }
+        ],
+        "successful_files": 5,
+        "average_improvement": 0.0,
+        "positive_improvements": 0,
+        "improvement_rate": 0.0,
+        "success": false
+      }
+    },
+    "result": "FAIL: Auto-tuning did not improve extraction quality"
+  }
+}

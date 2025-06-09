@@ -1,0 +1,467 @@
+{
+  "test_id": "28",
+  "test_name": "LLM semantic-diff false-positive rate < 5%",
+  "total_pairs": 50,
+  "pairs_tested": 50,
+  "true_positives": 25,
+  "true_negatives": 25,
+  "false_positives": 0,
+  "false_negatives": 0,
+  "false_positive_rate": 0.0,
+  "accuracy": 1.0,
+  "ostruct_available": true,
+  "test_results": [
+    {
+      "pair_id": 1,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The two texts report different revenue figures for the company in Q1: $100 million versus $200 million. This changes the factual content of the statement.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 2,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The completion date for the project is different in each text. Text 1 states December 2024, while Text 2 states June 2025. This is a meaningful change in fact, as it shifts the project timeline by six months.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 3,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The numbers of engineers and designers are different between the two texts. Text 1 mentions 5 engineers and 3 designers, while Text 2 states 8 engineers and 2 designers. This constitutes a factual difference regarding team composition.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 4,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The first text states that the product launch was successful and received positive customer feedback, conveying a positive outcome. The second text states that the product launch failed due to technical issues, conveying a negative outcome and a specific cause for failure. These are opposite meanings and indicate different facts.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 5,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The first text recommends investing in renewable energy stocks, while the second text recommends avoiding them. These are opposite recommendations, indicating a clear and significant semantic difference.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 6,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that the company's revenue for Q1 was $100 million. The difference in word order does not change the meaning. There are no differences in fact, numbers, or meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 7,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that the team is made up of engineers and designers. The difference between 'includes' and 'consists of' in this context does not create a change in meaning; both communicate the same fact about team composition.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 8,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts convey the exact same information: the project deadline is on December 31, 2024. The only difference is that Text 2 abbreviates 'December' as 'Dec,' which is a stylistic change and does not alter the meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 9,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that sales increased by 15%. There is no change in fact, only in how the information is phrased. No semantic differences are present.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 10,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that the meeting is scheduled at the same hour (2 PM) on the same day (Monday). The only difference is in the format of the time ('2:00 PM' vs '2 PM'), which does not affect the meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 11,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The two snippets differ in both the type of information described (important vs. critical) and the topic referenced (topic X vs. topic Y), resulting in a change of both degree and content. These are meaningful semantic differences.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 12,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The words 'shows' and 'demonstrates' are synonyms in this context. Both texts state that the analysis provides significant results for case 2. There is no meaningful change in the information or meaning conveyed.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 13,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 states that Document 3 contains important information about topic X, while Text 2 says it contains critical information about topic Y. There are two semantic differences: the importance level (important vs. critical) and, more significantly, the subject matter (topic X vs. topic Y). These are meaningful changes in meaning and fact.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 14,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The words 'shows' and 'demonstrates' are synonyms in this context. Both sentences state that significant results were obtained for case 4 through analysis. There are no changes in meaning between the two texts.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 15,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 says Document 5 is about topic X and contains 'important' information, while Text 2 says Document 5 is about topic Y and contains 'critical' information. The topics (X vs. Y) are different, and 'important' and 'critical' are not strict synonyms\u2014'critical' indicates a higher level of urgency or necessity. Therefore, there are meaningful semantic differences regarding both the subject and the description of the information's significance.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 16,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The only difference between the two texts is the verb used\u2014'shows' versus 'demonstrates.' Both indicate that the analysis provides evidence of significant results for case 6. The meaning is unchanged.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 17,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The two texts differ in the type of information described ('important' vs. 'critical') and, more significantly, the subject matter ('topic X' vs. 'topic Y'). This indicates that Document 7 is said to contain different information in each text.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 18,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The words 'shows' and 'demonstrates' are synonyms in this context and do not change the meaning of the statement. Both texts indicate that the analysis produced significant results for case 8. There are no differences in fact, numbers, or the essential content between the two texts.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 19,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The two texts differ in two key semantic areas: the importance of the information ('important' vs. 'critical') and the topic discussed ('topic X' vs. 'topic Y'). Changing from 'important' to 'critical' alters the perceived significance, and the reference to 'topic X' versus 'topic Y' indicates they are discussing different subjects.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 20,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that the analysis found significant results for case 10. The only difference is 'shows' versus 'demonstrates', which are synonyms in this context and do not change the meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 21,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The two texts differ in both the nature of the information ('important' vs. 'critical') and the subject ('topic X' vs. 'topic Y'). 'Critical' typically implies a higher level of importance than 'important', and 'topic X' is a different subject from 'topic Y'. Both of these are semantic differences.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 22,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts convey the same meaning: the analysis produced significant results for case 12. The only difference is in the choice of verbs ('shows' vs. 'demonstrates'), which are synonymous in this context and do not affect the core meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 23,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "There are two meaningful semantic differences: (1) Text 1 says the information is about topic X, while Text 2 says it is about topic Y\u2014these are different subjects. (2) Text 1 calls the information 'important,' while Text 2 calls it 'critical,' which can imply a stronger significance. Both differences change the meaning, but the subject difference is particularly significant.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 24,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The only difference between the texts is the use of 'shows' versus 'demonstrates', which are synonyms in this context. Both sentences communicate the same meaning: that the analysis has yielded significant results for case 14.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 25,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 and Text 2 refer to different subjects ('topic X' vs. 'topic Y'), which is a meaningful difference in content. Additionally, while 'important' and 'critical' are close in meaning, the change of the topic itself alters the information being conveyed.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 26,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts report that the analysis resulted in significant results for case 16. The verbs 'shows' and 'demonstrates' are synonyms in this context and do not change the meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 27,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The snippets differ in both the description of the information's nature ('important' vs 'critical') and, more significantly, the subject ('topic X' vs 'topic Y'). Referring to different topics changes the factual meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 28,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The only difference is the use of 'shows' versus 'demonstrates', which are synonyms in this context. Both sentences convey the identical meaning that the analysis resulted in significant results for case 18.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 29,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The two snippets differ in both the description of importance ('important' vs. 'critical') and, more significantly, in the subject matter ('topic X' vs. 'topic Y'). The change from topic X to topic Y indicates a different fact, which is a meaningful semantic difference.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 30,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The only difference between the two texts is the use of the synonyms 'shows' and 'demonstrates', which do not alter the meaning. Both texts state that the analysis yielded significant results for case 20.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 31,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 refers to 'important information about topic X,' while Text 2 refers to 'critical information about topic Y.' There are two semantic differences: the level of importance (important vs. critical) and the topic being discussed (X vs. Y). Both represent meaningful changes in meaning, especially the topic difference.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 32,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts communicate the same meaning: the analysis yielded significant results for case 22. The only difference is the use of 'shows' versus 'demonstrates,' which are synonyms in this context and do not change the meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 33,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "There are two key semantic differences: (1) Text 1 refers to 'topic X' while Text 2 refers to 'topic Y,' indicating different subjects. (2) Text 1 uses 'important' while Text 2 uses 'critical,' which are close but not identical in meaning \u2014 'critical' implies higher urgency or necessity than 'important.' The primary semantic difference is about the topic referenced.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 34,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that the analysis found significant results for case 24. The words 'shows' and 'demonstrates' are synonyms in this context and do not change the meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 35,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "There are two meaningful semantic differences: 1) Text 1 describes the information as 'important,' while Text 2 describes it as 'critical,' which could imply a higher level of significance, and 2) Text 1 refers to 'topic X,' while Text 2 refers to 'topic Y,' indicating that they are about different subjects.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 36,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The difference between 'shows' and 'demonstrates' is stylistic; both indicate that the analysis provides evidence of significant results for case 26. The meaning is unchanged.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 37,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "The texts refer to different topics (topic X vs. topic Y), and the description of the information shifts from 'important' to 'critical' (which could imply a difference in the level of importance). However, the key semantic difference is the change in the topic being discussed.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 38,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that the analysis produced significant results for case 28. The verbs 'shows' and 'demonstrates' are synonyms in this context and do not alter the meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 39,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 refers to 'important information about topic X', while Text 2 states 'critical information about topic Y.' There are two semantic differences: (1) The described information is about different topics ('topic X' vs. 'topic Y'), and (2) the degree of importance is different ('important' vs. 'critical'). The change in topic is a clear factual difference, and the change in degree could imply different levels of urgency or significance.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 40,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The words 'shows' and 'demonstrates' are synonyms in this context and do not change the meaning. Both sentences state that the analysis resulted in significant results for case 30. There are no semantic differences.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 41,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 states that Document 31 contains important information about topic X, while Text 2 claims it contains critical information about topic Y. The subject matter (topic X vs topic Y) is different, which changes the meaning. Additionally, 'important' and 'critical' differ in intensity, but the topic shift is the main semantic difference.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 42,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The words 'shows' and 'demonstrates' are synonyms in this context, and both texts refer to significant results for case 32. There is no difference in meaning or facts presented.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 43,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 and Text 2 differ in two key ways: (1) Text 1 says the information is 'important,' while Text 2 says it is 'critical,' which could suggest a difference in the level of significance. (2) More importantly, Text 1 refers to 'topic X' and Text 2 refers to 'topic Y,' indicating they are about different subjects. Both differences are semantic, especially the change in topic.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 44,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "Both texts state that the analysis yielded significant results for case 34. The verbs 'shows' and 'demonstrates' are synonymous in this context, so there is no change in meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 45,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 and Text 2 differ in the importance level of the information (important vs. critical) and, more significantly, they reference different topics (topic X vs. topic Y). Referring to different topics is a meaningful factual change.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 46,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The only difference between the two texts is the use of 'shows' versus 'demonstrates,' which are synonyms in this context. Both texts state that the analysis found significant results for case 36, with no change in meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 47,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "There are two semantic differences: (1) Text 1 refers to 'topic X' while Text 2 refers to 'topic Y', indicating they are about different topics. (2) Text 1 describes the information as 'important,' whereas Text 2 describes it as 'critical,' which implies a stronger degree of importance, though this alone might be minor. The primary semantic difference is the reference to entirely different topics.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 48,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The words 'shows' and 'demonstrates' are synonyms in this context, and both sentences convey the same meaning about significant results for case 38. There are no changes in facts, numbers, or conclusions.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 49,
+      "ground_truth": true,
+      "llm_prediction": true,
+      "confidence": 1.0,
+      "explanation": "Text 1 states that Document 39 contains important information about topic X, while Text 2 states it contains critical information about topic Y. There are two meaningful semantic differences: (1) 'important' and 'critical' have slightly different meanings, but more importantly (2) the topics referenced are different ('topic X' vs. 'topic Y'), which is a substantive change in meaning.",
+      "correct": true,
+      "error": null
+    },
+    {
+      "pair_id": 50,
+      "ground_truth": false,
+      "llm_prediction": false,
+      "confidence": 1.0,
+      "explanation": "The two texts use synonyms ('shows' vs. 'demonstrates') but convey the exact same meaning: that the analysis yielded significant results for case 40. There are no factual, numerical, or meaning changes.",
+      "correct": true,
+      "error": null
+    }
+  ],
+  "success": true,
+  "error": null
+}

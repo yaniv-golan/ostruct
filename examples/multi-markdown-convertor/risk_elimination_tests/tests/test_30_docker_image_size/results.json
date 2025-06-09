@@ -1,0 +1,16 @@
+{
+  "test_id": "30",
+  "test_name": "Docker image with all deps stays < 1 GB",
+  "target_size_gb": 1.0,
+  "docker_available": true,
+  "dockerfile_created": true,
+  "build_successful": false,
+  "image_size_bytes": 0,
+  "image_size_mb": 0.0,
+  "image_size_gb": 0.0,
+  "size_under_limit": false,
+  "build_time_seconds": 0.27875304222106934,
+  "build_output": "ERROR: Cannot connect to the Docker daemon at unix:///Users/yaniv/.docker/run/docker.sock. Is the docker daemon running?\n",
+  "success": false,
+  "error": "Docker build failed: ERROR: Cannot connect to the Docker daemon at unix:///Users/yaniv/.docker/run/docker.sock. Is the docker daemon running?\n"
+}

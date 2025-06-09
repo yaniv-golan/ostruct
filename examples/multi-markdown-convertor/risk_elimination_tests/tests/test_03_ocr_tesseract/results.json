@@ -1,0 +1,94 @@
+{
+  "test_id": "03",
+  "test_name": "OCR via Tesseract Quality",
+  "pdf_files": [
+    {
+      "filename": "Deskewing.pdf",
+      "pages": 3,
+      "ocr_pages": 0,
+      "total_text_length": 424,
+      "languages_detected": [],
+      "page_details": [
+        {
+          "page": 1,
+          "regular_text_length": 69,
+          "ocr_used": false,
+          "ocr_error": "No OCR support: TESSDATA_PREFIX not set"
+        },
+        {
+          "page": 2,
+          "regular_text_length": 189,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        },
+        {
+          "page": 3,
+          "regular_text_length": 166,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        }
+      ]
+    },
+    {
+      "filename": "sample-invoice.pdf",
+      "pages": 3,
+      "ocr_pages": 0,
+      "total_text_length": 2934,
+      "languages_detected": [],
+      "page_details": [
+        {
+          "page": 1,
+          "regular_text_length": 1421,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        },
+        {
+          "page": 2,
+          "regular_text_length": 766,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        },
+        {
+          "page": 3,
+          "regular_text_length": 747,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        }
+      ]
+    },
+    {
+      "filename": "RAND_RR287z1.hebrew.pdf",
+      "pages": 3,
+      "ocr_pages": 0,
+      "total_text_length": 2026,
+      "languages_detected": [],
+      "page_details": [
+        {
+          "page": 1,
+          "regular_text_length": 1410,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        },
+        {
+          "page": 2,
+          "regular_text_length": 311,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        },
+        {
+          "page": 3,
+          "regular_text_length": 305,
+          "ocr_used": false,
+          "reason": "sufficient_text_found"
+        }
+      ]
+    }
+  ],
+  "total_pages_processed": 9,
+  "ocr_successful_pages": 0,
+  "average_confidence": 0.0,
+  "text_extracted": 5384,
+  "mixed_language_detected": false,
+  "success": true,
+  "error": null
+}

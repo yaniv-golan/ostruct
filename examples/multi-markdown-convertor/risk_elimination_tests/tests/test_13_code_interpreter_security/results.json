@@ -1,0 +1,77 @@
+{
+  "test_id": "13",
+  "test_name": "Code-Interpreter sandbox prevents outbound network even via `socket`",
+  "test_case": "Run `socket.getaddrinfo` in CI",
+  "success": true,
+  "error": null,
+  "details": {
+    "analysis": {
+      "test_implemented": true,
+      "test_case": "Run `socket.getaddrinfo` in CI",
+      "success_criteria": "Network operations blocked in sandbox",
+      "results": {
+        "local_network_test": {
+          "dns_resolution": {
+            "blocked": false,
+            "details": "Resolved 4 addresses"
+          },
+          "socket_connection": {
+            "blocked": false,
+            "details": "Connection successful"
+          },
+          "http_requests": {
+            "blocked": false,
+            "details": "Response received: 34 bytes"
+          },
+          "subprocess_commands": {
+            "blocked": false,
+            "details": "Return code: 0"
+          }
+        },
+        "ostruct_available": true,
+        "processing_time": 16.351791858673096,
+        "ostruct_returncode": 0,
+        "json_valid": true,
+        "security_results": {
+          "security_test_results": {
+            "dns_resolution": {
+              "blocked": true,
+              "error_message": "[Errno -3] Temporary failure in name resolution",
+              "details": "DNS resolution via socket.getaddrinfo was blocked."
+            },
+            "socket_connection": {
+              "blocked": true,
+              "error_message": "[Errno 101] Network is unreachable",
+              "details": "Direct socket connection to 8.8.8.8:53 was blocked."
+            },
+            "http_requests": {
+              "blocked": true,
+              "error_message": "<urlopen error [Errno -3] Temporary failure in name resolution>",
+              "details": "HTTP request with urllib.request.urlopen was blocked due to DNS failure."
+            },
+            "subprocess_commands": {
+              "blocked": true,
+              "error_message": "[Errno 2] No such file or directory: 'ping'",
+              "details": "Subprocess attempting to run 'ping' was blocked; command not found."
+            }
+          },
+          "security_assessment": {
+            "sandbox_effective": true,
+            "network_isolation": "All tested outbound network operations (DNS, sockets, HTTP, subprocess network tools) are blocked.",
+            "risk_level": "Low (Strong Isolation)",
+            "recommendations": [
+              "Continue current sandbox configuration for strong isolation.",
+              "Reevaluate if any outbound or interprocess communication should be allowed for specific use cases."
+            ]
+          }
+        },
+        "blocked_operations": 4,
+        "total_operations": 4,
+        "block_rate": 1.0,
+        "security_effective": true,
+        "success": true
+      }
+    },
+    "result": "PASS: Code-Interpreter sandbox is effective (blocked 100% of operations)"
+  }
+}

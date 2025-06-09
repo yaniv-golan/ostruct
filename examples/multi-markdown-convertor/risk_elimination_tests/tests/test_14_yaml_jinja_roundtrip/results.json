@@ -1,0 +1,62 @@
+{
+  "test_id": "14",
+  "test_name": "YAML + Jinja front-matter round-trips non-ASCII safely",
+  "test_case": "Template with emoji + RTL text",
+  "success": true,
+  "error": null,
+  "details": {
+    "analysis": {
+      "test_implemented": true,
+      "test_case": "Template with emoji + RTL text",
+      "success_criteria": "diff(original, rendered) == 0",
+      "results": {
+        "yaml_roundtrip": true,
+        "yaml_content": "chinese: \u6587\u6863\u5904\u7406\u7cfb\u7edf\ndescription: \u05de\u05e2\u05e8\u05db\u05ea \u05e2\u05d9\u05d1\u05d5\u05d3 \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05de\u05ea\u05e7\u05d3\u05de\u05ea\nemoji_list:\n- \ud83d\udcc4\n- \ud83d\udd0d\n- \u26a1\n- \ud83c\udfaf\nmixed_text: Hello \ud83d\udc4b \u05e9\u05dc\u05d5\u05dd World \ud83c\udf0d\nnumbers: \u0661\u0662\u0663\u0664\u0665\nspecial_chars: caf\u00e9 na\u00efve r\u00e9sum\u00e9\ntitle: \ud83d\ude80 Advanced Document Processing\nunicode_symbols: \u03b1 \u03b2 \u03b3 \u03b4 \u03b5 \u03b6 \u03b7 \u03b8\n",
+        "jinja_rendering": true,
+        "rendered_content": "# \ud83d\ude80 Advanced Document Processing\n\n## Description\n\u05de\u05e2\u05e8\u05db\u05ea \u05e2\u05d9\u05d1\u05d5\u05d3 \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05de\u05ea\u05e7\u05d3\u05de\u05ea\n\n## Emoji List\n\n- \ud83d\udcc4 Item 1\n\n- \ud83d\udd0d Item 2\n\n- \u26a1 Item 3\n\n- \ud83c\udfaf Item 4\n\n\n## Mixed Content\nHello \ud83d\udc4b \u05e9\u05dc\u05d5\u05dd World \ud83c\udf0d\n\n## Unicode Symbols\n\u03b1 \u03b2 \u03b3 \u03b4 \u03b5 \u03b6 \u03b7 \u03b8\n\n## Special Characters\ncaf\u00e9 na\u00efve r\u00e9sum\u00e9\n\n## Numbers\n\u0661\u0662\u0663\u0664\u0665\n\n## Chinese Text\n\u6587\u6863\u5904\u7406\u7cfb\u7edf\n\n## Template Variables\n- Title: \ud83d\ude80 Advanced Document Processing\n- Description: \u05de\u05e2\u05e8\u05db\u05ea \u05e2\u05d9\u05d1\u05d5\u05d3 \u05de\u05e1\u05de\u05db\u05d9\u05dd \u05de\u05ea\u05e7\u05d3\u05de\u05ea\n- First Emoji: \ud83d\udcc4",
+        "preserved_chars": [
+          "\ud83d\ude80",
+          "\ud83d\udcc4",
+          "\ud83d\udd0d",
+          "\u26a1",
+          "\ud83c\udfaf",
+          "\ud83d\udc4b",
+          "\ud83c\udf0d",
+          "\u05de",
+          "\u05e2",
+          "\u05e8",
+          "\u05db",
+          "\u05ea",
+          "\u05e9",
+          "\u05dc",
+          "\u05d5",
+          "\u05dd",
+          "\u03b1",
+          "\u03b2",
+          "\u03b3",
+          "caf\u00e9",
+          "na\u00efve",
+          "r\u00e9sum\u00e9",
+          "\u0661",
+          "\u0662",
+          "\u0663",
+          "\u0664",
+          "\u0665",
+          "\u6587",
+          "\u6863",
+          "\u5904",
+          "\u7406",
+          "\u7cfb",
+          "\u7edf"
+        ],
+        "missing_chars": [],
+        "char_preservation_rate": 1.0,
+        "jinja_success": true,
+        "roundtrip_similarity": 1.0,
+        "roundtrip_success": true,
+        "overall_success": true
+      }
+    },
+    "result": "PASS: YAML+Jinja round-trip successful (chars: 100.0%, similarity: 100.0%)"
+  }
+}

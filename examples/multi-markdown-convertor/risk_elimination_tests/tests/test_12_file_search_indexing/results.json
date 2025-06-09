@@ -1,0 +1,59 @@
+{
+  "test_id": "12",
+  "test_name": "File-Search vector store can index 100-page PDF under 30 s",
+  "test_case": "Time `ostruct --fsa` on big PDF",
+  "success": true,
+  "error": null,
+  "details": {
+    "analysis": {
+      "test_implemented": true,
+      "test_case": "Time `ostruct --fsa` on big PDF",
+      "success_criteria": "Index 100-page PDF under 30 seconds",
+      "results": {
+        "document_size_mb": 0.0968923568725586,
+        "estimated_pages": 65,
+        "ostruct_available": true,
+        "indexing_time": 17.787167072296143,
+        "ostruct_returncode": 0,
+        "under_30_seconds": true,
+        "json_valid": true,
+        "analysis_results": {
+          "total_chapters": 25,
+          "main_topic": "Advanced Document Processing Techniques",
+          "document_type": "Technical Reference Manual or Textbook",
+          "key_themes": [
+            "Information Extraction",
+            "Natural Language Processing (NLP)",
+            "Machine Learning for Document Understanding",
+            "Data Preprocessing",
+            "Feature Engineering",
+            "Deep Learning and Transfer Learning",
+            "Multi-modal and Real-time Processing",
+            "Performance Optimization",
+            "Quality Assurance",
+            "Legal and Medical Document Processing"
+          ],
+          "important_concepts": [
+            "TF-IDF Vectorization",
+            "Word/Document Embeddings",
+            "Semantic Similarity",
+            "Neural Networks for NLP",
+            "Transfer Learning",
+            "Parallel Processing",
+            "Error Detection and Correction",
+            "Validation and Monitoring",
+            "Clause Identification",
+            "Diagnosis Code Mapping"
+          ],
+          "indexing_time_estimate": "2-3 hours for deep reading; 10-20 minutes for skimming/structural mapping",
+          "content_summary": "The document is a comprehensive technical manual, likely a reference textbook, focused on advanced document processing and analysis. Each chapter follows a nearly identical structure: introducing theoretical foundations, practical implementation strategies (data preprocessing and feature engineering), advanced ML and NLP techniques, real-world case studies in legal and medical domains, system performance optimization, and quality assurance. The main narrative is highly repetitive, covering the same structured content in almost every chapter, but the aggregate forms a thorough, modular resource that allows readers to access detailed information on each aspect of modern document processing systems. Frequent cross-referencing is implied by the use of identical chapter structures and case study methodologies, allowing concepts like feature engineering, real-time processing, or quality assurance to be consistently applied and understood across sections. The references cited are consistent in every chapter, linking the material directly to key academic sources in the field. The document is well suited for practitioners deploying document processing pipelines as well as researchers in NLP and document AI. It provides detailed, stepwise frameworks, actionable methods, and evaluation strategies for robust, scalable, and reliable document processing across domains."
+        },
+        "chapters_detected": 25,
+        "analysis_quality": 10,
+        "successful_analysis": true,
+        "success": true
+      }
+    },
+    "result": "PASS: File search indexing completed in 17.8s (under 30s limit)"
+  }
+}

@@ -1,0 +1,335 @@
+{
+  "test_id": "20",
+  "test_name": "MarkItDown OCR order: text-first vs image-first processing",
+  "test_case": "Processing order comparison",
+  "success": false,
+  "error": "Strategy selection not optimal",
+  "details": {
+    "analysis": {
+      "test_implemented": true,
+      "test_case": "Processing order comparison",
+      "success_criteria": "Optimal order selection based on content type",
+      "results": {
+        "total_files": 5,
+        "file_results": [
+          {
+            "filename": "f1040.pdf",
+            "file_exists": true,
+            "file_type": ".pdf",
+            "processing_results": {
+              "text_first": {
+                "text_content": "m1040\n\nr\no\nF\n\nDepartment of the Treasury\u2014Internal Revenue Service\nU.S. Individual Income Tax Return\n\nFor the year Jan. 1\u2013Dec. 31, 2024, or other tax year beginning\n\n2024\n\n, 2024, ending\n\nOMB No. 1545-0074\n\nIRS Use Only\u2014Do not write or staple in this space.\n\n, 20\n\nSee separate instructions.\n\nYour first name and middle initial\n\nLast name\n\nYour social security number\n\nIf joint return, spouse\u2019s first name and middle initial\n\nLast name\n\nSpouse\u2019s social security number\n\nHome address (number and street...",
+                "processing_time": 1.2835688591003418,
+                "confidence_score": 10.0,
+                "word_count": 1861,
+                "character_count": 8847,
+                "processing_order": "text_first",
+                "errors": [],
+                "content_length": 8847
+              },
+              "image_first": {
+                "text_content": "m1040\n\nr\no\nF\n\nDepartment of the Treasury\u2014Internal Revenue Service\nU.S. Individual Income Tax Return\n\nFor the year Jan. 1\u2013Dec. 31, 2024, or other tax year beginning\n\n2024\n\n, 2024, ending\n\nOMB No. 1545-0074\n\nIRS Use Only\u2014Do not write or staple in this space.\n\n, 20\n\nSee separate instructions.\n\nYour first name and middle initial\n\nLast name\n\nYour social security number\n\nIf joint return, spouse\u2019s first name and middle initial\n\nLast name\n\nSpouse\u2019s social security number\n\nHome address (number and street...",
+                "processing_time": 0.5011618137359619,
+                "confidence_score": 10.0,
+                "word_count": 1861,
+                "character_count": 8847,
+                "processing_order": "image_first",
+                "errors": [],
+                "content_length": 8847
+              },
+              "hybrid": {
+                "text_content": "m1040\n\nr\no\nF\n\nDepartment of the Treasury\u2014Internal Revenue Service\nU.S. Individual Income Tax Return\n\nFor the year Jan. 1\u2013Dec. 31, 2024, or other tax year beginning\n\n2024\n\n, 2024, ending\n\nOMB No. 1545-0074\n\nIRS Use Only\u2014Do not write or staple in this space.\n\n, 20\n\nSee separate instructions.\n\nYour first name and middle initial\n\nLast name\n\nYour social security number\n\nIf joint return, spouse\u2019s first name and middle initial\n\nLast name\n\nSpouse\u2019s social security number\n\nHome address (number and street...",
+                "processing_time": 0.520000696182251,
+                "confidence_score": 10.0,
+                "word_count": 1861,
+                "character_count": 8847,
+                "processing_order": "hybrid",
+                "errors": [],
+                "content_length": 8847
+              }
+            },
+            "best_strategy": "image_first",
+            "performance_analysis": {
+              "text_first": {
+                "speed_score": 8.716431140899658,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.614929342269898
+              },
+              "image_first": {
+                "speed_score": 9.498838186264038,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.849651455879211
+              },
+              "hybrid": {
+                "speed_score": 9.479999303817749,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.843999791145325
+              }
+            }
+          },
+          {
+            "filename": "NIPS-2017-attention-is-all-you-need-Paper.pdf",
+            "file_exists": true,
+            "file_type": ".pdf",
+            "processing_results": {
+              "text_first": {
+                "text_content": "Attention Is All You Need\n\nAshish Vaswani\u2217\nGoogle Brain\navaswani@google.com\n\nNoam Shazeer\u2217\nGoogle Brain\nnoam@google.com\n\nNiki Parmar\u2217\nGoogle Research\nnikip@google.com\n\nJakob Uszkoreit\u2217\nGoogle Research\nusz@google.com\n\nLlion Jones\u2217\nGoogle Research\nllion@google.com\n\nAidan N. Gomez\u2217 \u2020\nUniversity of Toronto\naidan@cs.toronto.edu\n\n\u0141ukasz Kaiser\u2217\nGoogle Brain\nlukaszkaiser@google.com\n\nIllia Polosukhin\u2217 \u2021\nillia.polosukhin@gmail.com\n\nAbstract\n\nThe dominant sequence transduction models are based on complex ...",
+                "processing_time": 0.16714906692504883,
+                "confidence_score": 10.0,
+                "word_count": 5020,
+                "character_count": 33020,
+                "processing_order": "text_first",
+                "errors": [],
+                "content_length": 33020
+              },
+              "image_first": {
+                "text_content": "Attention Is All You Need\n\nAshish Vaswani\u2217\nGoogle Brain\navaswani@google.com\n\nNoam Shazeer\u2217\nGoogle Brain\nnoam@google.com\n\nNiki Parmar\u2217\nGoogle Research\nnikip@google.com\n\nJakob Uszkoreit\u2217\nGoogle Research\nusz@google.com\n\nLlion Jones\u2217\nGoogle Research\nllion@google.com\n\nAidan N. Gomez\u2217 \u2020\nUniversity of Toronto\naidan@cs.toronto.edu\n\n\u0141ukasz Kaiser\u2217\nGoogle Brain\nlukaszkaiser@google.com\n\nIllia Polosukhin\u2217 \u2021\nillia.polosukhin@gmail.com\n\nAbstract\n\nThe dominant sequence transduction models are based on complex ...",
+                "processing_time": 0.16668200492858887,
+                "confidence_score": 10.0,
+                "word_count": 5020,
+                "character_count": 33020,
+                "processing_order": "image_first",
+                "errors": [],
+                "content_length": 33020
+              },
+              "hybrid": {
+                "text_content": "Attention Is All You Need\n\nAshish Vaswani\u2217\nGoogle Brain\navaswani@google.com\n\nNoam Shazeer\u2217\nGoogle Brain\nnoam@google.com\n\nNiki Parmar\u2217\nGoogle Research\nnikip@google.com\n\nJakob Uszkoreit\u2217\nGoogle Research\nusz@google.com\n\nLlion Jones\u2217\nGoogle Research\nllion@google.com\n\nAidan N. Gomez\u2217 \u2020\nUniversity of Toronto\naidan@cs.toronto.edu\n\n\u0141ukasz Kaiser\u2217\nGoogle Brain\nlukaszkaiser@google.com\n\nIllia Polosukhin\u2217 \u2021\nillia.polosukhin@gmail.com\n\nAbstract\n\nThe dominant sequence transduction models are based on complex ...",
+                "processing_time": 0.17794299125671387,
+                "confidence_score": 10.0,
+                "word_count": 5020,
+                "character_count": 33020,
+                "processing_order": "hybrid",
+                "errors": [],
+                "content_length": 33020
+              }
+            },
+            "best_strategy": "image_first",
+            "performance_analysis": {
+              "text_first": {
+                "speed_score": 9.832850933074951,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.949855279922485
+              },
+              "image_first": {
+                "speed_score": 9.833317995071411,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.949995398521423
+              },
+              "hybrid": {
+                "speed_score": 9.822057008743286,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.946617102622985
+              }
+            }
+          },
+          {
+            "filename": "World Bank Annual Report 2024.pdf",
+            "file_exists": true,
+            "file_type": ".pdf",
+            "processing_results": {
+              "text_first": {
+                "text_content": "A BETTER\nBANK FOR\nA BETTER\nWORLD\n\nANNUAL REPORT 2024\n\n\fCONTENTS\n\nMessage from the President\nMessage from the Executive Directors\nBecoming a Better Bank\nFiscal 2024 Financial Summary\nResults by Region\nResults by Theme\nHow We Work\n\nKEY TABLES\nIBRD Key Financial Indicators, Fiscal 2020\u201324\nIDA Key Financial Indicators, Fiscal 2020\u201324\n\n6\n8\n10\n12\n14\n44\n68\n\n84\n88\n\nThis annual report, which covers the period from\nJuly 1, 2023, to June 30, 2024, has been prepared\nby the Executive Directors of both the In...",
+                "processing_time": 1.8813610076904297,
+                "confidence_score": 9.0,
+                "word_count": 30835,
+                "character_count": 212840,
+                "processing_order": "text_first",
+                "errors": [],
+                "content_length": 212840
+              },
+              "image_first": {
+                "text_content": "A BETTER\nBANK FOR\nA BETTER\nWORLD\n\nANNUAL REPORT 2024\n\n\fCONTENTS\n\nMessage from the President\nMessage from the Executive Directors\nBecoming a Better Bank\nFiscal 2024 Financial Summary\nResults by Region\nResults by Theme\nHow We Work\n\nKEY TABLES\nIBRD Key Financial Indicators, Fiscal 2020\u201324\nIDA Key Financial Indicators, Fiscal 2020\u201324\n\n6\n8\n10\n12\n14\n44\n68\n\n84\n88\n\nThis annual report, which covers the period from\nJuly 1, 2023, to June 30, 2024, has been prepared\nby the Executive Directors of both the In...",
+                "processing_time": 1.9033429622650146,
+                "confidence_score": 9.0,
+                "word_count": 30835,
+                "character_count": 212840,
+                "processing_order": "image_first",
+                "errors": [],
+                "content_length": 212840
+              },
+              "hybrid": {
+                "text_content": "A BETTER\nBANK FOR\nA BETTER\nWORLD\n\nANNUAL REPORT 2024\n\n\fCONTENTS\n\nMessage from the President\nMessage from the Executive Directors\nBecoming a Better Bank\nFiscal 2024 Financial Summary\nResults by Region\nResults by Theme\nHow We Work\n\nKEY TABLES\nIBRD Key Financial Indicators, Fiscal 2020\u201324\nIDA Key Financial Indicators, Fiscal 2020\u201324\n\n6\n8\n10\n12\n14\n44\n68\n\n84\n88\n\nThis annual report, which covers the period from\nJuly 1, 2023, to June 30, 2024, has been prepared\nby the Executive Directors of both the In...",
+                "processing_time": 1.8942139148712158,
+                "confidence_score": 9.0,
+                "word_count": 30835,
+                "character_count": 212840,
+                "processing_order": "hybrid",
+                "errors": [],
+                "content_length": 212840
+              }
+            },
+            "best_strategy": "text_first",
+            "performance_analysis": {
+              "text_first": {
+                "speed_score": 8.11863899230957,
+                "quality_score": 9.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.03559169769287
+              },
+              "image_first": {
+                "speed_score": 8.096657037734985,
+                "quality_score": 9.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.028997111320496
+              },
+              "hybrid": {
+                "speed_score": 8.105786085128784,
+                "quality_score": 9.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.031735825538636
+              }
+            }
+          },
+          {
+            "filename": "sample-invoice.pdf",
+            "file_exists": true,
+            "file_type": ".pdf",
+            "processing_results": {
+              "text_first": {
+                "text_content": "CPB Software (Germany) GmbH - Im Bruch 3 - 63897 Miltenberg/Main\n\nMusterkunde AG\nMr. John Doe\nMusterstr. 23\n12345 Musterstadt\n\nName:  Stefanie M\u00fcller\n\nPhone: +49 9371 9786-0\n\nInvoice WMACCESS Internet\n\nVAT No. DE199378386\n\nInvoice No\n123100401\n\nCustomer No\n12345\n\nInvoice Period\n01.02.2024 - 29.02.2024\n\nDate\n1. M\u00e4rz 2024\n\nService Description\n\nBasic Fee wmView\n\nBasis fee for additional user accounts\n\nBasic Fee wmPos\n\nBasic Fee wmGuide\n\nChange of user accounts\n\nTransaction Fee T1\n\nTransaction Fee T...",
+                "processing_time": 0.08072209358215332,
+                "confidence_score": 10.0,
+                "word_count": 579,
+                "character_count": 3229,
+                "processing_order": "text_first",
+                "errors": [],
+                "content_length": 3229
+              },
+              "image_first": {
+                "text_content": "CPB Software (Germany) GmbH - Im Bruch 3 - 63897 Miltenberg/Main\n\nMusterkunde AG\nMr. John Doe\nMusterstr. 23\n12345 Musterstadt\n\nName:  Stefanie M\u00fcller\n\nPhone: +49 9371 9786-0\n\nInvoice WMACCESS Internet\n\nVAT No. DE199378386\n\nInvoice No\n123100401\n\nCustomer No\n12345\n\nInvoice Period\n01.02.2024 - 29.02.2024\n\nDate\n1. M\u00e4rz 2024\n\nService Description\n\nBasic Fee wmView\n\nBasis fee for additional user accounts\n\nBasic Fee wmPos\n\nBasic Fee wmGuide\n\nChange of user accounts\n\nTransaction Fee T1\n\nTransaction Fee T...",
+                "processing_time": 0.08141803741455078,
+                "confidence_score": 10.0,
+                "word_count": 579,
+                "character_count": 3229,
+                "processing_order": "image_first",
+                "errors": [],
+                "content_length": 3229
+              },
+              "hybrid": {
+                "text_content": "CPB Software (Germany) GmbH - Im Bruch 3 - 63897 Miltenberg/Main\n\nMusterkunde AG\nMr. John Doe\nMusterstr. 23\n12345 Musterstadt\n\nName:  Stefanie M\u00fcller\n\nPhone: +49 9371 9786-0\n\nInvoice WMACCESS Internet\n\nVAT No. DE199378386\n\nInvoice No\n123100401\n\nCustomer No\n12345\n\nInvoice Period\n01.02.2024 - 29.02.2024\n\nDate\n1. M\u00e4rz 2024\n\nService Description\n\nBasic Fee wmView\n\nBasis fee for additional user accounts\n\nBasic Fee wmPos\n\nBasic Fee wmGuide\n\nChange of user accounts\n\nTransaction Fee T1\n\nTransaction Fee T...",
+                "processing_time": 0.09430384635925293,
+                "confidence_score": 10.0,
+                "word_count": 579,
+                "character_count": 3229,
+                "processing_order": "hybrid",
+                "errors": [],
+                "content_length": 3229
+              }
+            },
+            "best_strategy": "text_first",
+            "performance_analysis": {
+              "text_first": {
+                "speed_score": 9.919277906417847,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.975783371925354
+              },
+              "image_first": {
+                "speed_score": 9.91858196258545,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.975574588775634
+              },
+              "hybrid": {
+                "speed_score": 9.905696153640747,
+                "quality_score": 10.0,
+                "content_score": 10,
+                "error_penalty": 0,
+                "overall_score": 8.971708846092223
+              }
+            }
+          },
+          {
+            "filename": "Deskewing.pdf",
+            "file_exists": true,
+            "file_type": ".pdf",
+            "processing_results": {
+              "text_first": {
+                "text_content": "Handling Skewed Documents\n\nUnderstanding the Power of Solid Framework\n\n\fWhat do we mean by \u201cSkewed\u201d?\n\nOnly applies to scanned documents.\n\nCaused by the original document being placed on the scanner at a\nslight angle and so the scanned image is also at an angle.\n\n\fCreation of the Sample File\n\nA single page was physically scanned five times, each with a\ndifferent amount of skew, and then combined into a PDF.\n\nNo skew\n\n1\u00b0\n\n2\u00b0\n\n4\u00b0\n\n6\u00b0\n\n\fSolid Framework and\nDocument Reconstruction\n\nSolid Framework de...",
+                "processing_time": 0.023493051528930664,
+                "confidence_score": 10.0,
+                "word_count": 230,
+                "character_count": 1467,
+                "processing_order": "text_first",
+                "errors": [],
+                "content_length": 1467
+              },
+              "image_first": {
+                "text_content": "Handling Skewed Documents\n\nUnderstanding the Power of Solid Framework\n\n\fWhat do we mean by \u201cSkewed\u201d?\n\nOnly applies to scanned documents.\n\nCaused by the original document being placed on the scanner at a\nslight angle and so the scanned image is also at an angle.\n\n\fCreation of the Sample File\n\nA single page was physically scanned five times, each with a\ndifferent amount of skew, and then combined into a PDF.\n\nNo skew\n\n1\u00b0\n\n2\u00b0\n\n4\u00b0\n\n6\u00b0\n\n\fSolid Framework and\nDocument Reconstruction\n\nSolid Framework de...",
+                "processing_time": 0.02319192886352539,
+                "confidence_score": 10.0,
+                "word_count": 230,
+                "character_count": 1467,
+                "processing_order": "image_first",
+                "errors": [],
+                "content_length": 1467
+              },
+              "hybrid": {
+                "text_content": "Handling Skewed Documents\n\nUnderstanding the Power of Solid Framework\n\n\fWhat do we mean by \u201cSkewed\u201d?\n\nOnly applies to scanned documents.\n\nCaused by the original document being placed on the scanner at a\nslight angle and so the scanned image is also at an angle.\n\n\fCreation of the Sample File\n\nA single page was physically scanned five times, each with a\ndifferent amount of skew, and then combined into a PDF.\n\nNo skew\n\n1\u00b0\n\n2\u00b0\n\n4\u00b0\n\n6\u00b0\n\n\fSolid Framework and\nDocument Reconstruction\n\nSolid Framework de...",
+                "processing_time": 0.02305889129638672,
+                "confidence_score": 10.0,
+                "word_count": 230,
+                "character_count": 1467,
+                "processing_order": "hybrid",
+                "errors": [],
+                "content_length": 1467
+              }
+            },
+            "best_strategy": "hybrid",
+            "performance_analysis": {
+              "text_first": {
+                "speed_score": 9.97650694847107,
+                "quality_score": 10.0,
+                "content_score": 4.6,
+                "error_penalty": 0,
+                "overall_score": 7.91295208454132
+              },
+              "image_first": {
+                "speed_score": 9.976808071136475,
+                "quality_score": 10.0,
+                "content_score": 4.6,
+                "error_penalty": 0,
+                "overall_score": 7.913042421340942
+              },
+              "hybrid": {
+                "speed_score": 9.976941108703613,
+                "quality_score": 10.0,
+                "content_score": 4.6,
+                "error_penalty": 0,
+                "overall_score": 7.913082332611084
+              }
+            }
+          }
+        ],
+        "strategy_by_type": {
+          ".pdf": {
+            "image_first": 2,
+            "text_first": 2,
+            "hybrid": 1
+          }
+        },
+        "successful_files": 5,
+        "appropriateness_rate": 0.6,
+        "success": false
+      }
+    },
+    "result": "FAIL: Strategy selection not optimal"
+  }
+}

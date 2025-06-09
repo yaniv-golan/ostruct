@@ -1,0 +1,36 @@
+# Core PDF/Document Processing
+PyMuPDF==1.23.8                 # Tests 1, 2, 3
+python-docx==1.1.0              # Tests 4, 6, 17
+python-pptx==0.6.23             # Test 8
+openpyxl==3.1.2                 # Tests 7, 9
+pandas==2.1.4                   # Data analysis across tests
+markitdown==0.0.1a2             # Tests 5, 20
+
+# PDF Advanced Processing
+pdfminer.six==20231228          # Test 19
+camelot-py[cv]==0.11.0          # Table extraction
+tabula-py==2.9.0                # Table extraction
+
+# OCR and Image Processing
+pytesseract==0.3.10             # Test 3
+Pillow==10.1.0                  # Image processing
+opencv-python-headless==4.8.1.78  # Computer vision
+
+# LLM and API Integration
+openai==1.6.1                   # Tests 11-22, 28
+requests==2.31.0                # Web requests
+
+# Utilities
+pyyaml==6.0.1                   # Configuration
+jinja2==3.1.2                   # Template engine
+click==8.1.7                    # CLI framework
+tqdm==4.66.1                    # Progress bars
+lxml==4.9.4                     # XML processing
+beautifulsoup4==4.12.2          # HTML parsing
+
+# Excel integration (macOS/Windows)
+xlwings==0.30.13                # Test 10 (optional - may fail on some systems)
+
+# Additional testing utilities
+pytest==7.4.4                   # Test framework
+psutil==5.9.8                   # System monitoring for performance tests 
