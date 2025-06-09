@@ -26,6 +26,7 @@ from .template_processor import (
 )
 from .template_utils import validate_json_schema
 from .types import CLIParams
+from .utils import fix_surrogate_escapes
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,9 @@ def validate_variable(
 
     result = []
     for var in value:
+        # Fix any surrogate escape issues in the variable string
+        var = fix_surrogate_escapes(var)
+
         if "=" not in var:
             raise click.BadParameter(
                 f"Variable must be in format name=value: {var}"
@@ -152,6 +156,11 @@ def validate_variable(
         name, val = var.split("=", 1)
         name = name.strip()
         val = val.strip()
+
+        # Fix surrogate escapes in both name and value
+        name = fix_surrogate_escapes(name)
+        val = fix_surrogate_escapes(val)
+
         if not name.isidentifier():
             raise click.BadParameter(f"Invalid variable name: {name}")
         result.append((name, val))
@@ -179,6 +188,9 @@ def validate_json_variable(
 
     result = []
     for var in value:
+        # Fix any surrogate escape issues in the variable string
+        var = fix_surrogate_escapes(var)
+
         if "=" not in var:
             raise InvalidJSONError(
                 f"JSON variable must be in format name='{'json':\"value\"}': {var}"
@@ -186,6 +198,11 @@ def validate_json_variable(
         name, json_str = var.split("=", 1)
         name = name.strip()
         json_str = json_str.strip()
+
+        # Fix surrogate escapes in both name and JSON string
+        name = fix_surrogate_escapes(name)
+        json_str = fix_surrogate_escapes(json_str)
+
         if not name.isidentifier():
             raise VariableNameError(f"Invalid variable name: {name}")
         try:

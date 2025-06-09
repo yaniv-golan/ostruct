@@ -18,6 +18,32 @@ from .errors import (
 )
 from .exit_codes import ExitCode
 from .registry_updates import get_update_notification
+from .utils import fix_surrogate_escapes
+
+
+def fix_argv_encoding() -> None:
+    """Fix UTF-8 encoding issues in sys.argv.
+
+    This function addresses the surrogate escape issue where Python's sys.argv
+    contains surrogate characters (like \udce2) when processing command line
+    arguments with non-ASCII characters. This commonly happens with filenames
+    containing characters like en dash (–) or other Unicode characters.
+
+    The fix detects arguments containing surrogate escapes and converts them
+    back to proper UTF-8 strings.
+    """
+    try:
+        fixed_argv = []
+        for arg in sys.argv:
+            fixed_argv.append(fix_surrogate_escapes(arg))
+
+        # Replace sys.argv with the fixed version
+        sys.argv = fixed_argv
+
+    except Exception:
+        # If anything goes wrong with the encoding fix, continue with original argv
+        # This ensures the CLI doesn't break even if the fix fails
+        pass
 
 
 def create_cli_group() -> click.Group:
@@ -108,6 +134,9 @@ def create_cli() -> click.Command:
 
 def main() -> None:
     """Main entry point for the CLI."""
+    # Fix UTF-8 encoding issues in command line arguments before processing
+    fix_argv_encoding()
+
     # Load environment variables from .env file
     load_dotenv()
 
