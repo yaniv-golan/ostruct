@@ -9,9 +9,10 @@ def fix_surrogate_escapes(text: str) -> str:
     """Fix UTF-8 encoding issues caused by surrogate escapes.
 
     This function addresses the issue where Python's sys.argv contains
-    surrogate characters (like \\udce2) when processing command line
-    arguments with non-ASCII characters. This commonly happens with
-    filenames containing characters like en dash (–) or other Unicode characters.
+    surrogate characters (e.g., a backslash followed by 'udce2') when
+    processing command line arguments with non-ASCII characters. This
+    commonly happens with filenames containing characters like en dash (–)
+    or other Unicode characters.
 
     Args:
         text: String that may contain surrogate escape characters

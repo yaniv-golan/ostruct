@@ -25,9 +25,10 @@ def fix_argv_encoding() -> None:
     """Fix UTF-8 encoding issues in sys.argv.
 
     This function addresses the surrogate escape issue where Python's sys.argv
-    contains surrogate characters (like \udce2) when processing command line
-    arguments with non-ASCII characters. This commonly happens with filenames
-    containing characters like en dash (–) or other Unicode characters.
+    contains surrogate characters (e.g., a backslash followed by 'udce2')
+    when processing command line arguments with non-ASCII characters. This
+    commonly happens with filenames containing characters like en dash (–) or
+    other Unicode characters.
 
     The fix detects arguments containing surrogate escapes and converts them
     back to proper UTF-8 strings.

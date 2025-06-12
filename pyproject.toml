@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "ostruct-cli"
-version = "0.8.8"
+version = "0.8.9"
 description = "CLI for OpenAI Structured Output with Multi-Tool Integration"
 authors = [{name = "Yaniv Golan", email = "yaniv@golan.name"}]
 readme = "README.md"
@@ -75,75 +75,82 @@ examples = [
 packages = [{include = "ostruct", from = "src"}]
 include = ["py.typed"]
 
+[tool.poetry.group.dev.dependencies]
+hypothesis = "^6.135.4"
+
 [tool.flake8]
-    max-line-length = 120
-    extend-ignore = ["E203"]
+max-line-length = 120
+extend-ignore = ["E203"]
 
-    [tool.mypy]
-    plugins = ["pydantic.mypy"]
-    python_version = "3.10"
-    warn_unused_configs = true
-    exclude = ["docs/*", "examples/*"]
-    disallow_untyped_defs = false
-    check_untyped_defs = true
-    warn_return_any = false
-    warn_unused_ignores = false
-    show_error_codes = true
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+python_version = "3.10"
+warn_unused_configs = true
+exclude = ["docs/*", "examples/*"]
+disallow_untyped_defs = false
+check_untyped_defs = true
+warn_return_any = false
+warn_unused_ignores = false
+show_error_codes = true
 
-    # Stricter settings for source code
-    [[tool.mypy.overrides]]
-    module = "ostruct.*"
-    disallow_untyped_defs = true
-    warn_return_any = true
-    warn_unused_ignores = true
+[[tool.mypy.overrides]]
+module = ["openai_model_registry.*", "hypothesis"]
+ignore_missing_imports = true
 
-    # Special handling for Click-related code
-    [[tool.mypy.overrides]]
-    module = ["click.*", "ostruct.cli.click_options"]
-    disallow_untyped_decorators = false
-    warn_return_any = false
+# Stricter settings for source code
+[[tool.mypy.overrides]]
+module = "ostruct.*"
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
 
-    [tool.black]
-    line-length = 79
-    target-version = ["py310"]
-    include = '\.pyi?$'
-    preview = false
-    required-version = "24.8.0"
+# Special handling for Click-related code
+[[tool.mypy.overrides]]
+module = ["click.*", "ostruct.cli.click_options"]
+disallow_untyped_decorators = false
+warn_return_any = false
 
-    [tool.pytest.ini_options]
-    asyncio_mode = "strict"
-    testpaths = ["tests"]
-    python_files = ["test_*.py"]
-    markers = [
-        "live: mark test as a live test that makes real API calls or runs actual ostruct commands",
-        "asyncio: mark test as requiring async loop",
-        "no_fs: mark test to disable pyfakefs and use real filesystem",
-        "slow: mark test as slow performance/stress test",
-        "flaky: mark test as flaky (may need reruns)",
-        "mock_openai: mark test to use mock OpenAI client"
-    ]
-    asyncio_default_fixture_loop_scope = "function"
-    # By default, skip live tests unless explicitly requested
-    addopts = "-m 'not live'"
+[tool.black]
+line-length = 79
+target-version = ["py310"]
+include = '.pyi?$'
+preview = false
+required-version = "24.8.0"
 
-    [tool.ruff]
-    target-version = "py310"
-    fix = true
-    line-length = 79  # Match Black's setting
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "live: mark test as a live test that makes real API calls or runs actual ostruct commands",
+    "asyncio: mark test as requiring async loop",
+    "no_fs: mark test to disable pyfakefs and use real filesystem",
+    "slow: mark test as slow performance/stress test",
+    "flaky: mark test as flaky (may need reruns)",
+    "mock_openai: mark test to use mock OpenAI client"
+]
+asyncio_default_fixture_loop_scope = "function"
+# By default, skip live tests unless explicitly requested
+addopts = "-m 'not live'"
 
-    [tool.ruff.lint]
-    select = [
-        "E",   # pycodestyle errors
-        "W",   # pycodestyle warnings
-        "F",   # Pyflakes
-        "I",   # isort (import sorting)
-    ]
-    ignore = [
-        "E501",  # Line too long (handled by Black)
-    ]
+[tool.ruff]
+target-version = "py310"
+fix = true
+line-length = 79  # Match Black's setting
 
-    [tool.ruff.lint.isort]
-    # Black-compatible settings
-    force-single-line = false
-    combine-as-imports = true
-    split-on-trailing-comma = true
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort (import sorting)
+]
+ignore = [
+    "E501",  # Line too long (handled by Black)
+]
+
+[tool.ruff.lint.isort]
+# Black-compatible settings
+force-single-line = false
+combine-as-imports = true
+split-on-trailing-comma = true
