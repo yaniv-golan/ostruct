@@ -1,5 +1,5 @@
 ostruct Template Scripting Guide
-=================================
+================================
 
 This comprehensive guide teaches you everything you need to know about creating effective prompt templates for ostruct. You don't need prior Jinja2 knowledge—this guide covers ostruct's complete templating capabilities from basics to advanced techniques.
 
@@ -12,7 +12,7 @@ This comprehensive guide teaches you everything you need to know about creating 
 .. _template-basics:
 
 Template Basics
-================
+===============
 
 What Are ostruct Templates?
 ---------------------------
@@ -377,7 +377,7 @@ ostruct provides helpful loop variables:
 .. _filters-and-functions:
 
 Filters and Functions
-====================
+=====================
 
 Text Processing Filters
 -----------------------
@@ -499,7 +499,7 @@ Table Formatting Filters
    {{ headers | align_table(rows, ["left", "center", "right"]) }}  <!-- Aligned table -->
 
 Global Functions
----------------
+----------------
 
 **Utility Functions**
 
@@ -946,7 +946,7 @@ Troubleshooting
 ===============
 
 Common Issues and Solutions
---------------------------
+---------------------------
 
 **Issue: Guidance message appears instead of file content**
 
@@ -1000,7 +1000,7 @@ Common Issues and Solutions
    {% endif %}
 
 Debugging Templates
-------------------
+-------------------
 
 **Show Available Variables**
 
@@ -1036,7 +1036,7 @@ Best Practices
 ==============
 
 Template Organization
---------------------
+---------------------
 
 1. **Use descriptive variable names**
 
@@ -1111,7 +1111,7 @@ Performance Optimization
       Total files: {{ file_count }}
 
 Security Considerations
-----------------------
+-----------------------
 
 1. **Validate inputs**
 
