@@ -13,9 +13,56 @@ Prerequisites
 Installation
 ------------
 
-.. code-block:: bash
+We provide multiple installation methods. For most users, ``pipx`` is recommended as it avoids conflicts with other Python packages.
 
-   pip install ostruct-cli
+.. tabs::
+
+   .. tab:: Recommended: pipx
+
+      1. **Install pipx**:
+
+         .. code-block:: bash
+
+            python3 -m pip install --user pipx
+            python3 -m pipx ensurepath
+
+         *(Restart your terminal after running ``ensurepath`` to update your ``PATH``)*
+
+      2. **Install ostruct-cli**:
+
+         .. code-block:: bash
+
+            pipx install ostruct-cli
+
+   .. tab:: macOS: Homebrew
+
+      If you're on macOS and use Homebrew, you can install `ostruct` with a single command:
+
+      .. code-block:: bash
+
+         brew install yaniv-golan/ostruct/ostruct-cli
+
+   .. tab:: Standalone Binaries
+
+      We provide pre-compiled binaries for macOS, Windows, and Linux that do not require Python to be installed.
+
+      1. Go to the `Latest Release <https://github.com/yaniv-golan/ostruct/releases/latest>`__ page.
+      2. Download the appropriate binary for your operating system.
+      3. Make the binary executable (on macOS/Linux): ``chmod +x /path/to/binary``
+      4. (Optional) Move the binary to a directory in your ``PATH``.
+
+   .. tab:: Docker
+
+      Run ``ostruct`` from our official container image on the GitHub Container Registry.
+
+      .. code-block:: bash
+
+         docker run -it --rm \
+           -v "$(pwd)":/app \
+           -w /app \
+           ghcr.io/yaniv-golan/ostruct:latest \
+           run template.j2 schema.json -ft input.txt
+
 
 Set up your OpenAI API key:
 

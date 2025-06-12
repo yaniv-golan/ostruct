@@ -151,23 +151,83 @@ Break down words into their components, showing their origins, meanings, and hie
 
 ## Installation
 
-### Quick Install (macOS)
+We provide multiple installation methods to suit different user needs. Choose the one that's right for you.
 
-For macOS users, we provide a one-line installer that handles everything automatically:
+<details>
+<summary><strong>Recommended: pipx (Python Users)</strong></summary>
+
+For users who have Python installed, `pipx` is the recommended installation method. It installs `ostruct` in an isolated environment, preventing conflicts with other Python packages.
+
+1. **Install pipx**:
+
+    ```bash
+    python3 -m pip install --user pipx
+    python3 -m pipx ensurepath
+    ```
+
+    *(Restart your terminal after running `ensurepath` to update your `PATH`)*
+
+2. **Install ostruct-cli**:
+
+    ```bash
+    pipx install ostruct-cli
+    ```
+
+</details>
+
+<details>
+<summary><strong>macOS: Homebrew</strong></summary>
+
+If you're on macOS and use Homebrew, you can install `ostruct` with a single command:
 
 ```bash
-curl -sSL https://github.com/yaniv-golan/ostruct/releases/latest/download/install-macos.sh | bash
+brew install yaniv-golan/ostruct/ostruct-cli
 ```
 
-This script will:
+</details>
 
-- Install Python 3.10+ if needed (via Homebrew or python.org)
-- Install Homebrew if needed
-- Install ostruct-cli via pip
-- Configure your shell PATH automatically
-- Verify the installation works
+<details>
+<summary><strong>Standalone Binaries (No Python Required)</strong></summary>
 
-After installation, restart your terminal and test with `ostruct --version`.
+We provide pre-compiled binaries for macOS, Windows, and Linux that do not require Python to be installed.
+
+1. Go to the [**Latest Release**](https://github.com/yaniv-golan/ostruct/releases/latest) page.
+2. Download the appropriate binary for your operating system (e.g., `ostruct-macos-amd64`, `ostruct-windows-amd64.exe`).
+3. Make the binary executable (on macOS/Linux):
+
+    ```bash
+    chmod +x /path/to/ostruct-macos-amd64
+    ```
+
+4. (Optional) Move the binary to a directory in your `PATH` to make it accessible from anywhere (e.g., `/usr/local/bin`).
+
+</details>
+
+<details>
+<summary><strong>Docker</strong></summary>
+
+If you prefer to use Docker, you can run `ostruct` from our official container image available on the GitHub Container Registry.
+
+```bash
+docker run -it --rm \
+  -v "$(pwd)":/app \
+  -w /app \
+  ghcr.io/yaniv-golan/ostruct:latest \
+  run template.j2 schema.json -ft input.txt
+```
+
+This command mounts the current directory into the container and runs `ostruct`.
+
+</details>
+
+### Uninstallation
+
+To uninstall `ostruct`, use the method corresponding to how you installed it:
+
+- **pipx**: `pipx uninstall ostruct-cli`
+- **Homebrew**: `brew uninstall ostruct-cli`
+- **Binaries**: Simply delete the binary file.
+- **Docker**: No uninstallation is needed for the image itself, but you can remove it with `docker rmi ghcr.io/yaniv-golan/ostruct:latest`.
 
 ### Manual Installation
 

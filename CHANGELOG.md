@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.9] - 2025-06-12
+
+### Added
+
+- **Comprehensive Template Documentation**: Added a new, in-depth `ostruct_template_scripting_guide.rst` to the documentation, covering all aspects of ostruct's templating system. Also added a `template_quick_reference.rst` for quick lookups.
+- **Special Character Support in CLI**: Added a `fix_surrogate_escapes` utility to automatically correct UTF-8 encoding issues in command-line arguments. This fixes bugs when using filenames or arguments containing non-ASCII characters (e.g., en dashes, accents).
+- **Template Convenience**: Added an `.extension` property to `FileList` objects, providing a convenient way to access a file's extension in templates when working with a single file (e.g., `{{ my_file.extension }}`).
+
+### Changed
+
+- **Simplified and Automated Installation**: Streamlined and automated the project's distribution channels. The Homebrew formula is now updated automatically on release, Docker builds are more reliable, and the custom macOS installation script has been removed in favor of standard methods (`pipx`, `Homebrew`, binaries, Docker). See `README.md` for updated installation instructions.
+- **Documentation Improvements**: Revamped the `template_authoring.rst` guide to use the new, canonical script invocation patterns and variable naming conventions.
+- **File Path Handling**: The `FileInfo.path` property now correctly returns absolute paths for files located outside the project's base directory, as long as they are within a directory explicitly allowed by the security manager.
+
+### Fixed
+
+- **System Prompt Errors**: Correctly initialized `SystemPromptError` to ensure it captures and reports errors related to system prompt processing properly.
+
 ## [0.8.8] - 2025-06-06
 
 ### Changed

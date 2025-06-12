@@ -110,7 +110,7 @@ poetry.toml
 .cursor/rules/cursor-rules.mdc
 
 # Local history
-.history/*
+.history/
 repomix-output.txt
 .claude/settings.local.json
 CLAUDE.md
@@ -124,3 +124,7 @@ examples/document-analysis/iterative-fact-extraction/
 
 # Generated build artifacts
 scripts/generated/
+examples/multi-markdown-convertor/risk_elimination_tests/
+examples/multi-markdown-convertor/runs/
+examples/multi-markdown-convertor/
+examples/people-crm-demo/
