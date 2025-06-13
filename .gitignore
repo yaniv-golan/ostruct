@@ -128,3 +128,4 @@ examples/multi-markdown-convertor/risk_elimination_tests/
 examples/multi-markdown-convertor/runs/
 examples/multi-markdown-convertor/
 examples/people-crm-demo/
+fix_rst_titles.py
