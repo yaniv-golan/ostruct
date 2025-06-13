@@ -15,9 +15,9 @@ Installation
 
 We provide multiple installation methods. For most users, ``pipx`` is recommended as it avoids conflicts with other Python packages.
 
-.. tabs::
+.. tab-set::
 
-   .. tab:: Recommended: pipx
+   .. tab-item:: Recommended: pipx
 
       1. **Install pipx**:
 
@@ -34,7 +34,7 @@ We provide multiple installation methods. For most users, ``pipx`` is recommende
 
             pipx install ostruct-cli
 
-   .. tab:: macOS: Homebrew
+   .. tab-item:: macOS: Homebrew
 
       If you're on macOS and use Homebrew, you can install `ostruct` with a single command:
 
@@ -42,7 +42,7 @@ We provide multiple installation methods. For most users, ``pipx`` is recommende
 
          brew install yaniv-golan/ostruct/ostruct-cli
 
-   .. tab:: Standalone Binaries
+   .. tab-item:: Standalone Binaries
 
       We provide pre-compiled binaries for macOS, Windows, and Linux that do not require Python to be installed.
 
@@ -51,7 +51,7 @@ We provide multiple installation methods. For most users, ``pipx`` is recommende
       3. Make the binary executable (on macOS/Linux): ``chmod +x /path/to/binary``
       4. (Optional) Move the binary to a directory in your ``PATH``.
 
-   .. tab:: Docker
+   .. tab-item:: Docker
 
       Run ``ostruct`` from our official container image on the GitHub Container Registry.
 
@@ -428,30 +428,11 @@ Next Steps
 
 🔧 **Integrate**
   - :doc:`../automate/ci_cd` - CI/CD integration
-  - :doc:`../automate/containers` - Docker deployment
-  - :doc:`../automate/scripting_patterns` - Automation patterns
 
-💡 **Explore Examples**
-  - ``examples/`` directory in the repository
-  - Real-world use cases and templates
-  - Community contributed patterns
+🎓 **Learn More**
+  - :doc:`cli_reference` - Complete CLI documentation
+  - :doc:`template_authoring` - Advanced template techniques
+  - :doc:`../security/overview` - Security best practices
 
-Common Questions
-----------------
-
-**Q: What file formats are supported?**
-A: Text files (TXT, MD, JSON, YAML, CSV, Python, etc.). Binary files go to Code Interpreter for analysis.
-
-**Q: How do I handle large files?**
-A: Use ``--dry-run`` to check token usage first. Consider splitting large files or using File Search for documents.
-
-**Q: Can I use multiple tools on the same file?**
-A: Yes! Use ``--file-for code-interpreter data.csv --file-for file-search data.csv`` for advanced routing.
-
-**Q: How do I debug template issues?**
-A: Use ``--dry-run`` to see the rendered template without API calls, and ``--verbose`` for detailed logging.
-
-**Q: What about API costs?**
-A: Start with shorter examples, use ``--dry-run`` to estimate tokens, and consider o3-mini for cost-effective processing.
-
-Congratulations! You've mastered ostruct basics. Juno would be proud! 🐕✨
+🔧 **Integrate**
+  - :doc:`../automate/ci_cd` - CI/CD integration
