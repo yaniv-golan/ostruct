@@ -1155,4 +1155,3 @@ For more examples and advanced patterns, explore the ``examples/`` directory in 
 
    - :doc:`cli_reference` - Complete CLI documentation
    - :doc:`examples` - Practical examples and use cases
-   - :doc:`../advanced/optimization` - Performance optimization techniques
