@@ -74,6 +74,7 @@ Documentation
    user-guide/introduction
    user-guide/quickstart
    user-guide/ostruct_template_scripting_guide
+   user-guide/prompt_scripting_guide
    user-guide/template_quick_reference
    user-guide/examples
    user-guide/cli_reference
