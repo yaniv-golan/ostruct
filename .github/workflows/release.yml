@@ -44,7 +44,7 @@ jobs:
         shell: bash
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ostruct-binaries-${{ runner.os }}
           path: dist/ostruct*
