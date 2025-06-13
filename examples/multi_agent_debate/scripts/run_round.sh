@@ -7,7 +7,20 @@ TOPIC=$3
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TRANSCRIPT="$DIR/output/debate_init.json"
-PROMPT="$DIR/prompts/${AGENT}.j2"
+
+# Map AGENT to correct prompt filename
+case "$AGENT" in
+  pro)
+    PROMPT="$DIR/prompts/pro_side.j2"
+    ;;
+  con)
+    PROMPT="$DIR/prompts/con_side.j2"
+    ;;
+  *)
+    echo "Unknown agent: $AGENT" >&2
+    exit 1
+    ;;
+esac
 SCHEMA="$DIR/schemas/turn.json"
 
 # Calculate turn number (unique for each turn)

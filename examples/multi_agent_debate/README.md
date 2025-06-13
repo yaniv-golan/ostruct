@@ -49,8 +49,8 @@ multi_agent_debate/
 ├── topic.txt              # The debate topic
 ├── run_debate.sh          # Main script to run complete debate
 ├── prompts/               # Jinja2 templates
-│   ├── pro.j2            # Template for PRO arguments
-│   ├── con.j2            # Template for CON arguments
+│   ├── pro_side.j2       # Template for PRO arguments
+│   ├── con_side.j2       # Template for CON arguments
 │   └── summary.j2        # Template for judge analysis
 ├── schemas/               # JSON schemas for structured output
 │   ├── turn.json         # Schema for individual turns
