@@ -30,7 +30,7 @@ jobs:
           pip install .
 
       - name: Build binary
-        run: pyinstaller pyinstaller.spec --onefile
+        run: pyinstaller pyinstaller.spec
 
       - name: Rename and prepare artifact
         run: |
