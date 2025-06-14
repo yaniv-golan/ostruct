@@ -189,17 +189,19 @@ brew install yaniv-golan/ostruct/ostruct-cli
 <details>
 <summary><strong>Standalone Binaries (No Python Required)</strong></summary>
 
-We provide pre-compiled binaries for macOS, Windows, and Linux that do not require Python to be installed.
+We provide pre-compiled bundles for macOS, Windows, and Linux that do not require Python to be installed.
 
 1. Go to the [**Latest Release**](https://github.com/yaniv-golan/ostruct/releases/latest) page.
-2. Download the appropriate binary for your operating system (e.g., `ostruct-macos-amd64`, `ostruct-windows-amd64.exe`).
-3. Make the binary executable (on macOS/Linux):
+2. Download and extract the appropriate folder for your operating system (e.g., `ostruct-macos-amd64`, `ostruct-windows-amd64`, `ostruct-linux-amd64`).
+3. On macOS/Linux, make the executable inside the folder runnable:
 
     ```bash
-    chmod +x /path/to/ostruct-macos-amd64
+    chmod +x /path/to/ostruct-macos-amd64/ostruct
     ```
 
-4. (Optional) Move the binary to a directory in your `PATH` to make it accessible from anywhere (e.g., `/usr/local/bin`).
+4. (Optional) Add the folder to your `PATH` or create a shortcut for easier access.
+
+**Important:** You must run the executable from within the extracted folder, as it depends on bundled libraries in the same directory.
 
 </details>
 

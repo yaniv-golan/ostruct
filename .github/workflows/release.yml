@@ -34,23 +34,23 @@ jobs:
       - name: List dist directory (debug)
         run: ls -l dist
         shell: bash
-
-      - name: Rename and prepare artifact
-        run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            mv dist/ostruct.exe dist/ostruct-windows-amd64.exe
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            mv dist/ostruct dist/ostruct-macos-amd64
-          else
-            mv dist/ostruct dist/ostruct-linux-amd64
-          fi
+      - name: Rename output directory for Windows
+        if: runner.os == 'Windows'
+        run: mv dist/ostruct dist/ostruct-windows-amd64
         shell: bash
-
+      - name: Rename output directory for macOS
+        if: runner.os == 'macOS'
+        run: mv dist/ostruct dist/ostruct-macos-amd64
+        shell: bash
+      - name: Rename output directory for Linux
+        if: runner.os == 'Linux'
+        run: mv dist/ostruct dist/ostruct-linux-amd64
+        shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ostruct-binaries-${{ runner.os }}
-          path: dist/ostruct*
+          name: ostruct-bundle
+          path: dist/ostruct-*
 
   create_release:
     name: Create GitHub Release

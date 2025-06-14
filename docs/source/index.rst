@@ -320,3 +320,6 @@ Debug & Progress
 - ``--show-model-schema``: Display the generated Pydantic model schema
 - ``--debug-openai-stream``: Enable low-level debug output for OpenAI streaming
 - ``--debug``: Enable debug-level logging including template expansion
+
+.. note::
+   If you use the standalone binary release, download and extract the appropriate folder for your OS (e.g., ``ostruct-windows-amd64``, ``ostruct-macos-amd64``, ``ostruct-linux-amd64``) and run the executable from within that folder. Do not move the executable out of the folder, as it depends on bundled libraries in the same directory.
