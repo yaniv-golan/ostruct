@@ -62,19 +62,19 @@ jobs:
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ostruct-bundle-ubuntu-latest
           path: dist/binaries/linux
 
       - name: Download macOS artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ostruct-bundle-macos-latest
           path: dist/binaries/macos
 
       - name: Download Windows artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ostruct-bundle-windows-latest
           path: dist/binaries/windows
