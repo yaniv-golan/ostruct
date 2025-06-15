@@ -49,10 +49,16 @@ jobs:
         if: runner.os == 'Linux'
         run: mv dist/ostruct dist/ostruct-linux-amd64
         shell: bash
-      - name: Zip binary folder
+      - name: Zip binary folder (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           cd dist
           zip -r ostruct-${{ matrix.os }}.zip ostruct-*
+      - name: Zip binary folder (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Compress-Archive -Path dist\ostruct-windows-amd64 -DestinationPath dist\ostruct-windows-latest.zip
+        shell: pwsh
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
