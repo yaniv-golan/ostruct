@@ -167,10 +167,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: create_release
     permissions:
+      contents: read # To checkout private repository
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Get tag
         id: get_tag
@@ -181,7 +182,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
