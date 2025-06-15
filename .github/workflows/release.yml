@@ -49,11 +49,15 @@ jobs:
         if: runner.os == 'Linux'
         run: mv dist/ostruct dist/ostruct-linux-amd64
         shell: bash
+      - name: Zip binary folder
+        run: |
+          cd dist
+          zip -r ostruct-${{ matrix.os }}.zip ostruct-*
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ostruct-bundle-${{ matrix.os }}
-          path: dist/ostruct-*
+          path: dist/ostruct-${{ matrix.os }}.zip
 
   create_release:
     name: Create GitHub Release
@@ -82,8 +86,8 @@ jobs:
           name: ostruct-bundle-windows-latest
           path: dist/binaries/windows
 
-      - name: List files for debug
-        run: ls -lR dist/binaries
+      - name: List downloaded zips
+        run: ls -lh dist/binaries/*/*.zip
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -93,9 +97,9 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            dist/binaries/linux/**/*
-            dist/binaries/macos/**/*
-            dist/binaries/windows/**/*
+            dist/binaries/linux/ostruct-ubuntu-latest.zip
+            dist/binaries/macos/ostruct-macos-latest.zip
+            dist/binaries/windows/ostruct-windows-latest.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

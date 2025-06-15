@@ -44,15 +44,13 @@ We provide multiple installation methods. For most users, ``pipx`` is recommende
 
    .. tab-item:: Standalone Binaries
 
-      We provide pre-compiled bundles for macOS, Windows, and Linux that do not require Python to be installed.
+      We provide pre-compiled .zip archives for macOS, Windows, and Linux that do not require Python to be installed.
 
       1. Go to the `Latest Release <https://github.com/yaniv-golan/ostruct/releases/latest>`__ page.
-      2. Download and extract the appropriate folder for your operating system (e.g., ``ostruct-macos-amd64``, ``ostruct-windows-amd64``, ``ostruct-linux-amd64``).
-      3. On macOS/Linux, make the executable inside the folder runnable: ``chmod +x /path/to/ostruct-macos-amd64/ostruct``
-      4. (Optional) Add the folder to your ``PATH`` or create a shortcut for easier access.
-
-      .. note::
-         You must run the executable from within the extracted folder, as it depends on bundled libraries in the same directory.
+      2. Download the `.zip` file for your operating system (e.g., ``ostruct-macos-latest.zip``, ``ostruct-windows-latest.zip``, ``ostruct-ubuntu-latest.zip``).
+      3. Extract the `.zip` file. This will create a folder (e.g., ``ostruct-macos-amd64``).
+      4. On macOS/Linux, make the executable inside the extracted folder runnable: ``chmod +x /path/to/ostruct-macos-amd64/ostruct``
+      5. Run the executable from within the extracted folder, as it depends on bundled libraries in the same directory.
 
    .. tab-item:: Docker
 

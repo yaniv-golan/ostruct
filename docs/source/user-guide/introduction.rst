@@ -136,4 +136,4 @@ Next Steps
 - :doc:`../security/overview` - Understand security considerations
 
 .. note::
-   If you use the standalone binary release, download and extract the appropriate folder for your OS (e.g., ``ostruct-windows-amd64``, ``ostruct-macos-amd64``, ``ostruct-linux-amd64``) and run the executable from within that folder. Do not move the executable out of the folder, as it depends on bundled libraries in the same directory.
+   If you use the standalone binary release, download the `.zip` file for your OS from the release page, extract it, and run the executable from within the extracted folder (e.g., ``ostruct-windows-amd64``, ``ostruct-macos-amd64``, ``ostruct-linux-amd64``). Do not move the executable out of the folder, as it depends on bundled libraries in the same directory.
