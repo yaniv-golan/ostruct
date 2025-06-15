@@ -9,6 +9,31 @@ permissions:
   contents: write
 
 jobs:
+  build_package:
+    name: Build Python Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      - name: Build sdist and wheel
+        run: poetry build
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/*
+
   build_binaries:
     name: Build binaries for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -67,7 +92,7 @@ jobs:
 
   create_release:
     name: Create GitHub Release
-    needs: build_binaries
+    needs: [build_package, build_binaries]
     runs-on: ubuntu-latest
     steps:
       - name: Get tag
@@ -92,8 +117,14 @@ jobs:
           name: ostruct-bundle-windows-latest
           path: dist/binaries/windows
 
-      - name: List downloaded zips
-        run: ls -lh dist/binaries/*/*.zip
+      - name: Download Python package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist/packages
+
+      - name: List downloaded files
+        run: ls -lR dist
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -106,8 +137,30 @@ jobs:
             dist/binaries/linux/ostruct-ubuntu-latest.zip
             dist/binaries/macos/ostruct-macos-latest.zip
             dist/binaries/windows/ostruct-windows-latest.zip
+            dist/packages/*.whl
+            dist/packages/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish_to_pypi:
+    name: Publish to PyPI
+    needs: build_package
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ostruct-cli
+    permissions:
+      id-token: write # required for trusted publishing
+    steps:
+      - name: Download python-package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
   build_and_push_docker:
     name: Build and push Docker image
