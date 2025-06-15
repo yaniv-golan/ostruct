@@ -82,46 +82,22 @@ jobs:
           name: ostruct-bundle-windows-latest
           path: dist/binaries/windows
 
-      - name: Create Release
-        id: create_release
+      - name: List files for debug
+        run: ls -lR dist/binaries
+
+      - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: Release ${{ env.TAG }}
           draft: false
           prerelease: false
+          files: |
+            dist/binaries/linux/**/*
+            dist/binaries/macos/**/*
+            dist/binaries/windows/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Release Assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/binaries/linux/ostruct-linux-amd64
-          asset_name: ostruct-linux-amd64
-          asset_content_type: application/octet-stream
-
-      - name: Upload macOS Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/binaries/macos/ostruct-macos-amd64
-          asset_name: ostruct-macos-amd64
-          asset_content_type: application/octet-stream
-
-      - name: Upload Windows Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/binaries/windows/ostruct-windows-amd64.exe
-          asset_name: ostruct-windows-amd64.exe
-          asset_content_type: application/octet-stream
 
   build_and_push_docker:
     name: Build and push Docker image
