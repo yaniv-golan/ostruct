@@ -166,6 +166,8 @@ jobs:
     name: Build and push Docker image
     runs-on: ubuntu-latest
     needs: create_release
+    permissions:
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
