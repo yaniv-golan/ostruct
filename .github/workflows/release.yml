@@ -231,9 +231,13 @@ jobs:
           echo "sha256=$(shasum -a 256 "ostruct-v${{ env.RELEASE_VERSION }}.tar.gz" | awk '{print $1}')" >> $GITHUB_ENV
 
       - name: Update Homebrew Formula
-        uses: <the-action-used-for-homebrew-update>
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ env.RELEASE_VERSION }}"
+          SHA256="${{ env.sha256 }}"
+          sed -i.bak -E "s/version \"[0-9.]+\"/version \"$VERSION\"/" Formula/ostruct-cli.rb
+          sed -i.bak -E "s/sha256 \"[a-f0-9]{64}\"/sha256 \"$SHA256\"/" Formula/ostruct-cli.rb
+          echo "Updated formula to version $VERSION with SHA256 $SHA256"
+          cat Formula/ostruct-cli.rb
 
       - name: Commit and push changes
         run: |
