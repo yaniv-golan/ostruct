@@ -7,7 +7,7 @@ with the OpenAI Responses API for enhanced functionality in ostruct.
 import logging
 import re
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 from urllib.parse import urlparse
 
 # Import requests for HTTP functionality (used in production)
@@ -15,6 +15,11 @@ try:
     import requests
 except ImportError:
     requests = None  # type: ignore[assignment]
+
+try:
+    import bleach
+except ImportError:
+    bleach = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from .services import ServiceHealth
@@ -161,22 +166,14 @@ class MCPClient:
             if not isinstance(text, str):
                 return text
 
-            # Remove script tags
-            text = re.sub(
-                r"<script[^>]*>.*?</script>",
-                "",
-                text,
-                flags=re.IGNORECASE | re.DOTALL,
-            )
-            text = re.sub(r"<script[^>]*>", "", text, flags=re.IGNORECASE)
+            if bleach:
+                # Use bleach to strip all HTML tags, attributes, and styles.
+                # This is the safest way to prevent XSS.
+                text = bleach.clean(text, tags=[], attributes={}, strip=True)
 
-            # Remove javascript: URLs
+            # bleach.clean doesn't handle javascript: URIs that are not in an
+            # href attribute, so we remove them explicitly as a safeguard.
             text = re.sub(r"javascript:", "", text, flags=re.IGNORECASE)
-
-            # Remove other dangerous patterns
-            text = re.sub(
-                r"on\w+\s*=", "", text, flags=re.IGNORECASE
-            )  # Event handlers
 
             return text
 
@@ -193,7 +190,7 @@ class MCPClient:
             else:
                 return data
 
-        return sanitize_dict(response)  # type: ignore[no-any-return]
+        return cast(Dict[str, Any], sanitize_dict(response))
 
     def _check_rate_limit(self) -> None:
         """Check and enforce rate limiting."""
