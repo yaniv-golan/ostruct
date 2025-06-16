@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, Union
+from urllib.parse import urlparse
 
 from openai import AsyncOpenAI, OpenAIError
 from openai_model_registry import ModelRegistry
@@ -1138,7 +1139,8 @@ async def execute_model(
 
             # Check for Azure OpenAI endpoint guard-rail
             api_base = os.getenv("OPENAI_API_BASE", "")
-            if "azure.com" in api_base.lower():
+            hostname = urlparse(api_base).hostname or ""
+            if hostname.endswith("azure.com"):
                 logger.warning(
                     "Web search is not currently supported or may be unreliable with Azure OpenAI endpoints and has been disabled."
                 )
