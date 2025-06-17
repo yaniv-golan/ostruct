@@ -88,8 +88,8 @@ Specify minimum coverage requirements in your command:
 
 ```bash
 ostruct run prompts/task.j2 schemas/test_cases.json \
-  -d code path/to/your/code \
-  -R \
+  --dir code path/to/your/code \
+  --recursive \
   --sys-file prompts/system.txt \
   -V framework=pytest \
   -V min_coverage=80
@@ -101,8 +101,8 @@ Configure what counts as a coverage gap:
 
 ```bash
 ostruct run prompts/task.j2 schemas/test_cases.json \
-  -d code path/to/your/code \
-  -R \
+  --dir code path/to/your/code \
+  --recursive \
   --sys-file prompts/system.txt \
   -V framework=pytest \
   -V min_cases_per_function=2 \
@@ -153,8 +153,8 @@ jobs:
       - name: Generate Tests
         run: |
           ostruct run prompts/task.j2 schemas/test_cases.json \
-            -d code . \
-            -R \
+            --dir code . \
+            --recursive \
             --sys-file prompts/system.txt \
             -V framework=pytest
       - name: Run Generated Tests
@@ -171,7 +171,7 @@ repos:
     hooks:
       - id: generate-tests
         name: Generate Tests
-        entry: ostruct run prompts/task.j2 schemas/test_cases.json -d code . -R --sys-file prompts/system.txt -V framework=pytest
+        entry: ostruct run prompts/task.j2 schemas/test_cases.json --dir code . --recursive --sys-file prompts/system.txt -V framework=pytest
         language: python
         files: \.py$
 ```
@@ -184,8 +184,8 @@ Configure mock data generation:
 
 ```bash
 ostruct run prompts/task.j2 schemas/test_cases.json \
-  -d code path/to/your/code \
-  -R \
+  --dir code path/to/your/code \
+  --recursive \
   --sys-file prompts/system.txt \
   -V framework=pytest \
   -V mock_config='{"database": "in_memory", "apis": "mock_responses"}'

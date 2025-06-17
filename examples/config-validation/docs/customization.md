@@ -22,8 +22,8 @@ This guide explains how to customize the configuration validation process for yo
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs /path/to/configs \
-     -R \
+     --dir configs /path/to/configs \
+     --recursive \
      --sys-file prompts/system.txt \
      -J custom_patterns='["^service_", "^env_"]'
    ```
@@ -32,8 +32,8 @@ This guide explains how to customize the configuration validation process for yo
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -d configs examples/basic \
-     -R \
+     --dir configs examples/basic \
+     --recursive \
      --sys-file prompts/system.txt \
      -J custom_patterns='["^service_", "^env_"]'
    ```
@@ -53,8 +53,8 @@ Generic pattern:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs /path/to/configs \
-  -R \
+  --dir configs /path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   -V environment=development \
   -V allow_local_urls=true \
@@ -65,8 +65,8 @@ Ready to run example:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs examples/basic \
-  -R \
+  --dir configs examples/basic \
+  --recursive \
   --sys-file prompts/system.txt \
   -V environment=development \
   -V allow_local_urls=true \
@@ -79,8 +79,8 @@ Generic pattern:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs /path/to/configs \
-  -R \
+  --dir configs /path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   -V environment=production \
   -V require_ssl=true \
@@ -91,8 +91,8 @@ Ready to run example:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs examples/intermediate \
-  -R \
+  --dir configs examples/intermediate \
+  --recursive \
   --sys-file prompts/system.txt \
   -V environment=production \
   -V require_ssl=true \
@@ -126,8 +126,8 @@ Generic pattern:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs /path/to/configs \
-  -R \
+  --dir configs /path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   --output-file custom_format.json \
   -V format=detailed
@@ -137,8 +137,8 @@ Ready to run example:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs examples/basic \
-  -R \
+  --dir configs examples/basic \
+  --recursive \
   --sys-file prompts/system.txt \
   --output-file basic_validation.json \
   -V format=detailed
@@ -177,8 +177,8 @@ Generic pattern:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs /path/to/configs \
-  -R \
+  --dir configs /path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   -V cross_service=true \
   -J service_map='{"service1": "path1", "service2": "path2"}'
@@ -188,8 +188,8 @@ Ready to run example:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs examples/advanced/services \
-  -R \
+  --dir configs examples/advanced/services \
+  --recursive \
   --sys-file prompts/system.txt \
   -V cross_service=true \
   -J service_map='{"app": "app.yaml", "db": "db.yaml", "cache": "cache.yaml"}'
@@ -212,8 +212,8 @@ Generic pattern:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs /path/to/configs \
-  -R \
+  --dir configs /path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   -V enable_templates=true \
   -J template_vars='{"env": "prod", "region": "us-west"}'
@@ -223,8 +223,8 @@ Ready to run example:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs examples/advanced/services \
-  -R \
+  --dir configs examples/advanced/services \
+  --recursive \
   --sys-file prompts/system.txt \
   -V enable_templates=true \
   -J template_vars='{"env": "prod", "region": "us-west"}'
@@ -297,8 +297,8 @@ To use custom validation patterns:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs path/to/configs \
-  -R \
+  --dir configs path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   -V custom_patterns='["^service_", "^env_"]'
 ```
@@ -309,8 +309,8 @@ Development environment:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs path/to/configs \
-  -R \
+  --dir configs path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   -V environment=development
 ```
@@ -319,8 +319,8 @@ Production environment:
 
 ```bash
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -d configs path/to/configs \
-  -R \
+  --dir configs path/to/configs \
+  --recursive \
   --sys-file prompts/system.txt \
   -V environment=production
 ```
