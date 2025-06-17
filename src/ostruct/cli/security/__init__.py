@@ -19,6 +19,7 @@ from .errors import (
 from .normalization import normalize_path
 from .safe_joiner import safe_join
 from .security_manager import SecurityManager
+from .types import PathSecurity
 
 __all__ = [
     "normalize_path",
@@ -29,4 +30,5 @@ __all__ = [
     "DirectoryNotFoundError",
     "SecurityErrorReasons",
     "SecurityManager",
+    "PathSecurity",
 ]

@@ -9,19 +9,23 @@ def quick_reference() -> None:
     quick_ref = """
 🚀 OSTRUCT QUICK REFERENCE
 
-📁 FILE ROUTING:
-  -ft FILE    📄 Template access only       (config files, small data)
-  -fc FILE    💻 Code Interpreter upload    (data files, scripts)
-  -fs FILE    🔍 File Search vector store   (documents, manuals)
+📎 NEW ATTACHMENT SYSTEM:
+  --file alias file.txt                     📄 Template access (default target)
+  --file ci:data file.csv                   💻 Code Interpreter upload
+  --file fs:docs file.pdf                   🔍 File Search vector store
+  --file prompt:config config.yaml         📄 Template access (explicit)
 
-  -dt DIR     📁 Template directory         (config dirs, reference data)
-  -dc DIR     📂 Code execution directory   (datasets, code repos)
-  -ds DIR     📁 Search directory           (documentation, knowledge)
+  --dir alias ./src                         📁 Directory attachment (template)
+  --dir ci:data ./datasets                  📂 Code execution directory
+  --dir fs:docs ./documentation             📁 Search directory
 
-🔄 ADVANCED ROUTING:
-  --file-for code-interpreter data.csv      Single tool, single file
-  --file-for file-search docs.pdf           Single tool, single file
-  --file-for code-interpreter shared.json --file-for file-search shared.json   Multi-tool routing
+🔄 MULTI-TOOL ROUTING:
+  --file ci,fs:shared data.csv              Share file between Code Interpreter and File Search
+  --file prompt,ci:config settings.json    Make file available in template AND Code Interpreter
+
+📝 FILE COLLECTIONS:
+  --collect all:files @filelist.txt         📄 Attach multiple files from list
+  --collect ci:data @datasets.txt           💻 Upload file collection to Code Interpreter
 
 🏷️  VARIABLES:
   -V name=value                             Simple string variables

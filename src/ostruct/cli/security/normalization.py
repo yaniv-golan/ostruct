@@ -68,7 +68,9 @@ _BACKSLASH_PATTERN = re.compile(r"\\")
 _MULTIPLE_SLASH_PATTERN = re.compile(r"/+")
 
 
-def normalize_path(path: Union[str, Path]) -> Path:
+def normalize_path(
+    path: Union[str, Path], allow_traversal: bool = False
+) -> Path:
     """Normalize a path string with security checks.
 
     This function:
@@ -94,6 +96,7 @@ def normalize_path(path: Union[str, Path]) -> Path:
 
     Args:
         path: A string or Path object representing a file path.
+        allow_traversal: If True, allow ".." components in paths (for explicitly allowed files).
 
     Returns:
         A pathlib.Path object for the normalized absolute path.
@@ -132,14 +135,15 @@ def normalize_path(path: Union[str, Path]) -> Path:
     if match := _UNICODE_SAFETY_PATTERN.search(normalized):
         matched_text = match.group(0)
         if ".." in matched_text:
-            raise PathSecurityError(
-                "Directory traversal not allowed",
-                path=path_str,
-                context={
-                    "reason": SecurityErrorReasons.PATH_TRAVERSAL,
-                    "matched": matched_text,
-                },
-            )
+            if not allow_traversal:
+                raise PathSecurityError(
+                    "Directory traversal not allowed",
+                    path=path_str,
+                    context={
+                        "reason": SecurityErrorReasons.PATH_TRAVERSAL,
+                        "matched": matched_text,
+                    },
+                )
         else:
             raise PathSecurityError(
                 "Path contains unsafe characters",

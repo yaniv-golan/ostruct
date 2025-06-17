@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Any
+from typing import Any, cast
 
 import click
 
@@ -57,26 +57,26 @@ def run(
     schema_file: str,
     **kwargs: Any,
 ) -> None:
-    """Run structured output generation with multi-tool integration.
+    """Run structured output generation with modern file attachment system.
 
     \b
-    📁 FILE ROUTING OPTIONS:
+    📁 MODERN FILE ATTACHMENT SYSTEM:
 
-    Template Access Only:
-      -ft, --file-for-template FILE     Files available in template only
-      -dt, --dir-for-template DIR       Directories for template access
+    Template Access (default):
+      --file data file.txt              File available in template only
+      --dir config ./config             Directory for template access
 
     Code Interpreter (execution & analysis):
-      -fc, --file-for-code-interpreter FILE    Upload files for code execution
-      -dc, --dir-for-code-interpreter DIR      Upload directories for analysis
+      --file ci:data data.csv           Upload file for code execution
+      --dir ci:datasets ./data          Upload directory for analysis
 
     File Search (document retrieval):
-      -fs, --file-for-file-search FILE         Upload files for vector search
-      -ds, --dir-for-search DIR                Upload directories for search
+      --file fs:docs manual.pdf         Upload file for vector search
+      --dir fs:knowledge ./docs         Upload directory for search
 
-    Advanced Routing:
-      --file-for TOOL PATH              Route files to specific tools
-                                        Example: --file-for code-interpreter data.json
+    Multi-target routing:
+      --file ci,fs:shared data.json     Share file between multiple tools
+      --collect all:files @file-list.txt Process files from list
 
     \b
     🔧 TOOL INTEGRATION:
@@ -91,11 +91,11 @@ def run(
     Basic usage:
       ostruct run template.j2 schema.json -V name=value
 
-    Multi-tool explicit routing:
-      ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf -ft config.yaml
+    Modern file attachment:
+      ostruct run analysis.j2 schema.json --file ci:data data.csv --file fs:docs manual.pdf --file config config.yaml
 
-    Legacy compatibility (still works):
-      ostruct run template.j2 schema.json -f config main.py -d src ./src
+    Multi-tool integration:
+      ostruct run workflow.j2 schema.json --file ci,fs:shared data.json --dir prompt:config ./settings
 
     \b
     Arguments:
@@ -112,6 +112,18 @@ def run(
         # Add all kwargs to params (type ignore for dynamic key assignment)
         for k, v in kwargs.items():
             params[k] = v  # type: ignore[literal-required]
+
+        # UNIFIED GUIDELINES: Validate JSON flag combinations
+        if kwargs.get("dry_run_json") and not kwargs.get("dry_run"):
+            raise click.BadOptionUsage(
+                "--dry-run-json", "--dry-run-json requires --dry-run"
+            )
+
+        if kwargs.get("run_summary_json") and kwargs.get("dry_run"):
+            raise click.BadOptionUsage(
+                "--run-summary-json",
+                "--run-summary-json cannot be used with --dry-run",
+            )
 
         # Process tool toggle flags (Step 2: Conflict guard & normalisation)
         from typing import Tuple
@@ -157,6 +169,165 @@ def run(
 
         if params.get("model") is None:
             params["model"] = config.get_model_default()
+
+        # UNIFIED GUIDELINES: Perform basic validation even in dry-run mode
+        if kwargs.get("dry_run"):
+            # Import validation functions
+            from ..validators import validate_inputs
+
+            try:
+                # Perform the same input validation as live runs (async)
+                logger.debug("Performing dry-run validation")
+
+                # Run async validation
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    validation_result = loop.run_until_complete(
+                        validate_inputs(params)
+                    )
+                    logger.debug("Dry-run validation passed")
+
+                    # Extract components for template rendering validation
+                    (
+                        security_manager,
+                        task_template,
+                        schema,
+                        template_context,
+                        env,
+                        template_path,
+                    ) = validation_result
+
+                    # Perform template rendering validation to catch binary file access errors
+                    logger.debug("Performing template rendering validation")
+                    from ..template_processor import process_templates
+
+                    system_prompt, user_prompt = loop.run_until_complete(
+                        process_templates(
+                            params,
+                            task_template,
+                            template_context,
+                            env,
+                            template_path,
+                        )
+                    )
+                    logger.debug("Template rendering validation passed")
+
+                finally:
+                    loop.close()
+
+            except Exception as e:
+                # Re-raise validation errors with proper exit codes
+                logger.error(f"Dry-run validation failed: {e}")
+                handle_error(e)
+                if hasattr(e, "exit_code"):
+                    ctx.exit(int(e.exit_code))
+                else:
+                    ctx.exit(1)
+
+            # Import plan assembly after validation passes
+            # Process attachments for the dry-run plan
+            from ..attachment_processor import (
+                AttachmentSpec,
+                ProcessedAttachments,
+            )
+            from ..plan_assembly import PlanAssembler
+            from ..plan_printing import PlanPrinter
+
+            processed_attachments = ProcessedAttachments()
+
+            # Process --file attachments
+            files = kwargs.get("attaches", [])
+            for file_spec in files:
+                spec = AttachmentSpec(
+                    alias=file_spec["alias"],
+                    path=file_spec["path"],
+                    targets=file_spec["targets"],
+                    recursive=file_spec.get("recursive", False),
+                    pattern=file_spec.get("pattern"),
+                )
+                processed_attachments.alias_map[spec.alias] = spec
+
+                # Route to appropriate lists based on targets
+                if "prompt" in spec.targets:
+                    processed_attachments.template_files.append(spec)
+                if "code-interpreter" in spec.targets or "ci" in spec.targets:
+                    processed_attachments.ci_files.append(spec)
+                if "file-search" in spec.targets or "fs" in spec.targets:
+                    processed_attachments.fs_files.append(spec)
+
+            # Process --dir attachments
+            dirs = kwargs.get("dirs", [])
+            for dir_spec in dirs:
+                spec = AttachmentSpec(
+                    alias=dir_spec["alias"],
+                    path=dir_spec["path"],
+                    targets=dir_spec["targets"],
+                    recursive=dir_spec.get("recursive", True),
+                    pattern=dir_spec.get("pattern"),
+                )
+                processed_attachments.alias_map[spec.alias] = spec
+
+                # Route to appropriate lists based on targets
+                if "prompt" in spec.targets:
+                    processed_attachments.template_dirs.append(spec)
+                if "code-interpreter" in spec.targets or "ci" in spec.targets:
+                    processed_attachments.ci_dirs.append(spec)
+                if "file-search" in spec.targets or "fs" in spec.targets:
+                    processed_attachments.fs_dirs.append(spec)
+
+            # Use PlanAssembler to build consistent plan
+            plan = PlanAssembler.build_execution_plan(
+                processed_attachments=processed_attachments,
+                template_path=task_template,
+                schema_path=schema_file,
+                variables=ctx.obj.get("vars", {}) if ctx.obj else {},
+                security_mode=kwargs.get("path_security", "permissive"),
+                model=params.get("model", "gpt-4o"),
+                allowed_paths=kwargs.get("allow_dir", [])
+                + kwargs.get("allow_file", []),
+            )
+
+            if kwargs.get("dry_run_json"):
+                # Output JSON to stdout
+                click.echo(json.dumps(plan, indent=2))
+            else:
+                # Output human-readable to stdout
+                PlanPrinter.human(plan)
+
+                # Add debug output for tool states if debug mode is enabled
+                if kwargs.get("debug"):
+                    click.echo("\n--- DEBUG TOOL STATES ---")
+                    debug_enabled_tools = cast(
+                        set[str], params.get("_enabled_tools", set())
+                    )
+                    debug_disabled_tools = cast(
+                        set[str], params.get("_disabled_tools", set())
+                    )
+
+                    # Check web search state
+                    web_search_enabled = "web-search" in debug_enabled_tools
+                    if "web-search" in debug_disabled_tools:
+                        web_search_enabled = False
+                    click.echo(
+                        f"web_search_enabled: bool ({web_search_enabled})"
+                    )
+
+                    # Check code interpreter state
+                    ci_enabled = "code-interpreter" in debug_enabled_tools
+                    if "code-interpreter" in debug_disabled_tools:
+                        ci_enabled = False
+                    # Also enable if CI attachments present
+                    if plan.get("tools", {}).get("code_interpreter", False):
+                        ci_enabled = True
+                    click.echo(
+                        f"code_interpreter_enabled: bool ({ci_enabled})"
+                    )
+
+                # Add backward compatibility message
+                click.echo("\nDry run completed successfully")
+
+            ctx.exit(0)
 
         # Run the async function synchronously
         loop = asyncio.new_event_loop()

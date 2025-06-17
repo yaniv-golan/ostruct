@@ -5,6 +5,7 @@ We isolate this code here and provide proper type annotations for Click's
 decorator-based API.
 """
 
+import json
 from typing import Any, Callable, TypeVar, Union, cast
 
 import click
@@ -16,11 +17,7 @@ from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
     SystemPromptError,
     TaskTemplateVariableError,
 )
-from ostruct.cli.validators import (
-    validate_json_variable,
-    validate_name_path_pair,
-    validate_variable,
-)
+from ostruct.cli.validators import validate_json_variable, validate_variable
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -77,6 +74,54 @@ def parse_feature_flags(
             raise click.BadParameter(f"Unknown feature: {feature}")
 
     return parsed
+
+
+def print_help_json(
+    ctx: click.Context, param: click.Parameter, value: Any
+) -> None:
+    """Print command help in JSON format using Click's built-in info dict.
+
+    Args:
+        ctx: Click context
+        param: Click parameter
+        value: Parameter value
+    """
+    if not value or ctx.resilient_parsing:
+        return
+
+    # Use Click's built-in get_info_dict() method per UNIFIED GUIDELINES
+    help_data = ctx.get_info_dict()  # type: ignore[attr-defined]
+
+    # Add minimal ostruct-specific metadata
+    help_data.update(
+        {
+            "ostruct_version": __version__,
+            "attachment_syntax": {
+                "format": "[targets:]alias path",
+                "targets": [
+                    "prompt",
+                    "code-interpreter",
+                    "ci",
+                    "file-search",
+                    "fs",
+                ],
+                "examples": [
+                    "--file data file.txt",
+                    "--file ci:analysis data.csv",
+                    "--dir fs:docs ./documentation",
+                ],
+            },
+            "json_output_options": {
+                "dry_run_json": "Output execution plan as JSON with --dry-run",
+                "run_summary_json": "Output run summary as JSON to stderr",
+                "help_json": "Output this help as JSON",
+            },
+        }
+    )
+
+    # Output to stdout and exit
+    click.echo(json.dumps(help_data, indent=2))
+    ctx.exit(0)
 
 
 def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
@@ -165,168 +210,6 @@ def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
     )(cmd)
 
     # Final cast to Command for return type
-    return cast(Command, cmd)
-
-
-def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add file-related CLI options."""
-    cmd: Any = f if isinstance(f, Command) else f
-
-    cmd = click.option(
-        "-f",
-        "--file",
-        "files",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""[LEGACY] Associate a file with a variable name for template access only.
-        The file will be available in your template as the specified variable.
-        For explicit tool routing, use -ft, -fc, or -fs instead.
-        Example: -f code main.py -f test test_main.py""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "-d",
-        "--dir",
-        "dir",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <DIR>",
-        callback=validate_name_path_pair,
-        help="""[LEGACY] Associate a directory with a variable name for template access only.
-        All files in the directory will be available in your template. Use -R for recursive scanning.
-        For explicit tool routing, use -dt, -dc, or -ds instead.
-        Example: -d src ./src""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # Template files with auto-naming ONLY (single argument)
-    cmd = click.option(
-        "-ft",
-        "--file-for-template",
-        "template_files",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""📄 [TEMPLATE] Files for template access only (auto-naming). These files will be available
-        in your template but will not be uploaded to any tools. Use for configuration files,
-        small data files, or any content you want to reference in templates.
-        Format: -ft path (auto-generates variable name from filename).
-        Access file content: {{ variable.content }} (not just {{ variable }})
-        Example: -ft config.yaml → config_yaml variable, use {{ config_yaml.content }}""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    # Template files with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--fta",
-        "--file-for-template-alias",
-        "template_file_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📄 [TEMPLATE] Files for template with custom aliases. Use this for reusable
-        templates where you need stable variable names independent of file paths.
-        Format: --fta name path (supports tab completion for paths).
-        Access file content: {{ name.content }} (not just {{ name }})
-        Example: --fta config_data config.yaml → use {{ config_data.content }}""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "-dt",
-        "--dir-for-template",
-        "template_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📁 [TEMPLATE] Directories for template access only (auto-naming). All files will be available
-        in your template but will not be uploaded to any tools. Use for project configurations,
-        reference data, or any directory content you want accessible in templates.
-        Format: -dt path (auto-generates variable name from directory name).
-        Example: -dt ./config -dt ./data""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # Template directories with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--dta",
-        "--dir-for-template-alias",
-        "template_dir_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📁 [TEMPLATE] Directories for template with custom aliases. Use this for reusable
-        templates where you need stable variable names independent of directory paths.
-        Format: --dta name path (supports tab completion for paths).
-        Example: --dta config_data ./settings --dta source_code ./src""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "--file-for",
-        "tool_files",
-        nargs=2,
-        multiple=True,
-        metavar="TOOL PATH",
-        help="""🔄 [ADVANCED] Route files to specific tools. Use this for precise control
-        over which tools receive which files. Supports tab completion for both tool names
-        and file paths.
-        Format: --file-for TOOL PATH
-        Examples:
-          --file-for code-interpreter analysis.py
-          --file-for file-search docs.pdf
-          --file-for template config.yaml""",
-    )(cmd)
-
-    cmd = click.option(
-        "-p",
-        "--pattern",
-        "patterns",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATTERN>",
-        help="""[LEGACY] Associate a glob pattern with a variable name. Matching files will be
-        available in your template. Use -R for recursive matching.
-        Example: -p logs '*.log'""",
-    )(cmd)
-
-    cmd = click.option(
-        "-R",
-        "--recursive",
-        is_flag=True,
-        help="Process directories and patterns recursively",
-    )(cmd)
-
-    cmd = click.option(
-        "--base-dir",
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""Base directory for resolving relative paths. All file operations will be
-        relative to this directory. Defaults to current directory.""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "-A",
-        "--allow",
-        "allowed_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""Add an allowed directory for security. Files must be within allowed
-        directories. Can be specified multiple times.""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "--allowed-dir-file",
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""File containing allowed directory paths, one per line. Lines starting
-        with # are treated as comments.""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
     return cast(Command, cmd)
 
 
@@ -473,6 +356,21 @@ def output_options(f: Union[Command, Callable[..., Any]]) -> Command:
         template rendering and validation.""",
     )(cmd)
 
+    # JSON output options per unified guidelines
+    cmd = click.option(
+        "--dry-run-json",
+        is_flag=True,
+        help="""Output execution plan as JSON (requires --dry-run).
+        Outputs structured execution plan to stdout for programmatic consumption.""",
+    )(cmd)
+
+    cmd = click.option(
+        "--run-summary-json",
+        is_flag=True,
+        help="""Output run summary as JSON to stderr (cannot be used with --dry-run).
+        Provides machine-readable execution summary after live runs.""",
+    )(cmd)
+
     return cast(Command, cmd)
 
 
@@ -543,68 +441,9 @@ def mcp_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
-def code_interpreter_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add Code Interpreter CLI options."""
+def feature_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add feature flag and configuration options (without legacy file routing)."""
     cmd: Any = f if isinstance(f, Command) else f
-
-    # Code interpreter files with auto-naming ONLY (single argument)
-    cmd = click.option(
-        "-fc",
-        "--file-for-code-interpreter",
-        "code_interpreter_files",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""💻 [CODE INTERPRETER] Files to upload for code execution and analysis (auto-naming).
-        Perfect for data files (CSV, JSON), code files (Python, R), or any files that
-        need computational processing. Files are uploaded to an isolated execution environment.
-        Format: -fc path (auto-generates variable name from filename).
-        Example: -fc data.csv → data_csv variable, -fc analysis.py → analysis_py variable""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    # Code interpreter files with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--fca",
-        "--file-for-code-interpreter-alias",
-        "code_interpreter_file_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""💻 [CODE INTERPRETER] Files for code execution with custom aliases.
-        Format: --fca name path (supports tab completion for paths).
-        Example: --fca dataset src/data.csv --fca script analysis.py""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "-dc",
-        "--dir-for-code-interpreter",
-        "code_interpreter_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📂 [CODE INTERPRETER] Directories to upload for code execution (auto-naming). All files
-        in the directory will be uploaded to the execution environment. Use for datasets,
-        code repositories, or any directory that needs computational processing.
-        Format: -dc path (auto-generates variable name from directory name).
-        Example: -dc ./data -dc ./scripts""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # Code interpreter directories with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--dca",
-        "--dir-for-code-interpreter-alias",
-        "code_interpreter_dir_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📂 [CODE INTERPRETER] Directories for code execution with custom aliases.
-        Format: --dca name path (supports tab completion for paths).
-        Example: --dca dataset ./data --dca source_code ./src""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
 
     cmd = click.option(
         "--code-interpreter-download-dir",
@@ -652,68 +491,11 @@ def code_interpreter_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
-def file_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add File Search CLI options."""
+def file_search_config_options(
+    f: Union[Command, Callable[..., Any]]
+) -> Command:
+    """Add File Search configuration options (without legacy file routing)."""
     cmd: Any = f if isinstance(f, Command) else f
-
-    # File search files with auto-naming ONLY (single argument)
-    cmd = click.option(
-        "-fs",
-        "--file-for-search",
-        "file_search_files",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""🔍 [FILE SEARCH] Files to upload for semantic vector search (auto-naming). Perfect for
-        documents (PDF, TXT, MD), manuals, knowledge bases, or any text content you want to
-        search through. Files are processed into a searchable vector store.
-        Format: -fs path (auto-generates variable name from filename).
-        Example: -fs docs.pdf → docs_pdf variable, -fs manual.txt → manual_txt variable""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    # File search files with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--fsa",
-        "--file-for-search-alias",
-        "file_search_file_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""🔍 [FILE SEARCH] Files for search with custom aliases.
-        Format: --fsa name path (supports tab completion for paths).
-        Example: --fsa manual src/docs.pdf --fsa knowledge base.txt""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "-ds",
-        "--dir-for-search",
-        "file_search_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📁 [FILE SEARCH] Directories to upload for semantic search (auto-naming). All files in the
-        directory will be processed into a searchable vector store. Use for documentation
-        directories, knowledge bases, or any collection of searchable documents.
-        Format: -ds path (auto-generates variable name from directory name).
-        Example: -ds ./docs -ds ./manuals""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # File search directories with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--dsa",
-        "--dir-for-search-alias",
-        "file_search_dir_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📁 [FILE SEARCH] Directories for search with custom aliases.
-        Format: --dsa name path (supports tab completion for paths).
-        Example: --dsa documentation ./docs --dsa knowledge_base ./manuals""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
 
     cmd = click.option(
         "--file-search-vector-store-name",
@@ -858,24 +640,237 @@ def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
+def security_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add path security and allowlist CLI options."""
+    cmd: Any = f if isinstance(f, Command) else f
+
+    cmd = click.option(
+        "-S",
+        "--path-security",
+        type=click.Choice(
+            ["permissive", "warn", "strict"], case_sensitive=False
+        ),
+        help="🔒 Path security mode: permissive (allow all), warn (log warnings), strict (allowlist only)",
+    )(cmd)
+
+    cmd = click.option(
+        "--allow",
+        "allow_dir",
+        multiple=True,
+        type=click.Path(exists=True, file_okay=False),
+        help="🗂️  Allow directory for strict/warn mode (repeatable)",
+    )(cmd)
+
+    cmd = click.option(
+        "--allow-file",
+        "allow_file",
+        multiple=True,
+        type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+        help="📄 Allow specific file for strict/warn mode (repeatable)",
+    )(cmd)
+
+    cmd = click.option(
+        "--allow-list",
+        "allow_list",
+        multiple=True,
+        type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+        help="📋 Allow paths from file list for strict/warn mode (repeatable)",
+    )(cmd)
+
+    return cast(Command, cmd)
+
+
+def help_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add help-related CLI options."""
+    cmd: Any = f if isinstance(f, Command) else f
+
+    cmd = click.option(
+        "--help-json",
+        is_flag=True,
+        callback=print_help_json,
+        expose_value=False,
+        is_eager=True,
+        help="📖 Output command help in JSON format for programmatic consumption",
+    )(cmd)
+
+    return cast(Command, cmd)
+
+
+def modern_file_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add modern file attachment options with target/alias syntax."""
+
+    cmd: Any = f if isinstance(f, Command) else f
+
+    # Import validation functions here to avoid circular imports
+    def validate_attachment_file(
+        ctx: click.Context, param: click.Parameter, value: Any
+    ) -> Any:
+
+        from .params import normalise_targets, validate_attachment_alias
+
+        if not value:
+            return []
+
+        result = []
+        for spec, path in value:
+            # Parse spec part: [targets:]alias
+            if ":" in spec:
+                # Check for Windows drive letter false positive
+                if len(spec) == 2 and spec[1] == ":" and spec[0].isalpha():
+                    prefix, alias = "prompt", spec
+                else:
+                    prefix, alias = spec.split(":", 1)
+            else:
+                prefix, alias = "prompt", spec
+
+            # Normalize targets
+            try:
+                targets = normalise_targets(prefix)
+            except click.BadParameter as e:
+                raise click.BadParameter(
+                    f"Invalid target(s) in '{prefix}' for {param.name}. {e}"
+                )
+
+            # Validate alias
+            try:
+                alias = validate_attachment_alias(alias)
+            except click.BadParameter as e:
+                raise click.BadParameter(
+                    f"Invalid alias for {param.name}: {e}"
+                )
+
+            result.append(
+                {
+                    "alias": alias,
+                    "path": path,
+                    "targets": targets,
+                    "recursive": False,
+                    "pattern": None,
+                }
+            )
+
+        return result
+
+    def validate_attachment_dir(
+        ctx: click.Context, param: click.Parameter, value: Any
+    ) -> Any:
+        return validate_attachment_file(ctx, param, value)
+
+    def validate_attachment_collect(
+        ctx: click.Context, param: click.Parameter, value: Any
+    ) -> Any:
+        if not value:
+            return []
+
+        result = []
+        for spec, path in value:
+            # Parse spec part: [targets:]alias
+            if ":" in spec:
+                if len(spec) == 2 and spec[1] == ":" and spec[0].isalpha():
+                    prefix, alias = "prompt", spec
+                else:
+                    prefix, alias = spec.split(":", 1)
+            else:
+                prefix, alias = "prompt", spec
+
+            # Handle collect @filelist syntax
+            processed_path = path
+            if path.startswith("@"):
+                filelist_path = path[1:]  # Remove @
+                if not filelist_path:
+                    raise click.BadParameter(
+                        f"Filelist path cannot be empty after @ for {param.name}"
+                    )
+                processed_path = ("@", filelist_path)
+
+            result.append(
+                {
+                    "alias": alias,
+                    "path": processed_path,
+                    "targets": set([prefix.lower()]),
+                    "recursive": False,
+                    "pattern": None,
+                }
+            )
+
+        return result
+
+    # Modern file attachment options
+    cmd = click.option(
+        "-F",
+        "--file",
+        "attaches",
+        multiple=True,
+        nargs=2,
+        callback=validate_attachment_file,
+        metavar="[TARGETS:]ALIAS PATH",
+        help="Attach file: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+    )(cmd)
+
+    cmd = click.option(
+        "-D",
+        "--dir",
+        "dirs",
+        multiple=True,
+        nargs=2,
+        callback=validate_attachment_dir,
+        metavar="[TARGETS:]ALIAS PATH",
+        help="Attach directory: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+    )(cmd)
+
+    cmd = click.option(
+        "-C",
+        "--collect",
+        "collects",
+        multiple=True,
+        nargs=2,
+        callback=validate_attachment_collect,
+        metavar="[TARGETS:]ALIAS @FILELIST",
+        help="Attach file collection: '[targets:]alias @file-list.txt'",
+    )(cmd)
+
+    cmd = click.option(
+        "--recursive",
+        is_flag=True,
+        help="Apply to last --dir/--collect",
+    )(cmd)
+
+    cmd = click.option(
+        "--pattern",
+        metavar="GLOB",
+        help="Apply to last --dir/--collect (replaces legacy --glob)",
+    )(cmd)
+
+    return cast(Command, cmd)
+
+
 def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Apply all CLI options to a command."""
+    """Apply all CLI options to a command.
+
+    Uses modern file attachment system instead of legacy options.
+    """
     cmd: Any = f if isinstance(f, Command) else f
 
     # Apply option groups in order
-    cmd = file_options(cmd)
     cmd = variable_options(cmd)
     cmd = model_options(cmd)
     cmd = system_prompt_options(cmd)
     cmd = output_options(cmd)
     cmd = api_options(cmd)
     cmd = mcp_options(cmd)
-    cmd = code_interpreter_options(cmd)
-    cmd = file_search_options(cmd)
+    cmd = modern_file_options(cmd)  # Modern file attachment system
+    cmd = security_options(cmd)  # Path security and allowlist options
+    cmd = feature_options(
+        cmd
+    )  # Feature flags and config (no legacy file options)
+    cmd = file_search_config_options(
+        cmd
+    )  # File search config (no legacy file options)
     cmd = web_search_options(cmd)
     cmd = tool_toggle_options(cmd)
     cmd = debug_options(cmd)
     cmd = debug_progress_options(cmd)
+    cmd = help_options(cmd)
 
     return cast(Command, cmd)
 
