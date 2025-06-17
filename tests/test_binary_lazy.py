@@ -29,9 +29,9 @@ class TestBinaryLazyLoading:
         fs.create_file("/tmp/schema.json", contents=json.dumps(schema_content))
 
         # Create template that only accesses metadata (not content)
-        # Note: -fc test.bin creates variable "test_bin" as FileInfoList
-        # For single files, we can access .path directly or use [0].name
-        template_content = "Binary file: {{ test_bin[0].name }}"
+        # Note: --file ci:test_bin test.bin creates variable "test_bin" as LazyFileContent
+        # For single files, we can access .name directly
+        template_content = "Binary file: {{ test_bin.name }}"
         fs.create_file("/tmp/template.j2", contents=template_content)
 
         # Change to temp directory
@@ -44,7 +44,8 @@ class TestBinaryLazyLoading:
                 "run",
                 "template.j2",
                 "schema.json",
-                "-fc",
+                "--file",
+                "ci:test_bin",
                 "test.bin",
                 "--dry-run",
             ],
@@ -77,7 +78,7 @@ class TestBinaryLazyLoading:
         fs.create_file("/tmp/schema.json", contents=json.dumps(schema_content))
 
         # Create template that tries to access content
-        template_content = "Binary content: {{ test_bin[0].content }}"
+        template_content = "Binary content: {{ test_bin.content }}"
         fs.create_file("/tmp/template.j2", contents=template_content)
 
         # Change to temp directory
@@ -90,7 +91,8 @@ class TestBinaryLazyLoading:
                 "run",
                 "template.j2",
                 "schema.json",
-                "-fc",
+                "--file",
+                "ci:test_bin",
                 "test.bin",
                 "--dry-run",
             ],
@@ -128,8 +130,8 @@ class TestBinaryLazyLoading:
         fs.create_file("/tmp/schema.json", contents=json.dumps(schema_content))
 
         # Create template that accesses content
-        # Note: test.txt becomes test_txt variable as FileInfoList
-        template_content = "Text content: {{ test_txt[0].content }}"
+        # Note: test.txt becomes test_txt variable as LazyFileContent
+        template_content = "Text content: {{ test_txt.content }}"
         fs.create_file("/tmp/template.j2", contents=template_content)
 
         # Change to temp directory
@@ -142,7 +144,8 @@ class TestBinaryLazyLoading:
                 "run",
                 "template.j2",
                 "schema.json",
-                "-fc",
+                "--file",
+                "ci:test_txt",
                 "test.txt",
                 "--dry-run",
             ],
@@ -173,10 +176,8 @@ class TestBinaryLazyLoading:
         fs.create_file("/tmp/schema.json", contents=json.dumps(schema_content))
 
         # Create template that only accesses metadata
-        # Note: binary.bin becomes binary_bin, text.txt becomes text_txt as FileInfoList
-        template_content = (
-            "Files: {{ binary_bin[0].name }}, {{ text_txt[0].name }}"
-        )
+        # Note: binary.bin becomes binary_bin, text.txt becomes text_txt as LazyFileContent
+        template_content = "Files: {{ binary_bin.name }}, {{ text_txt.name }}"
         fs.create_file("/tmp/template.j2", contents=template_content)
 
         # Change to temp directory
@@ -189,9 +190,11 @@ class TestBinaryLazyLoading:
                 "run",
                 "template.j2",
                 "schema.json",
-                "-fc",
+                "--file",
+                "ci:binary_bin",
                 "binary.bin",
-                "-fc",
+                "--file",
+                "ci:text_txt",
                 "text.txt",
                 "--dry-run",
             ],

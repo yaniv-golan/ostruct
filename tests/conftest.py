@@ -278,7 +278,11 @@ def setup_test_fs(
     # Only create directories if the test uses fixtures that need them
     needs_dirs = any(
         name in request.fixturenames
-        for name in ["security_manager", "cli_runner"]
+        for name in [
+            "security_manager",
+            "strict_security_manager",
+            "cli_runner",
+        ]
     )
 
     if needs_dirs:
@@ -563,6 +567,23 @@ def security_manager(fs: FakeFilesystem) -> SecurityManager:
         A SecurityManager instance configured for testing
     """
     return MockSecurityManager()
+
+
+@pytest.fixture
+def strict_security_manager(fs: FakeFilesystem) -> SecurityManager:
+    """Create a security manager for testing with STRICT mode.
+
+    Args:
+        fs: The pyfakefs fixture
+
+    Returns:
+        A SecurityManager instance configured for testing with STRICT security mode
+    """
+    from ostruct.cli.security.types import PathSecurity
+
+    sm = MockSecurityManager()
+    sm.security_mode = PathSecurity.STRICT
+    return sm
 
 
 @pytest.fixture(autouse=True)

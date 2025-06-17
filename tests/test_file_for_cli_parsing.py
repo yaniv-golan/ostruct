@@ -158,7 +158,7 @@ class TestFileForCLIParsing:
         """Test --file-for mixed with other routing options."""
         processor = ExplicitFileProcessor(Mock())
 
-        # Mix --file-for with -ft, -fc, -fs options
+        # Mix --file-for with -ft, -fc, --attach fs:docs options
         args: Dict[str, Any] = {
             "tool_files": [
                 ("template", "/explicit/config.yaml"),
