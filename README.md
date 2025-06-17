@@ -51,11 +51,11 @@ ostruct can be used for various scenarios, including:
 ### Automated Code Review with Multi-Tool Analysis
 
 ```bash
-# Traditional pattern matching
-ostruct run prompts/task.j2 schemas/code_review.json -p source "examples/security/*.py"
+# Template-only analysis (fast, cost-effective)
+ostruct run prompts/task.j2 schemas/code_review.json --collect source @file-list.txt
 
 # Enhanced with Code Interpreter for deeper analysis
-ostruct run prompts/task.j2 schemas/code_review.json -fc examples/security/ -fs documentation/
+ostruct run prompts/task.j2 schemas/code_review.json --file ci:code examples/security/ --file fs:docs documentation/
 ```
 
 Analyze code for security vulnerabilities, style issues, and performance problems. The enhanced version uses Code Interpreter for execution analysis and File Search for documentation context.
@@ -65,15 +65,15 @@ Analyze code for security vulnerabilities, style issues, and performance problem
 ```bash
 # Budget-friendly static analysis (recommended for most projects)
 ostruct run prompts/static_analysis.j2 schemas/scan_result.json \
-  -d code examples -R --sys-file prompts/system.txt
+  --dir code examples --pattern "*.py" --sys-file prompts/system.txt
 
 # Professional security analysis with Code Interpreter (best balance)
 ostruct run prompts/code_interpreter.j2 schemas/scan_result.json \
-  -dc examples --sys-file prompts/system.txt
+  --dir ci:code examples --sys-file prompts/system.txt
 
 # Comprehensive hybrid analysis for critical applications
 ostruct run prompts/hybrid_analysis.j2 schemas/scan_result.json \
-  -d code examples -R -dc examples --sys-file prompts/system.txt
+  --dir code examples --dir ci:analysis examples --sys-file prompts/system.txt
 ```
 
 **Three optimized approaches** for automated security vulnerability scanning:
@@ -89,8 +89,8 @@ Each approach finds the same core vulnerabilities but with different levels of d
 ```bash
 # Upload data for analysis and visualization
 ostruct run analysis.j2 schemas/analysis_result.json \
-  -fc sales_data.csv -fc customer_data.json \
-  -fs reports/ -ft config.yaml
+  --file ci:sales sales_data.csv --file ci:customers customer_data.json \
+  --dir fs:reports reports/ --file config config.yaml
 ```
 
 Perform sophisticated data analysis using Python execution, generate visualizations, and create comprehensive reports with document context.
@@ -100,11 +100,11 @@ Perform sophisticated data analysis using Python execution, generate visualizati
 ```bash
 # Traditional file comparison
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -f dev examples/basic/dev.yaml -f prod examples/basic/prod.yaml
+  --file dev examples/basic/dev.yaml --file prod examples/basic/prod.yaml
 
 # Enhanced with environment context
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -ft dev.yaml -ft prod.yaml -fs infrastructure_docs/
+  --file dev dev.yaml --file prod prod.yaml --dir fs:docs infrastructure_docs/
 ```
 
 Validate configuration files across environments with documentation context for better analysis and recommendations.
@@ -114,7 +114,7 @@ Oh, and also, among endless other use cases:
 ### Etymology Analysis
 
 ```bash
-ostruct run prompts/task.j2 schemas/etymology.json -ft examples/scientific.txt
+ostruct run prompts/task.j2 schemas/etymology.json --file text examples/scientific.txt
 ```
 
 Break down words into their components, showing their origins, meanings, and hierarchical relationships. Useful for linguistics, educational tools, and understanding terminology in specialized fields.
@@ -136,7 +136,7 @@ Break down words into their components, showing their origins, meanings, and hie
 - **File Search**: Vector-based document search and retrieval from uploaded files
 - **Web Search**: Real-time information retrieval and current data access via OpenAI's web search tool
 - **MCP Servers**: Connect to Model Context Protocol servers for extended functionality
-- **Explicit File Routing**: Route different files to specific tools for optimized processing
+- **Explicit Tool Targeting**: Route files to specific tools (prompt, code-interpreter, file-search) with precise control
 
 ### Advanced Features
 
@@ -214,7 +214,7 @@ docker run -it --rm \
   -v "$(pwd)":/app \
   -w /app \
   ghcr.io/yaniv-golan/ostruct:latest \
-  run template.j2 schema.json -ft input.txt
+  run template.j2 schema.json --file config input.txt
 ```
 
 This command mounts the current directory into the container and runs `ostruct`.
@@ -300,78 +300,99 @@ Shell completion will help you with:
 
 ## Enhanced CLI with Multi-Tool Integration
 
-### Migration Notice
+### Breaking Changes in v0.9.0
 
-ostruct now includes powerful multi-tool integration while maintaining **full backward compatibility**. All existing commands continue to work exactly as before, but you can now take advantage of:
+**⚠️ Important:** ostruct v0.9.0 introduces breaking changes to the file attachment system. The legacy file routing syntax has been completely replaced with a new explicit target/alias attachment system.
 
-- **Code Interpreter** for data analysis and visualization
-- **File Search** for document retrieval
-- **Web Search** for real-time information access
-- **MCP Servers** for extended functionality
-- **Explicit File Routing** for optimized processing
+**New capabilities in v0.9.0:**
+- **Explicit Tool Targeting**: Direct control over which tools receive files
+- **Enhanced Security**: Three-tier security modes with path validation
+- **Improved Multi-Tool Integration**: Better file sharing between tools
+- **JSON Help Output**: Programmatic access to command help
+- **Migration Guide**: Automated migration scripts for bulk updates
 
 <details>
-<summary><strong>New File Routing Options</strong> (Click to expand)</summary>
+<summary><strong>New Attachment System (v0.9.0)</strong> (Click to expand)</summary>
 
-#### Basic File Routing (Explicit Tool Assignment)
+#### Basic File Attachments
 
 ```bash
-# Template access only (config files, small data)
-ostruct run template.j2 schema.json -ft config.yaml
+# Template access only (default - no tool upload)
+ostruct run template.j2 schema.json --file config config.yaml
 
 # Code Interpreter (data analysis, code execution)
-ostruct run analysis.j2 schema.json -fc data.csv
+ostruct run analysis.j2 schema.json --file ci:data data.csv
 
 # File Search (document retrieval)
-ostruct run search.j2 schema.json -fs documentation.pdf
+ostruct run search.j2 schema.json --file fs:docs documentation.pdf
 
-# Web Search (real-time information)
-ostruct run research.j2 schema.json --enable-tool web-search -V topic="latest AI developments"
-
-# Multiple tools with one file
-ostruct run template.j2 schema.json --file-for code-interpreter shared.json --file-for file-search shared.json
+# Multi-tool attachment (share between tools)
+ostruct run workflow.j2 schema.json --file ci,fs:shared data.json
 ```
 
-#### Directory Routing
-
-ostruct provides two directory routing patterns to match different use cases:
-
-**Auto-Naming Pattern** (for known directory structures):
+#### Directory Attachments
 
 ```bash
-# Variables are auto-generated from directory contents
-ostruct run template.j2 schema.json -dt ./config -dc ./datasets -ds ./docs
-# Creates variables like: config_yaml, datasets_csv, docs_pdf (based on actual files)
+# Template-only directory access
+ostruct run template.j2 schema.json --dir config ./config
+
+# Upload directory to Code Interpreter
+ostruct run analysis.j2 schema.json --dir ci:datasets ./data
+
+# Upload directory to File Search
+ostruct run search.j2 schema.json --dir fs:knowledge ./docs
+
+# Directory with file pattern filtering
+ostruct run template.j2 schema.json --dir source ./src --pattern "*.py"
 ```
 
-**Alias Pattern** (for generic, reusable templates):
+#### File Collections
 
 ```bash
-# Create stable variable names regardless of directory contents
-ostruct run template.j2 schema.json --dta app_config ./config --dca data ./datasets --dsa knowledge ./docs
-# Creates stable variables: app_config, data, knowledge (always these names)
+# Process multiple files from list
+ostruct run batch.j2 schema.json --collect files @file-list.txt
+
+# Upload collection to Code Interpreter
+ostruct run analyze.j2 schema.json --collect ci:data @datasets.txt
 ```
 
-**When to Use Each Pattern:**
+#### Tool Targeting
 
-- Use **auto-naming** (`-dt`, `-dc`, `-ds`) when your template knows the specific directory structure
-- Use **alias syntax** (`--dta`, `--dca`, `--dsa`) when your template is generic and needs stable variable names
+The new system uses explicit targets for precise control:
 
-**Template Example:**
+- **`prompt`** (default): Template access only, no upload
+- **`code-interpreter`** or **`ci`**: Upload for Python execution and analysis
+- **`file-search`** or **`fs`**: Upload to vector store for document search
+- **Multi-target**: `ci,fs:alias` shares file between multiple tools
 
-```jinja
-{# Works with alias pattern - variables are predictable #}
-{% for file in app_config %}
-Configuration: {{ file.name }} = {{ file.content }}
-{% endfor %}
+#### Development Best Practice: Always Use --dry-run
 
-{# Analysis data from stable variable name #}
-{% for file in data %}
-Processing: {{ file.path }}
-{% endfor %}
+**Validate templates before execution** to catch errors early and save API costs:
+
+```bash
+# 1. Validate everything first (catches binary file issues, template errors)
+ostruct run analysis.j2 schema.json --file ci:data report.xlsx --dry-run
+
+# 2. If validation passes, run for real
+ostruct run analysis.j2 schema.json --file ci:data report.xlsx
 ```
 
-This design pattern makes templates reusable across different projects while maintaining full backward compatibility.
+The `--dry-run` flag performs comprehensive validation including template rendering, catching issues like:
+- Binary file content access errors
+- Template syntax problems
+- Missing template variables
+- File accessibility issues
+
+#### Security Modes
+
+```bash
+# Strict security with explicit allowlists
+ostruct run template.j2 schema.json \
+  --path-security strict \
+  --allow /safe/directory \
+  --allow-file /specific/file.txt \
+  --file data input.txt
+```
 
 #### MCP Server Integration
 
@@ -417,10 +438,10 @@ ostruct --config my-config.yaml run template.j2 schema.json
 
 ```bash
 # Enable reliable file downloads for this run
-ostruct run template.j2 schema.json -fc data.csv --enable-feature ci-download-hack
+ostruct run template.j2 schema.json --file ci:data data.csv --enable-feature ci-download-hack
 
 # Force single-pass mode (override config)
-ostruct run template.j2 schema.json -fc data.csv --disable-feature ci-download-hack
+ostruct run template.j2 schema.json --file ci:data data.csv --disable-feature ci-download-hack
 ```
 
 #### Option 2: Configuration File (Recommended for persistent settings)
@@ -553,46 +574,53 @@ Provide comprehensive analysis and actionable insights.
 }
 ```
 
-3. For more complex scenarios, use explicit file routing with flexible syntax options:
+3. Use the new attachment system for precise tool targeting:
 
 ```bash
-# Auto-naming (fastest for one-off analysis)
+# Basic multi-tool analysis
 ostruct run analysis_template.j2 analysis_schema.json \
-  -fc sales_data.csv \
-  -fc customer_data.json \
-  -fs market_reports.pdf \
-  -ft config.yaml
+  --file ci:sales sales_data.csv \
+  --file ci:customers customer_data.json \
+  --file fs:reports market_reports.pdf \
+  --file config config.yaml
 
-# Mixed syntax with custom variable names
+# Multi-tool attachment with shared data
 ostruct run analysis_template.j2 analysis_schema.json \
-  -fc sales_data.csv \
-  -fc customers customer_data.json \
-  --fsa reports market_reports.pdf \
-  --fta app_config config.yaml
+  --file ci,fs:shared_data data.json \
+  --file prompt:config settings.yaml
 
-# Alias syntax for reusable templates (best tab completion)
+# Directory-based analysis
 ostruct run reusable_analysis.j2 analysis_schema.json \
-  --fca sales_data sales_data.csv \
-  --fca customer_data customer_data.json \
-  --fsa market_reports market_reports.pdf \
-  --fta config config.yaml
+  --dir ci:sales_data ./sales \
+  --dir fs:documentation ./docs \
+  --file config ./config.yaml
 
-# Code review with stable variable names
+# Code review with multiple tool integration
 ostruct run code_review.j2 review_schema.json \
-  --fca source_code source_code/ \
-  --fsa documentation docs/ \
-  --fta eslint_config .eslintrc.json
+  --dir ci:source ./src \
+  --dir fs:docs ./documentation \
+  --file config .eslintrc.json
 ```
 
-### Example 3: Legacy Compatibility
+### Example 3: Migration from v0.8.x
 
-All existing commands continue to work unchanged:
+Legacy commands need to be updated to the new syntax:
 
 ```bash
-# Traditional usage (fully supported)
-ostruct run extract_from_file.j2 schema.json -f text input.txt -d configs
-ostruct run template.j2 schema.json -p "*.py" source -V env=prod
+# Legacy (v0.8.x) - NO LONGER SUPPORTED
+# ostruct run extract_from_file.j2 schema.json --file text input.txt -d configs
+
+# New (v0.9.0) - Updated syntax
+ostruct run extract_from_file.j2 schema.json --file text input.txt --dir configs ./configs
+
+# Legacy pattern matching - NO LONGER SUPPORTED
+# ostruct run template.j2 schema.json --dir "*.py" source --pattern "*.py" -V env=prod
+
+# New pattern matching with directory attachment
+ostruct run template.j2 schema.json --dir source ./source --pattern "*.py" -V env=prod
 ```
+
+**Migration Help:** See `MIGRATION_GUIDE.md` for automated migration scripts and detailed examples.
 
 <details>
 <summary><strong>System Prompt Handling</strong> (Click to expand)</summary>

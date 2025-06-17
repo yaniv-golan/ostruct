@@ -61,13 +61,13 @@ File Routing Flags
      - Example
    * - ``-ft``
      - Template-only
-     - ``-ft config.yaml`` → ``config_yaml`` variable
+     - ``--file config config.yaml`` → ``config_yaml`` variable
    * - ``-fc``
      - Code Interpreter
-     - ``-fc data.csv`` → ``data_csv`` variable
+     - ``--file ci:data data.csv`` → ``data_csv`` variable
    * - ``-fs``
      - File Search
-     - ``-fs docs.pdf`` → ``docs_pdf`` variable
+     - ``--file fs:docs docs.pdf`` → ``docs_pdf`` variable
 
 Custom Variable Names
 ---------------------
@@ -75,10 +75,10 @@ Custom Variable Names
 .. code-block:: bash
 
    # Auto-naming
-   -ft config.yaml                    # → config_yaml
+   --file config config.yaml                    # → config_yaml
 
    # Custom naming
-   --fta app_config config.yaml       # → app_config
+   --file app_config config.yaml       # → app_config
 
 File Content Access
 -------------------
@@ -299,13 +299,13 @@ Basic Usage
 .. code-block:: bash
 
    # Simple file processing
-   ostruct run template.j2 schema.json -ft config.yaml
+   ostruct run template.j2 schema.json --file config config.yaml
 
    # Multiple files with custom names
-   ostruct run template.j2 schema.json --fta config config.yaml --fta data data.csv
+   ostruct run template.j2 schema.json --file config config.yaml --file data data.csv
 
    # Directory processing
-   ostruct run template.j2 schema.json -dc source_code/
+   ostruct run template.j2 schema.json --dir ci:data source_code/
 
 Multi-Tool Integration
 ----------------------
@@ -313,7 +313,7 @@ Multi-Tool Integration
 .. code-block:: bash
 
    # Code analysis with execution
-   ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf
+   ostruct run analysis.j2 schema.json --file ci:data data.csv --file fs:docs docs.pdf
 
    # With web search
    ostruct run research.j2 schema.json --enable-tool web-search -V topic="AI trends"
@@ -331,7 +331,7 @@ Variables and Configuration
    # With system prompt
    ostruct run template.j2 schema.json \
      --sys-prompt "You are an expert analyst" \
-     -ft data.txt
+     --file config data.txt
 
 Debugging
 ---------
@@ -339,13 +339,13 @@ Debugging
 .. code-block:: bash
 
    # Show available variables
-   ostruct run template.j2 schema.json --show-context -ft config.yaml
+   ostruct run template.j2 schema.json --show-context --file config config.yaml
 
    # Dry run to test template
-   ostruct run template.j2 schema.json --dry-run -ft config.yaml
+   ostruct run template.j2 schema.json --dry-run --file config config.yaml
 
    # Debug template expansion
-   ostruct run template.j2 schema.json --show-templates -ft config.yaml
+   ostruct run template.j2 schema.json --show-templates --file config config.yaml
 
 .. seealso::
 

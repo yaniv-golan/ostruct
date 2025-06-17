@@ -153,15 +153,15 @@ Override auto-naming with explicit names:
 .. code-block:: bash
 
    # Auto-naming
-   ostruct run template.j2 schema.json --file config config.yaml
+   ostruct run template.j2 schema.json -ft config.yaml
    # Creates: config_yaml
 
    # Custom naming (equals syntax)
-   ostruct run template.j2 schema.json --file app_config config.yaml
+   ostruct run template.j2 schema.json --fta app_config config.yaml
    # Creates: app_config
 
    # Custom naming (alias syntax - best for tab completion)
-   ostruct run template.j2 schema.json --file app_config config.yaml
+   ostruct run template.j2 schema.json --fta app_config config.yaml
    # Creates: app_config
 
 .. _file-content-access:
@@ -651,8 +651,8 @@ Example 1: Code Review Template
 .. code-block:: bash
 
    ostruct run code_review.j2 review_schema.json \
-     --dir ci:data source_code ./src/ \
-     --file config documentation README.md \
+     -dc source_code ./src/ \
+     -ft documentation README.md \
      -V project_name="My Web App" \
      -V target_audience="junior developers" \
      -J review_criteria='[
@@ -725,7 +725,7 @@ Example 2: Data Analysis Template
 .. code-block:: bash
 
    ostruct run data_analysis.j2 analysis_schema.json \
-     --file ci:data datasets ./data/ \
+     -fc datasets ./data/ \
      -J analysis_config='{
        "metrics": [
          {"name": "Revenue Growth", "description": "Month-over-month revenue change"},
@@ -816,9 +816,9 @@ Example 3: Multi-Tool Integration Template
 .. code-block:: bash
 
    ostruct run comprehensive_analysis.j2 analysis_schema.json \
-     --dir ci:data source_code ./src/ \
-     --file fs:docs documentation ./docs/ \
-     --file config config_files ./config/ \
+     -dc source_code ./src/ \
+     -fs documentation ./docs/ \
+     -ft config_files ./config/ \
      --enable-tool web-search \
      -J analysis_scope='{
        "primary": "Security and performance assessment",
@@ -967,7 +967,7 @@ Common Issues and Solutions
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json --file config config.yaml --show-context
+   ostruct run template.j2 schema.json --fta config config.yaml --show-context
 
 **Issue: Template breaks with different directory structures**
 
@@ -976,16 +976,16 @@ Common Issues and Solutions
 .. code-block:: bash
 
    # ❌ Problem: variable name depends on directory name
-   ostruct run template.j2 schema.json --dir ci:data ./project_v1/src    # → src variable
-   ostruct run template.j2 schema.json --dir ci:data ./project_v2/source # → source variable
+   ostruct run template.j2 schema.json -dc ./project_v1/src    # → src variable
+   ostruct run template.j2 schema.json -dc ./project_v2/source # → source variable
 
 **Solution**: Use directory aliases for stable variable names
 
 .. code-block:: bash
 
    # ✅ Solution: stable variable name
-   ostruct run template.j2 schema.json --dir ci:code ./project_v1/src    # → code variable
-   ostruct run template.j2 schema.json --dir ci:code ./project_v2/source # → code variable
+   ostruct run template.j2 schema.json --dca code ./project_v1/src    # → code variable
+   ostruct run template.j2 schema.json --dca code ./project_v2/source # → code variable
 
 **Issue: Empty or missing content**
 
@@ -1043,11 +1043,11 @@ Template Organization
    .. code-block:: bash
 
       # ✅ Good
-      --file app_config config.yaml
-      --file ci:sales_data data.csv
+      --fta app_config config.yaml
+      --fca sales_data data.csv
 
       # ❌ Avoid
-      --file config config.yaml  # Creates config_yaml
+      -ft config.yaml  # Creates config_yaml
 
 2. **Structure templates logically**
 
@@ -1097,9 +1097,9 @@ Performance Optimization
    .. code-block:: bash
 
       # ✅ Good: Route files to appropriate tools
-      --file config config.yaml      # Template-only (fast)
-      --file ci:data data.csv         # Code Interpreter (when needed)
-      --file fs:docs docs.pdf         # File Search (when needed)
+      -ft config.yaml      # Template-only (fast)
+      -fc data.csv         # Code Interpreter (when needed)
+      -fs docs.pdf         # File Search (when needed)
 
 3. **Leverage caching and reuse**
 

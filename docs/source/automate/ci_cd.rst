@@ -53,9 +53,9 @@ Basic GitHub Actions Workflow
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
          run: |
            ostruct run templates/code_review.j2 schemas/review.json \
-             --base-dir ${{ github.workspace }} \
-             -A ${{ github.workspace }}/src \
-             -dc src/ \
+             --path-security strict \
+             --allow ${{ github.workspace }}/src \
+             --dir ci:source src/ \
              --code-interpreter-cleanup \
              --output-file analysis_results.json
 
@@ -113,11 +113,11 @@ Multi-Platform Analysis
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
          run: |
            ostruct run templates/security_scan.j2 schemas/security.json \
-             --base-dir "${{ env.ANALYSIS_BASE }}" \
-             -A "${{ env.ANALYSIS_BASE }}/src" \
-             -A "${{ env.ANALYSIS_BASE }}/tests" \
-             -dc src/ \
-             -ft config.yaml \
+             --path-security strict \
+             --allow "${{ env.ANALYSIS_BASE }}/src" \
+             --allow "${{ env.ANALYSIS_BASE }}/tests" \
+             --dir ci:source src/ \
+             --file config config.yaml \
              --code-interpreter-cleanup \
              --timeout 600 \
              --output-file security_results.json
@@ -140,10 +140,10 @@ Advanced GitHub Actions Patterns
        # Only analyze if Python files changed
        if grep -q "\.py$" changed_files.txt; then
          ostruct run templates/pr_review.j2 schemas/pr_analysis.json \
-           --base-dir ${{ github.workspace }} \
-           -A ${{ github.workspace }}/src \
-           -ft changed_files.txt \
-           -dc src/ \
+           --path-security strict \
+           --allow ${{ github.workspace }}/src \
+           --file changed_files changed_files.txt \
+           --dir ci:source src/ \
            --output-file pr_analysis.json
        fi
 
@@ -165,7 +165,7 @@ Advanced GitHub Actions Patterns
      run: |
        ostruct run templates/${{ matrix.analysis-type.template }} \
          schemas/${{ matrix.analysis-type.schema }} \
-         -dc src/ -ft config.yaml \
+         --dir ci:source src/ --file config config.yaml \
          --output-file ${{ matrix.analysis-type.name }}_results.json
 
 GitLab CI
@@ -198,11 +198,11 @@ Basic GitLab CI Configuration
      script:
        - |
          ostruct run templates/gitlab_analysis.j2 schemas/analysis.json \
-           --base-dir $CI_PROJECT_DIR \
-           -A $CI_PROJECT_DIR/src \
-           -A $CI_PROJECT_DIR/tests \
-           -dc src/ \
-           -ft .gitlab-ci.yml \
+           --path-security strict --allow $CI_PROJECT_DIR \
+           --allow $CI_PROJECT_DIR/src \
+           --allow $CI_PROJECT_DIR/tests \
+           --dir ci:data src/ \
+           --file config .gitlab-ci.yml \
            --code-interpreter-cleanup \
            --output-file analysis_results.json
      artifacts:
@@ -231,12 +231,12 @@ GitLab CI with Security Scanning
          mkdir -p $ANALYSIS_DIR
 
          ostruct run templates/security_deep_scan.j2 schemas/security_detailed.json \
-           --base-dir $CI_PROJECT_DIR \
-           -A $CI_PROJECT_DIR/src \
-           -A $CI_PROJECT_DIR/config \
-           -dc src/ \
-           -dc config/ \
-           -fs documentation/ \
+           --path-security strict --allow $CI_PROJECT_DIR \
+           --allow $CI_PROJECT_DIR/src \
+           --allow $CI_PROJECT_DIR/config \
+           --dir ci:data src/ \
+           --dir ci:data config/ \
+           --file fs:docs documentation/ \
            --file-search-cleanup \
            --code-interpreter-cleanup \
            --timeout 900 \
@@ -246,8 +246,8 @@ GitLab CI with Security Scanning
          # Generate summary for merge request
          if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
            ostruct run templates/mr_security_summary.j2 schemas/summary.json \
-             --base-dir $ANALYSIS_DIR \
-             -ft security_report.json \
+             --path-security strict --allow $ANALYSIS_DIR \
+             --file config security_report.json \
              --output-file mr_security_summary.md
          fi
      artifacts:
@@ -301,12 +301,12 @@ Declarative Pipeline
                            mkdir -p ${ANALYSIS_WORKSPACE}
 
                            ostruct run templates/jenkins_analysis.j2 schemas/ci_analysis.json \
-                               --base-dir ${WORKSPACE} \
-                               -A ${WORKSPACE}/src \
-                               -A ${WORKSPACE}/tests \
-                               -dc src/ \
-                               -ft Jenkinsfile \
-                               -ft config.yaml \
+                               --path-security strict --allow ${WORKSPACE} \
+                               --allow ${WORKSPACE}/src \
+                               --allow ${WORKSPACE}/tests \
+                               --dir ci:data src/ \
+                               --file config Jenkinsfile \
+                               --file config config.yaml \
                                --code-interpreter-cleanup \
                                --timeout 600 \
                                --output-file ${ANALYSIS_WORKSPACE}/results.json
@@ -344,10 +344,10 @@ Declarative Pipeline
                            source venv/bin/activate
 
                            ostruct run templates/security_validation.j2 schemas/security_check.json \
-                               --base-dir ${WORKSPACE} \
-                               -A ${WORKSPACE}/src \
-                               -dc src/ \
-                               -fs documentation/ \
+                               --path-security strict --allow ${WORKSPACE} \
+                               --allow ${WORKSPACE}/src \
+                               --dir ci:data src/ \
+                               --file fs:docs documentation/ \
                                --file-search-cleanup \
                                --code-interpreter-cleanup \
                                --output-file ${ANALYSIS_WORKSPACE}/security_validation.json
@@ -392,9 +392,9 @@ Scripted Pipeline with Advanced Features
                            sh '''
                                source venv/bin/activate
                                ostruct run templates/security.j2 schemas/security.json \
-                                   --base-dir ${WORKSPACE} \
-                                   -A ${WORKSPACE}/src \
-                                   -dc src/ \
+                                   --path-security strict --allow ${WORKSPACE} \
+                                   --allow ${WORKSPACE}/src \
+                                   --dir ci:data src/ \
                                    --timeout 300 \
                                    --output-file security_results.json
                            '''
@@ -406,9 +406,9 @@ Scripted Pipeline with Advanced Features
                            sh '''
                                source venv/bin/activate
                                ostruct run templates/performance.j2 schemas/performance.json \
-                                   --base-dir ${WORKSPACE} \
-                                   -A ${WORKSPACE}/src \
-                                   -dc src/ \
+                                   --path-security strict --allow ${WORKSPACE} \
+                                   --allow ${WORKSPACE}/src \
+                                   --dir ci:data src/ \
                                    --timeout 300 \
                                    --output-file performance_results.json
                            '''
@@ -425,8 +425,8 @@ Scripted Pipeline with Advanced Features
                    sh '''
                        source venv/bin/activate
                        ostruct run templates/final_report.j2 schemas/report.json \
-                           --base-dir ${WORKSPACE} \
-                           -ft combined_results.json \
+                           --path-security strict --allow ${WORKSPACE} \
+                           --file config combined_results.json \
                            -V build_number=${BUILD_NUMBER} \
                            -V git_commit=${GIT_COMMIT} \
                            --output-file final_report.json
@@ -493,10 +493,10 @@ Azure Pipelines YAML
 
        - script: |
            ostruct run templates/azure_analysis.j2 schemas/analysis.json \
-             --base-dir $(Build.SourcesDirectory) \
-             -A $(Build.SourcesDirectory)/src \
-             -dc src/ \
-             -ft azure-pipelines.yml \
+             --path-security strict --allow $(Build.SourcesDirectory) \
+             --allow $(Build.SourcesDirectory)/src \
+             --dir ci:data src/ \
+             --file config azure-pipelines.yml \
              --code-interpreter-cleanup \
              --output-file $(Build.ArtifactStagingDirectory)/analysis_results.json
          env:
@@ -576,11 +576,11 @@ File Access Controls
    - name: Secure Analysis
      run: |
        ostruct run template.j2 schema.json \
-         --base-dir ${{ github.workspace }} \
-         -A ${{ github.workspace }}/src \
-         -A ${{ github.workspace }}/tests \
-         -A ${{ github.workspace }}/config \
-         -dc src/ \
+         --path-security strict --allow ${{ github.workspace }} \
+         --allow ${{ github.workspace }}/src \
+         --allow ${{ github.workspace }}/tests \
+         --allow ${{ github.workspace }}/config \
+         --dir ci:data src/ \
          --code-interpreter-cleanup \
          --file-search-cleanup
 
@@ -614,7 +614,7 @@ Parallel Execution
      run: |
        ostruct run templates/${{ matrix.analysis }}.j2 \
          schemas/${{ matrix.analysis }}.json \
-         -dc src/ --timeout 300
+         --dir ci:data src/ --timeout 300
 
 Conditional Execution
 ---------------------
@@ -626,7 +626,7 @@ Conditional Execution
      if: github.ref == 'refs/heads/main'
      run: |
        ostruct run templates/comprehensive.j2 schema.json \
-         -dc src/ -fs docs/ --timeout 900
+         --dir ci:data src/ --file fs:docs docs/ --timeout 900
 
 Caching Strategies
 ------------------
@@ -657,7 +657,7 @@ Timeout and Resource Management
      timeout-minutes: 10
      run: |
        ostruct run template.j2 schema.json \
-         -dc src/ \
+         --dir ci:data src/ \
          --timeout 300 \
          --code-interpreter-cleanup \
          --file-search-cleanup
@@ -682,7 +682,7 @@ Comprehensive Error Handling
 
        # Run analysis with error capture
        if ! ostruct run template.j2 schema.json \
-         -dc src/ \
+         --dir ci:data src/ \
          --timeout 300 \
          --output-file results.json; then
          echo "::error::Analysis failed"
@@ -848,8 +848,8 @@ Common CI/CD Issues
 
    # Solution: Check base-dir and allowed directory settings
    ostruct run template.j2 schema.json \
-     --base-dir $PWD \
-     -A $PWD/src \
+     --path-security strict --allow $PWD \
+     --allow $PWD/src \
      --verbose
 
 **Timeout Issues:**
@@ -859,11 +859,11 @@ Common CI/CD Issues
    # Debug: Test with shorter timeout
    ostruct run template.j2 schema.json \
      --dry-run \
-     -dc src/
+     --dir ci:data src/
 
    # Solution: Increase timeout or reduce file size
    ostruct run template.j2 schema.json \
-     -dc src/ \
+     --dir ci:data src/ \
      --timeout 900
 
 **Memory/Resource Limits:**
@@ -874,7 +874,7 @@ Common CI/CD Issues
    - name: Memory-Controlled Analysis
      run: |
        ostruct run template.j2 schema.json \
-         -dc src/ \
+         --dir ci:data src/ \
          --code-interpreter-cleanup \
          --file-search-cleanup \
          --timeout 600
@@ -885,10 +885,10 @@ Performance Monitoring
 .. code-block:: bash
 
    # Monitor execution time
-   time ostruct run template.j2 schema.json -dc src/
+   time ostruct run template.j2 schema.json --dir ci:data src/
 
    # Monitor token usage with dry run
-   ostruct run template.j2 schema.json --dry-run -dc src/
+   ostruct run template.j2 schema.json --dry-run --dir ci:data src/
 
 Next Steps
 ==========

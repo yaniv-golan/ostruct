@@ -31,7 +31,7 @@ Process multiple files in sequence with comprehensive error handling:
 
    # Logging setup
    LOG_FILE="./logs/processing_$(date +%Y%m%d_%H%M%S).log"
-   mkdir -p "$(dirname "$LOG_FILE")"
+   mkdir --dir "$(dirname "$LOG_FILE")" --pattern "$(dirname
 
    log() {
        echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
@@ -53,7 +53,7 @@ Process multiple files in sequence with comprehensive error handling:
            fi
        done
 
-       mkdir -p "$OUTPUT_DIR" "$RESULTS_DIR"
+       mkdir --dir "$OUTPUT_DIR" "$RESULTS_DIR" --pattern "$OUTPUT_DIR"
        log "Environment validation complete"
    }
 
@@ -67,10 +67,10 @@ Process multiple files in sequence with comprehensive error handling:
        log "Processing: $input_file -> $output_file"
 
        if ostruct run "$template" "$schema" \
-           --base-dir "$PWD" \
-           -A "$INPUT_DIR" \
-           -A "$OUTPUT_DIR" \
-           -ft input_file "$input_file" \
+           --path-security strict --allow "$PWD" \
+           --allow "$INPUT_DIR" \
+           --allow "$OUTPUT_DIR" \
+           --file config input_file "$input_file" \
            --timeout "$TIMEOUT" \
            --code-interpreter-cleanup \
            --file-search-cleanup \
@@ -170,10 +170,10 @@ Process files in parallel for improved performance:
            echo "Worker $worker_id: Processing $input_file"
 
            if ostruct run "$TEMPLATE" "$SCHEMA" \
-               --base-dir "$PWD" \
-               -A "$INPUT_DIR" \
-               -A "$OUTPUT_DIR" \
-               -ft "$input_file" \
+               --path-security strict --allow "$PWD" \
+               --allow "$INPUT_DIR" \
+               --allow "$OUTPUT_DIR" \
+               --file config "$input_file" \
                --timeout 300 \
                --code-interpreter-cleanup \
                --output-file "$output_file" \
@@ -192,7 +192,7 @@ Process files in parallel for improved performance:
 
    # Main execution
    main() {
-       mkdir -p "$OUTPUT_DIR" "./logs"
+       mkdir --dir "$OUTPUT_DIR" "./logs" --pattern "$OUTPUT_DIR"
 
        echo "Starting parallel processing with $MAX_PARALLEL_JOBS workers..."
 
@@ -280,7 +280,7 @@ Use a queue system for scalable processing:
            local success=false
 
            if ostruct run "$template" "$schema" \
-               -ft "$input_file" \
+               --file config "$input_file" \
                --timeout 300 \
                --code-interpreter-cleanup \
                --output-file "$output_file"; then
@@ -383,7 +383,7 @@ Implement robust retry logic with exponential backoff:
        local output_file="$4"
 
        local command="ostruct run '$template' '$schema' \
-           -ft '$input_file' \
+           --file config '$input_file' \
            --timeout 300 \
            --code-interpreter-cleanup \
            --output-file '$output_file'"
@@ -420,7 +420,7 @@ Handle partial failures gracefully:
 
        # Primary processing: Full analysis with Code Interpreter
        if ostruct run "./templates/full_analysis.j2" "./schemas/full_result.json" \
-           -fc "$input_file" \
+           --file ci:data "$input_file" \
            --timeout 300 \
            --code-interpreter-cleanup \
            --output-file "$output_file" 2>/dev/null; then
@@ -432,7 +432,7 @@ Handle partial failures gracefully:
 
        # Fallback 1: Template-only processing
        if ostruct run "./templates/basic_analysis.j2" "./schemas/basic_result.json" \
-           -ft "$input_file" \
+           --file config "$input_file" \
            --timeout 180 \
            --output-file "$output_file" 2>/dev/null; then
            echo "Basic analysis completed: $output_file"
@@ -737,7 +737,7 @@ Create health check endpoints for monitoring systems:
 
        # Output JSON health status
        local checks_json
-       checks_json=$(printf '%s\n' "${checks[@]}" | jq -R . | jq -s .)
+       checks_json=$(printf '%s\n' "${checks[@]}" | jq --recursive . | jq -s .)
 
        jq -n \
            --arg status "$status" \
@@ -759,7 +759,7 @@ Create health check endpoints for monitoring systems:
                echo -e "Connection: close\r"
                echo -e "\r"
                health_check
-           } | nc -l -p "$port" -q 1
+           } | nc -l --dir "$port" -q --pattern "$port" 1
        done
    }
 
@@ -846,7 +846,7 @@ Integrate with webhook systems for event-driven processing:
        webhook_id=$(echo "$payload" | jq -r '.id // "unknown"')
 
        ostruct run "$template" "$schema" \
-           -ft "$file_path" \
+           --file config "$file_path" \
            -J "webhook_metadata=$payload" \
            -V "webhook_id=$webhook_id" \
            --code-interpreter-cleanup \

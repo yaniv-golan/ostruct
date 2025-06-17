@@ -122,10 +122,10 @@ Auto-Naming Examples
 .. code-block:: bash
 
    # Auto-naming syntax
-   ostruct run template.j2 schema.json -ft config.yaml
+   ostruct run template.j2 schema.json --file config config.yaml
    # Creates variable: config_yaml
 
-   ostruct run template.j2 schema.json -fc sales-data.csv
+   ostruct run template.j2 schema.json --file ci:data sales-data.csv
    # Creates variable: sales_data_csv
 
 .. code-block:: jinja
@@ -145,7 +145,7 @@ Override auto-naming with explicit variable names:
 .. code-block:: bash
 
    # Two-argument alias syntax
-   ostruct run template.j2 schema.json --fta app_config config.yaml
+   ostruct run template.j2 schema.json --file app_config config.yaml
 
 .. code-block:: jinja
 
@@ -220,13 +220,13 @@ File variables have adaptive properties that return different types based on the
 
 .. code-block:: jinja
 
-   <!-- For single file: my_file contains 1 file from --fca my_file data.csv -->
+   <!-- For single file: my_file contains 1 file from --file ci:my_file data.csv -->
    {{ my_file.name }}        <!-- Returns: "data.csv" (string) -->
    {{ my_file.content }}     <!-- Returns: file contents (string) -->
    {{ my_file.path }}        <!-- Returns: "data.csv" (string) -->
    {{ my_file.size }}        <!-- Returns: 1024 (integer) -->
 
-   <!-- For multiple files: logs contains 3 files from -dt logs=./log_files -->
+   <!-- For multiple files: logs contains 3 files from --dir config logs=./log_files -->
    {{ logs.name }}           <!-- Returns: ["app.log", "error.log", "debug.log"] (list) -->
    {{ logs.content }}        <!-- Returns: [content1, content2, content3] (list) -->
    {{ logs.path }}           <!-- Returns: ["app.log", "error.log", "debug.log"] (list) -->
@@ -351,7 +351,7 @@ Use ``--show-context`` to see all available variables:
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json --fta config config.yaml --show-context
+   ostruct run template.j2 schema.json --file config config.yaml --show-context
 
 **Problem: Empty or missing content**
 
@@ -374,16 +374,16 @@ This happens when using auto-naming directory routing and the directory name cha
 .. code-block:: bash
 
    # ❌ Problem: variable name depends on directory name
-   ostruct run template.j2 schema.json -dc ./project_v1/src    # → src variable
-   ostruct run template.j2 schema.json -dc ./project_v2/source # → source variable
+   ostruct run template.j2 schema.json --dir ci:data ./project_v1/src    # → src variable
+   ostruct run template.j2 schema.json --dir ci:data ./project_v2/source # → source variable
 
 **Solution**: Use directory aliases for stable variable names:
 
 .. code-block:: bash
 
    # ✅ Solution: stable variable name
-   ostruct run template.j2 schema.json --dca code ./project_v1/src    # → code variable
-   ostruct run template.j2 schema.json --dca code ./project_v2/source # → code variable
+   ostruct run template.j2 schema.json --dir ci:code ./project_v1/src    # → code variable
+   ostruct run template.j2 schema.json --dir ci:code ./project_v2/source # → code variable
 
 **Problem: "UndefinedError" for directory variables**
 
@@ -430,7 +430,7 @@ Use aliases and make templates flexible:
 .. code-block:: bash
 
    # Template can work with any project structure
-   ostruct run analysis.j2 schema.json --dca code ./any/source/path
+   ostruct run analysis.j2 schema.json --dir ci:code ./any/source/path
 
 .. code-block:: jinja
 
@@ -464,9 +464,9 @@ Use auto-naming when your template is designed for a specific directory structur
 .. code-block:: bash
 
    # Auto-naming syntax
-   ostruct run template.j2 schema.json -dt ./config_files     # → config_files variable
-   ostruct run template.j2 schema.json -dc ./datasets        # → datasets variable
-   ostruct run template.j2 schema.json -ds ./documentation   # → documentation variable
+   ostruct run template.j2 schema.json --dir config ./config_files     # → config_files variable
+   ostruct run template.j2 schema.json --dir ci:data ./datasets        # → datasets variable
+   ostruct run template.j2 schema.json --dir fs:docs ./documentation   # → documentation variable
 
 .. code-block:: jinja
 
@@ -489,9 +489,9 @@ Use aliases when your template needs to work with different directory structures
 .. code-block:: bash
 
    # Alias syntax for stable variable names
-   ostruct run template.j2 schema.json --dta app_config ./settings      # → app_config variable
-   ostruct run template.j2 schema.json --dca source_code ./src          # → source_code variable
-   ostruct run template.j2 schema.json --dsa knowledge_base ./docs      # → knowledge_base variable
+   ostruct run template.j2 schema.json --dir app_config ./settings      # → app_config variable
+   ostruct run template.j2 schema.json --dir ci:source_code ./src          # → source_code variable
+   ostruct run template.j2 schema.json --dir fs:knowledge_base ./docs      # → knowledge_base variable
 
 .. code-block:: jinja
 
@@ -558,13 +558,13 @@ The same template works with different project structures when using aliases:
 .. code-block:: bash
 
    # Project A structure
-   ostruct run analysis.j2 schema.json --dca code ./src --dta configs ./settings
+   ostruct run analysis.j2 schema.json --dir ci:code ./src --dir configs ./settings
 
    # Project B structure
-   ostruct run analysis.j2 schema.json --dca code ./source --dta configs ./config
+   ostruct run analysis.j2 schema.json --dir ci:code ./source --dir configs ./config
 
    # Project C structure
-   ostruct run analysis.j2 schema.json --dca code ./app --dta configs ./env
+   ostruct run analysis.j2 schema.json --dir ci:code ./app --dir configs ./env
 
 **Checking Directory Contents**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1464,10 +1464,10 @@ Test templates without API calls:
 .. code-block:: bash
 
    # Test template rendering
-   ostruct run template.j2 schema.json --dry-run -ft config.yaml
+   ostruct run template.j2 schema.json --dry-run --file config config.yaml
 
    # Verbose output for debugging
-   ostruct run template.j2 schema.json --dry-run --verbose -ft data.csv
+   ostruct run template.j2 schema.json --dry-run --verbose --file config data.csv
 
 Debug Variables
 ---------------
@@ -1655,7 +1655,7 @@ When optimization occurs, you'll see details in the output:
 
 .. code-block:: bash
 
-   ostruct run analysis.j2 schema.json -fc large_data.csv --verbose
+   ostruct run analysis.j2 schema.json --file ci:data large_data.csv --verbose
 
    Template Optimization Applied:
    ✓ Moved large_data.csv to appendix (2,847 chars → reference)
@@ -1739,8 +1739,8 @@ Advanced Optimization Features
 .. code-block:: bash
 
    # These will produce identical optimized prompts
-   ostruct run template.j2 schema.json -fc data.csv
-   ostruct run template.j2 schema.json -fc data.csv
+   ostruct run template.j2 schema.json --file ci:data data.csv
+   ostruct run template.j2 schema.json --file ci:data data.csv
 
 Best Practices with Optimization
 --------------------------------
@@ -1764,10 +1764,10 @@ Best Practices with Optimization
 .. code-block:: bash
 
    # Good - descriptive names
-   ostruct run analysis.j2 schema.json --fca user_data data.csv --fca sales_report quarterly.xlsx
+   ostruct run analysis.j2 schema.json --file ci:user_data data.csv --file ci:sales_report quarterly.xlsx
 
    # Less optimal - generic names
-   ostruct run analysis.j2 schema.json -fc data1.csv -fc data2.xlsx
+   ostruct run analysis.j2 schema.json --file ci:data data1.csv --file ci:data data2.xlsx
 
 **Consider optimization in template design:**
 
@@ -1792,7 +1792,7 @@ Troubleshooting Optimization
 .. code-block:: bash
 
    # See optimization details
-   ostruct run template.j2 schema.json -fc data.csv --verbose
+   ostruct run template.j2 schema.json --file ci:data data.csv --verbose
 
 **Common optimization issues:**
 
@@ -1805,8 +1805,8 @@ Troubleshooting Optimization
 .. code-block:: bash
 
    # Compare token usage
-   ostruct run template.j2 schema.json -fc data.csv --dry-run --no-optimize
-   ostruct run template.j2 schema.json -fc data.csv --dry-run  # With optimization
+   ostruct run template.j2 schema.json --file ci:data data.csv --dry-run --no-optimize
+   ostruct run template.j2 schema.json --file ci:data data.csv --dry-run  # With optimization
 
 Migration Guide: Template Optimization
 --------------------------------------

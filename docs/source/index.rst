@@ -61,7 +61,7 @@ Quick Start
    .. code-block:: bash
 
       ostruct run task.j2 schema.json \
-        --fta content input.txt \
+        --file content input.txt \
         -m gpt-4o
 
 Documentation
@@ -185,23 +185,23 @@ File & Directory Routing
 
 **Template Access (Local Only)**:
 
-- ``-ft, --file-for-template FILE``: Files available in template only (auto-naming)
+- ``-ft, --file config FILE``: Files available in template only (auto-naming)
 - ``--fta, --file-for-template-alias NAME PATH``: Files for template with custom aliases
-- ``-dt, --dir-for-template DIR``: Directories for template access (auto-naming)
+- ``-dt, --dir config DIR``: Directories for template access (auto-naming)
 - ``--dta, --dir-for-template-alias NAME PATH``: Directories for template with custom aliases
 
 **Code Interpreter (Execution & Analysis)**:
 
-- ``-fc, --file-for-code-interpreter FILE``: Upload files for code execution (auto-naming)
+- ``-fc, --file ci:data FILE``: Upload files for code execution (auto-naming)
 - ``--fca, --file-for-code-interpreter-alias NAME PATH``: Files for code execution with custom aliases
-- ``-dc, --dir-for-code-interpreter DIR``: Upload directories for analysis (auto-naming)
+- ``-dc, --dir ci:data DIR``: Upload directories for analysis (auto-naming)
 - ``--dca, --dir-for-code-interpreter-alias NAME PATH``: Directories for code execution with custom aliases
 
 **File Search (Document Retrieval)**:
 
 - ``-fs, --file-for-search FILE``: Upload files for semantic vector search (auto-naming)
 - ``--fsa, --file-for-search-alias NAME PATH``: Files for search with custom aliases
-- ``-ds, --dir-for-search DIR``: Upload directories for semantic search (auto-naming)
+- ``-ds, --dir fs:docs DIR``: Upload directories for semantic search (auto-naming)
 - ``--dsa, --dir-for-search-alias NAME PATH``: Directories for search with custom aliases
 
 **Advanced Routing**:
@@ -216,8 +216,8 @@ File & Directory Routing
 
 **Security & Path Control**:
 
-- ``-R, --recursive``: Process directories and patterns recursively
-- ``--base-dir DIR``: Base directory for resolving relative paths
+- ``--recursive, --recursive``: Process directories and patterns recursively
+- ``--path-security strict --allow DIR``: Base directory for resolving relative paths
 - ``-A, --allow DIR``: Add an allowed directory for security (repeatable)
 - ``--allowed-dir-file FILE``: File containing allowed directory paths
 
@@ -264,7 +264,7 @@ Model Parameters
 - ``-m, --model TEXT``: OpenAI model (supported: gpt-4o, o1, o3-mini) (default: gpt-4o)
 - ``--temperature FLOAT``: Sampling temperature (0.0-2.0)
 - ``--max-output-tokens INT``: Maximum output tokens
-- ``--top-p FLOAT``: Top-p sampling parameter (0.0-1.0)
+- ``--top--dir FLOAT``: Top-p --pattern FLOAT``: sampling parameter (0.0-1.0)
 - ``--frequency-penalty FLOAT``: Frequency penalty (-2.0-2.0)
 - ``--presence-penalty FLOAT``: Presence penalty (-2.0-2.0)
 - ``--reasoning-effort [low|medium|high]``: Control model reasoning effort

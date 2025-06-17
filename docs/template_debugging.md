@@ -267,7 +267,7 @@ ostruct run prompt.j2 schema.json --show-optimization-steps --optimization-step-
 3. **Test with minimal context**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --debug --fta simple_var "test content"
+   ostruct run prompt.j2 schema.json --debug --attach simple_var "test content"
    ```
 
 ## Combining Debug Features

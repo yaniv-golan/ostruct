@@ -115,17 +115,17 @@ By default, ostruct restricts file access to the current working directory. Expa
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json -A /data -ft /data/config.yaml
+   ostruct run template.j2 schema.json --allow /data --file config /data/config.yaml
 
 **Multiple Directories:**
 
 .. code-block:: bash
 
    ostruct run template.j2 schema.json \
-     -A /data \
-     -A /configs \
-     -A /tmp/workspace \
-     -ft /data/input.csv
+     --allow /data \
+     --allow /configs \
+     --allow /tmp/workspace \
+     --file config /data/input.csv
 
 **From File:**
 
@@ -147,9 +147,9 @@ Set a base directory to restrict all relative path operations:
 
    # All relative paths resolve within /project
    ostruct run template.j2 schema.json \
-     --base-dir /project \
-     -ft config.yaml \
-     -ft data/input.csv
+     --path-security strict --allow /project \
+     --file config config.yaml \
+     --file config data/input.csv
 
 Security Validation Process
 ---------------------------
@@ -170,11 +170,11 @@ ostruct prevents common path traversal attacks:
 .. code-block:: bash
 
    # These are blocked by SecurityManager
-   ostruct run template.j2 schema.json -ft "../../../etc/passwd"
-   ostruct run template.j2 schema.json -ft "config/../../../sensitive.txt"
+   ostruct run template.j2 schema.json --file config "../../../etc/passwd"
+   ostruct run template.j2 schema.json --file config "config/../../../sensitive.txt"
 
    # Use allowed directories for legitimate access outside project
-   ostruct run template.j2 schema.json -A /etc -ft /etc/config.yaml
+   ostruct run template.j2 schema.json --allow /etc --file config /etc/config.yaml
 
 Data Upload and Tool Security
 =============================
@@ -301,11 +301,11 @@ Enable cleanup to minimize data retention:
 
    # Enable cleanup (default: true)
    ostruct run template.j2 schema.json \
-     -fc data.csv \
+     --file ci:data data.csv \
      --code-interpreter-cleanup
 
    ostruct run template.j2 schema.json \
-     -fs docs.pdf \
+     --file fs:docs docs.pdf \
      --file-search-cleanup
 
 MCP Server Security
@@ -500,10 +500,10 @@ Development Environment
    export OPENAI_API_KEY="sk-dev-..."
 
    ostruct run template.j2 schema.json \
-     --base-dir ./project \
-     -A ./test_data \
-     -ft config.yaml \
-     -fc test_data.csv \
+     --path-security strict --allow ./project \
+     --allow ./test_data \
+     --file config config.yaml \
+     --file ci:data test_data.csv \
      --code-interpreter-cleanup \
      --file-search-cleanup
 
@@ -516,11 +516,11 @@ Staging Environment
    export OPENAI_API_KEY="sk-staging-..."
 
    ostruct run template.j2 schema.json \
-     --base-dir /app \
-     -A /app/data \
-     -A /app/configs \
+     --path-security strict --allow /app \
+     --allow /app/data \
+     --allow /app/configs \
      --allowed-dir-file /app/allowed_dirs.txt \
-     -ft configs/app.yaml \
+     --file config configs/app.yaml \
      --code-interpreter-cleanup \
      --file-search-cleanup \
      --verbose
@@ -534,9 +534,9 @@ Production Environment
    export OPENAI_API_KEY="sk-prod-..."
 
    ostruct run template.j2 schema.json \
-     --base-dir /prod/app \
+     --path-security strict --allow /prod/app \
      --allowed-dir-file /prod/security/allowed_dirs.txt \
-     -ft configs/production.yaml \
+     --file config configs/production.yaml \
      --code-interpreter-cleanup \
      --file-search-cleanup \
      --timeout 300
@@ -553,10 +553,10 @@ CI/CD Pipeline Security
          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
        run: |
          ostruct run analysis.j2 schema.json \
-           --base-dir ${{ github.workspace }} \
-           -A ${{ github.workspace }}/data \
-           -ft config.yaml \
-           -fc data/metrics.csv \
+           --path-security strict --allow ${{ github.workspace }} \
+           --allow ${{ github.workspace }}/data \
+           --file config config.yaml \
+           --file ci:data data/metrics.csv \
            --code-interpreter-cleanup \
            --file-search-cleanup \
            --output-file results.json

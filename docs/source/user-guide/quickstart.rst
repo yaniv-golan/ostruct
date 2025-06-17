@@ -62,7 +62,7 @@ We provide multiple installation methods. For most users, ``pipx`` is recommende
            -v "$(pwd)":/app \
            -w /app \
            ghcr.io/yaniv-golan/ostruct:latest \
-           run template.j2 schema.json -ft input.txt
+           run template.j2 schema.json --file input input.txt
 
 
 Set up your OpenAI API key:
@@ -205,7 +205,7 @@ Now use ostruct to extract structured data from Juno's profile:
 .. code-block:: bash
 
    ostruct run analyze_pet.j2 pet_schema.json \
-     --fta profile juno_profile.txt \
+     --file profile juno_profile.txt \
      -m gpt-4o
 
 **Result**: You'll get perfectly structured JSON output like this:
@@ -236,10 +236,38 @@ Understanding What Happened
 
 Let's break down the magic:
 
-1. **File Routing**: ``--fta profile juno_profile.txt`` routed the text file to template access with custom alias
+1. **File Attachment**: ``--file profile juno_profile.txt`` attached the text file to template with custom alias
 2. **Template Processing**: The ``.j2`` template combined the profile content with instructions
 3. **Schema Validation**: The JSON schema ensured the output matched your exact requirements
 4. **AI Intelligence**: GPT-4o understood the context and extracted the right information
+
+Development Best Practices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Always validate with --dry-run first:**
+
+Before running any ostruct command for real, validate your template and files:
+
+.. code-block:: bash
+
+   # 1. Validate everything first - catches errors early
+   ostruct run analyze_pet.j2 pet_schema.json \
+     --file profile juno_profile.txt \
+     --dry-run
+
+   # 2. If validation passes, run for real
+   ostruct run analyze_pet.j2 pet_schema.json \
+     --file profile juno_profile.txt \
+     -m gpt-4o
+
+The ``--dry-run`` flag performs comprehensive validation including:
+
+- Template syntax checking
+- File access validation (catches binary file issues)
+- Schema structure validation
+- Security constraint verification
+
+**This saves time and API costs by catching errors before making OpenAI API calls.**
 
 Level Up: Multi-Tool Processing
 --------------------------------
@@ -327,14 +355,14 @@ Run the advanced analysis:
 .. code-block:: bash
 
    ostruct run comprehensive_analysis.j2 comprehensive_schema.json \
-     --fta profile juno_profile.txt \
-     -fc medical_data.csv \
+     --file profile juno_profile.txt \
+     --file ci:medical medical_data.csv \
      -m gpt-4o
 
 **What's different?**
 
-- ``--fta profile juno_profile.txt``: Profile text for template access with custom alias
-- ``-fc medical_data.csv``: Medical data to Code Interpreter for analysis
+- ``--file profile juno_profile.txt``: Profile text for template access with custom alias
+- ``--file ci:medical medical_data.csv``: Medical data uploaded to Code Interpreter for analysis
 - The AI can now correlate text descriptions with structured data
 
 Three Learning Paths
@@ -350,13 +378,13 @@ Perfect for developers who need immediate results:
 .. code-block:: bash
 
    # Basic document analysis
-   ostruct run template.j2 schema.json -ft document.txt
+   ostruct run template.j2 schema.json --file document document.txt
 
    # With custom variables
-   ostruct run template.j2 schema.json -ft doc.txt -V env=prod
+   ostruct run template.j2 schema.json --file doc doc.txt -V env=prod
 
    # Direct output to file
-   ostruct run template.j2 schema.json -ft data.txt --output-file result.json
+   ostruct run template.j2 schema.json --file data data.txt --output-file result.json
 
 📊 **Data Processing** (15 minutes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -366,13 +394,13 @@ For analysts working with datasets:
 .. code-block:: bash
 
    # Analyze CSV with code execution
-   ostruct run analysis.j2 schema.json -fc dataset.csv
+   ostruct run analysis.j2 schema.json --file ci:dataset dataset.csv
 
    # Multi-file processing
-   ostruct run process.j2 schema.json -fc data1.csv -fc data2.csv
+   ostruct run process.j2 schema.json --file ci:data1 data1.csv --file ci:data2 data2.csv
 
    # Directory processing
-   ostruct run batch.j2 schema.json -dc ./data_directory
+   ostruct run batch.j2 schema.json --dir ci:data ./data_directory
 
 🔍 **Knowledge Extraction** (30 minutes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -382,28 +410,31 @@ For researchers processing documents:
 .. code-block:: bash
 
    # Semantic search through documents
-   ostruct run research.j2 schema.json -fs documentation.pdf
+   ostruct run research.j2 schema.json --file fs:docs documentation.pdf
 
    # Multi-document research
-   ostruct run synthesis.j2 schema.json -ds ./research_papers
+   ostruct run synthesis.j2 schema.json --dir fs:papers ./research_papers
 
    # Combined analysis
    ostruct run complete.j2 schema.json \
-     -ft config.yaml \
-     -fc analysis.py \
-     -fs knowledge_base.pdf
+     --file config config.yaml \
+     --file ci:script analysis.py \
+     --file fs:knowledge knowledge_base.pdf
 
 Key CLI Patterns to Remember
 -----------------------------
 
-**File Routing Syntax**
-  - ``-ft file.txt`` (auto-naming: becomes ``file_txt`` variable)
-  - ``--fta data file.txt`` (custom naming: becomes ``data`` variable with tab completion)
+**Attachment Syntax**
+  - ``--file alias file.txt`` (template access with custom alias)
+  - ``--file ci:alias file.txt`` (Code Interpreter with custom alias)
+  - ``--file fs:alias file.txt`` (File Search with custom alias)
+  - ``--dir alias ./directory`` (directory attachment)
+  - ``--collect alias @file-list.txt`` (file collection from list)
 
-**Tool Selection**
-  - ``-ft``: Template access only (configuration, small files)
-  - ``-fc``: Code Interpreter (data analysis, computation)
-  - ``-fs``: File Search (document retrieval, knowledge bases)
+**Tool Targeting**
+  - ``prompt`` (default): Template access only (configuration, small files)
+  - ``code-interpreter`` or ``ci``: Code Interpreter (data analysis, computation)
+  - ``file-search`` or ``fs``: File Search (document retrieval, knowledge bases)
   - ``--enable-tool web-search``: Web Search (current events, real-time data)
 
 **Model Options**
@@ -416,8 +447,9 @@ Key CLI Patterns to Remember
   - ``-J config='{"env":"prod"}'`` (JSON objects)
 
 **Security**
-  - ``-A /allowed/path`` (restrict file access)
-  - ``--base-dir /project`` (set working directory)
+  - ``--path-security strict`` (enable strict path validation)
+  - ``--allow /safe/path`` (allow specific directory)
+  - ``--allow-file /specific/file.txt`` (allow specific file)
 
 Next Steps
 ----------

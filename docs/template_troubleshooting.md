@@ -227,7 +227,7 @@ ostruct run template.j2 schema.json --debug -f config.yaml
 ostruct run template.j2 schema.json -f config.yaml
 
 # Correct: Using file-to-attribute routing
-ostruct run template.j2 schema.json --fta config_file config.yaml
+ostruct run template.j2 schema.json --attach config_file config.yaml
 ```
 
 **Debug**: Check that file routing creates the expected variable name.
@@ -496,17 +496,17 @@ When nothing else works, follow this step-by-step process:
 
 ```bash
 # Minimal test
-ostruct run simple_template.j2 schema.json --fta test_var "hello world"
+ostruct run simple_template.j2 schema.json --attach test_var "hello world"
 ```
 
 ### 2. Add Complexity Gradually
 
 ```bash
 # Add one file
-ostruct run template.j2 schema.json --fta config config.yaml
+ostruct run template.j2 schema.json --attach config config.yaml
 
 # Add more files
-ostruct run template.j2 schema.json --fta config config.yaml --fta data data.json
+ostruct run template.j2 schema.json --attach config config.yaml --attach data data.json
 
 # Use full template
 ostruct run template.j2 schema.json -f config.yaml -f data.json

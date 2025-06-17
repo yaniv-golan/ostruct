@@ -122,7 +122,7 @@ The quickest way to understand ostruct is through a simple example:
    .. code-block:: bash
 
       ostruct run summarize.j2 summary.json \
-        -ft document.txt \
+        --file config document.txt \
         -m gpt-4o
 
 The result will be valid JSON matching your schema, ready for further processing or integration.

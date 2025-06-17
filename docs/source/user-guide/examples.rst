@@ -104,7 +104,7 @@ Automated code review with security, style, and performance analysis.
 
    cd examples/code-quality/code-review
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -ft code examples/basic/app.py \
+     --file code examples/basic/app.py \
      --sys-file prompts/system.txt
 
 Testing Examples
@@ -142,7 +142,7 @@ Three-approach automated security vulnerability scanning with comprehensive test
 
    # Recommended: Code Interpreter approach
    ostruct run prompts/code_interpreter.j2 schemas/scan_result.json \
-     --fca code examples/basic/app.py \
+     --file ci:code examples/basic/app.py \
      --sys-file prompts/system.txt
 
 Data Analysis Examples
@@ -214,8 +214,8 @@ The repository also includes several other examples in development:
 
    cd examples/config-validation
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     --fta dev_config examples/basic/dev.yaml \
-     --fta prod_config examples/basic/prod.yaml
+     --file dev_config examples/basic/dev.yaml \
+     --file prod_config examples/basic/prod.yaml
 
 **Proto Validator** (``schema-validation/proto-validator/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -258,7 +258,7 @@ Automated documentation example testing with File Search integration for compreh
 
    # Basic documentation analysis
    ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-     -ds test_data/sample_project/ \
+     --dir fs:docs test_data/sample_project/ \
      -V project_name="MyProject" \
      -V project_type="CLI"
 
@@ -405,7 +405,7 @@ Use ``--dry-run`` to estimate costs before running:
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json -ft file.txt --dry-run
+   ostruct run template.j2 schema.json --file config file.txt --dry-run
 
 Contributing Examples
 =====================
