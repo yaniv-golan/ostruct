@@ -57,7 +57,7 @@ The new CLI completely replaces the old file routing system with explicit target
 Use these sed commands for bulk migration of existing scripts:
 
 ```bash
-# Basic file attachments  
+# Basic file attachments
 sed -i 's/-f \([^ ]*\) \([^ ]*\)/--file \1 \2/g' scripts/*.sh
 
 # Directory attachments
@@ -94,34 +94,34 @@ from pathlib import Path
 
 def migrate_command(cmd_line):
     """Migrate a single command line from legacy to new syntax."""
-    
+
     # Basic file attachments
     cmd_line = re.sub(r'-f (\w+) ([^\s]+)', r'--file \1 \2', cmd_line)
-    
-    # Directory attachments  
+
+    # Directory attachments
     cmd_line = re.sub(r'-d (\w+) ([^\s]+)', r'--dir \1 \2', cmd_line)
-    
+
     # Tool-specific routing
     cmd_line = re.sub(r'-fc ([^\s]+)', r'--file ci:data \1', cmd_line)
     cmd_line = re.sub(r'-fs ([^\s]+)', r'--file fs:docs \1', cmd_line)
     cmd_line = re.sub(r'-ft ([^\s]+)', r'--file config \1', cmd_line)
-    
+
     # Advanced routing
-    cmd_line = re.sub(r'--file-for-code-interpreter ([^\s]+)', 
+    cmd_line = re.sub(r'--file-for-code-interpreter ([^\s]+)',
                      r'--file ci:data \1', cmd_line)
-    cmd_line = re.sub(r'--file-for-file-search ([^\s]+)', 
+    cmd_line = re.sub(r'--file-for-file-search ([^\s]+)',
                      r'--file fs:docs \1', cmd_line)
-    
+
     return cmd_line
 
 def migrate_file(file_path):
     """Migrate an entire script file."""
     with open(file_path, 'r') as f:
         content = f.read()
-    
+
     lines = content.split('\n')
     migrated_lines = []
-    
+
     for line in lines:
         if 'ostruct run' in line:
             migrated_line = migrate_command(line)
@@ -130,13 +130,13 @@ def migrate_file(file_path):
             migrated_lines.append(migrated_line)
         else:
             migrated_lines.append(line)
-    
+
     # Write backup
     backup_path = f"{file_path}.backup"
     with open(backup_path, 'w') as f:
         f.write(content)
     print(f"Backup saved: {backup_path}")
-    
+
     # Write migrated version
     with open(file_path, 'w') as f:
         f.write('\n'.join(migrated_lines))
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: migrate.py <script_file> [script_file ...]")
         sys.exit(1)
-    
+
     for file_path in sys.argv[1:]:
         if Path(file_path).exists():
             migrate_file(file_path)
@@ -168,7 +168,7 @@ For each script using ostruct:
 ### 2. Update Documentation
 
 1. **Update README files**: Replace all CLI examples
-2. **Update build scripts**: Migrate CI/CD pipeline commands  
+2. **Update build scripts**: Migrate CI/CD pipeline commands
 3. **Update user guides**: Replace file routing examples
 
 ### 3. Update Configuration
@@ -217,7 +217,7 @@ ostruct run template.j2 schema.json \
 # Get execution plan as JSON
 ostruct run template.j2 schema.json --dry-run --dry-run-json
 
-# Get run summary as JSON  
+# Get run summary as JSON
 ostruct run template.j2 schema.json --run-summary-json
 
 # Get JSON help for programmatic consumption
