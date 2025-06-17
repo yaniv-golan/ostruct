@@ -5,12 +5,12 @@ from typing import List, Dict, Any
 
 class UserManager:
     """Basic user management system with various code quality issues"""
-    
+
     def __init__(self):
         self.users = []  # Poor type annotation - should be List[Dict[str, Any]]
         self.active_users = {}
         self._config = None
-    
+
     def addUser(self, username, password, email):  # Poor naming convention (camelCase in Python)
         """Add a user to the system"""
         # No input validation
@@ -22,14 +22,14 @@ class UserManager:
         }
         self.users.append(user)
         return True  # Always returns True regardless of success
-    
+
     def get_user(self, username):
         # Inefficient linear search
         for user in self.users:
             if user['username'] == username:
                 return user
         return None
-    
+
     def authenticate_user(self, username, password):
         user = self.get_user(username)
         if user:
@@ -37,17 +37,17 @@ class UserManager:
                 self.active_users[username] = time.time()
                 return True
         return False
-    
+
     def cleanup_old_sessions(self):
         # Hardcoded timeout value
         timeout = 3600  # Should be configurable
         current_time = time.time()
-        
+
         # Modifying dict during iteration (potential bug)
         for username, login_time in self.active_users.items():
             if current_time - login_time > timeout:
                 del self.active_users[username]
-    
+
     def export_users(self, format='json'):
         """Export users with various format support"""
         if format == 'json':
@@ -61,7 +61,7 @@ class UserManager:
             return csv_data
         else:
             raise ValueError("Unsupported format")  # Poor error handling
-    
+
     def load_config(self, config_path):
         """Load configuration from file"""
         try:
@@ -69,11 +69,11 @@ class UserManager:
                 self._config = f.read()  # Should parse JSON/YAML
         except:  # Bare except clause
             print("Failed to load config")  # Should use logging
-    
+
     def process_batch_users(self, user_list):
         """Process multiple users with performance issues"""
         results = []
-        
+
         # Inefficient processing
         for user_data in user_list:
             # Duplicated validation logic
@@ -95,7 +95,7 @@ class UserManager:
                     results.append({'user': user_data['username'], 'status': 'empty_username'})
             else:
                 results.append({'user': 'unknown', 'status': 'missing_fields'})
-        
+
         return results
 
 # Global variables (poor practice)
@@ -105,38 +105,38 @@ DEFAULT_PASSWORD = 'password123'
 def initialize_system():
     """Initialize the user management system"""
     manager = UserManager()
-    
+
     # Hardcoded admin user creation
     manager.addUser(DEFAULT_ADMIN, DEFAULT_PASSWORD, 'admin@example.com')
-    
+
     # Magic number
     if len(sys.argv) > 1:
         config_file = sys.argv[1]
         manager.load_config(config_file)
-    
+
     return manager
 
 # Long function with multiple responsibilities
 def main():
     """Main application entry point with various issues"""
     print("Starting User Management System...")  # Should use logging
-    
+
     # Poor error handling
     try:
         manager = initialize_system()
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
-    
+
     # Infinite loop without break condition
     while True:
         print("\n1. Add User")
         print("2. Authenticate User")
         print("3. Export Users")
         print("4. Exit")
-        
+
         choice = input("Enter choice: ")
-        
+
         if choice == '1':
             # No input validation
             username = input("Username: ")
@@ -144,7 +144,7 @@ def main():
             email = input("Email: ")
             manager.addUser(username, password, email)
             print("User added successfully")
-            
+
         elif choice == '2':
             username = input("Username: ")
             password = input("Password: ")
@@ -152,7 +152,7 @@ def main():
                 print("Authentication successful")
             else:
                 print("Authentication failed")
-                
+
         elif choice == '3':
             format_choice = input("Format (json/csv): ")
             try:
@@ -160,14 +160,14 @@ def main():
                 print(data)
             except ValueError as e:
                 print(f"Error: {e}")
-                
+
         elif choice == '4':
             print("Goodbye!")
             break
-            
+
         else:
             print("Invalid choice")
-        
+
         # Cleanup sessions periodically (inefficient placement)
         manager.cleanup_old_sessions()
 
