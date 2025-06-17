@@ -7,9 +7,12 @@ and integrating code execution capabilities with the OpenAI Responses API.
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from openai import AsyncOpenAI
+
+if TYPE_CHECKING:
+    from .upload_manager import SharedUploadManager
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +21,22 @@ class CodeInterpreterManager:
     """Manager for Code Interpreter file uploads and tool integration."""
 
     def __init__(
-        self, client: AsyncOpenAI, config: Optional[Dict[str, Any]] = None
+        self,
+        client: AsyncOpenAI,
+        config: Optional[Dict[str, Any]] = None,
+        upload_manager: Optional["SharedUploadManager"] = None,
     ):
         """Initialize Code Interpreter manager.
 
         Args:
             client: AsyncOpenAI client instance
             config: Code interpreter configuration dict
+            upload_manager: Optional shared upload manager for deduplication
         """
         self.client = client
         self.uploaded_file_ids: List[str] = []
         self.config = config or {}
+        self.upload_manager = upload_manager
 
     async def upload_files_for_code_interpreter(
         self, files: List[str]
@@ -81,6 +89,32 @@ class CodeInterpreterManager:
 
         # Store for potential cleanup
         self.uploaded_file_ids.extend(file_ids)
+        return file_ids
+
+    async def get_files_from_shared_manager(self) -> List[str]:
+        """Get file IDs from shared upload manager for Code Interpreter.
+
+        Returns:
+            List of OpenAI file IDs for Code Interpreter use
+        """
+        if not self.upload_manager:
+            logger.warning("No shared upload manager available")
+            return []
+
+        # Trigger upload processing for code-interpreter tool
+        await self.upload_manager.upload_for_tool("code-interpreter")
+
+        # Get the uploaded file IDs
+        file_ids: List[str] = self.upload_manager.get_files_for_tool(
+            "code-interpreter"
+        )
+
+        # Track for cleanup
+        self.uploaded_file_ids.extend(file_ids)
+
+        logger.debug(
+            f"Retrieved {len(file_ids)} file IDs from shared manager for CI"
+        )
         return file_ids
 
     def build_tool_config(self, file_ids: List[str]) -> dict:

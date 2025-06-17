@@ -156,7 +156,7 @@ def render_template(
         TaskTemplateVariableError: If template variables are undefined
         TemplateValidationError: If template rendering fails for other reasons
     """
-    from .progress import (  # Import here to avoid circular dependency
+    from .progress import (
         ProgressContext,
     )
 

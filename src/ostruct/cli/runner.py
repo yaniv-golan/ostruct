@@ -15,11 +15,7 @@ from pydantic import BaseModel
 from .code_interpreter import CodeInterpreterManager
 from .config import OstructConfig
 from .cost_estimation import calculate_cost_estimate, format_cost_breakdown
-from .errors import (
-    APIErrorMapper,
-    CLIError,
-    SchemaValidationError,
-)
+from .errors import APIErrorMapper, CLIError, SchemaValidationError
 from .exit_codes import ExitCode
 from .explicit_file_processor import ProcessingResult
 from .file_search import FileSearchManager
@@ -918,6 +914,42 @@ async def execute_model(
         enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
         disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
 
+        # Initialize shared upload manager for multi-tool file sharing (T3.2)
+        shared_upload_manager = None
+
+        # Check if we have new attachment system with multi-tool attachments
+        from .attachment_processor import (
+            _extract_attachments_from_args,
+            _has_new_attachment_syntax,
+        )
+
+        if _has_new_attachment_syntax(args):
+            logger.debug(
+                "Initializing shared upload manager for new attachment system"
+            )
+            from .attachment_processor import AttachmentProcessor
+            from .upload_manager import SharedUploadManager
+            from .validators import validate_security_manager
+
+            shared_upload_manager = SharedUploadManager(client)
+
+            # Get security manager for file validation
+            security_manager = validate_security_manager(
+                base_dir=args.get("base_dir"),
+                allowed_dirs=args.get("allowed_dirs"),
+                allowed_dir_file=args.get("allowed_dir_file"),
+            )
+
+            # Process and register attachments
+            processor = AttachmentProcessor(security_manager)
+            attachments = _extract_attachments_from_args(args)
+            processed_attachments = processor.process_attachments(attachments)
+
+            # Register all attachments with the shared manager
+            shared_upload_manager.register_attachments(processed_attachments)
+
+            logger.debug("Registered attachments with shared upload manager")
+
         # Process MCP configuration if provided
         # Apply universal tool toggle overrides for mcp
         mcp_enabled_by_config = services.is_configured("mcp")
@@ -974,51 +1006,86 @@ async def execute_model(
             # Fall back to routing-based enablement
             ci_should_enable = bool(ci_enabled_by_routing)
 
-        if ci_should_enable and routing_result_typed:
-            code_interpreter_files = routing_result_typed.validated_files.get(
-                "code-interpreter", []
-            )
-            if code_interpreter_files:
-                # Override args with routed files for Code Interpreter processing
-                ci_args = dict(args)
-                ci_args["code_interpreter_files"] = code_interpreter_files
-                ci_args["code_interpreter_dirs"] = (
-                    []
-                )  # Files already expanded from dirs
-                ci_args["code_interpreter"] = (
-                    True  # Enable for service container
+        if ci_should_enable:
+            code_interpreter_manager = None
+            file_ids = []
+
+            if shared_upload_manager:
+                # Use shared upload manager for new attachment system
+                logger.debug(
+                    "Using shared upload manager for Code Interpreter"
+                )
+                from .code_interpreter import CodeInterpreterManager
+
+                code_interpreter_manager = CodeInterpreterManager(
+                    client, upload_manager=shared_upload_manager
                 )
 
-                # Create temporary service container with updated args
-                ci_services = ServiceContainer(client, ci_args)  # type: ignore[arg-type]
-                code_interpreter_manager = (
-                    await ci_services.get_code_interpreter_manager()
+                # Get file IDs from shared manager
+                file_ids = (
+                    await code_interpreter_manager.get_files_from_shared_manager()
                 )
-                if code_interpreter_manager:
-                    # Get the uploaded file IDs from the manager
-                    if (
-                        hasattr(code_interpreter_manager, "uploaded_file_ids")
-                        and code_interpreter_manager.uploaded_file_ids
-                    ):
-                        file_ids = code_interpreter_manager.uploaded_file_ids
-                        # Cast to concrete CodeInterpreterManager to access build_tool_config
-                        concrete_ci_manager = code_interpreter_manager
-                        if hasattr(concrete_ci_manager, "build_tool_config"):
-                            ci_tool_config = (
-                                concrete_ci_manager.build_tool_config(file_ids)
+                logger.debug(
+                    f"Got {len(file_ids)} file IDs from shared manager for CI"
+                )
+
+            elif routing_result_typed:
+                # Legacy routing system - process individual files
+                code_interpreter_files = (
+                    routing_result_typed.validated_files.get(
+                        "code-interpreter", []
+                    )
+                )
+                if code_interpreter_files:
+                    # Override args with routed files for Code Interpreter processing
+                    ci_args = dict(args)
+                    ci_args["code_interpreter_files"] = code_interpreter_files
+                    ci_args["code_interpreter_dirs"] = (
+                        []
+                    )  # Files already expanded from dirs
+                    ci_args["code_interpreter"] = (
+                        True  # Enable for service container
+                    )
+
+                    # Create temporary service container with updated args
+                    ci_services = ServiceContainer(client, ci_args)  # type: ignore[arg-type]
+                    code_interpreter_manager_protocol = (
+                        await ci_services.get_code_interpreter_manager()
+                    )
+                    # Cast to the concrete type we know we're getting
+                    ci_manager: Optional[CodeInterpreterManager] = None
+                    if code_interpreter_manager_protocol:
+                        from .code_interpreter import CodeInterpreterManager
+
+                        ci_manager = code_interpreter_manager_protocol  # type: ignore[assignment]
+                    if ci_manager:
+                        # Get the uploaded file IDs from the manager
+                        if (
+                            hasattr(ci_manager, "uploaded_file_ids")
+                            and ci_manager.uploaded_file_ids
+                        ):
+                            file_ids = ci_manager.uploaded_file_ids
+                        else:
+                            logger.warning(
+                                "Code Interpreter manager has no uploaded file IDs"
                             )
-                            logger.debug(
-                                f"Code Interpreter tool config: {ci_tool_config}"
-                            )
-                            code_interpreter_info = {
-                                "manager": code_interpreter_manager,
-                                "tool_config": ci_tool_config,
-                            }
-                            tools.append(ci_tool_config)
-                    else:
-                        logger.warning(
-                            "Code Interpreter manager has no uploaded file IDs"
-                        )
+
+            # Build tool configuration if we have a manager and files
+            if code_interpreter_manager and file_ids:
+                # Cast to concrete CodeInterpreterManager to access build_tool_config
+                concrete_ci_manager = code_interpreter_manager
+                if hasattr(concrete_ci_manager, "build_tool_config"):
+                    ci_tool_config = concrete_ci_manager.build_tool_config(
+                        file_ids
+                    )
+                    logger.debug(
+                        f"Code Interpreter tool config: {ci_tool_config}"
+                    )
+                    code_interpreter_info = {
+                        "manager": code_interpreter_manager,
+                        "tool_config": ci_tool_config,
+                    }
+                    tools.append(ci_tool_config)
 
         # Process File Search configuration if enabled
         # Apply universal tool toggle overrides for file-search
@@ -1043,54 +1110,83 @@ async def execute_model(
             # Fall back to routing-based enablement
             fs_should_enable = bool(fs_enabled_by_routing)
 
-        if fs_should_enable and routing_result_typed:
-            file_search_files = routing_result_typed.validated_files.get(
-                "file-search", []
-            )
-            if file_search_files:
-                # Override args with routed files for File Search processing
-                fs_args = dict(args)
-                fs_args["file_search_files"] = file_search_files
-                fs_args["file_search_dirs"] = (
-                    []
-                )  # Files already expanded from dirs
-                fs_args["file_search"] = True  # Enable for service container
+        if fs_should_enable:
+            file_search_manager = None
+            vector_store_id = None
 
-                # Create temporary service container with updated args
-                fs_services = ServiceContainer(client, fs_args)  # type: ignore[arg-type]
-                file_search_manager = (
-                    await fs_services.get_file_search_manager()
+            if shared_upload_manager:
+                # Use shared upload manager for new attachment system
+                logger.debug("Using shared upload manager for File Search")
+                from .file_search import FileSearchManager
+
+                file_search_manager = FileSearchManager(
+                    client, upload_manager=shared_upload_manager
                 )
-                if file_search_manager:
-                    # Get the vector store ID from the manager's created vector stores
-                    # The most recent one should be the one we need
-                    if (
-                        hasattr(file_search_manager, "created_vector_stores")
-                        and file_search_manager.created_vector_stores
-                    ):
-                        vector_store_id = (
-                            file_search_manager.created_vector_stores[-1]
-                        )
-                        # Cast to concrete FileSearchManager to access build_tool_config
-                        concrete_fs_manager = file_search_manager
-                        if hasattr(concrete_fs_manager, "build_tool_config"):
-                            fs_tool_config = (
-                                concrete_fs_manager.build_tool_config(
-                                    vector_store_id
-                                )
+
+                # Create vector store with files from shared manager
+                vector_store_id = await file_search_manager.create_vector_store_from_shared_manager(
+                    "ostruct_vector_store"
+                )
+                logger.debug(
+                    f"Created vector store {vector_store_id} from shared manager"
+                )
+
+            elif routing_result_typed:
+                # Legacy routing system - process individual files
+                file_search_files = routing_result_typed.validated_files.get(
+                    "file-search", []
+                )
+                if file_search_files:
+                    # Override args with routed files for File Search processing
+                    fs_args = dict(args)
+                    fs_args["file_search_files"] = file_search_files
+                    fs_args["file_search_dirs"] = (
+                        []
+                    )  # Files already expanded from dirs
+                    fs_args["file_search"] = (
+                        True  # Enable for service container
+                    )
+
+                    # Create temporary service container with updated args
+                    fs_services = ServiceContainer(client, fs_args)  # type: ignore[arg-type]
+                    file_search_manager_protocol = (
+                        await fs_services.get_file_search_manager()
+                    )
+                    # Cast to the concrete type we know we're getting
+                    fs_manager: Optional[FileSearchManager] = None
+                    if file_search_manager_protocol:
+                        from .file_search import FileSearchManager
+
+                        fs_manager = file_search_manager_protocol  # type: ignore[assignment]
+                    if fs_manager:
+                        # Get the vector store ID from the manager's created vector stores
+                        # The most recent one should be the one we need
+                        if (
+                            hasattr(fs_manager, "created_vector_stores")
+                            and fs_manager.created_vector_stores
+                        ):
+                            vector_store_id = fs_manager.created_vector_stores[
+                                -1
+                            ]
+                        else:
+                            logger.warning(
+                                "File Search manager has no created vector stores"
                             )
-                            logger.debug(
-                                f"File Search tool config: {fs_tool_config}"
-                            )
-                            file_search_info = {
-                                "manager": file_search_manager,
-                                "tool_config": fs_tool_config,
-                            }
-                            tools.append(fs_tool_config)
-                    else:
-                        logger.warning(
-                            "File Search manager has no created vector stores"
-                        )
+
+            # Build tool configuration if we have a manager and vector store
+            if file_search_manager and vector_store_id:
+                # Cast to concrete FileSearchManager to access build_tool_config
+                concrete_fs_manager = file_search_manager
+                if hasattr(concrete_fs_manager, "build_tool_config"):
+                    fs_tool_config = concrete_fs_manager.build_tool_config(
+                        vector_store_id
+                    )
+                    logger.debug(f"File Search tool config: {fs_tool_config}")
+                    file_search_info = {
+                        "manager": file_search_manager,
+                        "tool_config": fs_tool_config,
+                    }
+                    tools.append(fs_tool_config)
 
         # Process Web Search configuration if enabled
         # Check CLI flags first, then fall back to config defaults
@@ -1679,23 +1775,87 @@ class OstructRunner:
         Returns:
             Dictionary containing configuration information
         """
+        # Check for new attachment system
+        has_new_attachments = self._has_new_attachment_syntax()
+
+        if has_new_attachments:
+            attachment_summary = self._get_attachment_summary()
+            return {
+                "model": self.args.get("model"),
+                "dry_run": self.args.get("dry_run", False),
+                "verbose": self.args.get("verbose", False),
+                "mcp_servers": len(self.args.get("mcp_servers", [])),
+                "attachment_system": "new",
+                "attachments": attachment_summary,
+                "template_source": (
+                    "file" if self.args.get("task_file") else "string"
+                ),
+                "schema_source": (
+                    "file" if self.args.get("schema_file") else "inline"
+                ),
+            }
+        else:
+            # Legacy configuration summary
+            return {
+                "model": self.args.get("model"),
+                "dry_run": self.args.get("dry_run", False),
+                "verbose": self.args.get("verbose", False),
+                "mcp_servers": len(self.args.get("mcp_servers", [])),
+                "attachment_system": "legacy",
+                "code_interpreter_enabled": bool(
+                    self.args.get("code_interpreter_files")
+                    or self.args.get("code_interpreter_dirs")
+                ),
+                "file_search_enabled": bool(
+                    self.args.get("file_search_files")
+                    or self.args.get("file_search_dirs")
+                ),
+                "template_source": (
+                    "file" if self.args.get("task_file") else "string"
+                ),
+                "schema_source": (
+                    "file" if self.args.get("schema_file") else "inline"
+                ),
+            }
+
+    def _has_new_attachment_syntax(self) -> bool:
+        """Check if CLI args contain new attachment syntax.
+
+        Returns:
+            True if new attachment syntax is present
+        """
+        new_syntax_keys = ["attaches", "dirs", "collects"]
+        return any(self.args.get(key) for key in new_syntax_keys)
+
+    def _get_attachment_summary(self) -> Dict[str, Any]:
+        """Get summary of new-style attachments.
+
+        Returns:
+            Dictionary containing attachment summary
+        """
+        total_attachments = 0
+        targets_used = set()
+
+        for key in ["attaches", "dirs", "collects"]:
+            attachments = self.args.get(key, [])
+            if isinstance(attachments, list):
+                total_attachments += len(attachments)
+
+                for attachment in attachments:
+                    if isinstance(attachment, dict):
+                        targets = attachment.get("targets", [])
+                        if isinstance(targets, list):
+                            targets_used.update(targets)
+
+        # Helper function to safely get list length
+        def safe_len(key: str) -> int:
+            value = self.args.get(key, [])
+            return len(value) if isinstance(value, list) else 0
+
         return {
-            "model": self.args.get("model"),
-            "dry_run": self.args.get("dry_run", False),
-            "verbose": self.args.get("verbose", False),
-            "mcp_servers": len(self.args.get("mcp_servers", [])),
-            "code_interpreter_enabled": bool(
-                self.args.get("code_interpreter_files")
-                or self.args.get("code_interpreter_dirs")
-            ),
-            "file_search_enabled": bool(
-                self.args.get("file_search_files")
-                or self.args.get("file_search_dirs")
-            ),
-            "template_source": (
-                "file" if self.args.get("task_file") else "string"
-            ),
-            "schema_source": (
-                "file" if self.args.get("schema_file") else "inline"
-            ),
+            "total_attachments": total_attachments,
+            "targets_used": list(targets_used),
+            "attach_count": safe_len("attaches"),
+            "dir_count": safe_len("dirs"),
+            "collect_count": safe_len("collects"),
         }

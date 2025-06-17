@@ -10,9 +10,12 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from openai import AsyncOpenAI
+
+if TYPE_CHECKING:
+    from .upload_manager import SharedUploadManager
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +23,21 @@ logger = logging.getLogger(__name__)
 class FileSearchManager:
     """Manager for File Search vector store operations with retry logic."""
 
-    def __init__(self, client: AsyncOpenAI):
+    def __init__(
+        self,
+        client: AsyncOpenAI,
+        upload_manager: Optional["SharedUploadManager"] = None,
+    ):
         """Initialize File Search manager.
 
         Args:
             client: AsyncOpenAI client instance
+            upload_manager: Optional shared upload manager for deduplication
         """
         self.client = client
         self.uploaded_file_ids: List[str] = []
         self.created_vector_stores: List[str] = []
+        self.upload_manager = upload_manager
 
     async def create_vector_store_with_retry(
         self,
@@ -320,6 +329,63 @@ class FileSearchManager:
             "type": "file_search",
             "vector_store_ids": [vector_store_id],
         }
+
+    async def create_vector_store_from_shared_manager(
+        self,
+        vector_store_name: str = "ostruct_vector_store",
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+    ) -> str:
+        """Create vector store and populate with files from shared upload manager.
+
+        Args:
+            vector_store_name: Name for the vector store
+            max_retries: Maximum retry attempts
+            retry_delay: Delay between retries
+
+        Returns:
+            Vector store ID
+
+        Raises:
+            Exception: If vector store creation or file upload fails
+        """
+        if not self.upload_manager:
+            logger.warning("No shared upload manager available")
+            # Fall back to creating empty vector store
+            return await self.create_vector_store_with_retry(
+                vector_store_name, max_retries, retry_delay
+            )
+
+        # Get file IDs from shared manager
+        await self.upload_manager.upload_for_tool("file-search")
+        file_ids = self.upload_manager.get_files_for_tool("file-search")
+
+        if not file_ids:
+            logger.debug(
+                "No files for file-search, creating empty vector store"
+            )
+            return await self.create_vector_store_with_retry(
+                vector_store_name, max_retries, retry_delay
+            )
+
+        # Create vector store
+        vector_store_id = await self.create_vector_store_with_retry(
+            vector_store_name, max_retries, retry_delay
+        )
+
+        # Add files to vector store
+        await self._add_files_to_vector_store_with_retry(
+            vector_store_id, file_ids, max_retries, retry_delay
+        )
+
+        # Track uploaded files for cleanup
+        self.uploaded_file_ids.extend(file_ids)
+
+        logger.debug(
+            f"Created vector store {vector_store_id} with {len(file_ids)} files from shared manager"
+        )
+
+        return vector_store_id
 
     async def cleanup_resources(self) -> None:
         """Clean up uploaded files and created vector stores.

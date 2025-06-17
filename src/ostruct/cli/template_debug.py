@@ -126,10 +126,46 @@ def show_file_content_expansions(context: Dict[str, Any]) -> None:
 
     logger.debug("📁 File Content Expansions:")
     for key, value in context.items():
-        if hasattr(value, "content"):  # FileInfo object
-            logger.debug(
-                f"  → {key}: {getattr(value, 'path', 'unknown')} ({len(value.content)} chars)"
-            )
+        # Check for specific file-related types more safely
+        from .attachment_template_bridge import LazyFileContent
+        from .file_info import FileInfo
+        from .file_list import FileInfoList
+
+        if isinstance(value, FileInfo):
+            try:
+                content_len = len(value.content) if value.content else 0
+                logger.debug(f"  → {key}: {value.path} ({content_len} chars)")
+            except Exception as e:
+                logger.debug(
+                    f"  → {key}: FileInfo at {value.path} (content access failed: {e})"
+                )
+        elif isinstance(value, FileInfoList):
+            try:
+                file_count = len(value)
+                if file_count > 0:
+                    # Try to get content length safely
+                    try:
+                        content_len = (
+                            len(value.content) if value.content else 0
+                        )
+                        logger.debug(
+                            f"  → {key}: FileInfoList with {file_count} files ({content_len} chars)"
+                        )
+                    except ValueError:
+                        logger.debug(
+                            f"  → {key}: FileInfoList with {file_count} files (empty)"
+                        )
+                else:
+                    logger.debug(f"  → {key}: FileInfoList (empty)")
+            except Exception as e:
+                logger.debug(f"  → {key}: FileInfoList (access failed: {e})")
+        elif isinstance(value, LazyFileContent):
+            try:
+                logger.debug(f"  → {key}: LazyFileContent at {value.path}")
+            except Exception as e:
+                logger.debug(
+                    f"  → {key}: LazyFileContent (access failed: {e})"
+                )
         elif isinstance(value, str) and len(value) > 100:
             logger.debug(f"  → {key}: {len(value)} chars")
         elif isinstance(value, dict):

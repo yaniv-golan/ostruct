@@ -181,13 +181,18 @@ class FileInfo:
         try:
             return str(abs_path.relative_to(base_dir))
         except ValueError:
-            # Path is outside base_dir, check if it's in allowed directories
-            if self.__security_manager.is_path_allowed(abs_path):
-                logger.debug(
-                    "Path outside base_dir but allowed, returning absolute path: %s",
-                    abs_path,
-                )
-                return str(abs_path)
+            # Path is outside base_dir, check if it's allowed by enhanced security model
+            try:
+                if self.__security_manager.is_path_allowed_enhanced(abs_path):
+                    logger.debug(
+                        "Path outside base_dir but allowed, returning absolute path: %s",
+                        abs_path,
+                    )
+                    return str(abs_path)
+            except Exception:
+                # In strict mode, is_path_allowed_enhanced() raises exceptions
+                # If we reach this except block, the path is not allowed
+                pass
 
             # Should never reach here if SecurityManager validation was done properly
             logger.error(

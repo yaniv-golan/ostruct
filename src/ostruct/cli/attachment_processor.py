@@ -413,17 +413,17 @@ def _extract_attachments_from_args(args: CLIParams) -> List[Dict[str, Any]]:
     # Extract --attach specifications
     attaches = args.get("attaches", [])
     if attaches:
-        attachments.extend(attaches)  # type: ignore[arg-type]
+        attachments.extend(attaches)
 
     # Extract --dir specifications
     dirs = args.get("dirs", [])
     if dirs:
-        attachments.extend(dirs)  # type: ignore[arg-type]
+        attachments.extend(dirs)
 
     # Extract --collect specifications
     collects = args.get("collects", [])
     if collects:
-        attachments.extend(collects)  # type: ignore[arg-type]
+        attachments.extend(collects)
 
     logger.debug(
         "Extracted %d attachment specifications from args", len(attachments)

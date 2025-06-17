@@ -17,7 +17,6 @@ from .errors import (
     VariableNameError,
     VariableValueError,
 )
-from .explicit_file_processor import ExplicitFileProcessor
 from .security import SecurityManager
 from .template_env import create_jinja_env
 from .template_processor import (
@@ -32,35 +31,6 @@ logger = logging.getLogger(__name__)
 
 # Type alias for file routing results
 FileRoutingResult = List[Tuple[Optional[str], Union[str, Path]]]
-
-
-def validate_name_path_pair(
-    ctx: click.Context,
-    param: click.Parameter,
-    value: List[Tuple[str, Union[str, Path]]],
-) -> List[Tuple[str, Union[str, Path]]]:
-    """Validate name/path pairs for files and directories.
-
-    Args:
-        ctx: Click context
-        param: Click parameter
-        value: List of (name, path) tuples
-
-    Returns:
-        List of validated (name, Path) tuples
-
-    Raises:
-        click.BadParameter: If validation fails
-    """
-    if not value:
-        return value
-
-    result: List[Tuple[str, Union[str, Path]]] = []
-    for name, path in value:
-        if not name.isidentifier():
-            raise click.BadParameter(f"Invalid variable name: {name}")
-        result.append((name, Path(path)))
-    return result
 
 
 def validate_file_routing_spec(
@@ -389,6 +359,9 @@ def validate_security_manager(
     base_dir: Optional[str] = None,
     allowed_dirs: Optional[List[str]] = None,
     allowed_dir_file: Optional[str] = None,
+    allow_files: Optional[List[str]] = None,
+    allow_lists: Optional[List[str]] = None,
+    security_mode: str = "warn",
 ) -> SecurityManager:
     """Validate and create security manager.
 
@@ -396,6 +369,9 @@ def validate_security_manager(
         base_dir: Base directory for file access. Defaults to current working directory.
         allowed_dirs: Optional list of additional allowed directories
         allowed_dir_file: Optional file containing allowed directories
+        allow_files: Optional list of individual files to allow (tracked by inode)
+        allow_lists: Optional list of allow-list files to load
+        security_mode: Path security mode (permissive/warn/strict)
 
     Returns:
         Configured SecurityManager instance
@@ -408,8 +384,22 @@ def validate_security_manager(
     if base_dir is None:
         base_dir = os.getcwd()
 
-    # Create security manager with base directory
-    security_manager = SecurityManager(base_dir)
+    # Parse security mode
+    from .security.types import PathSecurity
+
+    # Ensure security_mode is not None (safety check)
+    if security_mode is None:
+        security_mode = "warn"
+
+    try:
+        parsed_security_mode = PathSecurity(security_mode.lower())
+    except ValueError:
+        parsed_security_mode = PathSecurity.WARN
+
+    # Create security manager with base directory and security mode
+    security_manager = SecurityManager(
+        base_dir, security_mode=parsed_security_mode
+    )
 
     # Add explicitly allowed directories
     if allowed_dirs:
@@ -428,6 +418,14 @@ def validate_security_manager(
             raise DirectoryNotFoundError(
                 f"Failed to read allowed directories file: {e}"
             )
+
+    # Configure enhanced security features (allow_files and allow_lists)
+    if allow_files or allow_lists:
+        security_manager.configure_security_mode(
+            mode=parsed_security_mode,
+            allow_files=allow_files,
+            allow_lists=allow_lists,
+        )
 
     return security_manager
 
@@ -463,14 +461,34 @@ async def validate_inputs(
     logger.debug("=== Input Validation Phase ===")
     security_manager = validate_security_manager(
         base_dir=args.get("base_dir"),
-        allowed_dirs=args.get("allowed_dirs"),
+        allowed_dirs=args.get("allow_dir"),  # type: ignore[arg-type]
         allowed_dir_file=args.get("allowed_dir_file"),
+        allow_files=args.get("allow_file"),  # type: ignore[arg-type]
+        allow_lists=args.get("allow_list"),  # type: ignore[arg-type]
+        security_mode=args.get("path_security", "warn"),  # type: ignore[arg-type]
     )
 
-    # Process explicit file routing (T2.4)
-    logger.debug("Processing explicit file routing")
-    file_processor = ExplicitFileProcessor(security_manager)
-    routing_result = await file_processor.process_file_routing(args)  # type: ignore[arg-type]
+    # Process file routing using new attachment system only (T3.0)
+    logger.debug("Processing file routing with new attachment system")
+
+    from .attachment_processor import process_new_attachments
+
+    routing_result = process_new_attachments(args, security_manager)
+
+    # The new system is mandatory - no fallback to legacy file routing
+    if routing_result is None:
+        # Create empty routing result if no attachments specified
+        from .explicit_file_processor import ExplicitRouting, ProcessingResult
+
+        routing_result = ProcessingResult(
+            routing=ExplicitRouting(),
+            enabled_tools=set(),
+            validated_files={},
+            auto_enabled_feedback=None,
+        )
+        logger.debug("No attachments specified - created empty routing result")
+    else:
+        logger.debug("Processed new attachment system")
 
     # Display auto-enablement feedback to user
     if routing_result.auto_enabled_feedback:

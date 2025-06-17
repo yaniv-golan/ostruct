@@ -1,7 +1,7 @@
 """Type definitions for ostruct CLI."""
 
 from pathlib import Path
-from typing import List, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 # Import FileRoutingResult from validators
 FileRoutingResult = List[Tuple[Optional[str], Union[str, Path]]]
@@ -48,6 +48,11 @@ class CLIParams(TypedDict, total=False):
     task: Optional[str]
     schema_file: str
     mcp_servers: List[str]
+
+    # New attachment system (T3.0)
+    attaches: List[Dict[str, Any]]  # --attach specifications
+    dirs: List[Dict[str, Any]]  # --dir specifications
+    collects: List[Dict[str, Any]]  # --collect specifications
     mcp_allowed_tools: List[str]
     mcp_require_approval: str
     mcp_headers: Optional[str]
