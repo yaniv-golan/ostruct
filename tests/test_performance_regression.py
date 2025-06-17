@@ -11,7 +11,6 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple
-from unittest.mock import patch
 
 import psutil
 import pytest
@@ -497,7 +496,7 @@ def run_performance_tests():
                 f"(max: {comp['max_expected']:.1f}s)"
             )
 
-        print(f"\n   📈 Summary:")
+        print("\n   📈 Summary:")
         print(
             f"      Total duration: {comparison.summary['total_duration']:.2f}s"
         )
@@ -509,7 +508,7 @@ def run_performance_tests():
         )
 
         # Memory usage
-        print(f"\n🧠 Memory Usage:")
+        print("\n🧠 Memory Usage:")
         memory_result = benchmark.test_memory_usage()
         memory_mb = memory_result["memory_delta"] / (1024 * 1024)
         per_file_kb = memory_result["memory_per_file"] / 1024
@@ -521,7 +520,7 @@ def run_performance_tests():
         )
 
         # Compliance tests
-        print(f"\n📋 Compliance Tests:")
+        print("\n📋 Compliance Tests:")
 
         json_result = benchmark.test_json_output_unified_guidelines()
         stream_result = benchmark.test_stream_separation_validation()
@@ -534,7 +533,7 @@ def run_performance_tests():
             status = "✅ PASS" if test.passed else "❌ FAIL"
             print(f"   {status} {test.name}")
 
-        print(f"\n🎯 Overall Results:")
+        print("\n🎯 Overall Results:")
         perf_passed = comparison.summary["all_within_expectations"]
         memory_passed = memory_result["reasonable_memory_usage"]
         compliance_passed = passed_count == len(tests)
@@ -548,9 +547,9 @@ def run_performance_tests():
         )
 
         if all_passed:
-            print(f"\n🎉 All performance and regression tests passed!")
+            print("\n🎉 All performance and regression tests passed!")
         else:
-            print(f"\n⚠️  Some tests failed - review results above")
+            print("\n⚠️  Some tests failed - review results above")
 
         return all_passed
 

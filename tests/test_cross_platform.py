@@ -5,13 +5,11 @@ Tests the new attachment system, JSON output, security modes, and platform-speci
 """
 
 import json
-import os
 import platform
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple
-from unittest.mock import patch
 
 import pytest
 
@@ -627,12 +625,12 @@ def run_cross_platform_tests():
         passed_count = sum(1 for r in results if r.passed)
         total_count = len(results)
 
-        print(f"\n📊 Test Results Summary:")
+        print("\n📊 Test Results Summary:")
         print(f"   Platform: {tester.current_platform}")
         print(f"   Passed: {passed_count}/{total_count}")
         print(f"   Success Rate: {passed_count/total_count*100:.1f}%")
 
-        print(f"\n📋 Detailed Results:")
+        print("\n📋 Detailed Results:")
         for result in results:
             status = "✅ PASS" if result.passed else "❌ FAIL"
             print(f"   {status} {result.name}")
