@@ -50,5 +50,8 @@ jobs:
     - name: Build docs (HTML+linkcheck)
       run: |
         cd docs
-        poetry run sphinx-build -W source build/html
+        echo "Building documentation with warnings treated as errors..."
+        poetry run sphinx-build -W -b html source build/html
+        echo "Checking for broken links..."
         poetry run sphinx-build -b linkcheck source build/linkcheck
+        echo "Documentation build completed successfully!"
