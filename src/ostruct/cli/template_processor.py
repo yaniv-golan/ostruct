@@ -126,7 +126,7 @@ def process_system_prompt(
     env: jinja2.Environment,
     ignore_task_sysprompt: bool = False,
     template_path: Optional[str] = None,
-) -> str:
+) -> Tuple[str, bool]:
     """Process system prompt from various sources.
 
     Args:
@@ -139,7 +139,7 @@ def process_system_prompt(
         template_path: Optional path to template file for include_system resolution
 
     Returns:
-        The final system prompt string
+        Tuple of (final system prompt string, template_has_system_prompt)
 
     Raises:
         SystemPromptError: If the system prompt cannot be loaded or rendered
@@ -154,6 +154,27 @@ def process_system_prompt(
 
     # CLI system prompt takes precedence and stops further processing
     if system_prompt_file is not None:
+        # Check for conflict with YAML frontmatter system_prompt and warn
+        template_has_system_prompt = False
+        if task_template.startswith("---\n"):
+            end = task_template.find("\n---\n", 4)
+            if end != -1:
+                frontmatter = task_template[4:end]
+                try:
+                    metadata = yaml.safe_load(frontmatter)
+                    if (
+                        isinstance(metadata, dict)
+                        and "system_prompt" in metadata
+                    ):
+                        template_has_system_prompt = True
+                        logger.warning(
+                            "Template has YAML frontmatter with 'system_prompt' field, but --sys-file was also provided. "
+                            "Using --sys-file and ignoring YAML frontmatter system_prompt."
+                        )
+                except yaml.YAMLError:
+                    # If YAML is invalid, we'll catch it later in template processing
+                    pass
+
         try:
             name, path = validate_path_mapping(
                 f"system_prompt={system_prompt_file}"
@@ -172,6 +193,9 @@ def process_system_prompt(
             base_prompt = template.render(**template_context).strip()
         except jinja2.TemplateError as e:
             raise SystemPromptError(f"Error rendering system prompt: {e}")
+
+        # Return the warning information along with the prompt
+        return base_prompt, template_has_system_prompt
 
     elif system_prompt is not None:
         try:
@@ -287,7 +311,7 @@ def process_system_prompt(
 
         base_prompt += ci_download_instructions
 
-    return base_prompt
+    return base_prompt, False
 
 
 def validate_task_template(
@@ -441,7 +465,7 @@ async def process_templates(
                 err=True,
             )
 
-    system_prompt = process_system_prompt(
+    system_prompt, template_has_system_prompt = process_system_prompt(
         task_template,
         args.get("system_prompt"),
         args.get("system_prompt_file"),

@@ -31,13 +31,23 @@ class PlanPrinter:
         plan_type = plan.get("type", "unknown").replace("_", " ").title()
         print(f"🔍 {plan_type}\n", file=file)
 
-        # Timestamp
-        if "timestamp" in plan:
-            timestamp = datetime.fromtimestamp(plan["timestamp"])
-            print(
-                f"🕐 Generated: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n",
-                file=file,
-            )
+        # Header with timestamp
+        timestamp = plan["timestamp"]
+        if isinstance(timestamp, str):
+            # Handle ISO format timestamp
+            try:
+                timestamp_dt = datetime.fromisoformat(
+                    timestamp.replace("Z", "+00:00")
+                )
+            except ValueError:
+                # Fallback for other string formats
+                timestamp_dt = datetime.now()
+        else:
+            # Handle numeric timestamp (legacy)
+            timestamp_dt = datetime.fromtimestamp(timestamp)
+
+        formatted_time = timestamp_dt.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"🕐 Generated: {formatted_time}", file=file)
 
         # Template and schema
         template = plan.get("template", {})
@@ -46,10 +56,37 @@ class PlanPrinter:
         template_status = "✅" if template.get("exists", False) else "❌"
         schema_status = "✅" if schema.get("exists", False) else "❌"
 
-        print(
-            f"📄 Template: {template_status} {template.get('path', 'unknown')}",
-            file=file,
-        )
+        # Show more helpful template warning information
+        template_path = template.get("path", "unknown")
+        template_warning = template.get("warning")
+
+        if template_warning:
+            # Use warning indicator for configuration issues with existing files
+            warning_status = "⚠️" if template.get("exists", False) else "❌"
+            print(
+                f"📄 Template: {warning_status} {template_path}",
+                file=file,
+            )
+            print(
+                f"   Warning: {template_warning}",
+                file=file,
+            )
+        elif template_path == "---":
+            # Special case for YAML frontmatter display issue (legacy)
+            print(
+                f"📄 Template: {template_status} {template_path}",
+                file=file,
+            )
+            print(
+                "   Note: Template content shown below",
+                file=file,
+            )
+        else:
+            print(
+                f"📄 Template: {template_status} {template_path}",
+                file=file,
+            )
+
         print(
             f"📋 Schema: {schema_status} {schema.get('path', 'unknown')}",
             file=file,
