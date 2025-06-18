@@ -522,8 +522,9 @@ class SecurityManager:
         if not resolved_path.exists():
             raise OstructFileNotFoundError(f"File not found: {file_path}")
 
-        # Apply enhanced security validation
-        if not self.is_path_allowed_enhanced(file_path):
+        # Apply enhanced security validation on the resolved path
+        # For symlinks, this ensures we validate the target, not just the symlink itself
+        if not self.is_path_allowed_enhanced(resolved_path):
             # is_path_allowed_enhanced() handles mode-specific behavior (warn vs strict)
             # If we get here in STRICT mode, it means an exception was already raised
             # In WARN/PERMISSIVE modes, we continue with a warning already logged

@@ -6,6 +6,8 @@ following UNIFIED GUIDELINES to prevent logic drift between JSON and human outpu
 
 import os
 import time
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .attachment_processor import ProcessedAttachments
@@ -37,50 +39,78 @@ class PlanAssembler:
             variables: Template variables
             security_mode: Security mode setting
             model: Model to use for processing
-            **kwargs: Additional context (allowed_paths, cost_estimate, etc.)
+            **kwargs: Additional context (allowed_paths, cost_estimate, template_warning, etc.)
 
         Returns:
-            Dictionary with consistent execution plan structure
+            Execution plan dictionary
         """
-        return {
+        # Handle template warning information
+        template_warning = kwargs.get("template_warning")
+        original_template_path = kwargs.get("original_template_path")
+
+        # Use original path if available, otherwise use the provided path
+        display_path = original_template_path or template_path
+
+        template_info = {
+            "path": display_path,
+            "exists": (
+                Path(display_path).exists() if display_path != "---" else True
+            ),
+        }
+
+        # Add warning information if present
+        if template_warning:
+            template_info["warning"] = template_warning
+
+        schema_info = {
+            "path": schema_path,
+            "exists": Path(schema_path).exists(),
+        }
+
+        # Build plan structure
+        plan = {
             "schema_version": "1.0",
             "type": "execution_plan",
-            "timestamp": time.time(),
-            "template": {
-                "path": template_path,
-                "exists": os.path.exists(template_path),
-            },
-            "schema": {
-                "path": schema_path,
-                "exists": os.path.exists(schema_path),
-            },
+            "timestamp": datetime.now().isoformat(),
+            "template": template_info,
+            "schema": schema_info,
             "model": model or "gpt-4o",
-            "security": {
-                "mode": str(security_mode) if security_mode else "permissive",
-                "allowed_paths": kwargs.get("allowed_paths", []),
-            },
+            "variables": variables,
+            "security_mode": security_mode or "permissive",
             "attachments": PlanAssembler._format_attachments(
                 processed_attachments
             ),
-            "variables": dict(variables),
-            "cost_estimate": kwargs.get(
-                "cost_estimate",
-                {"approx_usd": 0.0, "tokens": 0, "estimated": True},
-            ),
-            "tools": {
-                "code_interpreter": len(
-                    processed_attachments.ci_files
-                    + processed_attachments.ci_dirs
-                )
-                > 0,
-                "file_search": len(
-                    processed_attachments.fs_files
-                    + processed_attachments.fs_dirs
-                )
-                > 0,
-                "web_search": kwargs.get("web_search_enabled", False),
-            },
         }
+
+        # Add tools section if enabled tools are provided
+        enabled_tools = kwargs.get("enabled_tools")
+        if enabled_tools:
+            tools_dict = {}
+            for tool in enabled_tools:
+                # Map tool names to boolean values for plan display
+                if tool == "code-interpreter":
+                    tools_dict["code_interpreter"] = True
+                elif tool == "file-search":
+                    tools_dict["file_search"] = True
+                elif tool == "web-search":
+                    tools_dict["web_search"] = True
+                elif tool == "mcp":
+                    tools_dict["mcp"] = True
+                elif (
+                    tool != "template"
+                ):  # Skip template as it's not an external tool
+                    tools_dict[tool] = True
+
+            if tools_dict:
+                plan["tools"] = tools_dict
+
+        # Add optional fields
+        if kwargs.get("allowed_paths"):
+            plan["allowed_paths"] = kwargs["allowed_paths"]
+        if kwargs.get("cost_estimate"):
+            plan["cost_estimate"] = kwargs["cost_estimate"]
+
+        return plan
 
     @staticmethod
     def build_run_summary(
