@@ -329,6 +329,39 @@ Model and API Options
 
    Specify OpenAI model to use (default: gpt-4o).
 
+   Model names are automatically validated against the OpenAI model registry.
+   Only models that support structured output are available for selection.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Use specific model (validated automatically)
+      ostruct run template.j2 schema.json --model gpt-4o-mini
+
+      # See all available models with details
+      ostruct list-models
+
+      # Invalid models are rejected with helpful suggestions
+      ostruct run template.j2 schema.json --model invalid-model
+      # Error: Invalid model 'invalid-model'. Available models: gpt-4o, gpt-4o-mini, o1 (and 15 more).
+      #        Run 'ostruct list-models' to see all 18 available models.
+
+   **Shell Completion:**
+
+   When shell completion is enabled, the ``--model`` parameter will auto-complete
+   with available model names:
+
+   .. code-block:: bash
+
+      ostruct run template.j2 schema.json --model <TAB>
+      # Shows: gpt-4o  gpt-4o-mini  o1  o1-mini  o3-mini  ...
+
+   **Model Registry Updates:**
+
+   The model list is automatically updated when you run ``ostruct update-registry``.
+   If you encounter model validation errors, try updating your registry first.
+
 .. option:: --timeout SECONDS
 
    Set timeout for API requests (default: 7200).
@@ -395,6 +428,29 @@ Migration from v0.8.x
 
 .. important::
    **Breaking Changes in v0.9.0**: All file routing options have changed. See the migration guide below.
+
+Model Name Validation (v0.8.0+)
+--------------------------------
+
+Starting in v0.8.0, ostruct validates model names against the OpenAI model registry.
+
+**What Changed:**
+
+- Invalid model names are now rejected immediately
+- Shell completion shows available models
+- Help text automatically lists current models
+
+**If You Get Model Validation Errors:**
+
+1. Check available models: ``ostruct list-models``
+2. Update your scripts to use valid model names
+3. Update your registry if needed: ``ostruct update-registry``
+
+**Common Issues:**
+
+- **Typos**: ``gpt4o`` → ``gpt-4o``
+- **Old names**: ``gpt-4-turbo`` → ``gpt-4o``
+- **Custom names**: Use ``ostruct list-models`` to see what's available
 
 Quick Migration Reference
 --------------------------
