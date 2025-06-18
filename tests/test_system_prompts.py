@@ -17,7 +17,7 @@ class TestSystemPrompts:
     def test_default_system_prompt(self, fs: Any) -> None:
         """Test default system prompt when none is provided."""
         env = create_jinja_env()
-        prompt = process_system_prompt(
+        prompt, has_conflict = process_system_prompt(
             task_template="Test task",
             system_prompt=None,
             system_prompt_file=None,
@@ -25,12 +25,13 @@ class TestSystemPrompts:
             env=env,
         )
         assert prompt == DEFAULT_SYSTEM_PROMPT
+        assert has_conflict is False
 
     def test_direct_system_prompt(self, fs: Any) -> None:
         """Test system prompt provided directly."""
         test_prompt = "Custom system prompt"
         env = create_jinja_env()
-        prompt = process_system_prompt(
+        prompt, has_conflict = process_system_prompt(
             task_template="Test task",
             system_prompt=test_prompt,
             system_prompt_file=None,
@@ -38,6 +39,7 @@ class TestSystemPrompts:
             env=env,
         )
         assert prompt == test_prompt
+        assert has_conflict is False
 
     def test_system_prompt_from_file(self, fs: Any) -> None:
         """Test system prompt loaded from file."""
@@ -45,7 +47,7 @@ class TestSystemPrompts:
         fs.create_file("prompt.txt", contents=test_prompt)
         env = create_jinja_env()
 
-        prompt = process_system_prompt(
+        prompt, has_conflict = process_system_prompt(
             task_template="Test task",
             system_prompt=None,
             system_prompt_file="prompt.txt",
@@ -53,6 +55,7 @@ class TestSystemPrompts:
             env=env,
         )
         assert prompt == test_prompt
+        assert has_conflict is False
 
     def test_system_prompt_from_template(self, fs: Any) -> None:
         """Test system prompt from template frontmatter."""
@@ -65,7 +68,7 @@ system_prompt: Custom system prompt from template
 Test task"""
         env = create_jinja_env()
 
-        prompt = process_system_prompt(
+        prompt, has_conflict = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
             system_prompt_file=None,
@@ -73,6 +76,7 @@ Test task"""
             env=env,
         )
         assert prompt == "Custom system prompt from template"
+        assert has_conflict is False
 
     def test_system_prompt_precedence(self, fs: Any) -> None:
         """Test system prompt precedence (direct > file > template > default)."""
@@ -93,7 +97,7 @@ Test task"""
 
         # Direct prompt should take precedence over all
         direct_prompt = "Direct prompt"
-        prompt1 = process_system_prompt(
+        prompt1, has_conflict1 = process_system_prompt(
             task_template=template_content,
             system_prompt=direct_prompt,
             system_prompt_file=None,
@@ -101,9 +105,10 @@ Test task"""
             env=env,
         )
         assert prompt1 == direct_prompt
+        assert has_conflict1 is False
 
         # File prompt should take precedence over template
-        prompt2 = process_system_prompt(
+        prompt2, has_conflict2 = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
             system_prompt_file="prompt.txt",
@@ -111,9 +116,10 @@ Test task"""
             env=env,
         )
         assert prompt2 == file_prompt
+        assert has_conflict2 is True  # This should detect the conflict
 
         # Template prompt should take precedence over default
-        prompt3 = process_system_prompt(
+        prompt3, has_conflict3 = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
             system_prompt_file=None,
@@ -121,6 +127,7 @@ Test task"""
             env=env,
         )
         assert prompt3 == "Template prompt"
+        assert has_conflict3 is False
 
     def test_system_prompt_with_variables(self, fs: Any) -> None:
         """Test variable interpolation in system prompts."""
@@ -135,7 +142,7 @@ Test task"""
         template_context = {"role": "helpful", "domain": "testing"}
 
         env = create_jinja_env()
-        prompt = process_system_prompt(
+        prompt, has_conflict = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
             system_prompt_file=None,
@@ -143,6 +150,7 @@ Test task"""
             env=env,
         )
         assert prompt == "You are a helpful assistant specialized in testing"
+        assert has_conflict is False
 
     def test_invalid_system_prompt_file(self, fs: Any) -> None:
         """Test error handling for invalid system prompt file."""
@@ -217,7 +225,7 @@ Test task"""
         env = create_jinja_env()
 
         # Test include_system resolution
-        prompt = process_system_prompt(
+        prompt, has_conflict = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
             system_prompt_file=None,
@@ -229,6 +237,7 @@ Test task"""
         # Should contain include_system content and template system_prompt
         assert include_content in prompt
         assert "Additional instructions for this specific task." in prompt
+        assert has_conflict is False
 
         # Check ordering: include_system should come before system_prompt
         include_pos = prompt.find(include_content)
@@ -275,7 +284,7 @@ Test task"""
         env = create_jinja_env()
 
         # Call without template_path - include_system should be ignored
-        prompt = process_system_prompt(
+        prompt, has_conflict = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
             system_prompt_file=None,
@@ -287,3 +296,4 @@ Test task"""
         # Should only contain system_prompt, not include_system
         assert "Only this should appear." in prompt
         assert "shared_prompt" not in prompt
+        assert has_conflict is False
