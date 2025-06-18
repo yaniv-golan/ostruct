@@ -34,7 +34,7 @@ ostruct run "$PROMPT" "$SCHEMA" \
   --progress-level none \
   -V topic="$TOPIC" \
   -V next_round="$TURN_NUMBER" \
-  --fta transcript "$TRANSCRIPT" \
+      --file transcript "$TRANSCRIPT" \
 > "$DIR/new_turn.json"
 
 # Merge the new turn into the transcript

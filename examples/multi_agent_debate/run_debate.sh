@@ -109,7 +109,7 @@ echo "Impartial AI judge analyzing $(jq '.turns | length' "$TRANSCRIPT") turns..
 ostruct run "$DIR/prompts/summary.j2" "$DIR/schemas/summary.json" \
   --model gpt-4.1 \
   -V topic="$TOPIC" \
-  --fta transcript "$TRANSCRIPT" \
+      --file transcript "$TRANSCRIPT" \
   $PROGRESS_FLAG \
   > "$DIR/output/summary.json"
 
