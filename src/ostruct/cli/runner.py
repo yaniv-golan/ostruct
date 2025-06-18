@@ -584,6 +584,10 @@ async def create_structured_output(
             logger.error(f"OpenAI API error mapped: {mapped_error}")
             raise mapped_error
 
+        # Re-raise already-mapped CLIError types (like SchemaValidationError)
+        if isinstance(e, CLIError):
+            raise
+
         # Handle special schema array error with detailed guidance
         if "Invalid schema for response_format" in str(
             e
@@ -1464,6 +1468,9 @@ async def execute_model(
     ) as e:
         logger.error("API error: %s", str(e))
         raise CLIError(str(e), exit_code=ExitCode.API_ERROR)
+    except CLIError:
+        # Re-raise CLIError types (like SchemaValidationError) without wrapping
+        raise
     except Exception as e:
         logger.exception("Unexpected error during execution")
         raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
