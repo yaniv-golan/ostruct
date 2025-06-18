@@ -5,7 +5,8 @@ We isolate this code here and provide proper type annotations for Click's
 decorator-based API.
 """
 
-from typing import Any, Callable, TypeVar, Union, cast
+import logging
+from typing import Any, Callable, List, TypeVar, Union, cast
 
 import click
 from click import Command
@@ -25,6 +26,88 @@ R = TypeVar("R")
 F = TypeVar("F", bound=Callable[..., Any])
 CommandDecorator = Callable[[F], Command]
 DecoratedCommand = Union[Command, Callable[..., Any]]
+
+logger = logging.getLogger(__name__)
+
+
+def get_available_models() -> List[str]:
+    """Get list of available models from registry that support structured output.
+
+    Returns:
+        Sorted list of model names that support structured output
+
+    Note:
+        Registry handles its own caching internally.
+        Falls back to basic model list if registry fails.
+    """
+    try:
+        from openai_model_registry import ModelRegistry
+
+        registry = ModelRegistry.get_instance()
+        all_models = list(registry.models)
+
+        # Filter to only models that support structured output
+        supported_models = []
+        for model in all_models:
+            try:
+                capabilities = registry.get_capabilities(model)
+                if getattr(capabilities, "supports_structured_output", True):
+                    supported_models.append(model)
+            except Exception:
+                continue
+
+        return (
+            sorted(supported_models)
+            if supported_models
+            else _get_fallback_models()
+        )
+
+    except Exception as e:
+        logger.debug(f"Failed to load models from registry: {e}")
+        return _get_fallback_models()
+
+
+def _get_fallback_models() -> List[str]:
+    """Fallback model list when registry is unavailable."""
+    return ["gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3-mini"]
+
+
+class ModelChoice(click.Choice):
+    """Custom Choice type with better error messages for models."""
+
+    def convert(
+        self,
+        value: Any,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> str:
+        try:
+            return super().convert(value, param, ctx)
+        except click.BadParameter:
+            choices_list = list(self.choices)
+            available = ", ".join(choices_list[:5])
+            more_count = len(choices_list) - 5
+            more_text = f" (and {more_count} more)" if more_count > 0 else ""
+
+            raise click.BadParameter(
+                f"Invalid model '{value}'. Available models: {available}{more_text}.\n"
+                f"Run 'ostruct list-models' to see all {len(choices_list)} available models."
+            )
+
+
+def create_model_choice() -> ModelChoice:
+    """Create a ModelChoice object for model selection with error handling."""
+    try:
+        models = get_available_models()
+        if not models:
+            raise ValueError("No models available")
+        return ModelChoice(models, case_sensitive=True)
+    except Exception as e:
+        logger.warning(f"Failed to load dynamic model list: {e}")
+        logger.warning("Falling back to basic model validation")
+
+        fallback_models = _get_fallback_models()
+        return ModelChoice(fallback_models, case_sensitive=True)
 
 
 def parse_feature_flags(
@@ -206,16 +289,22 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add model-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
+    # Create model choice with enhanced error handling
+    model_choice = create_model_choice()
+
+    # Ensure default is in the list
+    default_model = "gpt-4o"
+    choices_list = list(model_choice.choices)
+    if default_model not in choices_list and choices_list:
+        default_model = choices_list[0]
+
     cmd = click.option(
         "-m",
         "--model",
-        default="gpt-4o",
+        type=model_choice,
+        default=default_model,
         show_default=True,
-        help="""OpenAI model to use. Must support structured output.
-        Supported models:
-        - gpt-4o (128k context window)
-        - o1 (200k context window)
-        - o3-mini (200k context window)""",
+        help="OpenAI model to use. Must support structured output.",
     )(cmd)
 
     cmd = click.option(

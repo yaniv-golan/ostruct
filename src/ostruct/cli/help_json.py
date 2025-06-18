@@ -96,6 +96,46 @@ def generate_json_output_modes() -> Dict[str, Any]:
     }
 
 
+def enhance_param_info(
+    param_info: Dict[str, Any], param: click.Parameter
+) -> Dict[str, Any]:
+    """Enhance parameter info with dynamic data."""
+    # Import here to avoid circular imports
+    try:
+        from .click_options import ModelChoice
+
+        model_choice_class = ModelChoice
+    except ImportError:
+        model_choice_class = None
+
+    # For model parameter, add dynamic choices metadata
+    if (
+        param.name == "model"
+        and model_choice_class is not None
+        and isinstance(param.type, model_choice_class)
+    ):
+        param_info["dynamic_choices"] = True
+        param_info["choices_source"] = "openai_model_registry"
+
+        # Add registry metadata if available
+        try:
+            from openai_model_registry import ModelRegistry
+
+            registry = ModelRegistry.get_instance()
+            choices_list = list(param.type.choices)
+            param_info["registry_metadata"] = {
+                "total_models": len(list(registry.models)),
+                "structured_output_models": len(choices_list),
+                "registry_path": str(
+                    getattr(registry.config, "registry_path", "unknown")
+                ),
+            }
+        except Exception:
+            param_info["registry_metadata"] = {"status": "unavailable"}
+
+    return param_info
+
+
 def generate_usage_patterns_from_commands(
     commands: Dict[str, Any],
 ) -> Dict[str, str]:
@@ -127,6 +167,17 @@ def print_command_help_json(
 
     # Use Click's built-in to_info_dict() method
     help_data = ctx.to_info_dict()  # type: ignore[attr-defined]
+
+    # Enhance parameter info with dynamic data
+    if "command" in help_data and "params" in help_data["command"]:
+        for param_info in help_data["command"]["params"]:
+            # Find the corresponding Click parameter
+            param_name = param_info.get("name")
+            if param_name:
+                for click_param in ctx.command.params:
+                    if click_param.name == param_name:
+                        enhance_param_info(param_info, click_param)
+                        break
 
     # Add ostruct-specific metadata
     help_data.update(
