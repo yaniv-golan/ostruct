@@ -5,7 +5,6 @@ We isolate this code here and provide proper type annotations for Click's
 decorator-based API.
 """
 
-import json
 from typing import Any, Callable, TypeVar, Union, cast
 
 import click
@@ -18,6 +17,8 @@ from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
     TaskTemplateVariableError,
 )
 from ostruct.cli.validators import validate_json_variable, validate_variable
+
+from .help_json import print_command_help_json as print_help_json
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -76,52 +77,7 @@ def parse_feature_flags(
     return parsed
 
 
-def print_help_json(
-    ctx: click.Context, param: click.Parameter, value: Any
-) -> None:
-    """Print command help in JSON format using Click's built-in info dict.
-
-    Args:
-        ctx: Click context
-        param: Click parameter
-        value: Parameter value
-    """
-    if not value or ctx.resilient_parsing:
-        return
-
-    # Use Click's built-in get_info_dict() method per UNIFIED GUIDELINES
-    help_data = ctx.get_info_dict()  # type: ignore[attr-defined]
-
-    # Add minimal ostruct-specific metadata
-    help_data.update(
-        {
-            "ostruct_version": __version__,
-            "attachment_syntax": {
-                "format": "[targets:]alias path",
-                "targets": [
-                    "prompt",
-                    "code-interpreter",
-                    "ci",
-                    "file-search",
-                    "fs",
-                ],
-                "examples": [
-                    "--file data file.txt",
-                    "--file ci:analysis data.csv",
-                    "--dir fs:docs ./documentation",
-                ],
-            },
-            "json_output_options": {
-                "dry_run_json": "Output execution plan as JSON with --dry-run",
-                "run_summary_json": "Output run summary as JSON to stderr",
-                "help_json": "Output this help as JSON",
-            },
-        }
-    )
-
-    # Output to stdout and exit
-    click.echo(json.dumps(help_data, indent=2))
-    ctx.exit(0)
+# Helper functions moved to help_json.py for unified help system
 
 
 def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
@@ -492,7 +448,7 @@ def feature_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
 
 def file_search_config_options(
-    f: Union[Command, Callable[..., Any]]
+    f: Union[Command, Callable[..., Any]],
 ) -> Command:
     """Add File Search configuration options (without legacy file routing)."""
     cmd: Any = f if isinstance(f, Command) else f
@@ -705,7 +661,6 @@ def modern_file_options(f: Union[Command, Callable[..., Any]]) -> Command:
     def validate_attachment_file(
         ctx: click.Context, param: click.Parameter, value: Any
     ) -> Any:
-
         from .params import normalise_targets, validate_attachment_alias
 
         if not value:

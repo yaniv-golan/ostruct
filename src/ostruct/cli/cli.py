@@ -17,6 +17,7 @@ from .errors import (
     handle_error,
 )
 from .exit_codes import ExitCode
+from .help_json import print_full_cli_help_json as print_full_help_json
 from .registry_updates import get_update_notification
 from .utils import fix_surrogate_escapes
 
@@ -57,6 +58,14 @@ def create_cli_group() -> click.Group:
         type=click.Path(exists=True),
         help="Configuration file path (default: ostruct.yaml)",
     )
+    @click.option(
+        "--help-json",
+        is_flag=True,
+        callback=print_full_help_json,
+        expose_value=False,
+        is_eager=True,
+        help="📖 Output comprehensive help for all commands in JSON format",
+    )
     @click.pass_context
     def cli_group(ctx: click.Context, config: Optional[str] = None) -> None:
         """ostruct - AI-powered structured output with multi-tool integration.
@@ -68,20 +77,24 @@ def create_cli_group() -> click.Group:
         🚀 QUICK START:
             ostruct run template.j2 schema.json -V name=value
 
-        📁 FILE ROUTING (explicit tool assignment):
-            -ft/--file-for-template          Template access only
-            -fc/--file-for-code-interpreter  Code execution & analysis
-            -fs/--file-for-file-search       Document search & retrieval
+        📁 FILE ATTACHMENT SYSTEM:
+            --file [targets:]alias path      Attach file with optional target routing
+            --dir [targets:]alias path       Attach directory with optional target routing
+
+        🎯 TARGETS:
+            prompt (default)                 Template access only
+            code-interpreter, ci             Code execution & analysis
+            file-search, fs                  Document search & retrieval
 
         ⚡ EXAMPLES:
-            # Basic usage (unchanged)
-            ostruct run template.j2 schema.json -f config.yaml
+            # Basic usage
+            ostruct run template.j2 schema.json --file data file.txt
 
-            # Multi-tool explicit routing
-            ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf -ft config.yaml
+            # Multi-tool routing
+            ostruct run analysis.j2 schema.json --file ci:data data.csv --file fs:docs manual.pdf
 
-            # Advanced routing with --file-for
-            ostruct run task.j2 schema.json --file-for code-interpreter shared.json --file-for file-search shared.json
+            # Combined targets
+            ostruct run task.j2 schema.json --file ci,fs:shared data.json
 
             # MCP server integration
             ostruct run template.j2 schema.json --mcp-server deepwiki@https://mcp.deepwiki.com/sse
