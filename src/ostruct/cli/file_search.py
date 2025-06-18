@@ -27,7 +27,7 @@ class FileSearchManager:
         self,
         client: AsyncOpenAI,
         upload_manager: Optional["SharedUploadManager"] = None,
-    ):
+    ) -> None:
         """Initialize File Search manager.
 
         Args:

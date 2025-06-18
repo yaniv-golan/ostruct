@@ -25,7 +25,7 @@ class CodeInterpreterManager:
         client: AsyncOpenAI,
         config: Optional[Dict[str, Any]] = None,
         upload_manager: Optional["SharedUploadManager"] = None,
-    ):
+    ) -> None:
         """Initialize Code Interpreter manager.
 
         Args:
@@ -105,8 +105,8 @@ class CodeInterpreterManager:
         await self.upload_manager.upload_for_tool("code-interpreter")
 
         # Get the uploaded file IDs
-        file_ids: List[str] = self.upload_manager.get_files_for_tool(
-            "code-interpreter"
+        file_ids = list(
+            self.upload_manager.get_files_for_tool("code-interpreter")
         )
 
         # Track for cleanup
