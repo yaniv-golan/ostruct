@@ -743,6 +743,20 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
                 ),
             }
 
+        @property
+        def models(self):
+            """Return list of available model names."""
+            return list(self._capabilities.keys())
+
+        @property
+        def config(self):
+            """Return mock config object with registry_path."""
+
+            class MockConfig:
+                registry_path = "/test/mock/registry/path/models.yml"
+
+            return MockConfig()
+
         def _create_mock_capabilities(
             self, model_name: str, context_window: int, max_output_tokens: int
         ) -> Any:
@@ -760,6 +774,7 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
                     self.context_window = context_window
                     self.max_output_tokens = max_output_tokens
                     self.supports_structured = True
+                    self.supports_structured_output = True
                     self.supports_streaming = True
                     self.supports_vision = False
                     self.supports_functions = True
@@ -890,6 +905,14 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     try:
         monkeypatch.setattr(
             "ostruct.cli.model_validation.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass
+
+    # Patch the direct import used in help_json.py
+    try:
+        monkeypatch.setattr(
+            "openai_model_registry.ModelRegistry", MockModelRegistry
         )
     except AttributeError:
         pass

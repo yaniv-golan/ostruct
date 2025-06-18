@@ -305,6 +305,7 @@ Shell completion will help you with:
 **⚠️ Important:** ostruct v0.9.0 introduces breaking changes to the file attachment system. The legacy file routing syntax has been completely replaced with a new explicit target/alias attachment system.
 
 **New capabilities in v0.9.0:**
+
 - **Explicit Tool Targeting**: Direct control over which tools receive files
 - **Enhanced Security**: Three-tier security modes with path validation
 - **Improved Multi-Tool Integration**: Better file sharing between tools
@@ -378,6 +379,7 @@ ostruct run analysis.j2 schema.json --file ci:data report.xlsx
 ```
 
 The `--dry-run` flag performs comprehensive validation including template rendering, catching issues like:
+
 - Binary file content access errors
 - Template syntax problems
 - Missing template variables
@@ -429,6 +431,44 @@ Load custom configuration:
 ```bash
 ostruct --config my-config.yaml run template.j2 schema.json
 ```
+
+### Model Validation
+
+ostruct automatically validates model names against the OpenAI model registry. Only models that support structured output are available for selection, ensuring compatibility with JSON schema outputs.
+
+```bash
+# See all available models with details
+ostruct list-models
+
+# Models are validated at command time
+ostruct run template.j2 schema.json --model invalid-model
+# Error: Invalid model 'invalid-model'. Available models: gpt-4o, gpt-4o-mini, o1 (and 12 more).
+#        Run 'ostruct list-models' to see all 15 available models.
+
+# Shell completion works with model names
+ostruct run template.j2 schema.json --model <TAB>
+# Shows: gpt-4o  gpt-4o-mini  o1  o1-mini  o3-mini  ...
+```
+
+**Model Registry Updates:**
+
+The model list is automatically updated when you run `ostruct update-registry`. If you encounter model validation errors, try updating your registry first:
+
+```bash
+# Update model registry
+ostruct update-registry
+
+# Check available models
+ostruct list-models
+```
+
+**Migration from Free-form Model Names:**
+
+If you have existing scripts with hardcoded model names, they will continue to work as long as the model names are valid. Common issues and solutions:
+
+- **Typos**: `gpt4o` → `gpt-4o`
+- **Old names**: `gpt-4-turbo` → `gpt-4o`
+- **Custom names**: Use `ostruct list-models` to see what's available
 
 ### Code Interpreter File Downloads
 
