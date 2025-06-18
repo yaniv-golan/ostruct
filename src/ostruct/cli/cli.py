@@ -64,6 +64,7 @@ def create_cli_group() -> click.Group:
         callback=print_full_help_json,
         expose_value=False,
         is_eager=True,
+        hidden=True,  # Hide from help output - feature not ready for release
         help="📖 Output comprehensive help for all commands in JSON format",
     )
     @click.pass_context

@@ -735,6 +735,7 @@ def help_options(f: Union[Command, Callable[..., Any]]) -> Command:
         callback=print_help_json,
         expose_value=False,
         is_eager=True,
+        hidden=True,  # Hide from help output - feature not ready for release
         help="📖 Output command help in JSON format for programmatic consumption",
     )(cmd)
 

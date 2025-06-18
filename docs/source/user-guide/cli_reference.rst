@@ -411,9 +411,7 @@ Debug and Help Options
 
    Enable verbose output.
 
-.. option:: --help-json
 
-   Output command help in JSON format.
 
 .. option:: --show-templates
 
