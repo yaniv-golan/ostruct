@@ -63,8 +63,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs path/to/your/configs \
-     -R \
+     --dir ci:configs path/to/your/configs \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
      -V environment=dev \
@@ -77,8 +77,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs examples/basic \
-     -R \
+     --dir ci:configs examples/basic \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=basic-app \
      -V environment=dev \
@@ -93,8 +93,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs path/to/your/configs \
-     -R \
+     --dir ci:configs path/to/your/configs \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
      -V environment=prod \
@@ -107,8 +107,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs examples/intermediate \
-     -R \
+     --dir ci:configs examples/intermediate \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=multi-service \
      -V environment=prod \
@@ -123,8 +123,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs path/to/your/configs \
-     -R \
+     --dir ci:configs path/to/your/configs \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
      -V environment=dev \
@@ -137,8 +137,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs examples/advanced/services \
-     -R \
+     --dir ci:configs examples/advanced/services \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=microservices \
      -V environment=dev \
@@ -153,8 +153,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs path/to/your/configs \
-     -R \
+     --dir ci:configs path/to/your/configs \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=my-service \
      --output-file validation_results.json
@@ -164,8 +164,8 @@ These commands work exactly as before:
 
    ```bash
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     -dc configs examples/basic \
-     -R \
+     --dir ci:configs examples/basic \
+     --recursive \
      --sys-file prompts/system.txt \
      -V service_name=basic-app \
      --output-file basic_validation.json
@@ -180,17 +180,17 @@ Upload configuration files for analysis while searching documentation for best p
 ```bash
 # Configuration analysis with documentation search
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -ft dev_config examples/basic/dev.yaml \
-  -ft prod_config examples/basic/prod.yaml \
-  -ds docs docs/ \
+  --file dev_config examples/basic/dev.yaml \
+  --file prod_config examples/basic/prod.yaml \
+  --dir fs:docs docs/ \
   --sys-file prompts/system.txt \
   -V service_name=basic-app \
   -V cross_env_check=true
 
 # Multi-environment validation with explicit routing
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -dc configs examples/intermediate \
-  -ds infrastructure_docs infrastructure_docs/ \
+  --dir ci:configs examples/intermediate \
+  --dir fs:infrastructure_docs infrastructure_docs/ \
   --sys-file prompts/system.txt \
   -V environment=all \
   --output-file multi_env_validation.json
@@ -203,17 +203,17 @@ Use Code Interpreter to validate configuration logic and dependencies:
 ```bash
 # Configuration with dependency validation
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -dc services examples/advanced/services \
-  -dc shared examples/advanced/shared \
+  --dir ci:services examples/advanced/services \
+  --dir ci:shared examples/advanced/shared \
   --sys-file prompts/system.txt \
   -V service_name=microservices \
   -V strict_mode=true
 
 # Complex configuration analysis
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -dc config_templates config_templates/ \
-  -dc validation_scripts validation_scripts/ \
-  -ds documentation documentation/ \
+  --dir ci:config_templates config_templates/ \
+  --dir ci:validation_scripts validation_scripts/ \
+  --dir fs:documentation documentation/ \
   --sys-file prompts/system.txt \
   --output-file comprehensive_validation.json
 ```
@@ -225,7 +225,7 @@ Connect to MCP servers to access repository documentation and standards:
 ```bash
 # Configuration validation with repository context
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -dc configs examples/basic \
+  --dir ci:configs examples/basic \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   --sys-file prompts/system.txt \
   -V service_name=basic-app \
@@ -234,8 +234,8 @@ ostruct run prompts/task.j2 schemas/validation_result.json \
 
 # Multi-tool analysis with external documentation
 ostruct run prompts/task.j2 schemas/validation_result.json \
-  -dc config_files config_files/ \
-  -ds local_docs local_docs/ \
+  --dir ci:config_files config_files/ \
+  --dir fs:local_docs local_docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   --sys-file prompts/system.txt \
   --output-file enhanced_validation.json
@@ -263,8 +263,8 @@ EOF
 
 # Run with configuration
 ostruct --config ostruct.yaml run prompts/task.j2 schemas/validation_result.json \
-  -dc config config/ \
-  -ds docs docs/
+  --dir ci:config config/ \
+  --dir fs:docs docs/
 ```
 
 ## Example Files
@@ -291,13 +291,12 @@ ostruct --config ostruct.yaml run prompts/task.j2 schemas/validation_result.json
 ```yaml
 - name: Validate Configs
   run: |
-    ostruct \
-      --task @prompts/task.j2 \
-      --schema schemas/validation_result.json \
-      --system-prompt @prompts/system.txt \
-      --dir configs=./configs \
-      --ext yaml,yml,json \
-      --recursive
+    ostruct run prompts/task.j2 schemas/validation_result.json \
+      --sys-file prompts/system.txt \
+      --dir ci:configs ./configs \
+      --recursive \
+      -V service_name=${{ github.repository }} \
+      -V environment=ci
 ```
 
 ### GitLab CI
@@ -305,7 +304,7 @@ ostruct --config ostruct.yaml run prompts/task.j2 schemas/validation_result.json
 ```yaml
 config_validation:
   script:
-    - ostruct --task @prompts/task.j2 --schema schemas/validation_result.json --system-prompt @prompts/system.txt --dir configs=./configs
+    - ostruct run prompts/task.j2 schemas/validation_result.json --sys-file prompts/system.txt --dir ci:configs ./configs --recursive -V service_name=$CI_PROJECT_NAME -V environment=ci
 ```
 
 ## Key Benefits Over Traditional Validators
