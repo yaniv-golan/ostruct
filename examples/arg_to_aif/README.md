@@ -59,10 +59,10 @@ make generate-all-json
 
 ```bash
 # Console output
-ostruct run prompt.j2 schema.json --fta argument_text texts/paradox_of_the_court.txt
+ostruct run prompt.j2 schema.json --file argument_text texts/paradox_of_the_court.txt
 
 # Save to file
-ostruct run prompt.j2 schema.json --fta argument_text texts/paradox_of_the_court.txt --output-file output/paradox_of_the_court.aif.json
+ostruct run prompt.j2 schema.json --file argument_text texts/paradox_of_the_court.txt --output-file output/paradox_of_the_court.aif.json
 
 # Generate with visualization
 ./scripts/run_with_visualization.sh texts/paradox_of_the_court.txt

@@ -19,7 +19,7 @@ run: visualize
 # Console output only (original behavior)
 .PHONY: console
 console:
-	ostruct run prompt.j2 schema.json --fta argument_text texts/$(TEXT_FILE) --model $(MODEL_NAME) | jq .
+	ostruct run prompt.j2 schema.json --file argument_text texts/$(TEXT_FILE) --model $(MODEL_NAME) | jq .
 
 # Generate AIF file with Mermaid visualization
 .PHONY: visualize
@@ -31,7 +31,7 @@ visualize:
 .PHONY: generate
 generate:
 	@echo "Generating AIF file for $(TEXT_FILE)..."
-	ostruct run prompt.j2 schema.json --fta argument_text texts/$(TEXT_FILE) --model $(MODEL_NAME) --output-file output/$(basename $(TEXT_FILE)).aif.json
+	ostruct run prompt.j2 schema.json --file argument_text texts/$(TEXT_FILE) --model $(MODEL_NAME) --output-file output/$(basename $(TEXT_FILE)).aif.json
 	@echo "Generated: output/$(basename $(TEXT_FILE)).aif.json"
 
 # Generate all available texts with visualizations
@@ -48,14 +48,14 @@ generate-all-json:
 	@for text in texts/*.txt; do \
 		base=$$(basename "$$text" .txt); \
 		echo "Generating AIF file for $$text..."; \
-		ostruct run prompt.j2 schema.json --fta argument_text "$$text" --model $(MODEL_NAME) --output-file "output/$$base.aif.json"; \
+		ostruct run prompt.j2 schema.json --file argument_text "$$text" --model $(MODEL_NAME) --output-file "output/$$base.aif.json"; \
 		echo "Generated: output/$$base.aif.json"; \
 	done
 
 # Dry run to test template without API call
 .PHONY: dry-run
 dry-run:
-	ostruct run prompt.j2 schema.json --fta argument_text texts/$(TEXT_FILE) --model $(MODEL_NAME) --dry-run
+	ostruct run prompt.j2 schema.json --file argument_text texts/$(TEXT_FILE) --model $(MODEL_NAME) --dry-run
 
 # List available texts
 .PHONY: list-texts

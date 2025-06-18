@@ -24,7 +24,7 @@ echo "🤖 Using model: $MODEL"
 AIF_FILE="$EXAMPLE_DIR/output/${OUTPUT_PREFIX}.aif.json"
 
 cd "$EXAMPLE_DIR"
-if ostruct run prompt.j2 schema.json --fta argument_text "$TEXT_FILE" --model "$MODEL" --output-file "$AIF_FILE"; then
+if ostruct run prompt.j2 schema.json --file argument_text "$TEXT_FILE" --model "$MODEL" --output-file "$AIF_FILE"; then
     echo "✅ AIF JSON generated: $AIF_FILE"
 else
     echo "❌ Failed to generate AIF JSON"
