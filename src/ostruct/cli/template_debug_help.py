@@ -129,23 +129,23 @@ def show_debug_examples() -> None:
 
 📝 Basic Template Issues:
   # Check if template expands correctly
-  ostruct run my_template.j2 schema.json --show-templates --dry-run -ft config.yaml
+  ostruct run my_template.j2 schema.json --show-templates --dry-run --file config config.yaml
 
   # See what variables are available
-  ostruct run my_template.j2 schema.json --show-context --dry-run -ft config.yaml
+  ostruct run my_template.j2 schema.json --show-context --dry-run --file config config.yaml
 
   # Full debug output
-  ostruct run my_template.j2 schema.json --debug --dry-run -ft config.yaml
+  ostruct run my_template.j2 schema.json --debug --dry-run --file config config.yaml
 
 🔧 Optimization Issues:
   # See what optimization does to your template
-  ostruct run my_template.j2 schema.json --show-optimization-diff --dry-run -ft config.yaml
+  ostruct run my_template.j2 schema.json --show-optimization-diff --dry-run --file config config.yaml
 
   # Track each optimization step
-  ostruct run my_template.j2 schema.json --show-optimization-steps --dry-run -ft config.yaml
+  ostruct run my_template.j2 schema.json --show-optimization-steps --dry-run --file config config.yaml
 
   # Bypass optimization entirely
-  ostruct run my_template.j2 schema.json --no-optimization --dry-run -ft config.yaml
+  ostruct run my_template.j2 schema.json --no-optimization --dry-run --file config config.yaml
 
 🔍 Advanced Debugging:
   # Combine multiple debug features
@@ -155,7 +155,7 @@ def show_debug_examples() -> None:
     --show-optimization-diff \\
     --show-optimization-steps \\
     --dry-run \\
-    -ft config.yaml
+    --file config config.yaml
 
 💡 Remember: Always use --dry-run when debugging to avoid API calls!
 """
