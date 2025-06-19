@@ -32,7 +32,7 @@ def quick_reference() -> None:
   -J config='{"key":"value"}'               JSON structured data
 
 🔌 TOOLS:
-  --web-search                              🌐 Real-time web search for current info
+  --enable-tool web-search                  🌐 Real-time web search for current info
   --mcp-server label@https://server.com/sse MCP server integration
   --timeout 7200                           2-hour timeout for long operations
 

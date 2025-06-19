@@ -24,28 +24,6 @@ from ..types import CLIParams
 logger = logging.getLogger(__name__)
 
 
-def _emit_deprecation_warnings(params: CLIParams) -> None:
-    """Emit deprecation warnings for legacy tool-specific flags."""
-    import warnings
-
-    # Web Search flags
-    if params.get("web_search"):
-        warnings.warn(
-            "The --web-search flag is deprecated and will be removed in v0.9.0. "
-            "Use --enable-tool web-search instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-
-    if params.get("no_web_search"):
-        warnings.warn(
-            "The --no-web-search flag is deprecated and will be removed in v0.9.0. "
-            "Use --disable-tool web-search instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-
-
 @click.command()
 @click.argument("task_template", type=click.Path(exists=True))
 @click.argument("schema_file", type=click.Path(exists=True))
@@ -60,7 +38,7 @@ def run(
     """Run structured output generation with modern file attachment system.
 
     \b
-    📁 MODERN FILE ATTACHMENT SYSTEM:
+    📁 FILE ATTACHMENT SYSTEM:
 
     Template Access (default):
       --file data file.txt              File available in template only
@@ -155,9 +133,6 @@ def run(
         # Store normalized tool toggles for later stages
         params["_enabled_tools"] = enabled_tools  # type: ignore[typeddict-unknown-key]
         params["_disabled_tools"] = disabled_tools  # type: ignore[typeddict-unknown-key]
-
-        # Emit deprecation warnings for legacy tool-specific flags
-        _emit_deprecation_warnings(params)
 
         # Apply configuration defaults if values not explicitly provided
         # Check for command-level config option first, then group-level

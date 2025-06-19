@@ -80,7 +80,6 @@ class CLIParams(TypedDict, total=False):
     tool_files: List[
         Tuple[str, str]
     ]  # List of (tool, path) tuples from --file-for
-    web_search: bool
     debug: bool
     show_templates: bool
     debug_templates: bool

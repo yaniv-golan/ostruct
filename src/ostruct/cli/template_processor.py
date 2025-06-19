@@ -721,17 +721,11 @@ def _build_tool_context(
     disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
 
     # Web search configuration
-    web_search_from_cli = args.get("web_search", False)
-    no_web_search_from_cli = args.get("no_web_search", False)
     web_search_config = config.get_web_search_config()
 
     if "web-search" in enabled_tools:
         web_search_enabled = True
     elif "web-search" in disabled_tools:
-        web_search_enabled = False
-    elif web_search_from_cli:
-        web_search_enabled = True
-    elif no_web_search_from_cli:
         web_search_enabled = False
     else:
         web_search_enabled = web_search_config.enable_by_default

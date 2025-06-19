@@ -584,24 +584,6 @@ def web_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
     cmd: Any = f if isinstance(f, Command) else f
 
     cmd = click.option(
-        "--web-search",
-        is_flag=True,
-        help="""🌐 [WEB SEARCH] Enable OpenAI web search tool for up-to-date information.
-        Allows the model to search the web for current events, recent updates, and real-time data.
-        Note: Search queries may be sent to external services via OpenAI.
-
-        ⚠️  DEPRECATED: Use --enable-tool web-search instead. Will be removed in v0.9.0.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--no-web-search",
-        is_flag=True,
-        help="""Explicitly disable web search even if enabled by default in configuration.
-
-        ⚠️  DEPRECATED: Use --disable-tool web-search instead. Will be removed in v0.9.0.""",
-    )(cmd)
-
-    cmd = click.option(
         "--user-country",
         type=str,
         help="""🌐 [WEB SEARCH] Specify user country for geographically tailored search results.

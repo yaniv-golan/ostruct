@@ -1193,11 +1193,7 @@ async def execute_model(
                     tools.append(fs_tool_config)
 
         # Process Web Search configuration if enabled
-        # Check CLI flags first, then fall back to config defaults
-        web_search_from_cli = args.get("web_search", False)
-        no_web_search_from_cli = args.get("no_web_search", False)
-
-        # Load configuration to check defaults
+        # Apply universal tool toggle overrides for web-search
         from typing import cast
 
         config_path = cast(Union[str, Path, None], args.get("config"))
@@ -1214,12 +1210,6 @@ async def execute_model(
             # Universal --disable-tool web-search takes highest precedence
             web_search_enabled = False
             logger.debug("Web search disabled via --disable-tool")
-        elif web_search_from_cli:
-            # Explicit --web-search flag takes precedence
-            web_search_enabled = True
-        elif no_web_search_from_cli:
-            # Explicit --no-web-search flag disables
-            web_search_enabled = False
         else:
             # Use config default
             web_search_enabled = web_search_config.enable_by_default
@@ -1631,20 +1621,6 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
                 token_count=total_tokens,
                 token_limit=128000,  # Default fallback
             )
-
-        # 3a. Web Search Compatibility Validation
-        if args.get("web_search", False) and not args.get(
-            "no_web_search", False
-        ):
-            from .model_validation import validate_web_search_compatibility
-
-            compatibility_warning = validate_web_search_compatibility(
-                args["model"], True
-            )
-            if compatibility_warning:
-                logger.warning(compatibility_warning)
-                # For production usage, consider making this an error instead of warning
-                # raise CLIError(compatibility_warning, exit_code=ExitCode.VALIDATION_ERROR)
 
         # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):

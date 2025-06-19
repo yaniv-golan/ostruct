@@ -124,17 +124,23 @@ class TestWebSearchPayloadConstruction:
         assert web_tool_config["type"] == "web_search_preview"
         assert web_tool_config["search_context_size"] == "high"
 
-    def test_web_search_disabled_by_no_flag(self):
-        """Test that --no-web-search disables web search."""
-        args: Dict[str, Any] = {
-            "web_search": True,
-            "no_web_search": True,
-            "model": "gpt-4o",
-        }
+    def test_web_search_disabled_by_toggle(self):
+        """Test that --disable-tool web-search disables web search."""
+        # Simulate tool toggle logic
+        enabled_tools = set()  # No tools explicitly enabled
+        disabled_tools = {"web-search"}  # Web search explicitly disabled
 
-        web_search_enabled = args.get("web_search", False) and not args.get(
-            "no_web_search", False
-        )
+        # Mock config with enable_by_default=True
+        enable_by_default = True
+
+        # Apply tool toggle logic
+        if "web-search" in enabled_tools:
+            web_search_enabled = True
+        elif "web-search" in disabled_tools:
+            web_search_enabled = False
+        else:
+            web_search_enabled = enable_by_default
+
         assert web_search_enabled is False
 
 
@@ -187,20 +193,14 @@ class TestWebSearchTemplateContext:
         mock_config.get_web_search_config.return_value = mock_web_search_config
         mock_config_class.load.return_value = mock_config
 
-        # Test CLI flag takes precedence
-        args: Dict[str, Any] = {
-            "web_search": True,
-            "no_web_search": False,
-            "model": "gpt-4o",
-        }
+        # Test tool toggle takes precedence
+        enabled_tools = {"web-search"}
+        disabled_tools = set()
 
         # Simulate the logic from template_processor.py
-        web_search_from_cli = args.get("web_search", False)
-        no_web_search_from_cli = args.get("no_web_search", False)
-
-        if web_search_from_cli:
+        if "web-search" in enabled_tools:
             web_search_enabled = True
-        elif no_web_search_from_cli:
+        elif "web-search" in disabled_tools:
             web_search_enabled = False
         else:
             web_search_enabled = mock_web_search_config.enable_by_default
@@ -209,7 +209,7 @@ class TestWebSearchTemplateContext:
 
     @patch("ostruct.cli.config.OstructConfig")
     def test_web_search_config_default_used(self, mock_config_class):
-        """Test that config default is used when no CLI flags provided."""
+        """Test that config default is used when no tool toggles provided."""
         # Mock the configuration with enable_by_default=True
         mock_config = MagicMock()
         mock_web_search_config = MagicMock()
@@ -217,16 +217,14 @@ class TestWebSearchTemplateContext:
         mock_config.get_web_search_config.return_value = mock_web_search_config
         mock_config_class.load.return_value = mock_config
 
-        # No CLI flags
-        args: Dict[str, Any] = {"model": "gpt-4o"}
+        # No tool toggles
+        enabled_tools = set()
+        disabled_tools = set()
 
         # Simulate the logic
-        web_search_from_cli = args.get("web_search", False)
-        no_web_search_from_cli = args.get("no_web_search", False)
-
-        if web_search_from_cli:
+        if "web-search" in enabled_tools:
             web_search_enabled = True
-        elif no_web_search_from_cli:
+        elif "web-search" in disabled_tools:
             web_search_enabled = False
         else:
             web_search_enabled = mock_web_search_config.enable_by_default
@@ -239,25 +237,22 @@ class TestWebSearchIntegration:
 
     def test_full_payload_construction(self):
         """Test complete web search payload construction."""
-        args: Dict[str, Any] = {
-            "web_search": True,
-            "user_country": "UK",
-            "user_city": "London",
-            "search_context_size": "low",
-            "model": "gpt-4o",
-        }
+        # Test data for payload construction
+        user_country = "UK"
+        user_city = "London"
+        search_context_size = "low"
 
         # Build complete tool config
         web_tool_config: Dict[str, Any] = {"type": "web_search_preview"}
 
         # Add location
         user_location: Dict[str, Any] = {"type": "approximate"}
-        user_location["country"] = args["user_country"]
-        user_location["city"] = args["user_city"]
+        user_location["country"] = user_country
+        user_location["city"] = user_city
         web_tool_config["user_location"] = user_location
 
         # Add context size
-        web_tool_config["search_context_size"] = args["search_context_size"]
+        web_tool_config["search_context_size"] = search_context_size
 
         # Verify complete payload
         expected = {

@@ -247,7 +247,7 @@ Web Search Data Handling
 **Security considerations:**
 - **Avoid sensitive information in prompts** when using web search
 - Review template content for potentially sensitive keywords or data
-- Consider using ``--no-web-search`` for sensitive prompts
+- Consider using ``--disable-tool web-search`` for sensitive prompts
 - Be aware that search queries may be logged by search providers
 - Web search is automatically disabled for Azure OpenAI endpoints
 
