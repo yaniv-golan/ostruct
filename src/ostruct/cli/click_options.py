@@ -543,37 +543,35 @@ def file_search_config_options(
     cmd: Any = f if isinstance(f, Command) else f
 
     cmd = click.option(
-        "--file-search-vector-store-name",
+        "--fs-store-name",
+        type=str,
         default="ostruct_search",
-        show_default=True,
-        help="""Name for the vector store created for File Search.
-        Example: --file-search-vector-store-name project_docs""",
+        help="""📁 [FILE SEARCH] Name for the vector store used for file search.
+        Example: --fs-store-name project_docs""",
     )(cmd)
 
     cmd = click.option(
-        "--file-search-cleanup",
+        "--fs-cleanup",
         is_flag=True,
         default=True,
-        show_default=True,
-        help="""Clean up uploaded files and vector stores after execution.""",
+        help="""📁 [FILE SEARCH] Clean up uploaded files and vector stores after use.
+        Disable with --no-fs-cleanup to keep files for debugging.""",
     )(cmd)
 
     cmd = click.option(
-        "--file-search-retry-count",
-        type=click.IntRange(1, 10),
+        "--fs-retries",
+        type=int,
         default=3,
-        show_default=True,
-        help="""Number of retry attempts for File Search operations.
-        Higher values improve reliability for intermittent failures.""",
+        help="""📁 [FILE SEARCH] Number of retry attempts for file search operations.
+        Increase for unreliable network connections.""",
     )(cmd)
 
     cmd = click.option(
-        "--file-search-timeout",
-        type=click.FloatRange(10.0, 300.0),
+        "--fs-timeout",
+        type=float,
         default=60.0,
-        show_default=True,
-        help="""Timeout in seconds for vector store indexing.
-        Typically instant but may take longer for large files.""",
+        help="""📁 [FILE SEARCH] Timeout in seconds for vector store indexing operations.
+        Increase for large file uploads.""",
     )(cmd)
 
     return cast(Command, cmd)

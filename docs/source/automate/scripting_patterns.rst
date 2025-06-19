@@ -73,7 +73,7 @@ Process multiple files in sequence with comprehensive error handling:
            --file config input_file "$input_file" \
            --timeout "$TIMEOUT" \
            --code-interpreter-cleanup \
-           --file-search-cleanup \
+           --fs-cleanup \
            --output-file "$output_file"; then
            log "SUCCESS: $output_file"
            return 0

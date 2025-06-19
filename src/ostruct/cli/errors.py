@@ -645,7 +645,7 @@ class APIErrorMapper:
             if "upload" in error_msg or "vector_store" in error_msg:
                 return FileSearchUploadError(
                     f"File Search upload failed: {error}. "
-                    f"This can be intermittent - retry with --file-search-retry-count option."
+                    f"This can be intermittent - retry with --fs-retries option."
                 )
             return FileSearchError(f"File Search error: {error}")
 

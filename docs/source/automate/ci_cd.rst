@@ -237,7 +237,7 @@ GitLab CI with Security Scanning
            --dir ci:data src/ \
            --dir ci:data config/ \
            --file fs:docs documentation/ \
-           --file-search-cleanup \
+           --fs-cleanup \
            --code-interpreter-cleanup \
            --timeout 900 \
            --output-file $ANALYSIS_DIR/security_report.json
@@ -347,8 +347,7 @@ Declarative Pipeline
                                --path-security strict --allow ${WORKSPACE} \
                                --allow ${WORKSPACE}/src \
                                --dir ci:data src/ \
-                               --file fs:docs documentation/ \
-                               --file-search-cleanup \
+                               --fs-cleanup \
                                --code-interpreter-cleanup \
                                --output-file ${ANALYSIS_WORKSPACE}/security_validation.json
                        '''
@@ -582,7 +581,7 @@ File Access Controls
          --allow ${{ github.workspace }}/config \
          --dir ci:data src/ \
          --code-interpreter-cleanup \
-         --file-search-cleanup
+         --fs-cleanup
 
 Network Security
 ----------------
@@ -660,7 +659,7 @@ Timeout and Resource Management
          --dir ci:data src/ \
          --timeout 300 \
          --code-interpreter-cleanup \
-         --file-search-cleanup
+         --fs-cleanup
 
 Error Handling and Monitoring
 =============================
@@ -876,7 +875,7 @@ Common CI/CD Issues
        ostruct run template.j2 schema.json \
          --dir ci:data src/ \
          --code-interpreter-cleanup \
-         --file-search-cleanup \
+         --fs-cleanup \
          --timeout 600
 
 Performance Monitoring

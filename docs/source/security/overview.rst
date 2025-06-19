@@ -304,7 +304,7 @@ Enable cleanup to minimize data retention:
 
    ostruct run template.j2 schema.json \
      --file fs:docs docs.pdf \
-     --file-search-cleanup
+     --fs-cleanup
 
 MCP Server Security
 ===================
@@ -503,7 +503,7 @@ Development Environment
      --file config config.yaml \
      --file ci:data test_data.csv \
      --code-interpreter-cleanup \
-     --file-search-cleanup
+     --fs-cleanup
 
 Staging Environment
 -------------------
@@ -520,7 +520,7 @@ Staging Environment
      --allowed-dir-file /app/allowed_dirs.txt \
      --file config configs/app.yaml \
      --code-interpreter-cleanup \
-     --file-search-cleanup \
+     --fs-cleanup \
      --verbose
 
 Production Environment
@@ -536,7 +536,7 @@ Production Environment
      --allowed-dir-file /prod/security/allowed_dirs.txt \
      --file config configs/production.yaml \
      --code-interpreter-cleanup \
-     --file-search-cleanup \
+     --fs-cleanup \
      --timeout 300
 
 CI/CD Pipeline Security
@@ -556,7 +556,7 @@ CI/CD Pipeline Security
            --file config config.yaml \
            --file ci:data data/metrics.csv \
            --code-interpreter-cleanup \
-           --file-search-cleanup \
+           --fs-cleanup \
            --output-file results.json
 
 Security Resources

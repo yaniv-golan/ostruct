@@ -62,10 +62,10 @@ class CLIParams(TypedDict, total=False):
     code_interpreter_cleanup: bool
     file_search_files: FileRoutingResult  # Fixed: was List[str]
     file_search_dirs: List[str]
-    file_search_vector_store_name: str
-    file_search_cleanup: bool
-    file_search_retry_count: int
-    file_search_timeout: float
+    fs_store_name: str
+    fs_cleanup: bool
+    fs_retries: int
+    fs_timeout: float
     template_files: FileRoutingResult  # Fixed: was List[str]
     template_dirs: List[str]
     template_file_aliases: List[

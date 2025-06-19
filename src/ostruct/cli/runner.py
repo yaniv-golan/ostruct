@@ -369,11 +369,9 @@ async def process_file_search_configuration(
 
     try:
         # Get configuration parameters
-        vector_store_name = args.get(
-            "file_search_vector_store_name", "ostruct_search"
-        )
-        retry_count = args.get("file_search_retry_count", 3)
-        timeout = args.get("file_search_timeout", 60.0)
+        vector_store_name = args.get("fs_store_name", "ostruct_search")
+        retry_count = args.get("fs_retries", 3)
+        timeout = args.get("fs_timeout", 60.0)
 
         # Create vector store with retry logic
         logger.debug(
@@ -1477,7 +1475,7 @@ async def execute_model(
                 )
 
         # Clean up File Search resources if requested
-        if file_search_info and args.get("file_search_cleanup", True):
+        if file_search_info and args.get("fs_cleanup", True):
             try:
                 manager = file_search_info["manager"]
                 # Type ignore since we know this is a FileSearchManager

@@ -247,10 +247,10 @@ Multi-Tool Integration
 
 **File Search Options**:
 
-- ``--file-search-cleanup``: Clean up uploaded files and vector stores (default: True)
-- ``--file-search-vector-store-name TEXT``: Name for the vector store
-- ``--file-search-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
-- ``--file-search-retry-count INT``: Number of retry attempts (default: 3)
+- ``--fs-cleanup``: Clean up uploaded files and vector stores (default: True)
+- ``--fs-store-name TEXT``: Name for the vector store
+- ``--fs-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
+- ``--fs-retries INT``: Number of retry attempts (default: 3)
 
 Model Parameters
 ~~~~~~~~~~~~~~~~
