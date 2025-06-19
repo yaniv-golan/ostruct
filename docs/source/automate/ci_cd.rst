@@ -52,12 +52,12 @@ Basic GitHub Actions Workflow
          env:
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
          run: |
-           ostruct run templates/code_review.j2 schemas/review.json \
-             --path-security strict \
-             --allow ${{ github.workspace }}/src \
-             --dir ci:source src/ \
-             --code-interpreter-cleanup \
-             --output-file analysis_results.json
+                     ostruct run templates/code_review.j2 schemas/review.json \
+            --path-security strict \
+            --allow ${{ github.workspace }}/src \
+            --dir ci:source src/ \
+            --ci-cleanup \
+            --output-file analysis_results.json
 
        - name: Upload Results
          uses: actions/upload-artifact@v4
@@ -112,15 +112,15 @@ Multi-Platform Analysis
          env:
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
          run: |
-           ostruct run templates/security_scan.j2 schemas/security.json \
-             --path-security strict \
-             --allow "${{ env.ANALYSIS_BASE }}/src" \
-             --allow "${{ env.ANALYSIS_BASE }}/tests" \
-             --dir ci:source src/ \
-             --file config config.yaml \
-             --code-interpreter-cleanup \
-             --timeout 600 \
-             --output-file security_results.json
+                     ostruct run templates/security_scan.j2 schemas/security.json \
+            --path-security strict \
+            --allow "${{ env.ANALYSIS_BASE }}/src" \
+            --allow "${{ env.ANALYSIS_BASE }}/tests" \
+            --dir ci:source src/ \
+            --file config config.yaml \
+            --ci-cleanup \
+            --timeout 600 \
+            --output-file security_results.json
 
 Advanced GitHub Actions Patterns
 --------------------------------
@@ -197,14 +197,14 @@ Basic GitLab CI Configuration
      stage: analyze
      script:
        - |
-         ostruct run templates/gitlab_analysis.j2 schemas/analysis.json \
-           --path-security strict --allow $CI_PROJECT_DIR \
-           --allow $CI_PROJECT_DIR/src \
-           --allow $CI_PROJECT_DIR/tests \
-           --dir ci:data src/ \
-           --file config .gitlab-ci.yml \
-           --code-interpreter-cleanup \
-           --output-file analysis_results.json
+                 ostruct run templates/gitlab_analysis.j2 schemas/analysis.json \
+          --path-security strict --allow $CI_PROJECT_DIR \
+          --allow $CI_PROJECT_DIR/src \
+          --allow $CI_PROJECT_DIR/tests \
+          --dir ci:data src/ \
+          --file config .gitlab-ci.yml \
+          --ci-cleanup \
+          --output-file analysis_results.json
      artifacts:
        reports:
          junit: analysis_results.json
@@ -230,17 +230,17 @@ GitLab CI with Security Scanning
          export ANALYSIS_DIR="$CI_PROJECT_DIR/analysis"
          mkdir -p $ANALYSIS_DIR
 
-         ostruct run templates/security_deep_scan.j2 schemas/security_detailed.json \
-           --path-security strict --allow $CI_PROJECT_DIR \
-           --allow $CI_PROJECT_DIR/src \
-           --allow $CI_PROJECT_DIR/config \
-           --dir ci:data src/ \
-           --dir ci:data config/ \
-           --file fs:docs documentation/ \
-           --fs-cleanup \
-           --code-interpreter-cleanup \
-           --timeout 900 \
-           --output-file $ANALYSIS_DIR/security_report.json
+                 ostruct run templates/security_deep_scan.j2 schemas/security_detailed.json \
+          --path-security strict --allow $CI_PROJECT_DIR \
+          --allow $CI_PROJECT_DIR/src \
+          --allow $CI_PROJECT_DIR/config \
+          --dir ci:data src/ \
+          --dir ci:data config/ \
+          --file fs:docs documentation/ \
+          --fs-cleanup \
+          --ci-cleanup \
+          --timeout 900 \
+          --output-file $ANALYSIS_DIR/security_report.json
 
        - |
          # Generate summary for merge request
@@ -300,16 +300,16 @@ Declarative Pipeline
                            source venv/bin/activate
                            mkdir -p ${ANALYSIS_WORKSPACE}
 
-                           ostruct run templates/jenkins_analysis.j2 schemas/ci_analysis.json \
-                               --path-security strict --allow ${WORKSPACE} \
-                               --allow ${WORKSPACE}/src \
-                               --allow ${WORKSPACE}/tests \
-                               --dir ci:data src/ \
-                               --file config Jenkinsfile \
-                               --file config config.yaml \
-                               --code-interpreter-cleanup \
-                               --timeout 600 \
-                               --output-file ${ANALYSIS_WORKSPACE}/results.json
+                                                     ostruct run templates/jenkins_analysis.j2 schemas/ci_analysis.json \
+                              --path-security strict --allow ${WORKSPACE} \
+                              --allow ${WORKSPACE}/src \
+                              --allow ${WORKSPACE}/tests \
+                              --dir ci:data src/ \
+                              --file config Jenkinsfile \
+                              --file config config.yaml \
+                              --ci-cleanup \
+                              --timeout 600 \
+                              --output-file ${ANALYSIS_WORKSPACE}/results.json
                        '''
                    }
                }
@@ -343,13 +343,13 @@ Declarative Pipeline
                        sh '''
                            source venv/bin/activate
 
-                           ostruct run templates/security_validation.j2 schemas/security_check.json \
-                               --path-security strict --allow ${WORKSPACE} \
-                               --allow ${WORKSPACE}/src \
-                               --dir ci:data src/ \
-                               --fs-cleanup \
-                               --code-interpreter-cleanup \
-                               --output-file ${ANALYSIS_WORKSPACE}/security_validation.json
+                                                     ostruct run templates/security_validation.j2 schemas/security_check.json \
+                              --path-security strict --allow ${WORKSPACE} \
+                              --allow ${WORKSPACE}/src \
+                              --dir ci:data src/ \
+                              --fs-cleanup \
+                              --ci-cleanup \
+                              --output-file ${ANALYSIS_WORKSPACE}/security_validation.json
                        '''
                    }
                }
@@ -492,12 +492,12 @@ Azure Pipelines YAML
 
        - script: |
            ostruct run templates/azure_analysis.j2 schemas/analysis.json \
-             --path-security strict --allow $(Build.SourcesDirectory) \
-             --allow $(Build.SourcesDirectory)/src \
-             --dir ci:data src/ \
-             --file config azure-pipelines.yml \
-             --code-interpreter-cleanup \
-             --output-file $(Build.ArtifactStagingDirectory)/analysis_results.json
+                         --path-security strict --allow $(Build.SourcesDirectory) \
+            --allow $(Build.SourcesDirectory)/src \
+            --dir ci:data src/ \
+            --file config azure-pipelines.yml \
+            --ci-cleanup \
+            --output-file $(Build.ArtifactStagingDirectory)/analysis_results.json
          env:
            OPENAI_API_KEY: $(openai-api-key)
          displayName: 'Run Analysis'
@@ -574,14 +574,14 @@ File Access Controls
    # Restrict file access with explicit allowed directories
    - name: Secure Analysis
      run: |
-       ostruct run template.j2 schema.json \
-         --path-security strict --allow ${{ github.workspace }} \
-         --allow ${{ github.workspace }}/src \
-         --allow ${{ github.workspace }}/tests \
-         --allow ${{ github.workspace }}/config \
-         --dir ci:data src/ \
-         --code-interpreter-cleanup \
-         --fs-cleanup
+             ostruct run template.j2 schema.json \
+        --path-security strict --allow ${{ github.workspace }} \
+        --allow ${{ github.workspace }}/src \
+        --allow ${{ github.workspace }}/tests \
+        --allow ${{ github.workspace }}/config \
+        --dir ci:data src/ \
+        --ci-cleanup \
+        --fs-cleanup
 
 Network Security
 ----------------
@@ -655,11 +655,11 @@ Timeout and Resource Management
    - name: Resource-Controlled Analysis
      timeout-minutes: 10
      run: |
-       ostruct run template.j2 schema.json \
-         --dir ci:data src/ \
-         --timeout 300 \
-         --code-interpreter-cleanup \
-         --fs-cleanup
+             ostruct run template.j2 schema.json \
+        --dir ci:data src/ \
+        --timeout 300 \
+        --ci-cleanup \
+        --fs-cleanup
 
 Error Handling and Monitoring
 =============================
@@ -872,11 +872,11 @@ Common CI/CD Issues
    # Solution: Use cleanup and resource limits
    - name: Memory-Controlled Analysis
      run: |
-       ostruct run template.j2 schema.json \
-         --dir ci:data src/ \
-         --code-interpreter-cleanup \
-         --fs-cleanup \
-         --timeout 600
+             ostruct run template.j2 schema.json \
+        --dir ci:data src/ \
+        --ci-cleanup \
+        --fs-cleanup \
+        --timeout 600
 
 Performance Monitoring
 ----------------------

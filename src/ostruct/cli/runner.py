@@ -710,7 +710,7 @@ async def _execute_two_pass_sentinel(
         # Use output directory from config, fallback to args, then default
         download_dir = (
             ci_config.get("output_directory")
-            or args.get("code_interpreter_download_dir")
+            or args.get("ci_download_dir")
             or "./downloads"
         )
         logger.debug(f"Downloading files to: {download_dir}")
@@ -1374,7 +1374,7 @@ async def execute_model(
                     # Responses API has 'output' attribute, not 'messages'
                     if hasattr(api_response, "output"):
                         download_dir = args.get(
-                            "code_interpreter_download_dir", "./downloads"
+                            "ci_download_dir", "./downloads"
                         )
                         manager = code_interpreter_info["manager"]
 
@@ -1461,9 +1461,7 @@ async def execute_model(
         raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
     finally:
         # Clean up Code Interpreter files if requested
-        if code_interpreter_info and args.get(
-            "code_interpreter_cleanup", True
-        ):
+        if code_interpreter_info and args.get("ci_cleanup", True):
             try:
                 manager = code_interpreter_info["manager"]
                 # Type ignore since we know this is a CodeInterpreterManager

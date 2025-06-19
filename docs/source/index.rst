@@ -242,8 +242,8 @@ Multi-Tool Integration
 
 **Code Interpreter Options**:
 
-- ``--code-interpreter-cleanup``: Clean up uploaded files after execution (default: True)
-- ``--code-interpreter-download-dir DIR``: Directory to save generated files
+- ``--ci-cleanup``: Clean up uploaded files after execution (default: True)
+- ``--ci-download-dir DIR``: Directory to save generated files
 
 **File Search Options**:
 

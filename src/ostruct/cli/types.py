@@ -58,8 +58,8 @@ class CLIParams(TypedDict, total=False):
     mcp_headers: Optional[str]
     code_interpreter_files: FileRoutingResult  # Fixed: was List[str]
     code_interpreter_dirs: List[str]
-    code_interpreter_download_dir: str
-    code_interpreter_cleanup: bool
+    ci_download_dir: str
+    ci_cleanup: bool
     file_search_files: FileRoutingResult  # Fixed: was List[str]
     file_search_dirs: List[str]
     fs_store_name: str

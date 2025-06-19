@@ -70,11 +70,11 @@ Process multiple files in sequence with comprehensive error handling:
            --path-security strict --allow "$PWD" \
            --allow "$INPUT_DIR" \
            --allow "$OUTPUT_DIR" \
-           --file config input_file "$input_file" \
-           --timeout "$TIMEOUT" \
-           --code-interpreter-cleanup \
-           --fs-cleanup \
-           --output-file "$output_file"; then
+                     --file config input_file "$input_file" \
+          --timeout "$TIMEOUT" \
+          --ci-cleanup \
+          --fs-cleanup \
+          --output-file "$output_file"; then
            log "SUCCESS: $output_file"
            return 0
        else
@@ -173,11 +173,11 @@ Process files in parallel for improved performance:
                --path-security strict --allow "$PWD" \
                --allow "$INPUT_DIR" \
                --allow "$OUTPUT_DIR" \
-               --file config "$input_file" \
-               --timeout 300 \
-               --code-interpreter-cleanup \
-               --output-file "$output_file" \
-               2>&1; then
+                             --file config "$input_file" \
+              --timeout 300 \
+              --ci-cleanup \
+              --output-file "$output_file" \
+              2>&1; then
                echo "Worker $worker_id: SUCCESS - $output_file"
            else
                echo "Worker $worker_id: ERROR - Failed processing $input_file"
@@ -279,11 +279,11 @@ Use a queue system for scalable processing:
            local output_file="./output/${job_id}_result.json"
            local success=false
 
-           if ostruct run "$template" "$schema" \
-               --file config "$input_file" \
-               --timeout 300 \
-               --code-interpreter-cleanup \
-               --output-file "$output_file"; then
+                     if ostruct run "$template" "$schema" \
+              --file config "$input_file" \
+              --timeout 300 \
+              --ci-cleanup \
+              --output-file "$output_file"; then
                success=true
            fi
 
@@ -382,11 +382,11 @@ Implement robust retry logic with exponential backoff:
        local schema="$3"
        local output_file="$4"
 
-       local command="ostruct run '$template' '$schema' \
-           --file config '$input_file' \
-           --timeout 300 \
-           --code-interpreter-cleanup \
-           --output-file '$output_file'"
+             local command="ostruct run '$template' '$schema' \
+          --file config '$input_file' \
+          --timeout 300 \
+          --ci-cleanup \
+          --output-file '$output_file'"
 
        retry_with_backoff "$command" "$MAX_RETRIES"
    }
@@ -419,11 +419,11 @@ Handle partial failures gracefully:
        local output_file="$2"
 
        # Primary processing: Full analysis with Code Interpreter
-       if ostruct run "./templates/full_analysis.j2" "./schemas/full_result.json" \
-           --file ci:data "$input_file" \
-           --timeout 300 \
-           --code-interpreter-cleanup \
-           --output-file "$output_file" 2>/dev/null; then
+             if ostruct run "./templates/full_analysis.j2" "./schemas/full_result.json" \
+          --file ci:data "$input_file" \
+          --timeout 300 \
+          --ci-cleanup \
+          --output-file "$output_file" 2>/dev/null; then
            echo "Full analysis completed: $output_file"
            return 0
        fi
@@ -845,12 +845,12 @@ Integrate with webhook systems for event-driven processing:
        local webhook_id
        webhook_id=$(echo "$payload" | jq -r '.id // "unknown"')
 
-       ostruct run "$template" "$schema" \
-           --file config "$file_path" \
-           -J "webhook_metadata=$payload" \
-           -V "webhook_id=$webhook_id" \
-           --code-interpreter-cleanup \
-           --output-file "$output_file"
+             ostruct run "$template" "$schema" \
+          --file config "$file_path" \
+          -J "webhook_metadata=$payload" \
+          -V "webhook_id=$webhook_id" \
+          --ci-cleanup \
+          --output-file "$output_file"
 
        # Send callback if webhook URL provided
        local callback_url
