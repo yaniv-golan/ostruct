@@ -801,6 +801,43 @@ Text Processing Filters
    - {{ keyword }}
    {% endfor %}
 
+**Safe Content Access:**
+
+The ``safe_get`` function safely accesses nested attributes without errors:
+
+.. code-block:: jinja
+
+   <!-- Safe nested access with fallback -->
+   {{ safe_get("transcript.content", "No transcript available") }}
+   {{ safe_get("user.profile.settings.theme", "default") }}
+   {{ safe_get("config.database.host", "localhost") }}
+
+**Use Cases:**
+
+- **Template Robustness**: Handle missing or undefined variables gracefully
+- **Nested Objects**: Access deep object properties safely
+- **Default Values**: Provide meaningful fallbacks for empty content
+- **Boilerplate Reduction**: Replace complex conditional logic with simple function calls
+
+.. code-block:: jinja
+
+   <!-- Before: Complex conditional logic (5 lines) -->
+   {% if transcript is defined and transcript.content %}
+   {{ transcript.content }}
+   {% else %}
+   This is the first round - no previous transcript.
+   {% endif %}
+
+   <!-- After: Simple and clean (1 line) -->
+   {{ safe_get("transcript.content", "This is the first round - no previous transcript.") }}
+
+**How it works:**
+
+- Safely traverses nested object paths like ``obj.nested.property``
+- Returns the default if any part of the path is undefined
+- Returns the default if the final value is empty (``""``, ``[]``, ``{}``, ``None``)
+- Preserves intentional falsy values like ``False`` or ``0``
+
 Data Processing Filters
 -----------------------
 
