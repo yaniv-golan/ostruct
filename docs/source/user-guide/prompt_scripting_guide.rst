@@ -54,10 +54,11 @@ Variable Sources
 
 ostruct makes data available through several sources:
 
-1. **File Variables** - From file routing options (``-ft``, ``-fc``, ``-fs``)
-2. **CLI Variables** - From ``-V`` and ``-J`` flags
-3. **System Variables** - Built-in ostruct context
-4. **Global Functions** - Template helper functions
+1. **File Variables** - From file routing options (``--file``, ``--file ci:``, ``--file fs:``)
+2. **Directory Variables** - From directory routing options (``--dir``, ``--dir ci:``, ``--dir fs:``)
+3. **Literal Variables** - From ``-V key=value`` command line arguments
+4. **Environment Variables** - From ``-E`` or ``--env`` flags
+5. **System Variables** - Built-in ostruct context
 
 File Variables
 ==============
@@ -67,26 +68,22 @@ Understanding File Routing
 
 Different file routing options make files available in different ways:
 
-.. list-table::
+.. list-table:: File Routing Options
    :header-rows: 1
-   :widths: 20 25 25 30
+   :widths: 20 30 50
 
-   * - Routing Option
-     - Variable Access
-     - Upload Behavior
-     - Use Cases
-   * - ``-ft`` (Template)
-     - ✅ Available
-     - ❌ Not uploaded (though embedded in the prompt sent to the model)
-     - Config files, templates
-   * - ``-fc`` (Code Interpreter)
-     - ✅ Available
-     - ✅ Uploaded
-     - Data analysis files
-   * - ``-fs`` (File Search)
-     - ✅ Available
-     - ✅ Uploaded
-     - Documents, knowledge bases
+   * - Flag
+     - Purpose
+     - Template Access
+   * - ``--file`` (Template)
+     - File available in template only
+     - Direct content access via ``.content``
+   * - ``--file ci:`` (Code Interpreter)
+     - Upload for code execution and analysis
+     - Analysis results and execution context
+   * - ``--file fs:`` (File Search)
+     - Upload for semantic search and retrieval
+     - Search results and document context
 
 Variable Naming Rules
 ---------------------
@@ -215,8 +212,8 @@ File Collection Behavior
 
 File variables have adaptive properties that return different types based on the content:
 
-- **Single file from file mapping** (``-ft``, ``-fc``, ``-fs``): Returns scalar values
-- **Multiple files or directory mapping** (``-dt``): Returns lists
+- **Single file from file mapping** (``--file``, ``--file ci:``, ``--file fs:``): Returns scalar values
+- **Multiple files or directory mapping** (``--dir``): Returns lists
 
 .. code-block:: jinja
 
@@ -517,7 +514,7 @@ Use aliases when your template needs to work with different directory structures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. tip::
-   **Template Reusability**: Use aliases (``--dta``, ``--dca``, ``--dsa``) for templates that need to work across different projects or directory structures.
+   **Template Reusability**: Use aliases (``--dir alias``, ``--dir ci:alias``, ``--dir fs:alias``) for templates that need to work across different projects or directory structures.
 
 .. code-block:: jinja
 
@@ -614,7 +611,9 @@ Simple string values from the ``-V`` flag:
 JSON Variables
 --------------
 
-Complex data structures from the ``-J`` flag:
+Complex data structures from the ``-J`` flag allow you to pass structured data to templates:
+
+**Basic JSON Objects:**
 
 .. code-block:: bash
 
@@ -629,6 +628,190 @@ Complex data structures from the ``-J`` flag:
    Enabled features:
    {% for feature in config.features %}
    - {{ feature }}
+   {% endfor %}
+
+**Arrays and Lists:**
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json -J servers='["web1","web2","db1"]' -J ports='[80,443,3306]'
+
+.. code-block:: jinja
+
+   Server list:
+   {% for server in servers %}
+   - {{ server }}
+   {% endfor %}
+
+   Port configuration:
+   {% for port in ports %}
+   - Port {{ port }}
+   {% endfor %}
+
+**Complex Nested Structures:**
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json -J app_config='{
+     "environments": {
+       "production": {"replicas": 3, "resources": {"cpu": "2", "memory": "4Gi"}},
+       "staging": {"replicas": 1, "resources": {"cpu": "1", "memory": "2Gi"}}
+     },
+     "services": ["api", "worker", "scheduler"],
+     "monitoring": {"enabled": true, "alerts": ["cpu", "memory", "disk"]}
+   }'
+
+.. code-block:: jinja
+
+   # Application Configuration
+
+   ## Environments
+   {% for env_name, env_config in app_config.environments.items() %}
+   ### {{ env_name | title }}
+   - Replicas: {{ env_config.replicas }}
+   - CPU: {{ env_config.resources.cpu }}
+   - Memory: {{ env_config.resources.memory }}
+   {% endfor %}
+
+   ## Services
+   {% for service in app_config.services %}
+   - {{ service }}
+   {% endfor %}
+
+   ## Monitoring
+   {% if app_config.monitoring.enabled %}
+   Monitoring enabled with alerts for:
+   {% for alert in app_config.monitoring.alerts %}
+   - {{ alert }}
+   {% endfor %}
+   {% endif %}
+
+**Boolean and Null Values:**
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json -J settings='{"debug":true,"cache":false,"api_key":null}'
+
+.. code-block:: jinja
+
+   Configuration:
+   {% if settings.debug %}
+   - Debug mode: ENABLED
+   {% else %}
+   - Debug mode: DISABLED
+   {% endif %}
+
+   {% if settings.cache %}
+   - Cache: ENABLED
+   {% else %}
+   - Cache: DISABLED
+   {% endif %}
+
+   {% if settings.api_key %}
+   - API Key: {{ settings.api_key }}
+   {% else %}
+   - API Key: Not configured
+   {% endif %}
+
+**Combining JSON with Other Variables:**
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json \
+     -V environment=production \
+     -J thresholds='{"cpu":80,"memory":90,"disk":95}' \
+     --file ci:metrics metrics.csv
+
+.. code-block:: jinja
+
+   # {{ environment | title }} Environment Monitoring
+
+   ## Alert Thresholds
+   - CPU: {{ thresholds.cpu }}%
+   - Memory: {{ thresholds.memory }}%
+   - Disk: {{ thresholds.disk }}%
+
+   ## Current Metrics
+   {{ metrics.content }}
+
+**JSON Validation and Error Handling:**
+
+.. code-block:: jinja
+
+   {# Check if JSON variable exists and has expected structure #}
+   {% if config is defined and config.database is defined %}
+   Database: {{ config.database.host }}:{{ config.database.port }}
+   {% else %}
+   Warning: Database configuration not found
+   {% endif %}
+
+   {# Safe access with defaults #}
+   {% set db_host = config.database.host if config.database is defined else "localhost" %}
+   {% set db_port = config.database.port if config.database is defined else 5432 %}
+   Connection: {{ db_host }}:{{ db_port }}
+
+**Common JSON Patterns:**
+
+*Feature flags:*
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json -J features='{"new_ui":true,"beta_api":false,"analytics":true}'
+
+.. code-block:: jinja
+
+   {% if features.new_ui %}
+   Using new UI components
+   {% endif %}
+
+   {% if features.analytics %}
+   Analytics tracking enabled
+   {% endif %}
+
+*Configuration overrides:*
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json -J overrides='{"timeout":30,"retries":3,"batch_size":100}'
+
+.. code-block:: jinja
+
+   Settings:
+   - Timeout: {{ overrides.timeout }}s
+   - Retry attempts: {{ overrides.retries }}
+   - Batch size: {{ overrides.batch_size }}
+
+*User preferences:*
+
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json -J user_prefs='{"theme":"dark","language":"en","notifications":{"email":true,"sms":false}}'
+
+.. code-block:: jinja
+
+   User Settings:
+   - Theme: {{ user_prefs.theme }}
+   - Language: {{ user_prefs.language }}
+   - Email notifications: {{ "enabled" if user_prefs.notifications.email else "disabled" }}
+   - SMS notifications: {{ "enabled" if user_prefs.notifications.sms else "disabled" }}
+
+**JSON Processing with Filters:**
+
+.. code-block:: jinja
+
+   {# Convert back to JSON string #}
+   Configuration as JSON:
+   {{ config | to_json }}
+
+   {# Pretty-printed JSON #}
+   Configuration (formatted):
+   {{ config | to_json(indent=2) }}
+
+   {# Extract specific fields #}
+   {% set db_configs = environments | extract_field('database') %}
+   Database configurations:
+   {% for db in db_configs %}
+   - {{ db.host }}:{{ db.port }}
    {% endfor %}
 
 Control Structures
@@ -1325,7 +1508,7 @@ Tool Integration Variables
 Code Interpreter Context
 ------------------------
 
-When files are routed to Code Interpreter (``-fc``), additional context is available:
+When files are routed to Code Interpreter (``--file ci:``), additional context is available:
 
 .. code-block:: jinja
 
@@ -1342,7 +1525,7 @@ When files are routed to Code Interpreter (``-fc``), additional context is avail
 File Search Context
 -------------------
 
-When files are routed to File Search (``-fs``), they're available for semantic search:
+When files are routed to File Search (``--file fs:``), they're available for semantic search:
 
 .. code-block:: jinja
 
