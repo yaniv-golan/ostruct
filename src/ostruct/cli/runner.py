@@ -1239,40 +1239,37 @@ async def execute_model(
                     "type": "web_search_preview"
                 }
 
-                # Add user_location if provided via CLI or config
-                user_country = args.get("user_country")
-                user_city = args.get("user_city")
-                user_region = args.get("user_region")
+                # Get user location from CLI args or config
+                ws_country = args.get("ws_country")
+                ws_city = args.get("ws_city")
+                ws_region = args.get("ws_region")
 
-                # Fall back to config if not provided via CLI
+                # Use config defaults if CLI args not provided
                 if (
-                    not any([user_country, user_city, user_region])
+                    not any([ws_country, ws_city, ws_region])
                     and web_search_config.user_location
                 ):
-                    user_country = web_search_config.user_location.country
-                    user_city = web_search_config.user_location.city
-                    user_region = web_search_config.user_location.region
+                    ws_country = web_search_config.user_location.country
+                    ws_city = web_search_config.user_location.city
+                    ws_region = web_search_config.user_location.region
 
-                if user_country or user_city or user_region:
+                if ws_country or ws_city or ws_region:
                     user_location: Dict[str, Any] = {"type": "approximate"}
-                    if user_country:
-                        user_location["country"] = user_country
-                    if user_city:
-                        user_location["city"] = user_city
-                    if user_region:
-                        user_location["region"] = user_region
-
+                    if ws_country:
+                        user_location["country"] = ws_country
+                    if ws_city:
+                        user_location["city"] = ws_city
+                    if ws_region:
+                        user_location["region"] = ws_region
                     web_tool_config["user_location"] = user_location
 
-                # Add search_context_size if provided via CLI or config
-                search_context_size = (
-                    args.get("search_context_size")
+                # Add ws_context_size if provided via CLI or config
+                ws_context_size = (
+                    args.get("ws_context_size")
                     or web_search_config.search_context_size
                 )
-                if search_context_size:
-                    web_tool_config["search_context_size"] = (
-                        search_context_size
-                    )
+                if ws_context_size:
+                    web_tool_config["search_context_size"] = ws_context_size
 
                 tools.append(web_tool_config)
                 logger.debug(f"Web Search tool config: {web_tool_config}")

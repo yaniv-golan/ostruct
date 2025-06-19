@@ -73,30 +73,29 @@ class TestWebSearchPayloadConstruction:
 
     def test_web_search_with_user_location(self):
         """Test web search payload with user location."""
-        args: Dict[str, Any] = {
-            "web_search": True,
-            "no_web_search": False,
-            "user_country": "US",
-            "user_city": "San Francisco",
-            "user_region": "California",
+        # Test data for location configuration
+        args = {
+            "ws_country": "US",
+            "ws_city": "San Francisco",
+            "ws_region": "California",
             "model": "gpt-4o",
         }
 
         # Build the tool config as would be done in runner.py
         web_tool_config: Dict[str, Any] = {"type": "web_search_preview"}
 
-        user_country = args.get("user_country")
-        user_city = args.get("user_city")
-        user_region = args.get("user_region")
+        ws_country = args.get("ws_country")
+        ws_city = args.get("ws_city")
+        ws_region = args.get("ws_region")
 
-        if user_country or user_city or user_region:
+        if ws_country or ws_city or ws_region:
             user_location: Dict[str, Any] = {"type": "approximate"}
-            if user_country:
-                user_location["country"] = user_country
-            if user_city:
-                user_location["city"] = user_city
-            if user_region:
-                user_location["region"] = user_region
+            if ws_country:
+                user_location["country"] = ws_country
+            if ws_city:
+                user_location["city"] = ws_city
+            if ws_region:
+                user_location["region"] = ws_region
             web_tool_config["user_location"] = user_location
 
         # Verify the constructed payload
@@ -110,15 +109,15 @@ class TestWebSearchPayloadConstruction:
         """Test web search payload with search context size."""
         args: Dict[str, Any] = {
             "web_search": True,
-            "search_context_size": "high",
+            "ws_context_size": "high",
             "model": "gpt-4o",
         }
 
         # Build the tool config
         web_tool_config: Dict[str, Any] = {"type": "web_search_preview"}
-        search_context_size = args.get("search_context_size")
-        if search_context_size:
-            web_tool_config["search_context_size"] = search_context_size
+        ws_context_size = args.get("ws_context_size")
+        if ws_context_size:
+            web_tool_config["search_context_size"] = ws_context_size
 
         # Verify the payload
         assert web_tool_config["type"] == "web_search_preview"
@@ -238,21 +237,21 @@ class TestWebSearchIntegration:
     def test_full_payload_construction(self):
         """Test complete web search payload construction."""
         # Test data for payload construction
-        user_country = "UK"
-        user_city = "London"
-        search_context_size = "low"
+        ws_country = "UK"
+        ws_city = "London"
+        ws_context_size = "low"
 
         # Build complete tool config
         web_tool_config: Dict[str, Any] = {"type": "web_search_preview"}
 
         # Add location
         user_location: Dict[str, Any] = {"type": "approximate"}
-        user_location["country"] = user_country
-        user_location["city"] = user_city
+        user_location["country"] = ws_country
+        user_location["city"] = ws_city
         web_tool_config["user_location"] = user_location
 
         # Add context size
-        web_tool_config["search_context_size"] = search_context_size
+        web_tool_config["search_context_size"] = ws_context_size
 
         # Verify complete payload
         expected = {

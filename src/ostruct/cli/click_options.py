@@ -584,31 +584,31 @@ def web_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
     cmd: Any = f if isinstance(f, Command) else f
 
     cmd = click.option(
-        "--user-country",
+        "--ws-country",
         type=str,
         help="""🌐 [WEB SEARCH] Specify user country for geographically tailored search results.
         Used to improve search relevance by location (e.g., 'US', 'UK', 'Germany').""",
     )(cmd)
 
     cmd = click.option(
-        "--user-city",
+        "--ws-city",
         type=str,
         help="""🌐 [WEB SEARCH] Specify user city for geographically tailored search results.
         Used to improve search relevance by location (e.g., 'San Francisco', 'London').""",
     )(cmd)
 
     cmd = click.option(
-        "--user-region",
+        "--ws-region",
         type=str,
         help="""🌐 [WEB SEARCH] Specify user region/state for geographically tailored search results.
-        Used to improve search relevance by location (e.g., 'California', 'Bavaria').""",
+        Used to improve search relevance by location (e.g., 'California', 'Texas').""",
     )(cmd)
 
     cmd = click.option(
-        "--search-context-size",
+        "--ws-context-size",
         type=click.Choice(["low", "medium", "high"]),
-        help="""🌐 [WEB SEARCH] Control the amount of content retrieved from web pages.
-        'low' retrieves minimal content, 'high' retrieves comprehensive content. Default: medium.""",
+        help="""🌐 [WEB SEARCH] Control the amount of content retrieved from search results.
+        'low' = brief snippets, 'medium' = balanced content, 'high' = comprehensive content.""",
     )(cmd)
 
     return cast(Command, cmd)
