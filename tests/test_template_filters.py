@@ -5,6 +5,7 @@ from jinja2 import TemplateRuntimeError
 from ostruct.cli.file_info import FileInfo
 from ostruct.cli.file_list import FileInfoList
 from ostruct.cli.security import SecurityManager
+from ostruct.cli.template_env import create_jinja_env
 from ostruct.cli.template_filters import (
     files_filter,
     is_fileish,
@@ -395,3 +396,90 @@ def test_is_fileish_with_non_iterable() -> None:
     # Non-iterable values should not be fileish
     assert is_fileish(42) is False
     assert is_fileish(None) is False
+
+
+class TestSafeGetFunction:
+    """Test the safe_get global function."""
+
+    def test_multi_agent_debate_pattern(self) -> None:
+        """Test the specific pattern from multi-agent debate example."""
+        env = create_jinja_env()
+
+        # Test with safe_get function
+        template = env.from_string(
+            "{{ safe_get('transcript.content', 'This is the first round - no previous transcript.') }}"
+        )
+
+        # Test with transcript content
+        result = template.render(
+            {"transcript": {"content": "Previous round content"}}
+        )
+        assert result == "Previous round content"
+
+        # Test without transcript
+        result = template.render({})
+        assert result == "This is the first round - no previous transcript."
+
+        # Test with empty transcript content
+        result = template.render({"transcript": {"content": ""}})
+        assert result == "This is the first round - no previous transcript."
+
+    def test_empty_values(self) -> None:
+        """Test that safe_get handles empty values correctly."""
+        env = create_jinja_env()
+
+        # Test with None value
+        template = env.from_string("{{ safe_get('obj.content', 'Default') }}")
+        result = template.render({"obj": {"content": None}})
+        assert result == "Default"
+
+        # Test with empty string
+        result = template.render({"obj": {"content": ""}})
+        assert result == "Default"
+
+        # Test with whitespace-only string
+        result = template.render({"obj": {"content": "   "}})
+        assert result == "Default"
+
+        # Test with empty collections
+        result = template.render({"obj": {"content": []}})
+        assert result == "Default"
+
+        result = template.render({"obj": {"content": {}}})
+        assert result == "Default"
+
+    def test_safe_get_function(self) -> None:
+        """Test the safe_get global function for safe nested access."""
+        env = create_jinja_env()
+
+        # Test safe_get with existing nested path
+        template = env.from_string(
+            "{{ safe_get('obj.nested.value', 'Default') }}"
+        )
+        result = template.render({"obj": {"nested": {"value": "Found"}}})
+        assert result == "Found"
+
+        # Test safe_get with missing intermediate object
+        result = template.render({"obj": {}})
+        assert result == "Default"
+
+        # Test safe_get with completely missing root object
+        result = template.render({})
+        assert result == "Default"
+
+        # Test safe_get with empty value
+        result = template.render({"obj": {"nested": {"value": ""}}})
+        assert result == "Default"
+
+    def test_falsy_values_preserved(self) -> None:
+        """Test that safe_get preserves intentional falsy values."""
+        env = create_jinja_env()
+        template = env.from_string("{{ safe_get('obj.value', 'Default') }}")
+
+        # Boolean False should be preserved (rendered as "False")
+        result = template.render({"obj": {"value": False}})
+        assert result == "False"
+
+        # Number 0 should be preserved (rendered as "0")
+        result = template.render({"obj": {"value": 0}})
+        assert result == "0"

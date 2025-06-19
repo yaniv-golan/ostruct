@@ -201,6 +201,70 @@ def format_error(e: Exception) -> str:
 
 
 @pass_context
+def safe_get(context: Any, path: str, default_value: str = "") -> Any:
+    """Safely get a nested attribute path, returning default if any part is undefined.
+
+    This function provides safe access to nested object attributes without raising
+    UndefinedError when intermediate objects don't exist.
+
+    Args:
+        context: Jinja2 template context
+        path: Dot-separated path to the attribute (e.g., "transcript.content")
+        default_value: Value to return if path doesn't exist (default: "")
+
+    Returns:
+        The value at the path if it exists and is non-empty, otherwise default_value
+
+    Examples:
+        {{ safe_get("transcript.content", "No transcript available") }}
+        {{ safe_get("user.profile.bio", "No bio provided") }}
+    """
+    # Import here to avoid circular imports
+
+    try:
+        # Split the path and traverse the object tree
+        parts = path.split(".")
+        current = context
+
+        # Start from the first part in the context
+        for i, part in enumerate(parts):
+            if i == 0:
+                # First part: look in the template context
+                if part in context:
+                    current = context[part]
+                else:
+                    return default_value
+            else:
+                # Subsequent parts: traverse the object
+                if hasattr(current, part):
+                    current = getattr(current, part)
+                elif isinstance(current, dict) and part in current:
+                    current = current[part]
+                else:
+                    # Path doesn't exist, return default
+                    return default_value
+
+        # Apply emptiness check to the final value
+        # Check for None
+        if current is None:
+            return default_value
+
+        # Check for empty string
+        if isinstance(current, str) and not current.strip():
+            return default_value
+
+        # Check for empty collections (list, dict, etc.)
+        if hasattr(current, "__len__") and len(current) == 0:
+            return default_value
+
+        # Return the value (preserving intentional falsy values like False or 0)
+        return current
+
+    except (AttributeError, KeyError, TypeError):
+        return default_value
+
+
+@pass_context
 def estimate_tokens(context: Any, text: str) -> int:
     """Estimate number of tokens in text."""
     try:
@@ -771,5 +835,7 @@ def register_template_filters(env: Environment) -> None:
             "pivot_table": pivot_table,
             # Table utilities
             "auto_table": auto_table,
+            # Safe access utilities
+            "safe_get": safe_get,
         }
     )
