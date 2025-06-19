@@ -126,7 +126,7 @@ ostruct run prompts/task.j2 schemas/code_review.json \
 ostruct run prompts/task.j2 schemas/code_review.json \
   --file-for-code-interpreter security_code examples/security/sql_injection.py \
   --file-for-code-interpreter performance_code examples/performance/n_plus_one.py \
-  --file-for-template system_prompt prompts/system.txt
+  --file system_prompt prompts/system.txt
 ```
 
 #### File Search for Documentation Context

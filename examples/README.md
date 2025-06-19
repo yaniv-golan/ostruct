@@ -26,7 +26,7 @@ Each file routing option supports three syntaxes:
 ```bash
 -ft config.yaml                    # Auto-naming → config_yaml variable
 -ft app_config config.yaml         # Two-arg syntax → app_config variable
---fta app_config config.yaml       # Two-arg alias → app_config variable (best tab completion)
+--file app_config config.yaml       # Two-arg alias → app_config variable (best tab completion)
 ```
 
 **Important**: Access file content with `{{ variable.content }}`, not `{{ variable }}`.

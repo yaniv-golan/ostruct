@@ -183,26 +183,20 @@ The CLI revolves around a single subcommand called ``run``. Basic usage:
 File & Directory Routing
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Template Access (Local Only)**:
+**Modern Attachment System (v0.9.0)**:
 
-- ``-ft, --file config FILE``: Files available in template only (auto-naming)
-- ``--fta, --file-for-template-alias NAME PATH``: Files for template with custom aliases
-- ``-dt, --dir config DIR``: Directories for template access (auto-naming)
-- ``--dta, --dir-for-template-alias NAME PATH``: Directories for template with custom aliases
+- ``--file [targets:]alias path``: Attach file with explicit tool targeting
+- ``--dir [targets:]alias path``: Attach directory with explicit tool targeting
+- ``--collect [targets:]alias @filelist``: Attach file collection from list
 
-**Code Interpreter (Execution & Analysis)**:
+**Targets**: ``prompt`` (template-only, default), ``ci`` (code-interpreter), ``fs`` (file-search)
 
-- ``-fc, --file ci:data FILE``: Upload files for code execution (auto-naming)
-- ``--fca, --file-for-code-interpreter-alias NAME PATH``: Files for code execution with custom aliases
-- ``-dc, --dir ci:data DIR``: Upload directories for analysis (auto-naming)
-- ``--dca, --dir-for-code-interpreter-alias NAME PATH``: Directories for code execution with custom aliases
+**Examples**:
 
-**File Search (Document Retrieval)**:
-
-- ``-fs, --file-for-search FILE``: Upload files for semantic vector search (auto-naming)
-- ``--fsa, --file-for-search-alias NAME PATH``: Files for search with custom aliases
-- ``-ds, --dir fs:docs DIR``: Upload directories for semantic search (auto-naming)
-- ``--dsa, --dir-for-search-alias NAME PATH``: Directories for search with custom aliases
+- ``--file config settings.yaml``: Template access only
+- ``--file ci:data analysis.csv``: Upload to Code Interpreter
+- ``--file fs:docs manual.pdf``: Upload to File Search
+- ``--file ci,fs:shared data.json``: Multi-tool routing
 
 **Advanced Routing**:
 

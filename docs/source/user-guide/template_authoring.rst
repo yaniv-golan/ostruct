@@ -578,7 +578,7 @@ Use aliases when your template needs to work with different directory structures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. tip::
-   **Template Reusability**: Use aliases (``--dta``, ``--dca``, ``--dsa``) for templates that need to work across different projects or directory structures.
+   **Template Reusability**: Use aliases (``--dir alias``, ``--dir ci:alias``, ``--dir fs:alias``) for templates that need to work across different projects or directory structures.
 
 .. code-block:: jinja
 

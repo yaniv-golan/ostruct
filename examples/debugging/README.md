@@ -32,23 +32,23 @@ cd examples/debugging/template-expansion
 
 # Show basic template expansion
 ostruct run debug_template.j2 ../../../schema.json --show-templates \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4" \
-  --fta timestamp "2025-01-24 10:30:00"
+  --file current_model "gpt-4" \
+  --file timestamp "2025-01-24 10:30:00"
 
 # Show context variables
 ostruct run debug_template.j2 ../../../schema.json --show-context \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 
 # Full debugging (will show undefined variable error)
 ostruct run debug_template.j2 ../../../schema.json --debug \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4" \
-  --fta timestamp "2025-01-24 10:30:00"
+  --file current_model "gpt-4" \
+  --file timestamp "2025-01-24 10:30:00"
 ```
 
 ### 2. Context Inspection
@@ -56,15 +56,15 @@ ostruct run debug_template.j2 ../../../schema.json --debug \
 ```bash
 # Basic context summary
 ostruct run debug_template.j2 ../../../schema.json --show-context \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 
 # Detailed context with content previews
 ostruct run debug_template.j2 ../../../schema.json --show-context-detailed \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 ```
 
 ### 3. Template Expansion Steps
@@ -72,10 +72,10 @@ ostruct run debug_template.j2 ../../../schema.json --show-context-detailed \
 ```bash
 # Step-by-step template expansion
 ostruct run debug_template.j2 ../../../schema.json --debug-templates \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4" \
-  --fta timestamp "2025-01-24 10:30:00"
+  --file current_model "gpt-4" \
+  --file timestamp "2025-01-24 10:30:00"
 ```
 
 ## Common Debugging Scenarios
@@ -93,22 +93,22 @@ The `debug_template.j2` includes an undefined variable `potentially_missing_var`
 ```bash
 # This will fail with an undefined variable error
 ostruct run debug_template.j2 ../../../schema.json --show-templates \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 
 # Debug by checking available context
 ostruct run debug_template.j2 ../../../schema.json --show-context \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 
 # Fix by adding the missing variable
 ostruct run debug_template.j2 ../../../schema.json --show-templates \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4" \
-  --fta potentially_missing_var "This variable is now defined!"
+  --file current_model "gpt-4" \
+  --file potentially_missing_var "This variable is now defined!"
 ```
 
 ### Scenario 2: Complex Logic Debugging
@@ -118,10 +118,10 @@ The template includes loops and conditionals. Use step-by-step debugging:
 ```bash
 # See how loops and conditionals are processed
 ostruct run debug_template.j2 ../../../schema.json --debug-templates \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4" \
-  --fta timestamp "2025-01-24 10:30:00"
+  --file current_model "gpt-4" \
+  --file timestamp "2025-01-24 10:30:00"
 ```
 
 ### Scenario 3: File Content Analysis
@@ -131,17 +131,17 @@ The template processes file content. Debug file loading:
 ```bash
 # Verify files are loaded correctly
 ostruct run debug_template.j2 ../../../schema.json --show-context-detailed \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 
 # See how file content is used in template
 ostruct run debug_template.j2 ../../../schema.json --show-templates \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4" \
-  --fta timestamp "2025-01-24 10:30:00" \
-  --fta potentially_missing_var "Fixed!"
+  --file current_model "gpt-4" \
+  --file timestamp "2025-01-24 10:30:00" \
+  --file potentially_missing_var "Fixed!"
 ```
 
 ## Optimization Debugging Examples
@@ -153,21 +153,21 @@ Create a large template to see optimization in action:
 ```bash
 # Show optimization differences
 ostruct run debug_template.j2 ../../../schema.json --show-optimization-diff \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 
 # Track optimization steps
 ostruct run debug_template.j2 ../../../schema.json --show-optimization-steps \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 
 # Compare with no optimization
 ostruct run debug_template.j2 ../../../schema.json --no-optimization \
-  --fta config_yaml example_config.yaml \
+  --file config_yaml example_config.yaml \
   --ftl code_files sample_code.py \
-  --fta current_model "gpt-4"
+  --file current_model "gpt-4"
 ```
 
 ## Troubleshooting Guide

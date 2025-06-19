@@ -257,7 +257,7 @@ Web search is always opt-in and requires explicit use of the ``--enable-tool web
 Template File Security
 ----------------------
 
-Template files (``-ft``, ``--fta``, ``-dt``) are **never uploaded** to external services:
+Template files (``--file alias path``) are **never uploaded** to external services:
 
 - Files remain on your local system
 - Content is read and included in template rendering

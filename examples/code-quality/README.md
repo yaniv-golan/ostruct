@@ -70,7 +70,7 @@ All code quality examples leverage ostruct's enhanced capabilities:
 
 ```bash
 # Analyze entire codebase
---dca code examples/security -R
+--dir ci:code examples/security -R
 ```
 
 **Individual File Routing:**

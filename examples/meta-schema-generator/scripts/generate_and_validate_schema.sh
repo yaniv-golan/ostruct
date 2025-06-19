@@ -141,14 +141,14 @@ generate_schema() {
             poetry run ostruct run
             "${prompt_template}"
             "${output_schema}"
-            --fta user_template "${target_template}"
+            --file user_template "${target_template}"
         )
     else
         local cmd=(
             "${OSTRUCT_CMD}" run
             "${prompt_template}"
             "${output_schema}"
-            --fta user_template "${target_template}"
+            --file user_template "${target_template}"
         )
     fi
 
@@ -312,7 +312,7 @@ refine_schema() {
             poetry run ostruct run
             "${BASE_DIR}/prompts/refine_schema_from_feedback.j2"
             "${BASE_DIR}/schemas/schema_generator_output.json"
-            --fta user_template "${target_template}"
+            --file user_template "${target_template}"
             -V "flawed_schema=${flawed_schema_content}"
             -V "validation_errors=${validation_errors_content}"
             --output-file "${temp_output}"
@@ -322,7 +322,7 @@ refine_schema() {
             "${OSTRUCT_CMD}" run
             "${BASE_DIR}/prompts/refine_schema_from_feedback.j2"
             "${BASE_DIR}/schemas/schema_generator_output.json"
-            --fta user_template "${target_template}"
+            --file user_template "${target_template}"
             -V "flawed_schema=${flawed_schema_content}"
             -V "validation_errors=${validation_errors_content}"
             --output-file "${temp_output}"
