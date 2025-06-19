@@ -3,7 +3,7 @@ topic: "{{ topic }}"
 ---
 
 ## Full Transcript
-{{ transcript.content }}
+{{ safe_get("transcript.content", "This is the first round - no previous transcript.") }}
 
 As an impartial judge, decide who is ahead.
 
