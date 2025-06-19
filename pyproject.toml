@@ -27,6 +27,10 @@ dependencies = [
     "openai-model-registry>=0.7.0,<1.0",
     "python-dotenv>=1.0.1,<2.0",
     "bleach>=6.0.0,<7.0",
+    "myst-parser (>=4.0.1)",
+    "docutils (>=0.19)",
+    "sphinx (>=7)",
+    "sphinx-rtd-theme (>=2.0)",
 ]
 
 [project.scripts]

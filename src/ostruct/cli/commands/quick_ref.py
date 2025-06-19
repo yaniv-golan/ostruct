@@ -36,21 +36,21 @@ def quick_reference() -> None:
   --mcp-server label@https://server.com/sse MCP server integration
   --timeout 7200                           2-hour timeout for long operations
 
-⚡ COMMON PATTERNS:
+  ⚡ COMMON PATTERNS:
   # Basic template rendering
   ostruct run template.j2 schema.json -V env=prod
 
   # Data analysis with Code Interpreter
-  ostruct run analysis.j2 schema.json -fc data.csv -V task=analyze
+  ostruct run analysis.j2 schema.json --file ci:data data.csv -V task=analyze
 
   # Document search + processing
-  ostruct run search.j2 schema.json -fs docs/ -ft config.yaml
+  ostruct run search.j2 schema.json --file fs:docs docs/ --file config config.yaml
 
   # Multi-tool workflow
-  ostruct run workflow.j2 schema.json -fc raw_data.csv -fs knowledge/ -ft config.json
+  ostruct run workflow.j2 schema.json --file ci:data raw_data.csv --file fs:knowledge knowledge/ --file config config.json
 
   # Current information research
-  ostruct run research.j2 schema.json --web-search -V topic="latest AI developments"
+  ostruct run research.j2 schema.json --enable-tool web-search -V topic="latest AI developments"
 
 📖 Full help: ostruct run --help
 📖 Documentation: https://ostruct.readthedocs.io

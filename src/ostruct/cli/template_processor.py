@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import click
 import jinja2
@@ -22,7 +22,7 @@ from .errors import (
     VariableNameError,
 )
 from .explicit_file_processor import ProcessingResult
-from .file_utils import FileInfoList, collect_files
+from .file_utils import FileInfoList
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
 from .template_optimizer import (
@@ -635,78 +635,6 @@ def collect_json_variables(args: CLIParams) -> Dict[str, Any]:
                 raise
 
     return variables
-
-
-def collect_template_files(
-    args: CLIParams,
-    security_manager: SecurityManager,
-) -> Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]:
-    """Collect files from command line arguments.
-
-    Args:
-        args: Command line arguments
-        security_manager: Security manager for path validation
-
-    Returns:
-        Dictionary mapping variable names to file info objects
-
-    Raises:
-        PathSecurityError: If any file paths violate security constraints
-        ValueError: If file mappings are invalid or files cannot be accessed
-    """
-    try:
-        # Get files, directories, and patterns from args - they are already tuples from Click's nargs=2
-        files = list(
-            args.get("files", [])
-        )  # List of (name, path) tuples from Click
-        dirs = args.get("dir", [])  # List of (name, dir) tuples from Click
-        patterns = args.get(
-            "patterns", []
-        )  # List of (name, pattern) tuples from Click
-
-        # Collect files from directories and patterns
-        dir_files = collect_files(
-            file_mappings=cast(List[Tuple[str, Union[str, Path]]], files),
-            dir_mappings=cast(List[Tuple[str, Union[str, Path]]], dirs),
-            pattern_mappings=cast(
-                List[Tuple[str, Union[str, Path]]], patterns
-            ),
-            dir_recursive=args.get("recursive", False),
-            security_manager=security_manager,
-            routing_type="template",  # Indicate these are primarily for template access
-        )
-
-        # Combine results
-        return cast(
-            Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
-            dir_files,
-        )
-
-    except Exception as e:
-        # Check for nested security errors
-        if hasattr(e, "__cause__") and hasattr(e.__cause__, "__class__"):
-            if "SecurityError" in str(e.__cause__.__class__) and isinstance(
-                e.__cause__, BaseException
-            ):
-                raise e.__cause__
-            if "PathSecurityError" in str(
-                e.__cause__.__class__
-            ) and isinstance(e.__cause__, BaseException):
-                raise e.__cause__
-        # Check if this is a wrapped security error
-        if isinstance(e.__cause__, PathSecurityError):
-            raise e.__cause__
-        # Don't wrap InvalidJSONError
-        if isinstance(e, InvalidJSONError):
-            raise
-        # Don't wrap DuplicateFileMappingError
-        if isinstance(e, DuplicateFileMappingError):
-            raise
-        # Catch broader exceptions and re-raise
-        logger.error(
-            "Error collecting template files: %s", str(e), exc_info=True
-        )
-        raise
 
 
 def extract_template_file_paths(template_context: Dict[str, Any]) -> List[str]:

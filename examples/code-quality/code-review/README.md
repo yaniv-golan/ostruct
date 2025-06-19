@@ -7,7 +7,7 @@ This use case demonstrates how to perform automated code reviews using ostruct C
 Please be aware of the following when using `ostruct` with different file routing options:
 
 * **File Uploads to OpenAI Tools**:
-  * Flags like `-fc`, `--fca`, `-dc`, `--dca` (for Code Interpreter) and `-fs`, `--fsa`, `-ds`, `--dsa` (for File Search) **will upload your files** to OpenAI's services for processing.
+  * Flags like `--file ci:`, `--dir ci:` (for Code Interpreter) and `--file fs:`, `--dir fs:` (for File Search) **will upload your files** to OpenAI's services for processing.
   * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
 * **Template-Only Access & Prompt Content**:
@@ -79,7 +79,7 @@ These commands work exactly as before:
    ```bash
    # Traditional pattern (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -dc code examples/security \
+     --dir ci:code examples/security \
      -R \
      --sys-file prompts/system.txt
    ```
@@ -98,7 +98,7 @@ These commands work exactly as before:
    ```bash
    # Traditional with output file (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -dc code examples/style \
+     --dir ci:code examples/style \
      -R \
      --sys-file prompts/system.txt \
      --output-file style_review.json

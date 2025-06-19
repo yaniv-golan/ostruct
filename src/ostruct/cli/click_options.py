@@ -742,8 +742,8 @@ def help_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
-def modern_file_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add modern file attachment options with target/alias syntax."""
+def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add file attachment options with target/alias syntax."""
 
     cmd: Any = f if isinstance(f, Command) else f
 
@@ -903,7 +903,7 @@ def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
     cmd = output_options(cmd)
     cmd = api_options(cmd)
     cmd = mcp_options(cmd)
-    cmd = modern_file_options(cmd)  # Modern file attachment system
+    cmd = file_options(cmd)  # File attachment system
     cmd = security_options(cmd)  # Path security and allowlist options
     cmd = feature_options(
         cmd

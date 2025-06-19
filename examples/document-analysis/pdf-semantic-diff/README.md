@@ -7,7 +7,7 @@ This example demonstrates ostruct's ability to perform complex document analysis
 Please be aware of the following when using `ostruct` with different file routing options:
 
 * **File Uploads to OpenAI Tools**:
-  * Flags like `-fc`, `--fca`, `-dc`, `--dca` (for Code Interpreter) and `-fs`, `--fsa`, `-ds`, `--dsa` (for File Search) **will upload your files** to OpenAI's services for processing.
+  * Flags like `--file ci:`, `--dir ci:` (for Code Interpreter) and `--file fs:`, `--dir fs:` (for File Search) **will upload your files** to OpenAI's services for processing.
   * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
 * **Template-Only Access & Prompt Content**:
@@ -136,7 +136,7 @@ The analysis produces a JSON object with the following structure:
 
 ### How It Works
 
-1. **File Routing**: PDFs are routed to Code Interpreter using `--fca` flags with explicit naming
+1. **File Routing**: PDFs are routed to Code Interpreter using `--file ci:` flags with explicit naming
 2. **Text Extraction**: Python libraries (pdfplumber, PyPDF2) extract selectable text
 3. **Semantic Analysis**: LLM compares texts and identifies meaningful differences
 4. **Categorization**: Changes are classified into four semantic types
@@ -199,8 +199,8 @@ examples/enhanced/pdf-semantic-diff/
 
 # Or run manually with explicit file naming
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-  --fca old_pdf test_data/contracts/v1.pdf \
-  --fca new_pdf test_data/contracts/v2.pdf \
+  --file ci:old_pdf test_data/contracts/v1.pdf \
+  --file ci:new_pdf test_data/contracts/v2.pdf \
   --model gpt-4o \
   --output-file output.json
 ```
@@ -213,14 +213,14 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 
 # Or run manually
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-  --fca old_pdf test_data/contracts/v1.pdf \
-  --fca new_pdf test_data/contracts/v2.pdf \
-  --dry-run
+--file ci:old_pdf test_data/contracts/v1.pdf \
+--file ci:new_pdf test_data/contracts/v2.pdf \
+--dry-run
 ```
 
 ### Key Features
 
-* **Explicit File Naming**: Uses `--fca old_pdf` and `--fca new_pdf` for predictable variable names
+* **Explicit File Naming**: Uses `--file ci:old_pdf` and `--file ci:new_pdf` for predictable variable names
 * **Template Variables**: Access files via `{{ old_pdf.name }}`, `{{ old_pdf.content }}`, etc.
 * **Code Interpreter Integration**: Files are uploaded for Python-based PDF processing
 * **Structured Output**: JSON results validated against schema
@@ -231,7 +231,7 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 
 **Template Variable Errors**
 
-* Ensure you use `--fca old_pdf` and `--fca new_pdf` (not auto-naming with `-fc`)
+* Ensure you use `--file ci:old_pdf` and `--file ci:new_pdf` (not auto-naming)
 * Template expects exactly these variable names: `old_pdf` and `new_pdf`
 * Check that file paths are correct and files exist
 
@@ -276,8 +276,8 @@ for old_file in old_docs/*.pdf; do
   output_file="results/$(basename "$old_file" .pdf)_diff.json"
 
   ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-    --fca old_pdf "$old_file" \
-    --fca new_pdf "$new_file" \
+    --file ci:old_pdf "$old_file" \
+--file ci:new_pdf "$new_file" \
     --output-file "$output_file"
 done
 ```
@@ -287,8 +287,8 @@ done
 ```bash
 # Generate diff and immediately validate
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-  --fca old_pdf contract_v1.pdf \
-  --fca new_pdf contract_v2.pdf \
+  --file ci:old_pdf contract_v1.pdf \
+--file ci:new_pdf contract_v2.pdf \
   --output-file diff.json && \
 python scripts/validate_output.py diff.json
 ```

@@ -112,8 +112,8 @@ All document analysis examples leverage ostruct's enhanced capabilities:
 ```bash
 # Compare two document versions
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-  --fca old_pdf contract_v1.pdf \
-  --fca new_pdf contract_v2.pdf
+  --file ci:old_pdf contract_v1.pdf \
+--file ci:new_pdf contract_v2.pdf
 ```
 
 **Batch Document Processing:**

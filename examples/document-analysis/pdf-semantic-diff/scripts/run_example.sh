@@ -34,8 +34,8 @@ echo "🚀 Executing ostruct..."
 ostruct run \
     "$EXAMPLE_DIR/prompts/pdf_semantic_diff.j2" \
     "$EXAMPLE_DIR/schemas/semantic_diff.schema.json" \
-    --fca old_pdf "$EXAMPLE_DIR/test_data/contracts/v1.pdf" \
-    --fca new_pdf "$EXAMPLE_DIR/test_data/contracts/v2.pdf" \
+    --file ci:old_pdf "$EXAMPLE_DIR/test_data/contracts/v1.pdf" \
+--file ci:new_pdf "$EXAMPLE_DIR/test_data/contracts/v2.pdf" \
     --model gpt-4o \
     --temperature 0 \
     --output-file "$EXAMPLE_DIR/output.json"

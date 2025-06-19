@@ -576,7 +576,7 @@ class APIErrorMapper:
         ):
             return PromptTooLargeError(
                 f"Prompt exceeds model context window (128,000 token limit). "
-                f"Tip: Use explicit file routing (-fc for code, -fs for docs, -ft for config). "
+                f"Tip: Use explicit file routing (--file ci:data for code, --file fs:docs for docs, --file config for config). "
                 f"Original error: {error}"
             )
 

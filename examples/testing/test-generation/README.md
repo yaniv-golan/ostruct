@@ -55,7 +55,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code path/to/your/code \
+     --dir ci:code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest
@@ -65,7 +65,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code examples/untested \
+     --dir ci:code examples/untested \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest
@@ -77,7 +77,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code path/to/your/code \
+     --dir ci:code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=unittest
@@ -87,7 +87,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code examples/complex \
+     --dir ci:code examples/complex \
      -R \
      --sys-file prompts/system.txt \
      -V framework=unittest
@@ -99,7 +99,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code path/to/your/code \
+     --dir ci:code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \
@@ -110,7 +110,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code examples/partial \
+     --dir ci:code examples/partial \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \
@@ -123,7 +123,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code path/to/your/code \
+     --dir ci:code path/to/your/code \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \
@@ -134,7 +134,7 @@ Writing comprehensive tests is time-consuming and often neglected, leading to po
 
    ```bash
    ostruct run prompts/task.j2 schemas/test_cases.json \
-     -dc code examples/untested \
+     --dir ci:code examples/untested \
      -R \
      --sys-file prompts/system.txt \
      -V framework=pytest \

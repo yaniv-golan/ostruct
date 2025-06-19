@@ -78,7 +78,7 @@ ostruct provides data through several sources:
      - How to Access
      - Example Usage
    * - **File Variables**
-     - From ``-ft``, ``-fc``, ``-fs`` flags
+     - From ``--file``, ``--file ci:``, ``--file fs:`` flags
      - ``{{ config_yaml.content }}``
    * - **CLI Variables**
      - From ``-V`` and ``-J`` flags
@@ -102,24 +102,20 @@ ostruct creates variables from files using different routing options:
 
 .. list-table::
    :header-rows: 1
-   :widths: 20 25 25 30
+   :widths: 20 30 50
 
    * - Flag
      - Purpose
-     - Upload Behavior
      - Template Access
-   * - ``-ft``
-     - Template-only files
-     - ❌ Not uploaded
-     - ✅ Available as variables
-   * - ``-fc``
-     - Code Interpreter files
-     - ✅ Uploaded for execution
-     - ✅ Available as variables
-   * - ``-fs``
-     - File Search files
-     - ✅ Uploaded to vector store
-     - ✅ Available as variables
+   * - ``--file``
+     - Template access only
+     - Direct file content and metadata
+   * - ``--file ci:``
+     - Code Interpreter upload
+     - Analysis results and execution context
+   * - ``--file fs:``
+     - File Search upload
+     - Search results and document context
 
 Variable Naming Rules
 ---------------------
@@ -962,7 +958,7 @@ Common Issues and Solutions
 **Solutions**:
 
 1. Check file path and variable name
-2. Verify correct file routing flag (``-ft``, ``-fc``, ``-fs``)
+2. Verify correct file routing flag (``--file``, ``--file ci:``, ``--file fs:``)
 3. Use ``--show-context`` to see available variables
 
 .. code-block:: bash

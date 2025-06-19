@@ -18,9 +18,9 @@ class FileRoutingIntent(Enum):
     to provide appropriate warnings and optimizations.
     """
 
-    TEMPLATE_ONLY = "template_only"  # -ft, --fta, legacy -f, -d
-    CODE_INTERPRETER = "code_interpreter"  # -fc, --fca
-    FILE_SEARCH = "file_search"  # -fs, --fsa
+    TEMPLATE_ONLY = "template_only"  # --file [alias] (template access only)
+    CODE_INTERPRETER = "code_interpreter"  # --file ci:[alias]
+    FILE_SEARCH = "file_search"  # --file fs:[alias]
 
 
 logger = logging.getLogger(__name__)
@@ -341,7 +341,7 @@ class FileInfo:
                 f"File '{self.path}' ({self.size / 1024:.1f}KB) was routed for template-only access "
                 f"but its .content is being accessed. This will include the entire file content "
                 f"in the prompt sent to the AI. For large files intended for analysis or search, "
-                f"consider using -fc (Code Interpreter) or -fs (File Search) to optimize token usage, "
+                f"consider using --file ci:data (Code Interpreter) or --file fs:docs (File Search) to optimize token usage, "
                 f"cost, and avoid exceeding model context limits."
             )
 

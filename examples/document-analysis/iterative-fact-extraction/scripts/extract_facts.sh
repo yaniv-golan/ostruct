@@ -248,7 +248,7 @@ run_extraction_pipeline() {
             echo "Converting: $filename"
 
             if ostruct run \
-                --fca source_document "$file" \
+                --file ci:source_document "$file" \
                 prompts/convert.j2 \
                 schemas/convert_schema.json \
                 --output-file "$converted_file"; then
@@ -294,7 +294,7 @@ run_extraction_pipeline() {
     local extraction_output="${intermediate_dir}/02_extraction_iter_1.json"
 
     ostruct run \
-        --dsa text_files "$corpus_dir" \
+        --dir fs:text_files "$corpus_dir" \
         prompts/extract.j2 \
         schemas/extract_schema.json \
         --output-file "$extraction_output" || {
@@ -321,7 +321,7 @@ run_extraction_pipeline() {
         cp "$current_facts" "$corpus_dir/current_facts.json"
 
         ostruct run \
-            --dsa source_documents "$corpus_dir" \
+            --dir fs:source_documents "$corpus_dir" \
             prompts/assess.j2 \
             schemas/assessment_schema.json \
             --output-file "$assessment_output" || {
@@ -352,7 +352,7 @@ run_extraction_pipeline() {
         cp "$assessment_output" "$corpus_dir/coverage_analysis.json"
 
         ostruct run \
-            --dsa analysis_corpus "$corpus_dir" \
+            --dir fs:analysis_corpus "$corpus_dir" \
             prompts/patch.j2 \
             schemas/patch_schema.json \
             --output-file "$patch_output" || {

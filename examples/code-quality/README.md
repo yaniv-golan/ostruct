@@ -7,7 +7,7 @@ This directory contains examples for automated code quality analysis, code revie
 Please be aware of the following when using `ostruct` with different file routing options:
 
 * **File Uploads to OpenAI Tools**:
-  * Flags like `-fc`, `--fca`, `-dc`, `--dca` (for Code Interpreter) and `-fs`, `--fsa`, `-ds`, `--dsa` (for File Search) **will upload your files** to OpenAI's services for processing.
+  * Flags like `--file ci:`, `--dir ci:` (for Code Interpreter) and `--file fs:`, `--dir fs:` (for File Search) **will upload your files** to OpenAI's services for processing.
   * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
 * **Template-Only Access & Prompt Content**:
@@ -77,7 +77,7 @@ All code quality examples leverage ostruct's enhanced capabilities:
 
 ```bash
 # Target specific files
---fca code file.py
+--file ci:code file.py
 ```
 
 **Multi-Tool Combination:**

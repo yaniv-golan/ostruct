@@ -485,7 +485,7 @@ class FileInfoList(List[FileInfo]):
             if not self:
                 return "FileInfoList([])"
 
-            # For single file from file mapping (--fta, -ft, etc.)
+            # For single file from file mapping (--file alias, etc.)
             if len(self) == 1 and not self._from_dir:
                 var_name = self._var_alias or "file_var"
                 return f"[File '{self[0].path}' - Use {{ {var_name}.content }} to access file content]"

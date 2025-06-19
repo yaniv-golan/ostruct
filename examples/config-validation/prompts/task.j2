@@ -1,16 +1,16 @@
 Analyze the following configuration files and provide a comprehensive validation report. Focus on security, consistency, and best practices.
 
 Environment Context:
-- Target Environment: {{ environment if environment else "all" }}
-- Cross-Environment Check: {{ "enabled" if cross_env_check else "disabled" }}
-- Service Name: {{ service_name if service_name else "unknown" }}
+- Target Environment: {{ safe_get("environment", "all") }}
+- Cross-Environment Check: {{ "enabled" if safe_get("cross_env_check", false) else "disabled" }}
+- Service Name: {{ safe_get("service_name", "unknown") }}
 
 Additional Parameters:
-{% if strict_mode %}
+{% if safe_get("strict_mode", false) %}
 - Strict Mode: enabled (fail on any warning)
 {% endif %}
-{% if ignore_patterns %}
-- Ignored Patterns: {{ ignore_patterns | join(", ") }}
+{% if safe_get("ignore_patterns", []) %}
+- Ignored Patterns: {{ safe_get("ignore_patterns", []) | join(", ") }}
 {% endif %}
 
 Your response should be a valid JSON object conforming to the schema in validation_result.json, containing:

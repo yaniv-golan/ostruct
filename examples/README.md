@@ -37,7 +37,7 @@ Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
 ```bash
 -fc data.csv                       # Auto-naming → data_csv variable
 -fc dataset data.csv               # Two-arg syntax → dataset variable
---fca dataset data.csv             # Two-arg alias → dataset variable (best tab completion)
+--file ci:dataset data.csv         # Two-arg alias → dataset variable (best tab completion)
 ```
 
 **File Search Files** (uploaded to vector store + available in template):
@@ -45,7 +45,7 @@ Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
 ```bash
 -fs docs.pdf                       # Auto-naming → docs_pdf variable
 -fs manual docs.pdf                # Two-arg syntax → manual variable
---fsa manual docs.pdf              # Two-arg alias → manual variable (best tab completion)
+--file fs:manual docs.pdf          # Two-arg alias → manual variable (best tab completion)
 ```
 
 **Usage Recommendations**:

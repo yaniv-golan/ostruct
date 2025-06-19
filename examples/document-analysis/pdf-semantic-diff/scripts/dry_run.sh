@@ -38,12 +38,12 @@ echo
 
 # Run dry run test with explicit file routing
 echo "🔍 Running template dry run with explicit file naming..."
-echo "Command: ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json --fca old_pdf test_data/contracts/v1.pdf --fca new_pdf test_data/contracts/v2.pdf --dry-run"
+echo "Command: ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json --file ci:old_pdf test_data/contracts/v1.pdf --file ci:new_pdf test_data/contracts/v2.pdf --dry-run"
 echo
 
 if ostruct run "$TEMPLATE_FILE" "$SCHEMA_FILE" \
-    --fca old_pdf "$OLD_PDF" \
-    --fca new_pdf "$NEW_PDF" \
+    --file ci:old_pdf "$OLD_PDF" \
+--file ci:new_pdf "$NEW_PDF" \
     --dry-run; then
     echo
     echo "✅ Dry run completed successfully!"

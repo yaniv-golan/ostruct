@@ -52,22 +52,22 @@ File Variables
 File Routing Flags
 ------------------
 
-.. list-table::
+.. list-table:: File Routing Quick Reference
    :header-rows: 1
-   :widths: 15 25 60
+   :widths: 20 30 50
 
    * - Flag
      - Purpose
-     - Example
-   * - ``-ft``
-     - Template-only
-     - ``--file config config.yaml`` → ``config_yaml`` variable
-   * - ``-fc``
-     - Code Interpreter
-     - ``--file ci:data data.csv`` → ``data_csv`` variable
-   * - ``-fs``
-     - File Search
-     - ``--file fs:docs docs.pdf`` → ``docs_pdf`` variable
+     - Template Variable
+   * - ``--file``
+     - Template access only
+     - ``filename`` variable
+   * - ``--file ci:data``
+     - Code Interpreter upload
+     - ``data`` variable with analysis context
+   * - ``--file fs:docs``
+     - File Search upload
+     - ``docs`` variable with search context
 
 Custom Variable Names
 ---------------------

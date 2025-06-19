@@ -183,7 +183,7 @@ The CLI revolves around a single subcommand called ``run``. Basic usage:
 File & Directory Routing
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Modern Attachment System (v0.9.0)**:
+**File Attachment System**:
 
 - ``--file [targets:]alias path``: Attach file with explicit tool targeting
 - ``--dir [targets:]alias path``: Attach directory with explicit tool targeting
