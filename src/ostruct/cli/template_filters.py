@@ -50,12 +50,12 @@ def char_count(text: str) -> int:
 
 def to_json(obj: Any) -> str:
     """Convert object to JSON string."""
-    return json.dumps(obj, indent=2)
+    return json.dumps(obj)
 
 
-def from_json(text: str) -> Any:
+def from_json(json_str: str) -> Any:
     """Parse JSON string to object."""
-    return json.loads(text)
+    return json.loads(json_str)
 
 
 def remove_comments(text: str) -> str:
@@ -159,6 +159,16 @@ def debug_print(x: Any) -> None:
     print(f"DEBUG: {x}")
 
 
+def format_json(obj: Any) -> str:
+    """Format JSON with proper indentation."""
+    if isinstance(obj, str):
+        try:
+            obj = json.loads(obj)
+        except json.JSONDecodeError:
+            return str(obj)
+    return json.dumps(obj, indent=2, ensure_ascii=False)
+
+
 def type_of(x: Any) -> str:
     """Get type name of object."""
     return type(x).__name__
@@ -200,11 +210,6 @@ def estimate_tokens(context: Any, text: str) -> int:
     except Exception as e:
         logger.warning(f"Failed to estimate tokens: {e}")
         return len(str(text).split())
-
-
-def format_json(obj: Any) -> str:
-    """Format JSON with indentation."""
-    return json.dumps(obj, indent=2, default=str)
 
 
 def auto_table(data: Any) -> str:
@@ -641,6 +646,60 @@ def single_filter(value: Any) -> Any:
     return value
 
 
+def files_filter(value: Any) -> List[Any]:
+    """Ensure a file-bearing value is iterable.
+
+    This filter implements the file-sequence protocol by ensuring that
+    any file-bearing value can be iterated over. Single files yield
+    themselves, while collections remain as-is.
+
+    Args:
+        value: A file-bearing value (FileInfo, FileInfoList, or other iterable)
+
+    Returns:
+        A list containing the file(s) for uniform iteration
+    """
+    # Handle strings and bytes specially - treat as single items, not character sequences
+    if isinstance(value, (str, bytes)):
+        return [value]
+
+    try:
+        # If it's already iterable (but not string/bytes), convert to list
+        return list(value)
+    except TypeError:
+        # If not iterable, wrap in a list
+        return [value]
+
+
+def is_fileish(value: Any) -> bool:
+    """Test if a value is file-like (iterable collection of file objects).
+
+    This test function helps templates identify file-bearing values
+    that implement the file-sequence protocol.
+
+    Args:
+        value: The value to test
+
+    Returns:
+        True if the value is iterable and contains file-like objects
+    """
+    try:
+        # Import here to avoid circular imports
+        from .file_info import FileInfo
+
+        # Check if it's iterable
+        if not hasattr(value, "__iter__"):
+            return False
+
+        # Convert to list to check contents
+        items = list(value)
+
+        # Check if all items are FileInfo objects
+        return all(isinstance(item, FileInfo) for item in items)
+    except (TypeError, ImportError):
+        return False
+
+
 def register_template_filters(env: Environment) -> None:
     """Register all template filters with the Jinja2 environment.
 
@@ -682,9 +741,18 @@ def register_template_filters(env: Environment) -> None:
         "auto_table": auto_table,
         # Single item extraction
         "single": single_filter,
+        # File-sequence protocol support
+        "files": files_filter,
     }
 
     env.filters.update(filters)
+
+    # Add template tests
+    tests = {
+        "fileish": is_fileish,
+    }
+
+    env.tests.update(tests)
 
     # Add template globals
     env.globals.update(

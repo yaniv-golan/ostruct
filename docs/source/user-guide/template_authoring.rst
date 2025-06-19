@@ -780,6 +780,18 @@ Text Processing Filters
    Wrapped text:
    {{ long_text | wrap(width=80) }}
 
+   Indented text:
+   {{ code_block | indent(4) }}
+
+   Remove common indentation:
+   {{ code_with_indent | dedent }}
+
+   Remove markdown formatting:
+   {{ markdown_text | strip_markdown }}
+
+   Escape special characters:
+   {{ user_input | escape_special }}
+
 **Content Extraction:**
 
 .. code-block:: jinja
@@ -815,6 +827,24 @@ Data Processing Filters
    Unique extensions:
    {% for ext in files | extract_field('extension') | unique %}
    - {{ ext }}
+   {% endfor %}
+
+   Filter by criteria:
+   {% for file in files | filter_by('type', 'python') %}
+   - {{ file.name }}
+   {% endfor %}
+
+   Group by extension:
+   {% for ext, group in files | group_by('extension') %}
+   {{ ext }} files:
+   {% for file in group %}
+     - {{ file.name }}
+   {% endfor %}
+   {% endfor %}
+
+   Value frequency analysis:
+   {% for value, count in data | frequency %}
+   {{ value }}: {{ count }} occurrences
    {% endfor %}
 
 **Statistical Analysis:**
@@ -861,6 +891,41 @@ The ``|single`` filter extracts exactly one item from a list, with error handlin
    Error: Expected exactly one file, got {{ uploaded_files|length }}
    {% endif %}
 
+**File Sequence Protocol:**
+
+The ``|files`` filter ensures any value is iterable, but is **rarely needed** for ostruct file variables since they are already iterable:
+
+.. code-block:: jinja
+
+   <!-- File variables work directly without |files filter -->
+   {% for file in my_files %}
+   - {{ file.name }}: {{ file.size }} bytes
+   {% endfor %}
+
+   <!-- Length works directly too -->
+   {{ single_file|length }}     <!-- Returns 1 -->
+   {{ file_list|length }}       <!-- Returns actual count -->
+
+   <!-- |files filter only needed for non-file variables -->
+   {% for item in non_iterable_value|files %}
+   - {{ item }}
+   {% endfor %}
+
+**File Type Testing:**
+
+The ``is fileish`` test checks if a value contains file-like objects:
+
+.. code-block:: jinja
+
+   {% if my_variable is fileish %}
+   Processing {{ my_variable|length }} files...
+   {% for file in my_variable %}
+   - {{ file.name }}
+   {% endfor %}
+   {% else %}
+   Variable is not file-like: {{ my_variable }}
+   {% endif %}
+
 Code Processing Filters
 -----------------------
 
@@ -894,6 +959,15 @@ Table and Data Formatting
    Custom table:
    {{ data | dict_to_table }}
 
+   List as table:
+   {{ items | list_to_table }}
+
+   Manual table formatting:
+   {{ table_data | table }}
+
+   Aligned table:
+   {{ table_string | align_table('center') }}
+
 Global Functions
 ================
 
@@ -926,6 +1000,9 @@ Utility Functions
    Debug info: {{ debug(complex_variable) }}
    Variable type: {{ type_of(variable) }}
    Available attributes: {{ dir_of(object) }}
+   Object length: {{ len_of(my_list) }}
+   Formatted JSON: {{ format_json(data) }}
+   Error formatting: {{ format_error(exception) }}
 
 **Validation:**
 
@@ -936,6 +1013,24 @@ Utility Functions
    {% else %}
    JSON validation failed
    {% endif %}
+
+**Data Analysis:**
+
+.. code-block:: jinja
+
+   Data summary:
+   {% set summary = summarize(complex_data) %}
+   Type: {{ summary.type }}
+   {% if summary.count %}Count: {{ summary.count }}{% endif %}
+
+   Pivot table:
+   {% set pivot = pivot_table(sales_data, 'region', 'product', 'revenue') %}
+   {% for region, products in pivot.items() %}
+   {{ region }}:
+   {% for product, revenue in products.items() %}
+     {{ product }}: ${{ revenue }}
+   {% endfor %}
+   {% endfor %}
 
 System Prompts and Frontmatter
 ===============================

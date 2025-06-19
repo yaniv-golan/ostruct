@@ -5,7 +5,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 from .errors import FileReadError, OstructFileNotFoundError, PathSecurityError
 from .security import SecurityManager
@@ -30,7 +30,8 @@ class FileInfo:
     """Represents a file with metadata and content.
 
     This class provides access to file metadata (path, size, etc.) and content,
-    with caching support for efficient access.
+    with caching support for efficient access. Implements the file-sequence protocol
+    by being iterable (yields itself) while maintaining scalar access to properties.
 
     Args:
         path: Path to the file
@@ -149,6 +150,39 @@ class FileInfo:
                 f"Permission denied: {os.path.basename(str(path))}"
             ) from e
 
+    def __iter__(self) -> Iterator["FileInfo"]:
+        """Make FileInfo iterable by yielding itself.
+
+        This implements the file-sequence protocol, allowing single files
+        to be treated uniformly with file collections in templates.
+
+        Returns:
+            Iterator that yields this FileInfo instance
+        """
+        yield self
+
+    @property
+    def first(self) -> "FileInfo":
+        """Get the first file in the sequence (itself for single files).
+
+        This provides a uniform interface with FileInfoList.first,
+        allowing templates to use .first regardless of whether they're
+        dealing with a single file or a collection.
+
+        Returns:
+            This FileInfo instance
+        """
+        return self
+
+    @property
+    def is_collection(self) -> bool:
+        """Indicate whether this is a collection of files.
+
+        Returns:
+            False, since FileInfo represents a single file
+        """
+        return False
+
     @property
     def path(self) -> str:
         """Get the path relative to security manager's base directory.
@@ -201,7 +235,7 @@ class FileInfo:
                 base_dir,
             )
             raise ValueError(
-                f"Path {abs_path} must be within base directory {base_dir}"
+                f"Path {abs_path} is not within base directory {base_dir}"
             )
 
     @path.setter

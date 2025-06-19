@@ -30,6 +30,9 @@ class FileInfoList(List[FileInfo]):
     handling of multi-file scenarios through indexing (files[0].content) or the
     |single filter (files|single.content).
 
+    Implements the file-sequence protocol by being iterable (already inherits from list)
+    and providing a .first property for uniform access patterns.
+
     This class is thread-safe. All operations that access or modify the internal list
     are protected by a reentrant lock (RLock). This allows nested method calls while
     holding the lock, preventing deadlocks in cases like:
@@ -49,6 +52,12 @@ class FileInfoList(List[FileInfo]):
             content = files[0].content  # Access first file explicitly
             content = files|single.content  # Use |single filter for validation
 
+        Uniform iteration (file-sequence protocol):
+            for file in files:  # Works for both single and multiple files
+                print(file.content)
+
+            first_file = files.first  # Get first file uniformly
+
     Properties:
         content: File content - only for single file from file mapping (not directory)
         path: File path - only for single file from file mapping
@@ -56,6 +65,8 @@ class FileInfoList(List[FileInfo]):
         size: File size in bytes - only for single file from file mapping
         name: Filename without directory path - only for single file from file mapping
         names: Always returns list of all filenames (safe for multi-file access)
+        first: Returns the first FileInfo object (uniform access)
+        is_collection: Always returns True (indicates this is a collection)
 
     Raises:
         ValueError: When accessing scalar properties on empty list, multiple files, or directory mappings
@@ -84,6 +95,37 @@ class FileInfoList(List[FileInfo]):
         super().__init__(files)
         self._from_dir = from_dir
         self._var_alias = var_alias
+
+    @property
+    def first(self) -> FileInfo:
+        """Get the first file in the collection.
+
+        This provides a uniform interface with FileInfo.first,
+        allowing templates to use .first regardless of whether they're
+        dealing with a single file or a collection.
+
+        Returns:
+            The first FileInfo object in the list
+
+        Raises:
+            ValueError: If the list is empty
+        """
+        with self._lock:
+            if not self:
+                var_name = self._var_alias or "file_list"
+                raise ValueError(
+                    f"No files in '{var_name}'. Cannot access .first property."
+                )
+            return self[0]
+
+    @property
+    def is_collection(self) -> bool:
+        """Indicate whether this is a collection of files.
+
+        Returns:
+            True, since FileInfoList represents a collection of files
+        """
+        return True
 
     @property
     def content(self) -> str:
