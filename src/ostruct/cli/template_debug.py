@@ -5,11 +5,221 @@ including proper logging configuration and template visibility features.
 """
 
 import logging
+import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 import click
+
+
+class TDCap(str, Enum):
+    """Template Debug Capacity enum for granular debugging control."""
+
+    PRE_EXPAND = "pre-expand"
+    VARS = "vars"
+    PREVIEW = "preview"
+    OPTIMIZATION = "optimization"
+    OPTIMIZATION_STEPS = "optimization-steps"
+    STEPS = "steps"
+    POST_EXPAND = "post-expand"
+
+
+ALL_CAPS: Set[TDCap] = set(TDCap)
+
+# Tag mapping for consistent output prefixes
+TAG_MAP = {
+    TDCap.PRE_EXPAND: "PRE",
+    TDCap.VARS: "VARS",
+    TDCap.PREVIEW: "PREVIEW",
+    TDCap.OPTIMIZATION: "OPTIM",
+    TDCap.OPTIMIZATION_STEPS: "OPTIM-STEP",
+    TDCap.STEPS: "STEP",
+    TDCap.POST_EXPAND: "TPL",
+}
+
+
+def parse_td(value: str | None) -> Set[TDCap]:
+    """Parse template debug capacity string into set of capacities.
+
+    Args:
+        value: Comma-separated capacity list or "all" or None
+
+    Returns:
+        Set of TDCap enum values
+
+    Raises:
+        click.BadParameter: If invalid capacity specified
+    """
+    if value is None or value.lower() == "all":
+        return ALL_CAPS
+
+    caps = set()
+    for tok in value.split(","):
+        tok = tok.strip()
+        try:
+            caps.add(TDCap(tok))
+        except ValueError:
+            valid_caps = ", ".join(c.value for c in TDCap)
+            raise click.BadParameter(
+                f"Unknown template-debug capacity '{tok}'. "
+                f"Valid: all, {valid_caps}"
+            )
+    return caps
+
+
+def td_log(ctx: click.Context, cap: TDCap, msg: str) -> None:
+    """Log template debug message if capacity is enabled.
+
+    Args:
+        ctx: Click context containing template debug configuration
+        cap: Template debug capacity for this message
+        msg: Message to log
+    """
+    if not ctx.obj:
+        return
+
+    active: Set[TDCap] | None = ctx.obj.get("_template_debug_caps")
+    if active and cap in active:
+        tag = TAG_MAP[cap]
+        click.echo(f"[{tag}] {msg}", err=True)
+
+
+MAX_PREVIEW = int(os.getenv("OSTRUCT_PREVIEW_LIMIT", "4096"))
+
+
+def preview_snip(val: Any, max_size: int | None = None) -> str:
+    """Create size-aware preview of variable content.
+
+    Args:
+        val: Variable value to preview
+        max_size: Maximum preview size (default: OSTRUCT_PREVIEW_LIMIT)
+
+    Returns:
+        Preview string with truncation info if needed
+    """
+    if max_size is None:
+        max_size = MAX_PREVIEW
+
+    # Handle different types appropriately
+    if hasattr(val, "content"):  # FileInfo objects
+        txt = str(val.content)
+        type_info = f" ({type(val).__name__})"
+    elif isinstance(val, (dict, list)):
+        import json
+
+        txt = json.dumps(val, indent=2)
+        type_info = f" ({type(val).__name__} with {len(val)} items)"
+    else:
+        txt = str(val)
+        type_info = f" ({type(val).__name__})"
+
+    if len(txt) > max_size:
+        return f"{txt[:max_size]}... [truncated {len(txt) - max_size} chars]{type_info}"
+    return f"{txt}{type_info}"
+
+
+def get_active_capacities(ctx: click.Context | None = None) -> Set[TDCap]:
+    """Get currently active template debug capacities.
+
+    Args:
+        ctx: Click context (auto-detected if None)
+
+    Returns:
+        Set of active capacities, empty if none
+    """
+    if ctx is None:
+        try:
+            ctx = click.get_current_context()
+        except RuntimeError:
+            return set()
+
+    if not ctx.obj:
+        return set()
+
+    result = ctx.obj.get("_template_debug_caps", set())
+    return result if isinstance(result, set) else set()
+
+
+def is_capacity_active(cap: TDCap, ctx: click.Context | None = None) -> bool:
+    """Check if specific template debug capacity is active.
+
+    Args:
+        cap: Capacity to check
+        ctx: Click context (auto-detected if None)
+
+    Returns:
+        True if capacity is active
+    """
+    active_caps = get_active_capacities(ctx)
+    return cap in active_caps
+
+
+def td_log_if_active(
+    cap: TDCap, msg: str, ctx: click.Context | None = None
+) -> None:
+    """Log template debug message if capacity is active (convenience wrapper).
+
+    Args:
+        cap: Template debug capacity
+        msg: Message to log
+        ctx: Click context (auto-detected if None)
+    """
+    if ctx is None:
+        try:
+            ctx = click.get_current_context()
+        except RuntimeError:
+            return
+
+    td_log(ctx, cap, msg)
+
+
+def td_log_vars(
+    variables: Dict[str, Any], ctx: click.Context | None = None
+) -> None:
+    """Log variable summary for VARS capacity.
+
+    Args:
+        variables: Dictionary of template variables
+        ctx: Click context (auto-detected if None)
+    """
+    if not is_capacity_active(TDCap.VARS, ctx):
+        return
+
+    for name, value in variables.items():
+        type_name = type(value).__name__
+        td_log_if_active(TDCap.VARS, f"{name} : {type_name}", ctx)
+
+
+def td_log_preview(
+    variables: Dict[str, Any], ctx: click.Context | None = None
+) -> None:
+    """Log variable content preview for PREVIEW capacity.
+
+    Args:
+        variables: Dictionary of template variables
+        ctx: Click context (auto-detected if None)
+    """
+    if not is_capacity_active(TDCap.PREVIEW, ctx):
+        return
+
+    for name, value in variables.items():
+        preview = preview_snip(value)
+        td_log_if_active(TDCap.PREVIEW, f"{name} → {preview}", ctx)
+
+
+def td_log_step(
+    step_num: int, description: str, ctx: click.Context | None = None
+) -> None:
+    """Log template expansion step for STEPS capacity.
+
+    Args:
+        step_num: Step number in expansion process
+        description: Description of what this step does
+        ctx: Click context (auto-detected if None)
+    """
+    td_log_if_active(TDCap.STEPS, f"Step {step_num}: {description}", ctx)
 
 
 def configure_debug_logging(
@@ -81,7 +291,6 @@ def log_template_expansion(
 def show_template_content(
     system_prompt: str,
     user_prompt: str,
-    show_templates: bool = False,
     debug: bool = False,
 ) -> None:
     """Show template content with appropriate formatting.
@@ -89,12 +298,14 @@ def show_template_content(
     Args:
         system_prompt: System prompt content
         user_prompt: User prompt content
-        show_templates: Show templates flag
         debug: Debug flag
     """
     logger = logging.getLogger(__name__)
 
-    if show_templates or debug:
+    # Show if debug mode or if post-expand capacity is active
+    should_show = debug or is_capacity_active(TDCap.POST_EXPAND)
+
+    if should_show:
         # Use click.echo for immediate output that bypasses logging
         click.echo("📝 Template Content:", err=True)
         click.echo("=" * 50, err=True)

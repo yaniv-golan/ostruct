@@ -25,6 +25,13 @@ from .explicit_file_processor import ProcessingResult
 from .file_utils import FileInfoList
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
+from .template_debug import (
+    TDCap,
+    is_capacity_active,
+    td_log_if_active,
+    td_log_preview,
+    td_log_vars,
+)
 from .template_optimizer import (
     is_optimization_beneficial,
     optimize_template_for_llm,
@@ -42,9 +49,7 @@ def _render_template_with_debug(
     context: Dict[str, Any],
     env: jinja2.Environment,
     no_optimization: bool = False,
-    show_optimization_diff: bool = False,
-    show_optimization_steps: bool = False,
-    optimization_step_detail: str = "summary",
+    debug_capacities: Optional[Set[TDCap]] = None,
 ) -> str:
     """Render template with optimization debugging support.
 
@@ -53,21 +58,23 @@ def _render_template_with_debug(
         context: Template context variables
         env: Jinja2 environment
         no_optimization: Skip optimization entirely
-        show_optimization_diff: Show before/after optimization comparison
-        show_optimization_steps: Show detailed optimization step tracking
-        optimization_step_detail: Level of detail for optimization steps
+        debug_capacities: Set of active debug capacities
 
     Returns:
         Rendered template string
     """
-    from .template_debug import show_optimization_diff as show_diff
+    from .template_debug import TDCap, show_optimization_diff as show_diff
 
     if no_optimization:
         # Skip optimization entirely - render directly
         template = env.from_string(template_content)
         return template.render(**context)
 
-    # Handle optimization debugging (diff and/or steps)
+    # Handle optimization debugging using capacities
+    debug_caps = debug_capacities or set()
+    show_optimization_diff = TDCap.OPTIMIZATION in debug_caps
+    show_optimization_steps = TDCap.OPTIMIZATION_STEPS in debug_caps
+
     if show_optimization_diff or show_optimization_steps:
         # Check if optimization would be beneficial
         if is_optimization_beneficial(template_content):
@@ -93,10 +100,8 @@ def _render_template_with_debug(
 
                 # Show optimization steps if requested
                 if show_optimization_steps and step_tracker:
-                    if optimization_step_detail == "detailed":
-                        step_tracker.show_detailed_steps()
-                    else:
-                        step_tracker.show_step_summary()
+                    # Always use detailed for OPTIMIZATION_STEPS capacity
+                    step_tracker.show_detailed_steps()
 
                 # Render the optimized version
                 template = env.from_string(
@@ -112,7 +117,7 @@ def _render_template_with_debug(
                 show_optimization_steps as show_steps_func,
             )
 
-            show_steps_func([], optimization_step_detail)
+            show_steps_func([], "detailed")
 
     # Fall back to standard rendering (which includes optimization)
     return render_template(template_content, context, env)
@@ -402,17 +407,19 @@ async def process_templates(
 
     # Add template debugging if enabled
     debug_enabled = args.get("debug", False)
-    debug_templates_enabled = args.get("debug_templates", False)
-    show_context = args.get("show_context", False)
-    show_context_detailed = args.get("show_context_detailed", False)
-    show_pre_optimization = args.get("show_pre_optimization", False)
-    show_optimization_diff = args.get("show_optimization_diff", False)
     no_optimization = args.get("no_optimization", False)
-    show_optimization_steps = args.get("show_optimization_steps", False)
-    optimization_step_detail = args.get("optimization_step_detail", "summary")
+
+    # Log pre-expand template content
+    td_log_if_active(TDCap.PRE_EXPAND, "--- original template ---")
+    td_log_if_active(TDCap.PRE_EXPAND, task_template)
+
+    # Log variable context
+    if is_capacity_active(TDCap.VARS) or is_capacity_active(TDCap.PREVIEW):
+        td_log_vars(template_context)
+        td_log_preview(template_context)
 
     debugger = None
-    if debug_enabled or debug_templates_enabled:
+    if debug_enabled or is_capacity_active(TDCap.STEPS):
         from .template_debug import (
             TemplateDebugger,
             log_template_expansion,
@@ -422,12 +429,11 @@ async def process_templates(
         # Initialize template debugger
         debugger = TemplateDebugger(enabled=True)
 
-        # Log template context
-        show_file_content_expansions(template_context)
-
-        # Log raw template before expansion
-        logger.debug("Raw task template:")
-        logger.debug(task_template)
+        # Log template context for general debug
+        if debug_enabled:
+            show_file_content_expansions(template_context)
+            logger.debug("Raw task template:")
+            logger.debug(task_template)
 
         # Log initial template state
         debugger.log_expansion_step(
@@ -437,19 +443,8 @@ async def process_templates(
             {"template_path": template_path},
         )
 
-    # Show context inspection if requested
-    if show_context or show_context_detailed:
-        from .template_debug import (
-            display_context_detailed,
-            display_context_summary,
-        )
-
-        if show_context_detailed:
-            display_context_detailed(template_context)
-        elif show_context:
-            display_context_summary(template_context)
-
-        # Check for undefined variables if context inspection is enabled
+    # Check for undefined variables if context inspection is enabled
+    if is_capacity_active(TDCap.VARS) or is_capacity_active(TDCap.PREVIEW):
         from .template_debug import detect_undefined_variables
 
         undefined_vars = detect_undefined_variables(
@@ -490,23 +485,25 @@ async def process_templates(
             },
         )
 
-    # Handle pre-optimization template display
-    if show_pre_optimization:
-        from .template_debug import show_pre_optimization_template
-
-        show_pre_optimization_template(task_template)
-
-        # Handle optimization debugging with custom rendering
-    if no_optimization or show_optimization_diff or show_optimization_steps:
+    # Handle optimization debugging with custom rendering
+    if (
+        no_optimization
+        or is_capacity_active(TDCap.OPTIMIZATION)
+        or is_capacity_active(TDCap.OPTIMIZATION_STEPS)
+    ):
         # We need custom handling for optimization debugging
+        debug_caps = set()
+        if is_capacity_active(TDCap.OPTIMIZATION):
+            debug_caps.add(TDCap.OPTIMIZATION)
+        if is_capacity_active(TDCap.OPTIMIZATION_STEPS):
+            debug_caps.add(TDCap.OPTIMIZATION_STEPS)
+
         user_prompt = _render_template_with_debug(
             task_template,
             template_context,
             env,
             no_optimization=bool(no_optimization),
-            show_optimization_diff=bool(show_optimization_diff),
-            show_optimization_steps=bool(show_optimization_steps),
-            optimization_step_detail=str(optimization_step_detail),
+            debug_capacities=debug_caps,
         )
     else:
         # Standard rendering with optimization
@@ -521,16 +518,23 @@ async def process_templates(
             template_context,
         )
 
+    # Add post-expand logging
+    td_log_if_active(TDCap.POST_EXPAND, "--- prompt 1/2 (system) ---")
+    td_log_if_active(TDCap.POST_EXPAND, system_prompt)
+    td_log_if_active(TDCap.POST_EXPAND, "--- prompt 2/2 (user) ---")
+    td_log_if_active(TDCap.POST_EXPAND, user_prompt)
+
     # Log template expansion if debug enabled
-    if debug_enabled or debug_templates_enabled:
+    if debug_enabled or is_capacity_active(TDCap.STEPS):
         from .template_debug import log_template_expansion
 
-        log_template_expansion(
-            template_content=task_template,
-            context=template_context,
-            expanded=user_prompt,
-            template_file=template_path,
-        )
+        if debug_enabled:
+            log_template_expansion(
+                template_content=task_template,
+                context=template_context,
+                expanded=user_prompt,
+                template_file=template_path,
+            )
 
         # Show expansion summary and detailed steps
         if debugger:
@@ -894,18 +898,22 @@ async def create_template_context_from_routing(
         )
 
         # Add debugging support for new attachment system
-        show_context = args.get("show_context", False)
-        show_context_detailed = args.get("show_context_detailed", False)
         debug_enabled = args.get("debug", False)
 
-        if show_context or show_context_detailed or debug_enabled:
+        if (
+            debug_enabled
+            or is_capacity_active(TDCap.VARS)
+            or is_capacity_active(TDCap.PREVIEW)
+        ):
             from .attachment_template_bridge import AttachmentTemplateContext
 
             context_builder = AttachmentTemplateContext(security_manager)
             context_builder.debug_attachment_context(
                 context,
                 processed_attachments,
-                show_detailed=(show_context_detailed or debug_enabled),
+                show_detailed=(
+                    debug_enabled or is_capacity_active(TDCap.PREVIEW)
+                ),
             )
 
         logger.debug(

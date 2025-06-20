@@ -6,13 +6,44 @@ This guide covers ostruct's comprehensive template debugging capabilities for de
 
 ```bash
 # Show expanded template content only (clean output)
-ostruct run template.j2 schema.json --show-templates -f config.yaml
+ostruct run template.j2 schema.json --template-debug post-expand -f config.yaml
 
-# Debug everything (verbose logging + template expansion + context)
-ostruct run template.j2 schema.json --debug -f config.yaml
+# Show all debugging information
+ostruct run template.j2 schema.json -t all -f config.yaml
+
+# Show specific debugging capacities
+ostruct run template.j2 schema.json -t vars,preview,steps -f config.yaml
 
 # Get debugging help and examples
 ostruct run template.j2 schema.json --help-debug
+```
+
+## Template Debug Capacities
+
+The new `--template-debug` (or `-t`) option uses **capacities** to control exactly what debugging information you see:
+
+| Capacity | Purpose | Output Prefix | Description |
+|----------|---------|---------------|-------------|
+| `pre-expand` | Original template | `[PRE]` | Raw template before processing |
+| `vars` | Variable summary | `[VARS]` | Variable names and types |
+| `preview` | Variable content | `[PREVIEW]` | Content previews of variables |
+| `optimization` | Optimization diff | `[OPTIM]` | Before/after optimization comparison |
+| `optimization-steps` | Optimization steps | `[OPTIM-STEP]` | Detailed optimization tracking |
+| `steps` | Template expansion | `[STEP]` | Jinja expansion trace |
+| `post-expand` | Final prompts | `[TPL]` | Final prompts sent to API |
+
+### Basic Usage
+
+```bash
+# Show just variable information
+ostruct run template.j2 schema.json -t vars
+
+# Show variables and content previews
+ostruct run template.j2 schema.json -t vars,preview
+
+# Show everything (equivalent to bare -t)
+ostruct run template.j2 schema.json -t all
+ostruct run template.j2 schema.json -t  # bare flag = all capacities
 ```
 
 ## Basic Template Debugging
