@@ -39,8 +39,8 @@ class TestTemplateDebugLogging:
         logger = logging.getLogger("ostruct")
         assert logger.level == logging.DEBUG
 
-    def test_show_templates_flag(self, fs: FakeFilesystem):
-        """Test that --show-templates flag shows template content."""
+    def test_template_debug_capacity_system(self, fs: FakeFilesystem):
+        """Test that template debug capacity system works."""
         # Create test files
         template_content = "Test template: {{ test_var }}"
         fs.create_file(
@@ -52,22 +52,42 @@ class TestTemplateDebugLogging:
 
         os.chdir("/test_workspace/base")
 
-        # Test template display functionality
+        # Test template display functionality with new capacity system
         # Capture stderr output (where click.echo outputs)
         import io
         import sys
 
-        from ostruct.cli.template_debug import show_template_content
+        import click
+        from ostruct.cli.template_debug import (
+            parse_td,
+            show_template_content,
+        )
 
         captured_output = io.StringIO()
         sys.stderr = captured_output
 
         try:
-            show_template_content(
-                system_prompt="System: " + template_content,
-                user_prompt="User: " + template_content,
-                show_templates=True,
-            )
+            # Create a mock Click context with template debug capacities
+            ctx = click.Context(click.Command("test"))
+            ctx.obj = {"_template_debug_caps": parse_td("post-expand")}
+
+            # Set the context as current context
+            original_ctx = getattr(click, "_local", None)
+            click._local = ctx
+
+            try:
+                show_template_content(
+                    system_prompt="System: " + template_content,
+                    user_prompt="User: " + template_content,
+                )
+            finally:
+                # Restore original context
+                if original_ctx is not None:
+                    click._local = original_ctx
+                else:
+                    if hasattr(click, "_local"):
+                        delattr(click, "_local")
+
             output = captured_output.getvalue()
 
             # Verify template content is shown
@@ -305,8 +325,8 @@ class TestCLIIntegration:
         # Verify help content includes key sections
         assert "Template Debugging Quick Reference" in TEMPLATE_DEBUG_HELP
         assert "--debug" in TEMPLATE_DEBUG_HELP
-        assert "--show-templates" in TEMPLATE_DEBUG_HELP
-        assert "--show-context" in TEMPLATE_DEBUG_HELP
+        assert "--template-debug" in TEMPLATE_DEBUG_HELP
+        assert "CAPACITIES:" in TEMPLATE_DEBUG_HELP
         assert "EXAMPLES:" in TEMPLATE_DEBUG_HELP
 
     def test_debug_flags_exist(self):
