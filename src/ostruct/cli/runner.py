@@ -1512,8 +1512,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
 
         configure_debug_logging(
             verbose=bool(args.get("verbose", False)),
-            debug=bool(args.get("debug", False))
-            or bool(args.get("debug_templates", False)),
+            debug=bool(args.get("debug", False)),
         )
 
         # 0a. Handle Debug Help Request
@@ -1650,16 +1649,16 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             show_template_content(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                show_templates=bool(args.get("show_templates", False)),
-                debug=bool(args.get("debug", False))
-                or bool(args.get("debug_templates", False)),
+                debug=bool(args.get("debug", False)),
             )
 
             # Legacy verbose support for backward compatibility
+            from .template_debug import TDCap, is_capacity_active
+
             if (
                 args.get("verbose", False)
                 and not args.get("debug", False)
-                and not args.get("show_templates", False)
+                and not is_capacity_active(TDCap.POST_EXPAND)
             ):
                 logger.info("\nSystem Prompt:")
                 logger.info("-" * 40)

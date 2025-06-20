@@ -165,10 +165,34 @@ def parse_feature_flags(
 
 def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add debug-related CLI options."""
+    # Import the new infrastructure
+    from .template_debug import parse_td
+
     # Initial conversion to Command if needed
     cmd: Any = f if isinstance(f, Command) else f
 
-    # Add options without redundant casts
+    # Add new template debug option
+    cmd = click.option(
+        "-t",
+        "--template-debug",
+        metavar="CAPACITIES",
+        default=None,
+        is_flag=False,
+        flag_value="all",
+        expose_value=False,
+        callback=lambda ctx, p, v: (
+            ctx.obj.setdefault(
+                "_template_debug_caps", parse_td(v if v is not None else "all")
+            )
+            if ctx.obj is not None
+            else None
+        ),
+        help="🔍 Debug prompt-template expansion. "
+        "Capacities: pre-expand,vars,preview,optimization,optimization-steps,steps,post-expand "
+        "(comma list or 'all'). Use -t CAPACITIES or bare -t for all capacities.",
+    )(cmd)
+
+    # Keep existing non-template debug options
     cmd = click.option(
         "--show-model-schema",
         is_flag=True,
@@ -188,58 +212,9 @@ def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
     )(cmd)
 
     cmd = click.option(
-        "--show-templates",
-        is_flag=True,
-        help="📝 Show expanded templates before sending to API",
-    )(cmd)
-
-    cmd = click.option(
-        "--debug-templates",
-        is_flag=True,
-        help="🔍 Enable detailed template expansion debugging with step-by-step analysis",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-context",
-        is_flag=True,
-        help="📋 Show template variable context summary",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-context-detailed",
-        is_flag=True,
-        help="📋 Show detailed template variable context with content preview",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-pre-optimization",
-        is_flag=True,
-        help="🔧 Show template content before optimization is applied",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-optimization-diff",
-        is_flag=True,
-        help="🔄 Show template optimization changes (before/after comparison)",
-    )(cmd)
-
-    cmd = click.option(
         "--no-optimization",
         is_flag=True,
         help="⚡ Skip template optimization entirely for debugging",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-optimization-steps",
-        is_flag=True,
-        help="🔧 Show detailed optimization step tracking with before/after changes",
-    )(cmd)
-
-    cmd = click.option(
-        "--optimization-step-detail",
-        type=click.Choice(["summary", "detailed"]),
-        default="summary",
-        help="📊 Level of optimization step detail (summary shows overview, detailed shows full diffs)",
     )(cmd)
 
     cmd = click.option(
