@@ -181,10 +181,8 @@ def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
         flag_value="all",
         expose_value=False,
         callback=lambda ctx, p, v: (
-            ctx.obj.setdefault(
-                "_template_debug_caps", parse_td(v if v is not None else "all")
-            )
-            if ctx.obj is not None
+            ctx.obj.setdefault("_template_debug_caps", parse_td(v))
+            if ctx.obj is not None and v is not None
             else None
         ),
         help="🔍 Debug prompt-template expansion. "

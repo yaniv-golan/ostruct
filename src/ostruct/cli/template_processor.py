@@ -414,8 +414,9 @@ async def process_templates(
     td_log_if_active(TDCap.PRE_EXPAND, task_template)
 
     # Log variable context
-    if is_capacity_active(TDCap.VARS) or is_capacity_active(TDCap.PREVIEW):
+    if is_capacity_active(TDCap.VARS):
         td_log_vars(template_context)
+    if is_capacity_active(TDCap.PREVIEW):
         td_log_preview(template_context)
 
     debugger = None

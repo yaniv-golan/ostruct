@@ -104,8 +104,16 @@ def preview_snip(val: Any, max_size: int | None = None) -> str:
 
     # Handle different types appropriately
     if hasattr(val, "content"):  # FileInfo objects
-        txt = str(val.content)
-        type_info = f" ({type(val).__name__})"
+        try:
+            txt = str(val.content)
+            type_info = f" ({type(val).__name__})"
+        except ValueError:
+            # Handle empty FileInfoList case
+            if hasattr(val, "__len__"):
+                txt = f"Empty {type(val).__name__} (0 files)"
+            else:
+                txt = f"Empty {type(val).__name__}"
+            type_info = ""
     elif isinstance(val, (dict, list)):
         import json
 

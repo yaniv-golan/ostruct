@@ -71,22 +71,12 @@ class TestTemplateDebugLogging:
             ctx = click.Context(click.Command("test"))
             ctx.obj = {"_template_debug_caps": parse_td("post-expand")}
 
-            # Set the context as current context
-            original_ctx = getattr(click, "_local", None)
-            click._local = ctx
-
-            try:
+            # Use Click's proper context management
+            with ctx:
                 show_template_content(
                     system_prompt="System: " + template_content,
                     user_prompt="User: " + template_content,
                 )
-            finally:
-                # Restore original context
-                if original_ctx is not None:
-                    click._local = original_ctx
-                else:
-                    if hasattr(click, "_local"):
-                        delattr(click, "_local")
 
             output = captured_output.getvalue()
 
