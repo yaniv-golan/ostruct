@@ -102,17 +102,33 @@ def preview_snip(val: Any, max_size: int | None = None) -> str:
     if max_size is None:
         max_size = MAX_PREVIEW
 
-    # Handle different types appropriately
-    if hasattr(val, "content"):  # FileInfo objects
+    # Handle FileInfoList objects specially to avoid multi-file content access errors
+    from .file_list import FileInfoList
+
+    if isinstance(val, FileInfoList):
+        if len(val) == 0:
+            txt = "No files attached"
+            type_info = ""
+        elif len(val) == 1:
+            try:
+                txt = str(val.content)
+                type_info = f" ({type(val).__name__})"
+            except Exception:
+                txt = "1 file attached (content not accessible)"
+                type_info = ""
+        else:
+            txt = f"{len(val)} files attached (use indexing or loop to access individual files)"
+            type_info = ""
+    # Handle other objects with content property
+    elif hasattr(
+        val, "content"
+    ):  # FileInfo objects and other content-bearing objects
         try:
             txt = str(val.content)
             type_info = f" ({type(val).__name__})"
         except ValueError:
-            # Handle empty FileInfoList case
-            if hasattr(val, "__len__"):
-                txt = f"Empty {type(val).__name__} (0 files)"
-            else:
-                txt = f"Empty {type(val).__name__}"
+            # Handle other content access failures
+            txt = f"Content access failed for {type(val).__name__}"
             type_info = ""
     elif isinstance(val, (dict, list)):
         import json
@@ -380,10 +396,18 @@ def show_file_content_expansions(context: Dict[str, Any]) -> None:
                 logger.debug(f"  → {key}: FileInfoList (access failed: {e})")
         elif isinstance(value, LazyFileContent):
             try:
-                logger.debug(f"  → {key}: LazyFileContent at {value.path}")
+                # Show user-friendly file information instead of class name
+                file_size = getattr(value, "actual_size", None) or 0
+                if file_size > 0:
+                    size_str = f"{file_size:,} bytes"
+                else:
+                    size_str = "unknown size"
+                logger.debug(
+                    f"  → {key}: file {value.name} ({size_str}) at {value.path}"
+                )
             except Exception as e:
                 logger.debug(
-                    f"  → {key}: LazyFileContent (access failed: {e})"
+                    f"  → {key}: file {getattr(value, 'name', 'unknown')} (access failed: {e})"
                 )
         elif isinstance(value, str) and len(value) > 100:
             logger.debug(f"  → {key}: {len(value)} chars")
