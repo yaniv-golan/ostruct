@@ -105,7 +105,7 @@ jobs:
             -fs README.md \
             -ft ci/ \
             --sys-file prompts/system-ci.txt \
-            --progress-level basic \
+            --progress basic \
             --output-file analysis_results.json
 
       - name: Security Scan
@@ -311,7 +311,7 @@ code_analysis:
         -fs docs/ \
         -ft ci/ \
         --sys-file prompts/system-ci.txt \
-        --progress-level basic \
+        --progress basic \
         --output-file analysis_results.json
   artifacts:
     reports:
@@ -858,7 +858,7 @@ jobs:
             -fs docs/ \
             -fs README.md \
             -ft .github/ \
-            --progress-level basic \
+            --progress basic \
             --output-file analysis_results.json
 
       - name: Quality Gate

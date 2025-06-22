@@ -260,7 +260,7 @@ jobs:
             -dc src src/ \
             -ds docs docs/ \
             -dc config config/ \
-            --progress-level none \
+            --progress none \
             --output-file analysis_results.json
 
       - name: Upload Results
