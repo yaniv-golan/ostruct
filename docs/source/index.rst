@@ -79,6 +79,7 @@ Documentation
    user-guide/examples
    user-guide/cli_reference
    user-guide/template_authoring
+   user-guide/template_structure
 
 .. toctree::
    :maxdepth: 2

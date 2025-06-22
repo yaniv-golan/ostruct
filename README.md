@@ -119,6 +119,35 @@ ostruct run prompts/task.j2 schemas/etymology.json --file text examples/scientif
 
 Break down words into their components, showing their origins, meanings, and hierarchical relationships. Useful for linguistics, educational tools, and understanding terminology in specialized fields.
 
+### Optional File References
+
+```bash
+# Attach files with aliases
+ostruct run template.j2 schema.json \
+  --dir source-code src/ \
+  --file config config.yaml
+```
+
+**Two ways to access files in templates:**
+
+```jinja2
+{# Option 1: Automatic XML appendix (optional) #}
+Analyze {{ file_ref("source-code") }} and {{ file_ref("config") }}.
+
+{# Option 2: Manual formatting (full control) #}
+## Source Code
+{% for file in source-code %}
+### {{ file.name }}
+```{{ file.name.split('.')[-1] }}
+{{ file.content }}
+```
+
+{% endfor %}
+
+```
+
+The optional `file_ref()` function provides clean references with automatic XML appendix generation. Alternatively, access files directly for custom formatting and placement control. Perfect for code reviews, documentation analysis, and multi-file processing workflows.
+
 ## Features
 
 ### Core Capabilities
@@ -144,6 +173,7 @@ Break down words into their components, showing their origins, meanings, and hie
 - **Unattended Operation**: Designed for CI/CD and automation scenarios
 - **Progress Reporting**: Real-time progress updates with clear, user-friendly messaging
 - **Model Registry**: Dynamic model management with support for latest OpenAI models
+- **Optional File References**: Clean `file_ref()` function for automatic XML appendix, or direct file access for custom formatting
 
 ## Requirements
 

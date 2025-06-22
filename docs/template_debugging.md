@@ -209,6 +209,84 @@ ostruct run prompt.j2 schema.json --show-optimization-steps --optimization-step-
 
 **When to use**: Deep debugging of optimization logic issues.
 
+## File Reference Debugging
+
+### 📁 File Reference Operations (`--template-debug`)
+
+Shows file reference registration and usage tracking:
+
+```bash
+ostruct run template.j2 schema.json --template-debug --dir source src/ --file config config.yaml
+```
+
+**Debug output shows**:
+
+- **Alias Registration**: When files are grouped by their CLI aliases
+- **Reference Tracking**: When `file_ref()` is called in templates
+- **Appendix Generation**: When XML appendix is built for referenced files
+
+**Example output**:
+
+```
+[DEBUG] File reference: Registered alias 'source' with 5 files from src/
+[DEBUG] File reference: Registered alias 'config' with 1 file from config.yaml
+[DEBUG] File reference: Referenced alias 'source' in template
+[DEBUG] File reference: Referenced alias 'config' in template
+[DEBUG] File reference: Building XML appendix with 2 aliases
+```
+
+### 🔍 File Reference Troubleshooting
+
+#### Unknown Alias Errors
+
+```bash
+# Template uses {{ file_ref("missing") }} but alias not attached
+ostruct run template.j2 schema.json --dir source src/
+```
+
+**Error output**:
+
+```
+Template Structure Error: Unknown alias 'missing' in file_ref()
+Suggestions:
+  • Available aliases: source
+  • Check your --dir and --file attachments
+```
+
+#### No XML Appendix Generated
+
+```bash
+# Disable file references entirely for clean debugging
+ostruct run template.j2 schema.json --dir source src/
+```
+
+**When to use**:
+
+- Template uses `file_ref()` but no appendix appears
+- Verifying which files are actually referenced
+- Understanding file grouping by aliases
+
+### 📋 File Reference Context
+
+Use context debugging to see file attachment details:
+
+```bash
+ostruct run template.j2 schema.json --show-context-detailed --dir source src/ --file config config.yaml
+```
+
+**Shows**:
+
+- File grouping by alias
+- Attachment types (file, dir, collection)
+- File paths and relative paths
+- Content previews
+
+**When to use**:
+
+- Verifying files are attached correctly
+- Understanding how aliases map to files
+- Checking file content accessibility
+
 ## Common Debugging Scenarios
 
 ### Scenario 1: Undefined Variable Error

@@ -101,6 +101,72 @@ Attachment Options
       --collect files @list.txt              # Template only
       --collect ci:data @datasets.txt        # Code Interpreter
 
+File Reference System
+---------------------
+
+Ostruct provides an **optional** file reference system using the ``file_ref()`` function with automatic XML appendix generation. This is an alternative to manually accessing files in templates - use whichever approach fits your needs.
+
+**Choose Your Approach:**
+
+- **Automatic**: Use ``file_ref()`` for XML appendix at prompt end (good for reference material)
+- **Manual**: Access files directly with ``{{ alias.content }}`` for custom formatting and placement
+
+**Template Usage:**
+
+Use the ``file_ref()`` function to reference attached files by their alias:
+
+.. code-block:: jinja
+
+   {# Automatic XML appendix approach #}
+   Analyze the code in {{ file_ref("source") }}.
+   Review the config in {{ file_ref("settings") }}.
+
+   {# Manual formatting approach #}
+   ## Configuration
+   ```yaml
+   {{ settings.content }}
+   ```
+
+   ## Source Files
+   {% for file in source %}
+   ### {{ file.name }}
+   {{ file.content }}
+   {% endfor %}
+
+This renders as:
+
+.. code-block:: text
+
+   Analyze the code in <source>.
+   Review the config in <settings>.
+
+**XML Appendix:**
+
+When using ``file_ref()``, referenced files automatically appear in a structured XML appendix at the end of your prompt:
+
+.. code-block:: xml
+
+   <files>
+     <dir alias="source" path="src/">
+       <file path="main.py">
+         <content><![CDATA[...]]></content>
+       </file>
+     </dir>
+     <file alias="settings" path="config.yaml">
+       <content><![CDATA[...]]></content>
+     </file>
+   </files>
+
+**File Placement Considerations:**
+
+LLMs process prompts sequentially and pay more attention to content at the end. Consider:
+
+- **Manual inclusion**: Place files where they're most relevant in your analysis flow
+- **XML appendix**: Files appear at the very end, ideal for supporting documentation
+- **Mixed approach**: Use both - manual for immediate analysis, ``file_ref()`` for reference
+
+See :doc:`template_structure` for complete file reference documentation.
+
 Tool Targets
 ------------
 
