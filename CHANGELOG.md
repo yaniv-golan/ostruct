@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-06-22
+
+### Added
+
+- **File Reference System**: Introduced `file_ref("alias")` function for clean, structured file references in templates. Files are automatically organized into XML appendices, eliminating the need for manual file content loops in templates. Works seamlessly with existing `--dir`, `--file`, and `--collect` attachments.
+
+- **Enhanced Template Debugging**: Comprehensive template debugging system with granular capacity control:
+  - Consolidated 8 overlapping debug flags into single `--template-debug` (`-t`) flag
+  - Capacity-based debugging: `vars`, `preview`, `steps`, `optimization`, `pre-expand`, `post-expand`, `optimization-steps`
+  - Consistent output prefixes (`[VARS]`, `[TPL]`, `[OPTIM]`, `[STEP]`, `[PRE]`, `[PREVIEW]`, `[OPTIM-STEP]`) for easy parsing
+  - Improved template expansion tracking and variable inspection
+  - Usage: `-t vars,preview` for specific capacities, `-t all` or bare `-t` for complete debugging
+
+- **Safe Nested Access**: Added `safe_get()` function for safe nested attribute access in templates, preventing errors when accessing potentially undefined nested properties. Replaces verbose conditional boilerplate with clean single-line calls.
+
+- **Dynamic Model Validation**: Enhanced model selection with real-time validation against OpenAI's model registry, ensuring compatibility and providing helpful error messages for unsupported models.
+
+- **Comprehensive Examples**: Added extensive example collection demonstrating real-world usage patterns:
+  - File reference examples with security audit, code review, and data analysis templates
+  - Multi-tool integration examples showing file routing to different services
+  - Template debugging examples with various complexity levels
+  - Updated existing examples to demonstrate new `file_ref()` patterns
+
+### Changed
+
+- **Simplified CLI Syntax**: Updated all examples and documentation to use thes simplified attachment system with explicit file routing (`--file ci:`, `--dir fs:`, etc.) instead of legacy flags.
+
+- **Improved Error Handling**: Enhanced error messages throughout the system:
+  - Clean, user-friendly error display without technical stack traces for common issues
+  - Better template error messages with proper variable name extraction
+  - Improved schema validation feedback with actionable guidance
+  - Fixed template rendering edge cases and error handling
+
+- **Documentation Overhaul**: Complete documentation update including:
+  - Comprehensive file reference system guide with usage examples
+  - Template debugging documentation with capacity explanations
+  - Updated CLI reference with all new options and examples
+  - Template structure guide for advanced template authoring
+  - Examples showing both manual file access and automatic `file_ref()` approaches
+
+- **Streamlined Installation**: Removed complex installation script in favor of standard methods (pipx, Homebrew, Docker), with automated Homebrew formula updates on release.
+
+### Fixed
+
+- **Template Rendering**: Fixed template environment creation and validation issues that were causing mypy errors and rendering failures.
+
+- **File Processing**: Resolved issues with file routing and processing, including proper handling of large files and elimination of inappropriate warnings for Code Interpreter and File Search usage.
+
+- **Code Interpreter Downloads**: Significantly improved reliability of file downloads from Code Interpreter with robust fallback mechanisms and proper API integration.
+
+- **Security Enhancements**: Multiple security improvements including:
+  - Robust Azure endpoint validation using proper hostname parsing
+  - Enhanced MCP response sanitization
+  - Improved symlink security validation with resolved path checks
+  - Better path traversal protection
+
+- **CLI Consistency**: Updated argument handling throughout examples and scripts to use consistent simplified syntax, replacing deprecated flags like `--fta`, `--fca`, `-dc`, `-R` with current equivalents.
+
+### Removed
+
+- **Legacy Flags**: Removed deprecated `--web-search` and `--no-web-search` flags in favor of universal `--enable-tool` and `--disable-tool` flags.
+
+- **Streaming Support**: Removed unnecessary streaming support from OpenAI API calls to improve model compatibility (especially o3/o1 models) and reduce code complexity while maintaining identical user experience.
+
+- **Placeholder Files**: Cleaned up dummy/placeholder files from examples that were causing build issues without providing value.
+
+### Security
+
+- **Enhanced Validation**: Strengthened security across multiple areas:
+  - Improved Azure endpoint validation to prevent false positives
+  - Enhanced MCP server response sanitization
+  - Better symlink resolution and path validation
+  - Robust dependency installation with proper error handling
+
+### Migration Notes
+
+- **File References**: Users can now choose between two approaches:
+  - `file_ref("alias")` for automatic XML appendix generation (recommended for most use cases)
+  - Direct file access with `{{ alias.content }}` for custom formatting needs
+
+- **Template Debugging**: Replace old debug flags with new capacity-based system:
+  - Old: `--debug-template --show-vars --show-preview`
+  - New: `-t vars,preview` or `-t all`
+
+- **CLI Syntax**: Update to simplified attachment syntax if still using legacy flags:
+  - Old: `--fta alias file.txt`
+  - New: `--file alias file.txt`
+
 ## [0.8.9] - 2025-06-12
 
 ### Added

@@ -70,12 +70,12 @@ ostruct run prompt.j2 schema.json --show-templates -f config.yaml
 
 ### 📋 Variable Context Inspection
 
-#### Basic Context (`--show-context`)
+#### Basic Context (`--template-debug vars`)
 
 Shows summary of all template variables organized by type:
 
 ```bash
-ostruct run prompt.j2 schema.json --show-context -f config.yaml -f data.json
+ostruct run prompt.j2 schema.json --template-debug vars --file config config.yaml --file data data.json
 ```
 
 **Output example**:
@@ -93,12 +93,12 @@ OBJECTS (1):
   user_data: <dict with 5 keys>
 ```
 
-#### Detailed Context (`--show-context-detailed`)
+#### Detailed Context (`--template-debug vars,preview`)
 
 Shows content previews and detailed metadata:
 
 ```bash
-ostruct run prompt.j2 schema.json --show-context-detailed -f config.yaml
+ostruct run prompt.j2 schema.json --template-debug vars,preview --file config config.yaml
 ```
 
 **When to use**:
@@ -107,34 +107,34 @@ ostruct run prompt.j2 schema.json --show-context-detailed -f config.yaml
 - Understanding what data is available in templates
 - Verifying file content is loaded correctly
 
-### 🔍 Step-by-Step Template Expansion (`--debug-templates`)
+### 🔍 Step-by-Step Template Expansion (`--template-debug steps`)
 
 Shows detailed template processing with 3 expansion steps:
 
 ```bash
-ostruct run prompt.j2 schema.json --debug-templates -f config.yaml
+ostruct run prompt.j2 schema.json --template-debug steps --file config config.yaml
 ```
 
 **When to use**: Understanding how complex templates with loops and conditionals are processed.
 
 ## Optimization Debugging
 
-### 🔧 Pre-Optimization Display (`--show-pre-optimization`)
+### 🔧 Pre-Optimization Display (`--template-debug pre-expand`)
 
 Shows the template content before any optimization is applied:
 
 ```bash
-ostruct run prompt.j2 schema.json --show-pre-optimization -f large_file.txt
+ostruct run prompt.j2 schema.json --template-debug pre-expand --file large large_file.txt
 ```
 
 **When to use**: Comparing what you wrote vs. what gets optimized.
 
-### 🔄 Optimization Difference (`--show-optimization-diff`)
+### 🔄 Optimization Difference (`--template-debug optimization`)
 
 Shows line-by-line changes made by the optimizer:
 
 ```bash
-ostruct run prompt.j2 schema.json --show-optimization-diff -f large_file.txt
+ostruct run prompt.j2 schema.json --template-debug optimization --file large large_file.txt
 ```
 
 **Output example**:
@@ -164,7 +164,7 @@ Changes:
 Completely bypasses template optimization:
 
 ```bash
-ostruct run prompt.j2 schema.json --no-optimization -f large_file.txt
+ostruct run prompt.j2 schema.json --no-optimization --file large large_file.txt
 ```
 
 **When to use**:
@@ -173,12 +173,12 @@ ostruct run prompt.j2 schema.json --no-optimization -f large_file.txt
 - Working with templates that shouldn't be optimized
 - Performance testing
 
-### 🔧 Step-by-Step Optimization (`--show-optimization-steps`)
+### 🔧 Step-by-Step Optimization (`--template-debug optimization-steps`)
 
 Shows detailed tracking of each optimization step:
 
 ```bash
-ostruct run prompt.j2 schema.json --show-optimization-steps -f config.yaml -f data.json
+ostruct run prompt.j2 schema.json --template-debug optimization-steps --file config config.yaml --file data data.json
 ```
 
 **Output example**:
@@ -199,24 +199,24 @@ Step 3: Appendix generation
   Description: Built structured appendix with moved content references
 ```
 
-#### Detailed Step Tracking (`--optimization-step-detail detailed`)
+#### Detailed Step Tracking (`--template-debug optimization-steps`)
 
 Shows full before/after content for each step:
 
 ```bash
-ostruct run prompt.j2 schema.json --show-optimization-steps --optimization-step-detail detailed -f data.json
+ostruct run prompt.j2 schema.json --template-debug optimization-steps --file data data.json
 ```
 
 **When to use**: Deep debugging of optimization logic issues.
 
 ## File Reference Debugging
 
-### 📁 File Reference Operations (`--template-debug`)
+### 📁 File Reference Operations (`--template-debug post-expand`)
 
 Shows file reference registration and usage tracking:
 
 ```bash
-ostruct run template.j2 schema.json --template-debug --dir source src/ --file config config.yaml
+ostruct run template.j2 schema.json --template-debug post-expand --dir source src/ --file config config.yaml
 ```
 
 **Debug output shows**:
@@ -298,13 +298,13 @@ ostruct run template.j2 schema.json --show-context-detailed --dir source src/ --
 1. **Check available variables**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --show-context -f config.yaml
+   ostruct run prompt.j2 schema.json --template-debug vars --file config config.yaml
    ```
 
 2. **Verify file routing**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --debug -f config.yaml
+   ostruct run prompt.j2 schema.json --debug --file config config.yaml
    ```
 
 3. **Check variable name in template**: Look for typos in `{{ config_data }}` vs available variables.
@@ -318,19 +318,19 @@ ostruct run template.j2 schema.json --show-context-detailed --dir source src/ --
 1. **View template expansion**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --show-templates -f config.yaml
+   ostruct run prompt.j2 schema.json --template-debug post-expand --file config config.yaml
    ```
 
 2. **Check for syntax errors**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --debug-templates -f config.yaml
+   ostruct run prompt.j2 schema.json --template-debug steps --file config config.yaml
    ```
 
 3. **Verify file content loading**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --show-context-detailed -f config.yaml
+   ostruct run prompt.j2 schema.json --template-debug vars,preview --file config config.yaml
    ```
 
 ### Scenario 3: Optimization Breaking Template
@@ -342,19 +342,19 @@ ostruct run template.j2 schema.json --show-context-detailed --dir source src/ --
 1. **Compare before/after**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --show-optimization-diff -f large_file.txt
+   ostruct run prompt.j2 schema.json --template-debug optimization --file large large_file.txt
    ```
 
 2. **Check step-by-step changes**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --show-optimization-steps -f large_file.txt
+   ostruct run prompt.j2 schema.json --template-debug optimization-steps --file large large_file.txt
    ```
 
 3. **Test without optimization**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --no-optimization -f large_file.txt
+   ostruct run prompt.j2 schema.json --no-optimization --file large large_file.txt
    ```
 
 ### Scenario 4: Performance Issues
@@ -364,13 +364,13 @@ ostruct run template.j2 schema.json --show-context-detailed --dir source src/ --
 1. **Check optimization impact**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --show-optimization-diff -f large_file.txt
+   ostruct run prompt.j2 schema.json --template-debug optimization --file large large_file.txt
    ```
 
 2. **Profile template expansion**:
 
    ```bash
-   ostruct run prompt.j2 schema.json --debug-templates -f large_file.txt
+   ostruct run prompt.j2 schema.json --template-debug steps --file large large_file.txt
    ```
 
 3. **Test with minimal context**:
@@ -384,25 +384,20 @@ ostruct run template.j2 schema.json --show-context-detailed --dir source src/ --
 You can combine multiple debugging flags for comprehensive analysis:
 
 ```bash
-# Show everything: context + templates + optimization changes
+# Show everything: context + expansion + optimization changes
 ostruct run prompt.j2 schema.json \
-  --show-context \
-  --show-templates \
-  --show-optimization-diff \
-  -f config.yaml -f data.json
+  --template-debug vars,post-expand,optimization \
+  --file config config.yaml --file data data.json
 
 # Deep debugging: all expansion details + optimization steps
 ostruct run prompt.j2 schema.json \
-  --debug-templates \
-  --show-optimization-steps \
-  --optimization-step-detail detailed \
-  -f config.yaml
+  --template-debug steps,optimization-steps \
+  --file config config.yaml
 
 # Clean comparison: pre-optimization vs optimized
 ostruct run prompt.j2 schema.json \
-  --show-pre-optimization \
-  --show-optimization-diff \
-  -f large_file.txt
+  --template-debug pre-expand,optimization \
+  --file large large_file.txt
 ```
 
 ## Performance Considerations
@@ -417,24 +412,24 @@ ostruct run prompt.j2 schema.json \
 
 ### For Development
 
-1. Start with `--show-templates` to see basic expansion
-2. Add `--show-context` when debugging variables
+1. Start with `--template-debug post-expand` to see basic expansion
+2. Add `--template-debug vars` when debugging variables
 3. Use `--debug` for comprehensive troubleshooting
-4. Use `--help-debug` for quick reference
+4. Use `--help` for quick reference
 
 ### For Template Optimization
 
-1. Always check `--show-optimization-diff` for large files
+1. Always check `--template-debug optimization` for large files
 2. Use `--no-optimization` to test original templates
-3. Track steps with `--show-optimization-steps` for complex cases
-4. Combine with `--show-pre-optimization` for full visibility
+3. Track steps with `--template-debug optimization-steps` for complex cases
+4. Combine with `--template-debug pre-expand` for full visibility
 
 ### For Troubleshooting
 
-1. **Undefined variables**: `--show-context` → `--show-context-detailed`
-2. **Template syntax**: `--debug-templates` → `--debug`
-3. **Optimization issues**: `--show-optimization-diff` → `--no-optimization`
-4. **Performance**: `--show-optimization-steps` → profile individual steps
+1. **Undefined variables**: `--template-debug vars` → `--template-debug vars,preview`
+2. **Template syntax**: `--template-debug steps` → `--debug`
+3. **Optimization issues**: `--template-debug optimization` → `--no-optimization`
+4. **Performance**: `--template-debug optimization-steps` → profile individual steps
 
 ## Pro Tips
 
@@ -442,16 +437,16 @@ ostruct run prompt.j2 schema.json \
 
 ```bash
 # 1. Quick check - is the template expanding?
-ostruct run prompt.j2 schema.json --show-templates -f config.yaml
+ostruct run prompt.j2 schema.json --template-debug post-expand --file config config.yaml
 
 # 2. Variables missing? Check context
-ostruct run prompt.j2 schema.json --show-context -f config.yaml
+ostruct run prompt.j2 schema.json --template-debug vars --file config config.yaml
 
 # 3. Still issues? Full debug
-ostruct run prompt.j2 schema.json --debug -f config.yaml
+ostruct run prompt.j2 schema.json --debug --file config config.yaml
 
 # 4. Optimization problems? Compare
-ostruct run prompt.j2 schema.json --show-optimization-diff -f config.yaml
+ostruct run prompt.j2 schema.json --template-debug optimization --file config config.yaml
 ```
 
 ### 🔧 Development Aliases
@@ -459,10 +454,10 @@ ostruct run prompt.j2 schema.json --show-optimization-diff -f config.yaml
 Add these to your shell profile for faster debugging:
 
 ```bash
-alias tm-debug='ostruct run --debug --show-context'
-alias tm-show='ostruct run --show-templates'
-alias tm-opt='ostruct run --show-optimization-diff'
-alias tm-help='ostruct run --help-debug'
+alias tm-debug='ostruct run --debug --template-debug vars'
+alias tm-show='ostruct run --template-debug post-expand'
+alias tm-opt='ostruct run --template-debug optimization'
+alias tm-help='ostruct run --help'
 ```
 
 ### 📊 Template Quality Checks
@@ -471,18 +466,18 @@ Before using templates in production:
 
 ```bash
 # Check optimization impact
-ostruct run prompt.j2 schema.json --show-optimization-diff -f large_file.txt
+ostruct run prompt.j2 schema.json --template-debug optimization --file large large_file.txt
 
 # Verify all variables resolve
-ostruct run prompt.j2 schema.json --show-context-detailed -f all_files.txt
+ostruct run prompt.j2 schema.json --template-debug vars,preview --file all all_files.txt
 
 # Test edge cases
-ostruct run prompt.j2 schema.json --debug-templates -f edge_case.yaml
+ostruct run prompt.j2 schema.json --template-debug steps --file edge edge_case.yaml
 ```
 
 ## Getting Help
 
-- **CLI Help**: `ostruct run --help-debug` - Comprehensive debugging reference
+- **CLI Help**: `ostruct run --help` - Comprehensive CLI reference
 - **General Help**: `ostruct run --help` - All CLI options
 - **This Guide**: Complete debugging workflows and examples
 - **Task Documentation**: `docs/dev/TEMPLATE_DEBUG_TASKS.md` - Implementation details

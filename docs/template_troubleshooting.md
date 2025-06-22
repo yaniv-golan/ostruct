@@ -173,7 +173,7 @@ UndefinedError: 'variable_name' is undefined
 #### 1. List Available Variables
 
 ```bash
-ostruct run template.j2 schema.json --show-context -f config.yaml
+ostruct run template.j2 schema.json --template-debug vars --file config config.yaml
 ```
 
 **Check**:
@@ -185,7 +185,7 @@ ostruct run template.j2 schema.json --show-context -f config.yaml
 #### 2. Detailed Variable Inspection
 
 ```bash
-ostruct run template.j2 schema.json --show-context-detailed -f config.yaml
+ostruct run template.j2 schema.json --template-debug vars,preview --file config config.yaml
 ```
 
 **Look for**:
@@ -218,7 +218,7 @@ ostruct run template.j2 schema.json --debug -f config.yaml
 {{ config_file.content }}
 ```
 
-**Debug**: Use `--show-context` to see actual variable names.
+**Debug**: Use `--template-debug vars` to see actual variable names.
 
 #### Issue: Wrong File Routing
 
@@ -242,7 +242,7 @@ ostruct run template.j2 schema.json --attach config_file config.yaml
 {{ files | length }}
 ```
 
-**Debug**: Use `--show-context-detailed` to see available attributes.
+**Debug**: Use `--template-debug vars,preview` to see available attributes.
 
 #### Issue: Loop Variable Scope
 
@@ -445,7 +445,7 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 
 #### Large Files
 
-- Use file routing (`--fta`, `--ftl`) instead of generic `-f`
+- Use explicit file routing (`--file alias`, `--dir alias`) instead of generic `-f`
 - Let optimization move large content to appendix
 - Consider breaking large files into smaller pieces
 
@@ -457,7 +457,7 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 
 #### Many Variables
 
-- Use `--show-context` to verify only needed variables are loaded
+- Use `--template-debug vars` to verify only needed variables are loaded
 - Remove unused file references
 - Use selective file loading
 
@@ -467,7 +467,7 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 
 | Error Message | Cause | Debug Command | Solution |
 |---------------|-------|---------------|----------|
-| `UndefinedError: 'var' is undefined` | Missing variable | `--show-context` | Add variable or fix typo |
+| `UndefinedError: 'var' is undefined` | Missing variable | `--template-debug vars` | Add variable or fix typo |
 | `TemplateSyntaxError` | Invalid Jinja2 syntax | `--debug-templates` | Fix template syntax |
 | `TemplateNotFound` | Missing template file | `--debug` | Check file path |
 | `FilterArgumentError` | Wrong filter usage | `--debug-templates` | Fix filter syntax |
@@ -479,7 +479,7 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 |---------------|-------|---------------|----------|
 | `FileNotFoundError` | Missing input file | `--debug` | Check file path |
 | `PermissionError` | No file access | `--debug` | Fix file permissions |
-| `UnicodeDecodeError` | Binary file as text | `--show-context-detailed` | Use correct file type |
+| `UnicodeDecodeError` | Binary file as text | `--template-debug vars,preview` | Use correct file type |
 
 ### Optimization Errors
 
@@ -515,7 +515,7 @@ ostruct run template.j2 schema.json -f config.yaml -f data.json
 ### 3. Enable Full Debugging
 
 ```bash
-ostruct run template.j2 schema.json --debug --show-context-detailed -f config.yaml
+ostruct run template.j2 schema.json --debug --template-debug vars,preview --file config config.yaml
 ```
 
 ### 4. Test Optimization Separately
@@ -545,7 +545,7 @@ If you've followed this troubleshooting guide and still have issues:
 1. **Gather debug information**:
 
    ```bash
-   ostruct run template.j2 schema.json --debug --show-context -f file.yaml > debug_output.txt 2>&1
+   ostruct run template.j2 schema.json --debug --template-debug vars --file config file.yaml > debug_output.txt 2>&1
    ```
 
 2. **Create minimal reproduction case**:
