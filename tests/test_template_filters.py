@@ -403,7 +403,7 @@ class TestSafeGetFunction:
 
     def test_multi_agent_debate_pattern(self) -> None:
         """Test the specific pattern from multi-agent debate example."""
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         # Test with safe_get function
         template = env.from_string(
@@ -426,7 +426,7 @@ class TestSafeGetFunction:
 
     def test_empty_values(self) -> None:
         """Test that safe_get handles empty values correctly."""
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         # Test with None value
         template = env.from_string("{{ safe_get('obj.content', 'Default') }}")
@@ -450,7 +450,7 @@ class TestSafeGetFunction:
 
     def test_safe_get_function(self) -> None:
         """Test the safe_get global function for safe nested access."""
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         # Test safe_get with existing nested path
         template = env.from_string(
@@ -473,7 +473,7 @@ class TestSafeGetFunction:
 
     def test_falsy_values_preserved(self) -> None:
         """Test that safe_get preserves intentional falsy values."""
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
         template = env.from_string("{{ safe_get('obj.value', 'Default') }}")
 
         # Boolean False should be preserved (rendered as "False")

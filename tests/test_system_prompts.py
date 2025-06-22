@@ -16,7 +16,7 @@ class TestSystemPrompts:
 
     def test_default_system_prompt(self, fs: Any) -> None:
         """Test default system prompt when none is provided."""
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
         prompt, has_conflict = process_system_prompt(
             task_template="Test task",
             system_prompt=None,
@@ -30,7 +30,7 @@ class TestSystemPrompts:
     def test_direct_system_prompt(self, fs: Any) -> None:
         """Test system prompt provided directly."""
         test_prompt = "Custom system prompt"
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
         prompt, has_conflict = process_system_prompt(
             task_template="Test task",
             system_prompt=test_prompt,
@@ -45,7 +45,7 @@ class TestSystemPrompts:
         """Test system prompt loaded from file."""
         test_prompt = "Custom system prompt from file"
         fs.create_file("prompt.txt", contents=test_prompt)
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         prompt, has_conflict = process_system_prompt(
             task_template="Test task",
@@ -66,7 +66,7 @@ system_prompt: Custom system prompt from template
 ---
 ## File: output.txt
 Test task"""
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         prompt, has_conflict = process_system_prompt(
             task_template=template_content,
@@ -93,7 +93,7 @@ Test task"""
         file_prompt = "File prompt"
         fs.create_file("prompt.txt", contents=file_prompt)
 
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         # Direct prompt should take precedence over all
         direct_prompt = "Direct prompt"
@@ -141,7 +141,7 @@ Test task"""
 
         template_context = {"role": "helpful", "domain": "testing"}
 
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
         prompt, has_conflict = process_system_prompt(
             task_template=template_content,
             system_prompt=None,
@@ -154,7 +154,7 @@ Test task"""
 
     def test_invalid_system_prompt_file(self, fs: Any) -> None:
         """Test error handling for invalid system prompt file."""
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
         with pytest.raises(SystemPromptError) as exc_info:
             process_system_prompt(
                 task_template="Test task",
@@ -175,7 +175,7 @@ invalid: yaml: content:
 ## File: output.txt
 Test task"""
 
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
         with pytest.raises(SystemPromptError):
             process_system_prompt(
                 task_template=template_content,
@@ -188,7 +188,7 @@ Test task"""
     def test_conflicting_system_prompts(self, fs: Any) -> None:
         """Test error handling when both system prompt string and file are provided."""
         fs.create_file("prompt.txt", contents="File prompt")
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
         with pytest.raises(SystemPromptError) as exc:
             process_system_prompt(
                 task_template="Test task",
@@ -222,7 +222,7 @@ Test task"""
         template_path = "/project/templates/task.j2"
         fs.create_file(template_path, contents=template_content)
 
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         # Test include_system resolution
         prompt, has_conflict = process_system_prompt(
@@ -258,7 +258,7 @@ Test task"""
         template_path = "/project/task.j2"
         fs.create_file(template_path, contents=template_content)
 
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         with pytest.raises(Exception) as exc_info:
             process_system_prompt(
@@ -281,7 +281,7 @@ system_prompt: Only this should appear.
 ## File: output.txt
 Test task"""
 
-        env = create_jinja_env()
+        env, _ = create_jinja_env()
 
         # Call without template_path - include_system should be ignored
         prompt, has_conflict = process_system_prompt(
