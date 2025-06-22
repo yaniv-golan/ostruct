@@ -186,7 +186,7 @@ def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
             else None
         ),
         help="🔍 Debug prompt-template expansion. "
-        "Capacities: pre-expand,vars,preview,optimization,optimization-steps,steps,post-expand "
+        "Capacities: pre-expand,vars,preview,steps,post-expand "
         "(comma list or 'all'). Use -t CAPACITIES or bare -t for all capacities.",
     )(cmd)
 
@@ -207,12 +207,6 @@ def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
         "--debug",
         is_flag=True,
         help="🐛 Enable debug-level logging including template expansion",
-    )(cmd)
-
-    cmd = click.option(
-        "--no-optimization",
-        is_flag=True,
-        help="⚡ Skip template optimization entirely for debugging",
     )(cmd)
 
     cmd = click.option(

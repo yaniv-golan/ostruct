@@ -69,27 +69,6 @@ class EnhancedProgressReporter:
         if self.should_report:
             click.echo(f"{emoji} {phase_name}...", err=True)
 
-    def report_optimization(self, optimizations: List[str]) -> None:
-        """Report template optimization results with user-friendly language.
-
-        Args:
-            optimizations: List of optimization transformations applied
-        """
-        if not self.should_report or not optimizations:
-            return
-
-        if self.detailed:
-            click.echo("🔧 Template optimization:", err=True)
-            for optimization in optimizations:
-                # Convert technical language to user-friendly descriptions
-                user_friendly = self._humanize_optimization(optimization)
-                click.echo(f"  → {user_friendly}", err=True)
-        else:
-            click.echo(
-                f"🔧 Optimized template for better AI performance ({len(optimizations)} improvements)",
-                err=True,
-            )
-
     def report_file_routing(
         self,
         template_files: List[str],
@@ -321,33 +300,6 @@ class EnhancedProgressReporter:
                     )
                 else:
                     click.echo("✅ Validation passed", err=True)
-
-    def _humanize_optimization(self, technical_message: str) -> str:
-        """Convert technical optimization messages to user-friendly language.
-
-        Args:
-            technical_message: Technical optimization message
-
-        Returns:
-            User-friendly description of the optimization
-        """
-        # Convert technical messages to user-friendly descriptions
-        if (
-            "moved" in technical_message.lower()
-            and "appendix" in technical_message.lower()
-        ):
-            file_name = technical_message.split("Moved ")[-1].split(
-                " to appendix"
-            )[0]
-            return f"Moved large file '{file_name}' to organized appendix"
-        elif "built structured appendix" in technical_message.lower():
-            return "Organized file content into structured appendix for better AI processing"
-        elif "moved directory" in technical_message.lower():
-            return technical_message.replace(
-                "Moved directory", "Organized directory"
-            )
-        else:
-            return technical_message
 
 
 # Global progress reporter instance

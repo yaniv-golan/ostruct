@@ -2059,7 +2059,7 @@ Controlling Optimization
 .. code-block:: bash
 
    # Disable automatic optimization
-   ostruct run template.j2 schema.json --no-optimize
+   ostruct run template.j2 schema.json --no-optimization
 
 **Configure optimization thresholds** in your ``ostruct.yaml``:
 
@@ -2180,7 +2180,7 @@ Troubleshooting Optimization
 .. code-block:: bash
 
    # Compare token usage
-   ostruct run template.j2 schema.json --file ci:data data.csv --dry-run --no-optimize
+   ostruct run template.j2 schema.json --file ci:data data.csv --dry-run --no-optimization
    ostruct run template.j2 schema.json --file ci:data data.csv --dry-run  # With optimization
 
 Migration Guide: Template Optimization

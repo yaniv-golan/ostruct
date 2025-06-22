@@ -422,7 +422,7 @@ class TestResponsesAPIIntegration:
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
-    def test_responses_api_token_optimization(
+    def test_responses_api_with_content(
         self,
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
@@ -430,7 +430,7 @@ class TestResponsesAPIIntegration:
         mock_openai_class: Mock,
         fs: FakeFilesystem,
     ) -> None:
-        """Test token optimization in API calls."""
+        """Test API calls with content processing."""
         # Mock model registry and capabilities
         mock_registry = Mock()
         mock_capabilities = Mock()
@@ -468,10 +468,10 @@ class TestResponsesAPIIntegration:
         fs.create_file(
             f"{TEST_BASE_DIR}/schema.json", contents=json.dumps(schema_content)
         )
-        # Simple template for token optimization test
+        # Simple template for content processing test
         fs.create_file(
             f"{TEST_BASE_DIR}/task.j2",
-            contents="Process large content for optimization",
+            contents="Process content",
         )
 
         # Change to test base directory

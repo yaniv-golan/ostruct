@@ -81,7 +81,7 @@ class CLIParams(TypedDict, total=False):
         Tuple[str, str]
     ]  # List of (tool, path) tuples from --file-for
     debug: bool
-    no_optimization: bool
+
     help_debug: bool
     enabled_features: List[str]  # List of feature names to enable
     disabled_features: List[str]  # List of feature names to disable

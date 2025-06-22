@@ -15,11 +15,9 @@ import os
 
 import pytest
 from ostruct.cli.template_debug import (
-    OptimizationStepTracker,
     TemplateContextInspector,
     TemplateDebugger,
     detect_undefined_variables,
-    show_optimization_diff,
 )
 from pyfakefs.fake_filesystem import FakeFilesystem
 
@@ -57,9 +55,7 @@ class TestTemplateDebugLogging:
         import io
         import sys
 
-        import click
         from ostruct.cli.template_debug import (
-            parse_td,
             show_template_content,
         )
 
@@ -67,21 +63,17 @@ class TestTemplateDebugLogging:
         sys.stderr = captured_output
 
         try:
-            # Create a mock Click context with template debug capacities
-            ctx = click.Context(click.Command("test"))
-            ctx.obj = {"_template_debug_caps": parse_td("post-expand")}
-
-            # Use Click's proper context management
-            with ctx:
-                show_template_content(
-                    system_prompt="System: " + template_content,
-                    user_prompt="User: " + template_content,
-                )
+            # Test template display functionality with debug=True
+            show_template_content(
+                system_prompt="System: " + template_content,
+                user_prompt="User: " + template_content,
+                debug=True,  # Enable debug mode to trigger output
+            )
 
             output = captured_output.getvalue()
 
             # Verify template content is shown
-            assert "Template Content:" in output
+            assert "📝 Template Content:" in output
             assert "Test template:" in output
             assert "{{ test_var }}" in output
         finally:
@@ -236,60 +228,6 @@ class TestVariableContextInspection:
         assert "missing_var" in undefined_vars
         assert "name" not in undefined_vars
         assert "age" not in undefined_vars
-
-
-class TestOptimizationDebugging:
-    """Test optimization debugging features (T3.1, T3.2)."""
-
-    def test_optimization_diff_display(self, fs: FakeFilesystem):
-        """Test optimization diff display functionality."""
-        original = "Original template with {{ file_content }}"
-        optimized = "Optimized template with reference to file"
-
-        # Test the diff display function
-
-        import io
-        import sys
-
-        captured_output = io.StringIO()
-        sys.stderr = captured_output
-
-        try:
-            show_optimization_diff(original, optimized)
-            output = captured_output.getvalue()
-
-            assert "Optimization Changes" in output
-            assert "Original" in output and "Optimized" in output
-        finally:
-            sys.stderr = sys.__stderr__
-
-    def test_optimization_step_tracking(self):
-        """Test optimization step tracking functionality."""
-        tracker = OptimizationStepTracker(enabled=True)
-
-        # Log optimization steps
-        tracker.log_step(
-            "File content replacement",
-            "{{ file.content }}",
-            "See appendix for file content",
-            "Moving large content to appendix",
-        )
-
-        assert len(tracker.steps) == 1
-        step = tracker.steps[0]
-        assert step.name == "File content replacement"
-        assert step.reason == "Moving large content to appendix"
-
-    def test_optimization_statistics(self):
-        """Test optimization statistics calculation."""
-        tracker = OptimizationStepTracker(enabled=True)
-
-        # Add steps with different character changes
-        tracker.log_step("step1", "a" * 100, "b" * 150, "test")  # +50 chars
-        tracker.log_step("step2", "c" * 200, "d" * 180, "test")  # -20 chars
-
-        # Test that steps were logged
-        assert len(tracker.steps) == 2
 
 
 class TestCLIIntegration:
@@ -499,33 +437,6 @@ Missing: {{ undefined_var }}
         # Test undefined variable detection
         undefined_vars = detect_undefined_variables(template_content, context)
         assert "undefined_var" in undefined_vars
-
-    def test_optimization_debugging_workflow(self, fs: FakeFilesystem):
-        """Test optimization debugging workflow."""
-        # Create a template that would be optimized
-        template_content = """
-File content: {{ large_file.content }}
-Config: {{ config.settings }}
-"""
-
-        fs.create_file(
-            "/test_workspace/base/template.j2", contents=template_content
-        )
-
-        # Mock optimization process
-        tracker = OptimizationStepTracker(enabled=True)
-
-        # Simulate optimization steps
-        tracker.log_step(
-            "File content replacement",
-            template_content,
-            "File content: [See appendix]\nConfig: {{ config.settings }}",
-            "Moved large file content to appendix",
-        )
-
-        # Verify tracking works
-        assert len(tracker.steps) == 1
-        assert "File content replacement" in tracker.steps[0].name
 
 
 class TestErrorHandling:

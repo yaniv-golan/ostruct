@@ -32,10 +32,6 @@ from .template_debug import (
     td_log_preview,
     td_log_vars,
 )
-from .template_optimizer import (
-    is_optimization_beneficial,
-    optimize_template_for_llm,
-)
 from .template_utils import render_template
 from .types import CLIParams
 
@@ -48,79 +44,22 @@ def _render_template_with_debug(
     template_content: str,
     context: Dict[str, Any],
     env: jinja2.Environment,
-    no_optimization: bool = False,
     debug_capacities: Optional[Set[TDCap]] = None,
 ) -> str:
-    """Render template with optimization debugging support.
+    """Render template with debugging support.
 
     Args:
         template_content: Template content to render
         context: Template context variables
         env: Jinja2 environment
-        no_optimization: Skip optimization entirely
-        debug_capacities: Set of active debug capacities
+        debug_capacities: Set of active debug capacities (unused but kept for compatibility)
 
     Returns:
         Rendered template string
     """
-    from .template_debug import TDCap, show_optimization_diff as show_diff
-
-    if no_optimization:
-        # Skip optimization entirely - render directly
-        template = env.from_string(template_content)
-        return template.render(**context)
-
-    # Handle optimization debugging using capacities
-    debug_caps = debug_capacities or set()
-    show_optimization_diff = TDCap.OPTIMIZATION in debug_caps
-    show_optimization_steps = TDCap.OPTIMIZATION_STEPS in debug_caps
-
-    if show_optimization_diff or show_optimization_steps:
-        # Check if optimization would be beneficial
-        if is_optimization_beneficial(template_content):
-            # Create step tracker if step tracking is enabled
-            step_tracker = None
-            if show_optimization_steps:
-                from .template_debug import OptimizationStepTracker
-
-                step_tracker = OptimizationStepTracker(enabled=True)
-
-            # Get optimization result with optional step tracking
-            optimization_result = optimize_template_for_llm(
-                template_content, step_tracker
-            )
-
-            if optimization_result.has_optimizations:
-                # Show the diff if requested
-                if show_optimization_diff:
-                    show_diff(
-                        template_content,
-                        optimization_result.optimized_template,
-                    )
-
-                # Show optimization steps if requested
-                if show_optimization_steps and step_tracker:
-                    # Always use detailed for OPTIMIZATION_STEPS capacity
-                    step_tracker.show_detailed_steps()
-
-                # Render the optimized version
-                template = env.from_string(
-                    optimization_result.optimized_template
-                )
-                return template.render(**context)
-
-        # No optimization was applied, show that too
-        if show_optimization_diff:
-            show_diff(template_content, template_content)
-        if show_optimization_steps:
-            from .template_debug import (
-                show_optimization_steps as show_steps_func,
-            )
-
-            show_steps_func([], "detailed")
-
-    # Fall back to standard rendering (which includes optimization)
-    return render_template(template_content, context, env)
+    # Simple template rendering without optimization
+    template = env.from_string(template_content)
+    return template.render(**context)
 
 
 def process_system_prompt(
@@ -419,9 +358,6 @@ async def process_templates(
 
         debugger = TemplateDebugger()
 
-    # Check for optimization mode
-    no_optimization = args.get("no_optimization", False)
-
     # System prompt processing
     system_prompt, _ = process_system_prompt(
         task_template,
@@ -434,26 +370,7 @@ async def process_templates(
     )
 
     # Render user prompt template
-    if (
-        no_optimization
-        or is_capacity_active(TDCap.OPTIMIZATION)
-        or is_capacity_active(TDCap.OPTIMIZATION_STEPS)
-    ):
-        debug_caps = set()
-        if is_capacity_active(TDCap.OPTIMIZATION):
-            debug_caps.add(TDCap.OPTIMIZATION)
-        if is_capacity_active(TDCap.OPTIMIZATION_STEPS):
-            debug_caps.add(TDCap.OPTIMIZATION_STEPS)
-
-        user_prompt = _render_template_with_debug(
-            task_template,
-            template_context,
-            env,
-            no_optimization=bool(no_optimization),
-            debug_capacities=debug_caps,
-        )
-    else:
-        user_prompt = render_template(task_template, template_context, env)
+    user_prompt = render_template(task_template, template_context, env)
 
     # Generate XML appendix for referenced files if alias manager is available
     alias_manager = args.get("_alias_manager")
