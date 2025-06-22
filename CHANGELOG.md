@@ -65,6 +65,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Template Optimization System**: Completely removed the automatic template optimization system (1,104 lines of code) that had functional overlap with the new `file_ref()` mechanism. This includes:
+  - Deleted `template_optimizer.py` module entirely
+  - Removed `--no-optimization` CLI flag and related parameters
+  - Eliminated automatic template content reorganization and appendix generation
+  - Removed optimization-related debug capacities (`optimization`, `optimization-steps`)
+  - Cleaned up optimization progress reporting and help text
+  - Updated template debugging system to remove optimization-specific functions
+  - The explicit `file_ref()` system provides cleaner, more predictable template organization
+
 - **Legacy Flags**: Removed deprecated `--web-search` and `--no-web-search` flags in favor of universal `--enable-tool` and `--disable-tool` flags.
 
 - **Streaming Support**: Removed unnecessary streaming support from OpenAI API calls to improve model compatibility (especially o3/o1 models) and reduce code complexity while maintaining identical user experience.
@@ -80,6 +89,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Robust dependency installation with proper error handling
 
 ### Migration Notes
+
+- **Template Optimization**: The automatic template optimization system has been removed. Users should migrate to the explicit `file_ref()` system:
+  - Templates that relied on automatic optimization should now use `file_ref("alias")` for structured file references
+  - The `--no-optimization` flag is no longer available (and no longer needed)
+  - Template debugging capacities `optimization` and `optimization-steps` have been removed
 
 - **File References**: Users can now choose between two approaches:
   - `file_ref("alias")` for automatic XML appendix generation (recommended for most use cases)
