@@ -295,19 +295,19 @@ Debug & Progress
 
 **Template Debugging**:
 
-- ``--debug-templates``: Enable detailed template expansion debugging
-- ``--show-templates``: Show expanded templates before sending to API
-- ``--show-context``: Show template variable context summary
-- ``--show-context-detailed``: Show detailed template variable context
-- ``--help-debug``: Show comprehensive template debugging help
+- ``--template-debug steps``: Enable detailed template expansion debugging
+- ``--template-debug post-expand``: Show expanded templates before sending to API
+- ``--template-debug vars``: Show template variable context summary
+- ``--template-debug vars,preview``: Show detailed template variable context
+- ``--help``: Show comprehensive CLI help including debugging options
 
 **Optimization Debugging**:
 
 - ``--no-optimization``: Skip template optimization entirely
-- ``--show-optimization-diff``: Show template optimization changes
-- ``--show-optimization-steps``: Show detailed optimization step tracking
-- ``--optimization-step-detail [summary|detailed]``: Level of optimization detail
-- ``--show-pre-optimization``: Show template content before optimization
+- ``--template-debug optimization``: Show template optimization changes
+- ``--template-debug optimization-steps``: Show detailed optimization step tracking
+- ``--no-optimization``: Disable template optimization entirely
+- ``--template-debug pre-expand``: Show template content before optimization
 
 **Validation & Schema**:
 

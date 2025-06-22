@@ -344,11 +344,11 @@ Check that:
 2. The variable name matches (check for typos)
 3. You're using the right file routing flag
 
-Use ``--show-context`` to see all available variables:
+Use ``--template-debug vars`` to see all available variables:
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json --file config config.yaml --show-context
+   ostruct run template.j2 schema.json --file config config.yaml --template-debug vars
 
 **Problem: Empty or missing content**
 

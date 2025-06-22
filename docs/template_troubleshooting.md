@@ -71,7 +71,7 @@ Return your analysis in this exact format:
 1. **Check template format**:
 
    ```bash
-   ostruct run template.j2 schema.json --debug --show-templates
+   ostruct run template.j2 schema.json --debug --template-debug post-expand
    ```
 
    Verify the template instructs fenced JSON + markdown link
@@ -123,7 +123,7 @@ When encountering template issues, follow this checklist:
 #### 1. Check Template Syntax
 
 ```bash
-ostruct run template.j2 schema.json --debug-templates -f config.yaml
+ostruct run template.j2 schema.json --template-debug steps --file config config.yaml
 ```
 
 **Look for**:
@@ -135,7 +135,7 @@ ostruct run template.j2 schema.json --debug-templates -f config.yaml
 #### 2. Verify Template Content
 
 ```bash
-ostruct run template.j2 schema.json --show-templates -f config.yaml
+ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml
 ```
 
 **Expected**: Should show expanded template content, not raw template.
@@ -143,7 +143,7 @@ ostruct run template.j2 schema.json --show-templates -f config.yaml
 #### 3. Check Debug Output
 
 ```bash
-ostruct run template.j2 schema.json --debug -f config.yaml
+ostruct run template.j2 schema.json --debug --file config config.yaml
 ```
 
 **Look for**:
@@ -157,7 +157,7 @@ ostruct run template.j2 schema.json --debug -f config.yaml
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | No expansion | Invalid Jinja2 syntax | Fix template syntax errors |
-| Partial expansion | Mixed valid/invalid syntax | Use `--debug-templates` to find errors |
+| Partial expansion | Mixed valid/invalid syntax | Use `--template-debug steps` to find errors |
 | Wrong output | Template logic errors | Review conditionals and loops |
 
 ## Undefined Variable Errors
@@ -197,7 +197,7 @@ ostruct run template.j2 schema.json --template-debug vars,preview --file config 
 #### 3. Debug File Loading
 
 ```bash
-ostruct run template.j2 schema.json --debug -f config.yaml
+ostruct run template.j2 schema.json --debug --file config config.yaml
 ```
 
 **Check logs for**:
@@ -223,11 +223,11 @@ ostruct run template.j2 schema.json --debug -f config.yaml
 #### Issue: Wrong File Routing
 
 ```bash
-# Wrong: Using generic -f flag
+# Wrong: Using generic -f flag (deprecated)
 ostruct run template.j2 schema.json -f config.yaml
 
-# Correct: Using file-to-attribute routing
-ostruct run template.j2 schema.json --attach config_file config.yaml
+# Correct: Using explicit file routing
+ostruct run template.j2 schema.json --file config_file config.yaml
 ```
 
 **Debug**: Check that file routing creates the expected variable name.
@@ -282,7 +282,7 @@ Last file: {{ last_file.name if last_file }}
 {% endif %}
 ```
 
-**Debug**: Use `--debug-templates` to see parsing errors.
+**Debug**: Use `--template-debug steps` to see parsing errors.
 
 #### 2. Invalid Filter Syntax
 
@@ -329,7 +329,7 @@ Last file: {{ last_file.name if last_file }}
 1. **Use detailed template expansion**:
 
    ```bash
-   ostruct run template.j2 schema.json --debug-templates -f config.yaml
+   ostruct run template.j2 schema.json --template-debug steps --file config config.yaml
    ```
 
 2. **Check specific error messages** in the output
@@ -351,7 +351,7 @@ Last file: {{ last_file.name if last_file }}
 #### 1. Compare Before/After Optimization
 
 ```bash
-ostruct run template.j2 schema.json --show-optimization-diff -f large_file.txt
+ostruct run template.j2 schema.json --template-debug optimization --file large large_file.txt
 ```
 
 **Look for**:
@@ -363,7 +363,7 @@ ostruct run template.j2 schema.json --show-optimization-diff -f large_file.txt
 #### 2. Track Optimization Steps
 
 ```bash
-ostruct run template.j2 schema.json --show-optimization-steps -f large_file.txt
+ostruct run template.j2 schema.json --template-debug optimization-steps --file large large_file.txt
 ```
 
 **Check each step for**:
@@ -375,7 +375,7 @@ ostruct run template.j2 schema.json --show-optimization-steps -f large_file.txt
 #### 3. Test Without Optimization
 
 ```bash
-ostruct run template.j2 schema.json --no-optimization -f large_file.txt
+ostruct run template.j2 schema.json --no-optimization --file large large_file.txt
 ```
 
 **If this works**: The issue is in optimization logic.
@@ -389,7 +389,7 @@ ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 **Debug**:
 
 ```bash
-ostruct run template.j2 schema.json --show-optimization-steps --optimization-step-detail detailed -f file.txt
+ostruct run template.j2 schema.json --template-debug optimization-steps --file large file.txt
 ```
 
 **Solution**: Report as bug if optimizer generates invalid references.
@@ -426,19 +426,19 @@ ostruct run template.j2 schema.json --show-optimization-steps --optimization-ste
 #### 1. Profile Template Processing
 
 ```bash
-time ostruct run template.j2 schema.json --debug -f large_file.txt
+time ostruct run template.j2 schema.json --debug --file large large_file.txt
 ```
 
 #### 2. Check Optimization Impact
 
 ```bash
-ostruct run template.j2 schema.json --show-optimization-diff -f large_file.txt
+ostruct run template.j2 schema.json --template-debug optimization --file large large_file.txt
 ```
 
 #### 3. Test Without Optimization
 
 ```bash
-time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
+time ostruct run template.j2 schema.json --no-optimization --file large large_file.txt
 ```
 
 ### Performance Solutions
@@ -468,10 +468,10 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 | Error Message | Cause | Debug Command | Solution |
 |---------------|-------|---------------|----------|
 | `UndefinedError: 'var' is undefined` | Missing variable | `--template-debug vars` | Add variable or fix typo |
-| `TemplateSyntaxError` | Invalid Jinja2 syntax | `--debug-templates` | Fix template syntax |
+| `TemplateSyntaxError` | Invalid Jinja2 syntax | `--template-debug steps` | Fix template syntax |
 | `TemplateNotFound` | Missing template file | `--debug` | Check file path |
-| `FilterArgumentError` | Wrong filter usage | `--debug-templates` | Fix filter syntax |
-| `FileInfoList(['path'])` in output | Using `{{ var }}` instead of `{{ var.content }}` | `--debug-templates` | Use `.content` to access file content |
+| `FilterArgumentError` | Wrong filter usage | `--template-debug steps` | Fix filter syntax |
+| `FileInfoList(['path'])` in output | Using `{{ var }}` instead of `{{ var.content }}` | `--template-debug steps` | Use `.content` to access file content |
 
 ### File Loading Errors
 
@@ -485,8 +485,8 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 
 | Error Message | Cause | Debug Command | Solution |
 |---------------|-------|---------------|----------|
-| Invalid template after optimization | Optimizer bug | `--show-optimization-diff` | Use `--no-optimization`, report bug |
-| Missing content in output | Incorrect optimization | `--show-optimization-steps` | Check optimization logic |
+| Invalid template after optimization | Optimizer bug | `--template-debug optimization` | Use `--no-optimization`, report bug |
+| Missing content in output | Incorrect optimization | `--template-debug optimization-steps` | Check optimization logic |
 
 ## Emergency Debugging Workflow
 
@@ -509,7 +509,7 @@ ostruct run template.j2 schema.json --attach config config.yaml
 ostruct run template.j2 schema.json --attach config config.yaml --attach data data.json
 
 # Use full template
-ostruct run template.j2 schema.json -f config.yaml -f data.json
+ostruct run template.j2 schema.json --file config config.yaml --file data data.json
 ```
 
 ### 3. Enable Full Debugging
@@ -522,10 +522,10 @@ ostruct run template.j2 schema.json --debug --template-debug vars,preview --file
 
 ```bash
 # Without optimization
-ostruct run template.j2 schema.json --no-optimization -f config.yaml
+ostruct run template.j2 schema.json --no-optimization --file config config.yaml
 
 # With optimization tracking
-ostruct run template.j2 schema.json --show-optimization-steps -f config.yaml
+ostruct run template.j2 schema.json --template-debug optimization-steps --file config config.yaml
 ```
 
 ### 5. Get Help

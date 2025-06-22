@@ -339,13 +339,13 @@ Debugging
 .. code-block:: bash
 
    # Show available variables
-   ostruct run template.j2 schema.json --show-context --file config config.yaml
+   ostruct run template.j2 schema.json --template-debug vars --file config config.yaml
 
    # Dry run to test template
    ostruct run template.j2 schema.json --dry-run --file config config.yaml
 
    # Debug template expansion
-   ostruct run template.j2 schema.json --show-templates --file config config.yaml
+   ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml
 
 .. seealso::
 

@@ -6,13 +6,13 @@ This guide covers ostruct's comprehensive template debugging capabilities for de
 
 ```bash
 # Show expanded template content only (clean output)
-ostruct run template.j2 schema.json --template-debug post-expand -f config.yaml
+ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml
 
 # Show all debugging information
-ostruct run template.j2 schema.json -t all -f config.yaml
+ostruct run template.j2 schema.json -t all --file config config.yaml
 
 # Show specific debugging capacities
-ostruct run template.j2 schema.json -t vars,preview,steps -f config.yaml
+ostruct run template.j2 schema.json -t vars,preview,steps --file config config.yaml
 
 # Get debugging help and examples
 ostruct run template.j2 schema.json --help-debug
@@ -53,17 +53,17 @@ ostruct run template.j2 schema.json -t  # bare flag = all capacities
 Shows everything: template expansion, variable context, internal processing, and optimization details.
 
 ```bash
-ostruct run prompt.j2 schema.json --debug -f config.yaml -f data.json
+ostruct run prompt.j2 schema.json --debug --file config config.yaml --file data data.json
 ```
 
 **When to use**: Initial debugging when you're not sure what's wrong.
 
-### 📝 Template Display (`--show-templates`)
+### 📝 Template Display (`--template-debug post-expand`)
 
 Shows only the expanded template content in clean format.
 
 ```bash
-ostruct run prompt.j2 schema.json --show-templates -f config.yaml
+ostruct run prompt.j2 schema.json --template-debug post-expand --file config config.yaml
 ```
 
 **When to use**: When you want to see the final template without debug noise.
@@ -271,7 +271,7 @@ ostruct run template.j2 schema.json --dir source src/
 Use context debugging to see file attachment details:
 
 ```bash
-ostruct run template.j2 schema.json --show-context-detailed --dir source src/ --file config config.yaml
+ostruct run template.j2 schema.json --template-debug vars,preview --dir source src/ --file config config.yaml
 ```
 
 **Shows**:
@@ -404,7 +404,7 @@ ostruct run prompt.j2 schema.json \
 
 - **Debug flags add minimal overhead** when not used
 - **`--debug`** has the most impact due to verbose logging
-- **`--show-templates`** is the lightest debugging option
+- **`--template-debug post-expand`** is the lightest debugging option
 - **Step tracking** only activates when optimization occurs
 - **Context inspection** caches results for repeated access
 

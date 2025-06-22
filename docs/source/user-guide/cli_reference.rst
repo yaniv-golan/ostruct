@@ -479,13 +479,22 @@ Debug and Help Options
 
 
 
-.. option:: --show-templates
+.. option:: --template-debug CAPACITIES
 
-   Show expanded templates before API calls.
+   Enable template debugging with specific capacities.
 
-.. option:: --show-context
+   Available capacities: vars, preview, steps, optimization, pre-expand, post-expand, optimization-steps
 
-   Show template variable context summary.
+   Use comma-separated list for multiple capacities, or 'all' for everything.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      --template-debug vars              # Show variables only
+      --template-debug vars,preview      # Show variables and content previews
+      --template-debug post-expand       # Show final expanded template
+      --template-debug all               # Show all debugging information
 
 Migration from v0.8.x
 ======================

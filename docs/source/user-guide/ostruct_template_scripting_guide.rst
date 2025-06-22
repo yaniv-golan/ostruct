@@ -959,11 +959,11 @@ Common Issues and Solutions
 
 1. Check file path and variable name
 2. Verify correct file routing flag (``--file``, ``--file ci:``, ``--file fs:``)
-3. Use ``--show-context`` to see available variables
+3. Use ``--template-debug vars`` to see available variables
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json --file config config.yaml --show-context
+   ostruct run template.j2 schema.json --file config config.yaml --template-debug vars
 
 **Issue: Template breaks with different directory structures**
 
