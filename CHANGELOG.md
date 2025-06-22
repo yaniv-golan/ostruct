@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Progress Options Simplification**: Merged `--no-progress` and `--progress-level` flags into a single `--progress [none|basic|detailed]` option for a cleaner, more intuitive CLI interface. This eliminates redundancy and follows standard CLI patterns where a single option controls related functionality.
+
 - **Simplified CLI Syntax**: Updated all examples and documentation to use thes simplified attachment system with explicit file routing (`--file ci:`, `--dir fs:`, etc.) instead of legacy flags.
 
 - **Improved Error Handling**: Enhanced error messages throughout the system:
