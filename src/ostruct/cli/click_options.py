@@ -613,16 +613,12 @@ def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
     cmd: Any = f if isinstance(f, Command) else f
 
     cmd = click.option(
-        "--no-progress", is_flag=True, help="Disable progress indicators"
-    )(cmd)
-
-    cmd = click.option(
-        "--progress-level",
+        "--progress",
         type=click.Choice(["none", "basic", "detailed"]),
         default="basic",
         show_default=True,
-        help="""Control progress verbosity. 'none' shows no progress,
-        'basic' shows key steps, 'detailed' shows all steps.""",
+        help="""Control progress display. 'none' disables progress indicators,
+        'basic' shows key steps, 'detailed' shows all operations.""",
     )(cmd)
 
     cmd = click.option(

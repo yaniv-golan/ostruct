@@ -47,17 +47,17 @@ class ProcessingResult:
 class EnhancedProgressReporter:
     """Enhanced progress reporter with user-friendly language and transparency."""
 
-    def __init__(self, verbose: bool = False, progress_level: str = "basic"):
+    def __init__(self, verbose: bool = False, progress: str = "basic"):
         """Initialize the progress reporter.
 
         Args:
             verbose: Enable verbose logging output
-            progress_level: Progress level (none, basic, detailed)
+            progress: Progress level (none, basic, detailed)
         """
         self.verbose = verbose
-        self.progress_level = progress_level
-        self.should_report = progress_level != "none"
-        self.detailed = progress_level == "detailed" or verbose
+        self.progress = progress
+        self.should_report = progress != "none"
+        self.detailed = progress == "detailed" or verbose
 
     def report_phase(self, phase_name: str, emoji: str = "⚙️") -> None:
         """Report the start of a major processing phase.
@@ -319,16 +319,16 @@ def get_progress_reporter() -> EnhancedProgressReporter:
 
 
 def configure_progress_reporter(
-    verbose: bool = False, progress_level: str = "basic"
+    verbose: bool = False, progress: str = "basic"
 ) -> None:
     """Configure the global progress reporter.
 
     Args:
         verbose: Enable verbose logging output
-        progress_level: Progress level (none, basic, detailed)
+        progress: Progress level (none, basic, detailed)
     """
     global _progress_reporter
-    _progress_reporter = EnhancedProgressReporter(verbose, progress_level)
+    _progress_reporter = EnhancedProgressReporter(verbose, progress)
 
 
 def report_phase(phase_name: str, emoji: str = "⚙️") -> None:

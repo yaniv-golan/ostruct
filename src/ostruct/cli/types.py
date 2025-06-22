@@ -32,7 +32,6 @@ class CLIParams(TypedDict, total=False):
     timeout: float
     output_file: Optional[str]
     dry_run: bool
-    no_progress: bool
     api_key: Optional[str]
     verbose: bool
     show_model_schema: bool
@@ -43,7 +42,7 @@ class CLIParams(TypedDict, total=False):
     frequency_penalty: Optional[float]
     presence_penalty: Optional[float]
     reasoning_effort: Optional[str]
-    progress_level: str
+    progress: str
     task_file: Optional[str]
     task: Optional[str]
     schema_file: str

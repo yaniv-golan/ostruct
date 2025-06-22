@@ -1525,7 +1525,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         # 0. Configure Progress Reporting
         configure_progress_reporter(
             verbose=args.get("verbose", False),
-            progress_level=args.get("progress_level", "basic"),
+            progress=args.get("progress", "basic"),
         )
         progress_reporter = get_progress_reporter()
 
