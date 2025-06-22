@@ -129,7 +129,7 @@ Generate a comprehensive JSON object following this exact structure:
     "documentation_files_analyzed": <number>,
     "total_examples_found": <number>,
     "analysis_timestamp": "<ISO timestamp>",
-    "validation_level": "{{ validation_level | default('comprehensive') }}"
+    "validation_level": "{{ safe_get('validation_level', 'comprehensive') }}"
   },
   "task_management": {
     "instructions": "To update task status: 1) Change 'status' field to IN_PROGRESS when starting, 2) Add 'started_at' timestamp, 3) Update to COMPLETED/FAILED when finished, 4) Add 'completed_at' timestamp and 'notes' field with results. Use jq for JSON manipulation: jq '.tasks[0].status = \"COMPLETED\"' file.json",

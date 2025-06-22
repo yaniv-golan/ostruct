@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "properties": {
+        "analysis_type": {
+            "type": "string",
+            "description": "Type of analysis performed"
+        },
+        "summary": {
+            "type": "string",
+            "description": "Executive summary of findings"
+        },
+        "key_findings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "finding": {
+                        "type": "string",
+                        "description": "Description of the finding"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "critical",
+                            "high",
+                            "medium",
+                            "low"
+                        ],
+                        "description": "Severity level of the finding"
+                    },
+                    "recommendation": {
+                        "type": "string",
+                        "description": "Recommended action for this finding"
+                    }
+                },
+                "required": [
+                    "finding",
+                    "severity",
+                    "recommendation"
+                ]
+            },
+            "description": "List of key findings and recommendations"
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the recommendation"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Detailed description of the recommendation"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "immediate",
+                            "short-term",
+                            "long-term"
+                        ],
+                        "description": "Implementation priority"
+                    },
+                    "effort": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                        ],
+                        "description": "Implementation effort required"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description",
+                    "priority",
+                    "effort"
+                ]
+            },
+            "description": "List of actionable recommendations"
+        },
+        "conclusion": {
+            "type": "string",
+            "description": "Overall conclusion and next steps"
+        }
+    },
+    "required": [
+        "analysis_type",
+        "summary",
+        "key_findings",
+        "recommendations",
+        "conclusion"
+    ]
+}

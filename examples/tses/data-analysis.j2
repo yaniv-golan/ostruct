@@ -1,0 +1,238 @@
+# Data Analysis Request
+
+Please conduct a comprehensive analysis of the provided datasets. Focus on extracting meaningful insights, identifying patterns, and providing actionable recommendations based on the data.
+
+## Analysis Overview
+
+{% if analysis_type %}
+**Analysis Type**: {{ analysis_type }}
+{% endif %}
+{% if business_context %}
+**Business Context**: {{ business_context }}
+{% endif %}
+{% if timeline %}
+**Time Period**: {{ timeline }}
+{% endif %}
+
+## Datasets
+
+{% if datasets %}
+{% for dataset in datasets %}
+### {{ dataset.name or 'Dataset ' + loop.index|string }}
+
+**Format**: {{ dataset.format or 'Unknown' }}
+**Size**: {{ dataset.size or 'Unknown' }}
+{% if dataset.description %}
+**Description**: {{ dataset.description }}
+{% endif %}
+{% if dataset.source %}
+**Source**: {{ dataset.source }}
+{% endif %}
+
+{{ dataset.content | appendix('dataset-' + loop.index|string, dataset.format or 'json', dataset.name or 'Dataset ' + loop.index|string) }}
+
+{% endfor %}
+{% else %}
+*No datasets provided for analysis.*
+{% endif %}
+
+## Analysis Requirements
+
+### 1. Exploratory Data Analysis (EDA)
+
+Please perform initial data exploration:
+
+- **Data Quality Assessment**
+  - Missing values and data completeness
+  - Data type validation and consistency
+  - Outlier detection and anomaly identification
+  - Duplicate records and data integrity issues
+
+- **Descriptive Statistics**
+  - Summary statistics for numerical variables
+  - Frequency distributions for categorical variables
+  - Central tendency and variability measures
+  - Data distribution characteristics
+
+- **Data Profiling**
+  - Variable relationships and correlations
+  - Data patterns and trends over time
+  - Seasonal or cyclical patterns
+  - Data volume and growth trends
+
+### 2. Statistical Analysis
+
+Conduct appropriate statistical analyses:
+
+- **Correlation Analysis**
+  - Identify relationships between variables
+  - Calculate correlation coefficients
+  - Assess statistical significance
+  - Identify multicollinearity issues
+
+- **Trend Analysis**
+  - Time series analysis where applicable
+  - Growth rates and trend directions
+  - Seasonal decomposition
+  - Forecasting potential
+
+- **Comparative Analysis**
+  - Group comparisons and differences
+  - Performance benchmarking
+  - Variance analysis
+  - Statistical testing for significance
+
+### 3. Pattern Recognition
+
+Identify meaningful patterns in the data:
+
+- **Clustering Analysis**
+  - Natural groupings in the data
+  - Customer or entity segmentation
+  - Behavioral patterns
+  - Anomaly detection
+
+- **Association Rules**
+  - Frequent patterns and relationships
+  - Market basket analysis (if applicable)
+  - Sequence patterns
+  - Dependency identification
+
+### 4. Predictive Insights
+
+Where appropriate, provide predictive analysis:
+
+- **Trend Forecasting**
+  - Future value predictions
+  - Confidence intervals
+  - Scenario analysis
+  - Risk assessment
+
+- **Classification Insights**
+  - Category predictions
+  - Risk scoring
+  - Probability estimates
+  - Decision boundaries
+
+## Specific Analysis Focus
+
+{% if focus_areas %}
+{% for area in focus_areas %}
+### {{ area.name }}
+{{ area.description }}
+{% if area.metrics %}
+**Key Metrics**: {{ area.metrics | join(', ') }}
+{% endif %}
+{% endfor %}
+{% else %}
+Please provide a comprehensive analysis covering all relevant aspects of the data.
+{% endif %}
+
+## Business Questions
+
+{% if business_questions %}
+Please address these specific business questions:
+{% for question in business_questions %}
+{{ loop.index }}. {{ question }}
+{% endfor %}
+{% else %}
+Please identify and answer key business questions that the data can address.
+{% endif %}
+
+## Expected Deliverables
+
+### 1. Executive Summary
+- Key findings and insights
+- Critical business implications
+- Recommended actions
+- Data quality assessment
+
+### 2. Detailed Analysis Report
+- **Data Overview**: Summary of datasets and quality
+- **Methodology**: Analysis approaches and techniques used
+- **Findings**: Detailed results with statistical evidence
+- **Visualizations**: Recommended charts and graphs
+- **Limitations**: Data constraints and analysis limitations
+
+### 3. Insights and Recommendations
+- **Strategic Insights**: High-level business implications
+- **Operational Recommendations**: Specific actions to take
+- **Risk Assessment**: Potential risks and mitigation strategies
+- **Opportunities**: Areas for improvement or growth
+
+### 4. Technical Documentation
+- **Data Processing Steps**: Cleaning and preparation methods
+- **Statistical Methods**: Techniques and assumptions
+- **Validation**: How results were validated
+- **Reproducibility**: Steps to reproduce the analysis
+
+## Visualization Requirements
+
+Please recommend appropriate visualizations:
+
+- **Summary Dashboards**: Key metrics and KPIs
+- **Trend Charts**: Time series and progression analysis
+- **Distribution Plots**: Data distribution and patterns
+- **Correlation Matrices**: Variable relationships
+- **Segmentation Charts**: Group comparisons and clusters
+- **Predictive Models**: Forecast visualizations
+
+## Data Context
+
+{% if metadata %}
+### Dataset Metadata
+{{ metadata | appendix('metadata', 'json', 'Dataset Metadata and Schema') }}
+{% endif %}
+
+{% if data_dictionary %}
+### Data Dictionary
+{{ data_dictionary | appendix('dictionary', 'text', 'Data Dictionary and Field Definitions') }}
+{% endif %}
+
+{% if previous_analysis %}
+### Previous Analysis
+{{ previous_analysis | appendix('previous', 'text', 'Previous Analysis Results') }}
+{% endif %}
+
+## Quality Standards
+
+Ensure the analysis meets these standards:
+
+- **Accuracy**: Use appropriate statistical methods and validate results
+- **Completeness**: Address all relevant aspects of the data
+- **Clarity**: Present findings in clear, understandable terms
+- **Actionability**: Provide specific, implementable recommendations
+- **Reproducibility**: Document methods for result validation
+
+## Analysis Constraints
+
+{% if constraints %}
+{% for constraint in constraints %}
+- **{{ constraint.type }}**: {{ constraint.description }}
+{% endfor %}
+{% endif %}
+
+## Success Metrics
+
+{% if success_metrics %}
+The analysis should help achieve these goals:
+{% for metric in success_metrics %}
+- {{ metric }}
+{% endfor %}
+{% endif %}
+
+## Additional Requirements
+
+{% if statistical_significance %}
+**Statistical Significance Level**: {{ statistical_significance }}
+{% endif %}
+{% if confidence_level %}
+**Confidence Level**: {{ confidence_level }}
+{% endif %}
+{% if sample_size_requirements %}
+**Minimum Sample Size**: {{ sample_size_requirements }}
+{% endif %}
+
+---
+
+*This analysis should provide actionable insights that drive business decisions and improve understanding of the underlying data patterns and relationships.*

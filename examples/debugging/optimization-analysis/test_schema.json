@@ -1,0 +1,39 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "architecture_assessment": {
+            "type": "string",
+            "description": "Overall architecture evaluation and recommendations"
+        },
+        "code_quality": {
+            "type": "string",
+            "description": "Code quality evaluation including maintainability and best practices"
+        },
+        "security_considerations": {
+            "type": "string",
+            "description": "Security analysis and vulnerability assessment"
+        },
+        "performance_recommendations": {
+            "type": "string",
+            "description": "Performance optimization suggestions"
+        },
+        "deployment_suggestions": {
+            "type": "string",
+            "description": "Deployment and infrastructure recommendations"
+        },
+        "summary": {
+            "type": "string",
+            "description": "Executive summary of findings and key recommendations"
+        }
+    },
+    "required": [
+        "architecture_assessment",
+        "code_quality",
+        "security_considerations",
+        "performance_recommendations",
+        "deployment_suggestions",
+        "summary"
+    ],
+    "additionalProperties": false
+}

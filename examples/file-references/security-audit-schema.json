@@ -1,0 +1,252 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Security Audit Report",
+    "description": "Structured output for security audit analysis",
+    "type": "object",
+    "properties": {
+        "audit_summary": {
+            "type": "object",
+            "properties": {
+                "overall_risk_level": {
+                    "type": "string",
+                    "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "critical"
+                    ]
+                },
+                "total_issues_found": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "audit_date": {
+                    "type": "string",
+                    "format": "date"
+                }
+            },
+            "required": [
+                "overall_risk_level",
+                "total_issues_found",
+                "audit_date"
+            ]
+        },
+        "configuration_analysis": {
+            "type": "object",
+            "properties": {
+                "security_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "file": {
+                                "type": "string"
+                            },
+                            "issue": {
+                                "type": "string"
+                            },
+                            "severity": {
+                                "type": "string",
+                                "enum": [
+                                    "low",
+                                    "medium",
+                                    "high",
+                                    "critical"
+                                ]
+                            },
+                            "recommendation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "file",
+                            "issue",
+                            "severity",
+                            "recommendation"
+                        ]
+                    }
+                },
+                "secure_configurations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "file": {
+                                "type": "string"
+                            },
+                            "setting": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "file",
+                            "setting",
+                            "status"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "security_issues",
+                "secure_configurations"
+            ]
+        },
+        "source_code_analysis": {
+            "type": "object",
+            "properties": {
+                "vulnerabilities": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "file": {
+                                "type": "string"
+                            },
+                            "line_number": {
+                                "type": "integer",
+                                "minimum": 1
+                            },
+                            "vulnerability_type": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "severity": {
+                                "type": "string",
+                                "enum": [
+                                    "low",
+                                    "medium",
+                                    "high",
+                                    "critical"
+                                ]
+                            },
+                            "fix_recommendation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "file",
+                            "vulnerability_type",
+                            "description",
+                            "severity",
+                            "fix_recommendation"
+                        ]
+                    }
+                },
+                "security_best_practices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "practice": {
+                                "type": "string"
+                            },
+                            "implemented": {
+                                "type": "boolean"
+                            },
+                            "files_checked": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "practice",
+                            "implemented",
+                            "files_checked"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "vulnerabilities",
+                "security_best_practices"
+            ]
+        },
+        "database_schema_analysis": {
+            "type": "object",
+            "properties": {
+                "access_control_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "schema_file": {
+                                "type": "string"
+                            },
+                            "table": {
+                                "type": "string"
+                            },
+                            "issue": {
+                                "type": "string"
+                            },
+                            "severity": {
+                                "type": "string",
+                                "enum": [
+                                    "low",
+                                    "medium",
+                                    "high",
+                                    "critical"
+                                ]
+                            },
+                            "recommendation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "schema_file",
+                            "table",
+                            "issue",
+                            "severity",
+                            "recommendation"
+                        ]
+                    }
+                },
+                "encryption_status": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "table": {
+                                "type": "string"
+                            },
+                            "column": {
+                                "type": "string"
+                            },
+                            "contains_sensitive_data": {
+                                "type": "boolean"
+                            },
+                            "is_encrypted": {
+                                "type": "boolean"
+                            },
+                            "recommendation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "table",
+                            "column",
+                            "contains_sensitive_data",
+                            "is_encrypted"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "access_control_issues",
+                "encryption_status"
+            ]
+        }
+    },
+    "required": [
+        "audit_summary",
+        "configuration_analysis",
+        "source_code_analysis",
+        "database_schema_analysis"
+    ]
+}

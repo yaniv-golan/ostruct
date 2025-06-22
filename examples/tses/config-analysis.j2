@@ -1,0 +1,148 @@
+# Configuration Analysis Request
+
+Please analyze the following configuration files for security, best practices, and potential issues. Focus on identifying misconfigurations, security vulnerabilities, and optimization opportunities.
+
+## Analysis Scope
+
+{% if environment %}
+**Environment**: {{ environment }}
+{% endif %}
+{% if security_level %}
+**Security Level**: {{ security_level }}
+{% endif %}
+{% if compliance_requirements %}
+**Compliance Requirements**: {{ compliance_requirements }}
+{% endif %}
+
+## Configuration Files
+
+{% if files %}
+{% for file in files %}
+### {{ file.name }}
+
+**Type**: {{ file.type or 'Configuration' }}
+**Format**: {{ file.format or 'Auto-detected' }}
+{% if file.description %}
+**Description**: {{ file.description }}
+{% endif %}
+
+{{ file.content | appendix('config-' + loop.index|string, file.format or 'yaml', file.name + ' Configuration') }}
+
+{% endfor %}
+{% else %}
+*No configuration files provided for analysis.*
+{% endif %}
+
+## Analysis Requirements
+
+### 1. Security Assessment
+
+Please evaluate the configurations for:
+
+- **Credential Management**: Are passwords, API keys, or secrets properly secured?
+- **Access Controls**: Are permissions and access restrictions appropriately configured?
+- **Network Security**: Are network settings secure (ports, protocols, firewall rules)?
+- **Encryption**: Is data encrypted in transit and at rest where appropriate?
+- **Authentication**: Are authentication mechanisms properly configured?
+- **Authorization**: Are authorization policies correctly implemented?
+
+### 2. Best Practices Review
+
+Assess compliance with industry best practices:
+
+- **Configuration Standards**: Do settings follow established standards?
+- **Documentation**: Are configurations well-documented and maintainable?
+- **Modularity**: Is the configuration properly organized and modular?
+- **Environment Separation**: Are development, staging, and production properly separated?
+- **Version Control**: Are configurations suitable for version control?
+
+### 3. Performance and Scalability
+
+Evaluate performance-related settings:
+
+- **Resource Allocation**: Are memory, CPU, and storage properly configured?
+- **Caching**: Are caching mechanisms optimally configured?
+- **Connection Pooling**: Are database and service connections properly managed?
+- **Timeouts**: Are timeout values appropriate for the environment?
+- **Load Balancing**: Are load balancing settings optimal?
+
+### 4. Operational Excellence
+
+Review operational aspects:
+
+- **Monitoring**: Are logging and monitoring properly configured?
+- **Backup**: Are backup configurations adequate?
+- **Recovery**: Are disaster recovery settings appropriate?
+- **Maintenance**: Are maintenance windows and update policies defined?
+- **Alerting**: Are alert thresholds and notifications properly set?
+
+## Specific Focus Areas
+
+{% if focus_areas %}
+{% for area in focus_areas %}
+- **{{ area.name }}**: {{ area.description }}
+{% endfor %}
+{% else %}
+Please provide a comprehensive analysis covering all standard configuration areas.
+{% endif %}
+
+## Expected Deliverables
+
+Please provide a structured analysis including:
+
+### 1. Executive Summary
+- Overall security posture
+- Critical issues requiring immediate attention
+- Compliance status with requirements
+
+### 2. Detailed Findings
+- **Critical Issues** (security vulnerabilities, major misconfigurations)
+- **High Priority** (performance issues, best practice violations)
+- **Medium Priority** (optimization opportunities, minor issues)
+- **Low Priority** (cosmetic improvements, future considerations)
+
+### 3. Recommendations
+- Specific configuration changes with examples
+- Implementation priority and timeline
+- Risk assessment for each recommendation
+- Testing and validation steps
+
+### 4. Compliance Report
+{% if compliance_requirements %}
+- Mapping to {{ compliance_requirements }} requirements
+- Gaps and remediation steps
+- Evidence of compliance where applicable
+{% else %}
+- General security and best practice compliance
+- Industry standard alignment
+{% endif %}
+
+## Risk Assessment Criteria
+
+Please categorize findings using these risk levels:
+
+- **Critical**: Immediate security risk or system failure potential
+- **High**: Significant security or operational impact
+- **Medium**: Moderate impact on security or performance
+- **Low**: Minor improvements or future considerations
+
+## Configuration Context
+
+{% if system_info %}
+### System Information
+{{ system_info | appendix('system-info', 'text', 'System Information') }}
+{% endif %}
+
+{% if architecture_notes %}
+### Architecture Notes
+{{ architecture_notes | appendix('architecture', 'text', 'Architecture Documentation') }}
+{% endif %}
+
+{% if change_history %}
+### Recent Changes
+{{ change_history | appendix('changes', 'text', 'Configuration Change History') }}
+{% endif %}
+
+---
+
+*This analysis should be thorough, actionable, and prioritized to help improve the overall security and operational posture of the system.*

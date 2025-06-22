@@ -1,223 +1,205 @@
-# ostruct-cli Examples
+# ostruct Examples
 
-This directory contains practical examples demonstrating various use cases for the `ostruct` CLI with both traditional usage and enhanced multi-tool integration. Each example is self-contained and includes all necessary files to run it.
+This directory contains practical examples demonstrating ostruct's capabilities for structured AI output generation with various integrations.
 
-## Prerequisites
+## 🚀 New Template Features
 
-- Python 3.10 or higher
-- `ostruct-cli` installed (`pip install ostruct-cli`)
-- OpenAI API key set in environment (`OPENAI_API_KEY`)
+### File Reference System
 
-## Multi-Tool Integration
+Examples now use the new `file_ref()` function for cleaner syntax and automatic XML appendix generation:
 
-All examples support the enhanced CLI with multi-tool capabilities:
+```jinja2
+{# Old approach - manual file iteration #}
+{% for file in source %}
+{{ file.content }}
+{% endfor %}
 
-- **Traditional Usage**: All existing commands work exactly as before
-- **Multi-Tool Usage**: Examples demonstrate Code Interpreter, File Search, Web Search, and MCP integration
-- **Explicit File Routing**: Optimized performance through `-ft`, `-fc`, `-fs` flags
-- **Configuration System**: YAML-based configuration for persistent settings
+{# New approach - automatic XML appendix #}
+Analyze the code in {{ file_ref("source") }}.
+```
 
-### File Routing Syntax Reference
+### Safe Variable Access
 
-Each file routing option supports three syntaxes:
+Examples use `safe_get()` for robust variable access with defaults:
 
-**Template Files** (available in template context only):
+```jinja2
+{# Old approach - default filter #}
+{{ scan_type | default('full') }}
+
+{# New approach - safe_get function #}
+{{ safe_get('scan_type', 'full') }}
+```
+
+## 📁 Example Categories
+
+### 🔍 Analysis & Review
+
+- **[code-quality/code-review](code-quality/code-review/)** - Automated code review with file references
+- **[security/vulnerability-scan](security/vulnerability-scan/)** - Multi-modal security analysis
+- **[document-analysis](document-analysis/)** - Document processing and validation
+- **[data-analysis](data-analysis/)** - Data analysis with multiple file types
+
+### 🛠️ Development Tools
+
+- **[testing/test-generation](testing/test-generation/)** - Automated test case generation
+- **[debugging](debugging/)** - Template debugging and optimization examples
+- **[config-validation](config-validation/)** - Configuration file validation
+- **[meta-schema-generator](meta-schema-generator/)** - JSON schema generation from templates
+
+### 🤖 AI Workflows
+
+- **[multi_agent_debate](multi_agent_debate/)** - Multi-agent debate simulation with web search
+- **[web-search](web-search/)** - Web search integration examples
+- **[arg_to_aif](arg_to_aif/)** - Argument structure extraction
+
+### 🏗️ Infrastructure & Automation
+
+- **[infrastructure](infrastructure/)** - CI/CD and automation examples
+- **[migration](migration/)** - Migration and automation strategies
+- **[optimization](optimization/)** - Performance optimization examples
+
+## 🎯 Key Template Patterns
+
+### 1. File Reference Pattern
+
+Use `file_ref()` for clean file references with automatic XML appendix:
+
+```jinja2
+# Security Analysis Example
+Review the code in {{ file_ref("source") }}.
+Check configuration in {{ file_ref("config") }}.
+
+# Results in template with <source> and <config> references
+# Plus automatic XML appendix with file contents
+```
+
+### 2. Safe Variable Access Pattern
+
+Use `safe_get()` for robust variable handling:
+
+```jinja2
+# Configuration with defaults
+- Analysis Type: {{ safe_get('analysis_type', 'comprehensive') }}
+- Focus Areas: {{ safe_get('focus_areas', ['general']) | join(', ') }}
+- Minimum Severity: {{ safe_get('min_severity', 'low') }}
+```
+
+### 3. Conditional Logic Pattern
+
+Combine both patterns for robust templates:
+
+```jinja2
+{% if safe_get('web_search_enabled', false) %}
+Research {{ topic }} using web search capabilities.
+{% else %}
+Analyze {{ topic }} using available training data.
+{% endif %}
+
+Review the documentation: {{ file_ref("docs") }}
+```
+
+## 🚦 Migration Status
+
+All examples have been migrated to use the new patterns:
+
+✅ **Migrated Examples:**
+
+- Code quality and security analysis templates
+- Testing and debugging templates
+- Configuration validation templates
+- Document analysis and schema generation
+- Web search and research templates
+- Multi-agent debate templates (already used safe_get)
+
+🔧 **Template Improvements:**
+
+- Cleaner, more readable template syntax
+- Automatic XML appendix generation for files
+- Robust variable access with sensible defaults
+- Better error handling and template validation
+
+## 📖 Usage Examples
+
+### Basic File Analysis
 
 ```bash
--ft config.yaml                    # Auto-naming → config_yaml variable
--ft app_config config.yaml         # Two-arg syntax → app_config variable
---file app_config config.yaml       # Two-arg alias → app_config variable (best tab completion)
+# Code review with file references
+ostruct run code-quality/code-review/prompts/task.j2 schema.json \
+  --dir code src/ \
+  --dry-run
+
+# Security scan with multiple file types
+ostruct run security/vulnerability-scan/prompts/task.j2 schema.json \
+  --dir code_files src/ \
+  --dir config_files config/ \
+  --dry-run
 ```
 
-**Important**: Access file content with `{{ variable.content }}`, not `{{ variable }}`.
-Example: `{{ config_yaml.content }}` or `{{ app_config.content }}`
-
-**Code Interpreter Files** (uploaded for execution + available in template):
+### Web Search Integration
 
 ```bash
--fc data.csv                       # Auto-naming → data_csv variable
--fc dataset data.csv               # Two-arg syntax → dataset variable
---file ci:dataset data.csv         # Two-arg alias → dataset variable (best tab completion)
+# Research analysis with web search
+ostruct run web-search/flexible_analysis.j2 schema.json \
+  -V topic="AI safety regulations" \
+  -V depth="comprehensive" \
+  --dry-run
 ```
 
-**File Search Files** (uploaded to vector store + available in template):
+### Multi-Modal Analysis
 
 ```bash
--fs docs.pdf                       # Auto-naming → docs_pdf variable
--fs manual docs.pdf                # Two-arg syntax → manual variable
---file fs:manual docs.pdf          # Two-arg alias → manual variable (best tab completion)
+# Hybrid security analysis (static + code execution)
+ostruct run security/vulnerability-scan/prompts/hybrid_analysis.j2 schema.json \
+  --dir code src/ \
+  --dry-run
 ```
 
-**Usage Recommendations**:
+## 🔗 Integration Examples
 
-- **Auto-naming**: Best for quick, one-off analysis
-- **Two-arg syntax**: Compact and supports shell tab completion for file paths
-- **Two-arg alias**: Best for reusable templates with stable variable names and full tab completion
+### File Search + Code Interpreter
 
-## Directory Structure
-
-### Document Analysis Examples
-
-- [pdf-semantic-diff](document-analysis/pdf-semantic-diff/): **Advanced PDF comparison with Code Interpreter integration** - Semantic document analysis with change categorization (added, deleted, reworded, changed_in_meaning)
-- [doc-example-validator](document-analysis/doc-example-validator/): **Automated documentation example testing with File Search integration** - Extracts and validates all code examples from project documentation, generates AI agent-compatible task lists
-- [iterative-fact-extraction](document-analysis/iterative-fact-extraction/): **Production-ready pipeline for extracting factual statements from document sets** - Multi-phase pipeline with Code Interpreter, File Search, and iterative refinement using JSON Patch operations
-
-### Infrastructure Examples
-
-- [ci-cd-automation](infrastructure/ci-cd-automation/): **Enhanced CI/CD automation with multi-tool integration** - GitHub Actions, GitLab CI, Jenkins workflows with cost controls and error handling
-- [pipeline-validator](infrastructure/pipeline-validator/): CI/CD pipeline validation
-- [iac-validator](infrastructure/iac-validator/): Infrastructure as Code validation
-- [license-audit](infrastructure/license-audit/): Dependency license auditing
-
-### Optimization Examples
-
-- [prompt-optimization](optimization/prompt-optimization/): **Cost and performance optimization techniques** - Smart template design with 50-70% token reduction through tool-specific routing
-
-### Data Analysis Examples
-
-- [multi-tool-analysis](data-analysis/multi-tool-analysis/): **Comprehensive multi-tool analysis patterns** - Code Interpreter + File Search + MCP integration for complex data workflows
-
-### Research & Information Examples
-
-- [web-search](web-search/): **Real-time information retrieval with web search integration** - Current events analysis, technology updates, market research with live data and source citations
-
-### Argumentation Examples
-
-- [arg_to_aif](arg_to_aif/): **Natural-language argument extraction to AIFdb format** - Convert free-text arguments into AIFdb-compatible JSON with proper node/edge structure and metadata
-- [multi_agent_debate](multi_agent_debate/): **Two-agent evidence-seeking debate with live visualization** - Structured PRO vs CON debate with web search, argument mapping, and auto-generated Mermaid diagrams
-
-### Security Examples
-
-- [vulnerability-scan](security/vulnerability-scan/): **Three-approach automated security vulnerability scanning** - Static Analysis ($0.18), Code Interpreter ($0.18), and Hybrid Analysis ($0.20) with comprehensive directory-based project analysis
-- [pii-scanner](security/pii-scanner/): GDPR/PII data leak detection
-- [multi-repo-scan](security/multi-repo-scan/): Multi-repository security analysis
-- [sast-processor](security/sast-processor/): SAST results processing
-
-### Code Quality Examples
-
-- [code-review](code-quality/code-review/): Automated code review
-- [clone-detection](code-quality/clone-detection/): Code clone detection
-- [todo-extractor](code-quality/todo-extractor/): Project-wide TODO extraction
-
-### Testing Examples
-
-- [test-generator](testing/test-generator/): Test case generation
-- [failure-analysis](testing/failure-analysis/): Test failure root cause analysis
-- [api-testing](testing/api-testing/): API testing with OpenAPI
-
-### Data Processing Examples
-
-- [log-analyzer](data-processing/log-analyzer/): Log file analysis
-- [stream-processor](data-processing/stream-processor/): Streaming text analysis
-- [table-extractor](data-processing/table-extractor/): Table data extraction
-- [pipeline-config](data-processing/pipeline-config/): Data pipeline configuration
-
-### Schema Validation Examples
-
-- [config-validator](schema-validation/config-validator/): JSON/YAML config validation
-- [proto-validator](schema-validation/proto-validator/): Protocol Buffer validation
-
-### Release Management Examples
-
-- [release-notes](release-management/release-notes/): Automated release notes generation
-
-## Example Structure
-
-Each example follows this structure:
-
-```
-example-name/
-├── README.md           # Description, usage, and expected output
-├── prompts/           # AI prompts
-│   ├── system.txt     # AI's role and expertise
-│   └── task.j2        # Task template
-├── schemas/           # Output structure
-│   └── result.json    # Schema definition
-└── examples/          # Example inputs
-    └── basic/         # Basic examples
+```bash
+# Document analysis with file search and code execution
+ostruct run document-analysis/doc-example-validator/prompts/extract_examples.j2 schema.json \
+  --dir docs:fs docs/ \
+  --dry-run
 ```
 
-## Running Examples
+### Template Debugging
 
-1. Clone this repository:
+```bash
+# Debug template expansion
+ostruct run debugging/template-expansion/debug_template.j2 schema.json \
+  --file config_yaml config.yaml \
+  --file code_files app.py \
+  --template-debug
+```
 
-   ```bash
-   git clone https://github.com/yaniv-golan/ostruct.git
-   cd ostruct/examples
-   ```
+## 📚 Learning Path
 
-2. Set your OpenAI API key:
+1. **Start with [file-references](file-references/)** - Learn the new file reference system
+2. **Try [debugging](debugging/)** - Understand template debugging and optimization
+3. **Explore [code-quality](code-quality/)** - See practical analysis workflows
+4. **Advanced: [multi_agent_debate](multi_agent_debate/)** - Complex multi-agent workflows
 
-   ```bash
-   # Environment variable
-   export OPENAI_API_KEY='your-api-key'
+## 🛡️ Security & Privacy
 
-   # Or create a .env file
-   echo 'OPENAI_API_KEY=your-api-key' > .env
-   ```
+When using file attachments:
 
-3. Navigate to any example directory:
+- **Template files** (`--file alias file`) - Content included in main prompt
+- **Code Interpreter files** (`--file ci:alias file`) - Uploaded to OpenAI Code Interpreter
+- **File Search files** (`--file fs:alias file`) - Uploaded to OpenAI File Search
 
-   ```bash
-   cd document-analysis/pdf-semantic-diff
-   # or
-   cd infrastructure/ci-cd-automation
-   # or
-   cd optimization/prompt-optimization
-   # or
-   cd data-analysis/multi-tool-analysis
-   ```
+Review the [Security Overview](../docs/source/security/overview.rst) for detailed information.
 
-4. Run examples using either traditional or multi-tool syntax:
+## 🤝 Contributing
 
-   ### Traditional Usage (Unchanged)
+When adding new examples:
 
-   ```bash
-   # Traditional file processing
-   ostruct run prompts/task.j2 schemas/result.json -f target=examples/basic/app.py
+1. Use `file_ref()` for file references where appropriate
+2. Use `safe_get()` for variable access with defaults
+3. Include comprehensive JSON schemas
+4. Add README with usage instructions
+5. Test with both `--dry-run` and live execution
 
-   # Traditional directory processing
-   ostruct run prompts/task.j2 schemas/result.json -d source=examples/basic/
-   ```
-
-   ### Multi-Tool Usage
-
-   ```bash
-   # Code analysis with Code Interpreter
-   ostruct run prompts/task.j2 schemas/result.json -fc examples/basic/app.py
-
-   # Documentation search with File Search
-   ostruct run prompts/task.j2 schemas/result.json -ds examples/basic/ -ft config.yaml
-
-   # Multi-tool combination
-   ostruct run prompts/task.j2 schemas/result.json \
-     -fc source_code/ \
-     -fs documentation/ \
-     -ft configuration.yaml
-
-   # With configuration
-   ostruct --config ostruct.yaml run prompts/task.j2 schemas/result.json -fc data/
-   ```
-
-   ### MCP Server Integration
-
-   ```bash
-   # Connect to external services
-   ostruct run prompts/task.j2 schemas/result.json \
-     -fc local_data.csv \
-     --mcp-server api@https://api.example.com/mcp
-   ```
-
-## Contributing
-
-Feel free to contribute additional examples! Please follow these guidelines:
-
-1. Create a new directory under the appropriate category
-2. Include all necessary files (schema, templates, sample data)
-3. Add a comprehensive README.md with clear CLI usage examples
-4. Ensure the example is self-contained and runnable
-5. Add appropriate security checks and error handling
-
-## Usage
-
-See each example's README.md for specific usage instructions and CLI commands.
+For detailed contribution guidelines, see [Contributing Guide](../docs/source/contribute/how_to_contribute.rst).

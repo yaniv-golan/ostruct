@@ -1,4 +1,9 @@
-Review the following code files and provide a structured analysis that follows the JSON schema format. For each file, analyze:
+Review the following code files and provide a structured analysis that follows the JSON schema format.
+
+## Code Files for Review
+Analyze the code in {{ file_ref("code") }}.
+
+For each file, analyze:
 
 1. Issues and Problems:
    - Security vulnerabilities
@@ -51,12 +56,3 @@ Provide your analysis in a format that matches this structure exactly:
     "risk_level": "high|medium|low",
     "summary": "<overall_project_summary>"
 }
-
-Files to review:
-
-{% for file in code %}
-## File: {{ file.path }}
-
-{{ file.content }}
-
-{% endfor %}

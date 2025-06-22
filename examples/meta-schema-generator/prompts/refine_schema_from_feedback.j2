@@ -6,23 +6,15 @@ You previously generated a JSON schema for a user's prompt template, but the sch
 
 ## Original User Template
 
-```jinja2
-{{ user_template.content | default('No template provided') }}
-```
+{{ safe_get('user_template.content', 'No template provided') }}
 
 ## Previously Generated Schema (FLAWED)
 
-```json
-{{ flawed_schema | default('No previous schema provided') }}
-```
+{{ safe_get('flawed_schema', 'No previous schema provided') }}
 
 ## Validation Errors
 
-The external JSON Schema validator reported the following errors:
-
-```
-{{ validation_errors | default('No validation errors provided') }}
-```
+{{ safe_get('validation_errors', 'No validation errors provided') }}
 
 ## Your Task
 
@@ -63,40 +55,21 @@ Analyze the validation errors and create a corrected JSON schema that:
 
 ## Output Requirements
 
-Generate a response that matches this exact structure:
+Provide the refined schema in this format:
 
-```json
 {
-  "generated_schema": "<JSON-escaped string containing the corrected JSON schema>",
-  "input_template_digest": "<SHA256 hash of the original input template>",
-  "schema_generation_model_id": "{{ model_id | default('gpt-4') }}",
-  "generation_timestamp_utc": "{{ now_utc | default('') }}",
-  "identified_placeholders": ["<array of placeholder names found in original template>"],
-  "inferred_property_details": [
-    {
-      "placeholder_name": "<name>",
-      "inferred_type": "<JSON schema type>",
-      "confidence_score": <0-1>,
-      "reasoning": "<explanation for type choice and any changes made>"
-    }
+  "refined_schema": { /* the improved JSON schema */ },
+  "changes_made": [
+    "description of each improvement made"
   ],
-  "schema_quality_assessment": {
-    "confidence_score": <0-1>,
-    "completeness_notes": "<assessment of corrected schema completeness>",
-    "ambiguity_warnings": ["<list of remaining potential ambiguities>"],
-    "improvement_suggestions": ["<suggestions for further improvements>"]
-  },
-  "best_practices_adherence_check": {
-    "has_root_object": true,
-    "uses_additional_properties_false": true,
-    "all_properties_required": true,
-    "uses_supported_types_only": true,
-    "avoids_unsupported_keywords": true,
-    "has_appropriate_constraints": true,
-    "compliance_notes": ["<notes about what was fixed and any remaining considerations>"]
+  "validation_status": "valid|needs_review",
+  "refinement_notes": "explanation of refinement approach",
+  "generation_info": {
+    "schema_generation_model_id": "{{ safe_get('model_id', 'gpt-4') }}",
+    "generation_timestamp_utc": "{{ safe_get('now_utc', '') }}",
+    "refinement_iteration": 1
   }
 }
-```
 
 ## Critical Requirements
 

@@ -1,35 +1,24 @@
 # Template Debugging Example
 # This template demonstrates various debugging scenarios
 
-System: You are analyzing the following configuration:
+System: You are analyzing the following configuration and files:
 
 ## Configuration Analysis
-{{ config_yaml.content }}
+Review the configuration: {{ file_ref("config_yaml") }}
 
 ## Code Files Analysis
-{% if code_files %}
-### {{ code_files.path }}
-Type: {{ code_files.name.split('.')[-1] | upper }} file
-Size: {{ code_files.content | length }} characters
-
-Content:
-```{{ code_files.name.split('.')[-1] }}
-{{ code_files.content }}
-```
-{% else %}
-No code files provided for analysis.
-{% endif %}
+Analyze the code files: {{ file_ref("code_files") }}
 
 ## Data Processing
-Current model: {{ current_model }}
-Processing timestamp: {{ timestamp }}
+Current model: {{ safe_get('current_model', 'unknown') }}
+Processing timestamp: {{ safe_get('timestamp', 'not provided') }}
 
-{% if user_preferences %}
-User preferences detected: {{ user_preferences }}
+{% if safe_get('user_preferences') %}
+User preferences detected: {{ safe_get('user_preferences') }}
 {% endif %}
 
 ## Undefined Variable Test
-This will cause an error: {{ potentially_missing_var }}
+This will cause an error: {{ safe_get('potentially_missing_var', 'MISSING_VAR_PLACEHOLDER') }}
 
 ## Complex Logic Test
 {% if code_files %}
@@ -41,6 +30,6 @@ No code files provided for analysis.
 {% endif %}
 
 ## Summary
-Configuration loaded: {{ config_yaml.path }}
+Configuration loaded: Available via XML appendix
 Code files: {{ total_files }}
 Ready for analysis: {{ "Yes" if total_files > 0 else "No" }}

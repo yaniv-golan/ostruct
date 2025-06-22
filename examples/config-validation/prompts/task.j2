@@ -1,76 +1,37 @@
-Analyze the following configuration files and provide a comprehensive validation report. Focus on security, consistency, and best practices.
+Validate the following configuration files for completeness, security, and best practices:
 
-Environment Context:
-- Target Environment: {{ safe_get("environment", "all") }}
-- Cross-Environment Check: {{ "enabled" if safe_get("cross_env_check", false) else "disabled" }}
-- Service Name: {{ safe_get("service_name", "unknown") }}
+## Configuration Files
+Review the configurations in: {{ file_ref("configs") }}
 
-Additional Parameters:
-{% if safe_get("strict_mode", false) %}
-- Strict Mode: enabled (fail on any warning)
-{% endif %}
-{% if safe_get("ignore_patterns", []) %}
-- Ignored Patterns: {{ safe_get("ignore_patterns", []) | join(", ") }}
-{% endif %}
+## Validation Criteria
 
-Your response should be a valid JSON object conforming to the schema in validation_result.json, containing:
-1. Detailed findings for each file
-2. Cross-environment consistency analysis (if enabled)
-3. Summary statistics
-4. Actionable recommendations
+### 1. Environment Variable Management
+- All required env vars should have default values unless explicitly marked as required
+- No hardcoded secrets or passwords
+- Default values should be appropriate for the target environment
 
-Please ensure all findings include:
-- Clear severity level
-- Precise location (line/column)
-- Detailed explanation
-- Concrete fix suggestion
-- Relevant context and documentation
+### 2. Service Configuration
+- All cluster/replica node configurations must have defaults or clear documentation
+- Connection timeouts and retry logic should be configurable
+- Service discovery and health check endpoints must be defined
 
-Validation Rules:
-1. Environment Variables:
-   - All required env vars should have default values unless explicitly marked as required
-   - Sensitive values should use env vars (no hardcoding)
-   - Default values should be appropriate for the target environment
-   - Required environment variables must be documented
-   - Cloud service credentials (e.g., AWS) must be properly configured
-   - All cluster/replica node configurations must have defaults or clear documentation
+### 3. Security Settings
+- Secure defaults for all security-related settings
+- Encryption settings properly configured
+- Authentication and authorization parameters validated
 
-2. Configuration Consistency:
-   - Related settings should have consistent configurability (if one is configurable, related ones should be too)
-   - Time durations, sizes, and thresholds should be configurable via env vars
-   - File paths should be configurable and container-friendly
-   - All nodes in a cluster/replica setup should have consistent configuration patterns
-   - Resource limits and thresholds should be configurable, not hardcoded
-   - Time-based settings (windows, durations, intervals) should be consistently configurable
+### 4. Performance and Scaling
+- Resource limits and requests properly defined
+- Auto-scaling parameters configured appropriately
+- Performance monitoring and alerting thresholds set
 
-3. Security Best Practices:
-   - No hardcoded credentials or secrets
-   - Secure defaults for all security-related settings
-   - Proper SSL/TLS configuration
-   - Appropriate logging of sensitive data
-   - Password policies should be configurable and documented
-   - Security timeouts and expiration periods should be configurable
-   - All security-related durations (password expiry, token lifetime) must be configurable
+### 5. Network Configuration
+- No hardcoded localhost or default ports
+- Proper network security group and firewall rules
+- Load balancer and proxy configurations validated
 
-4. Operational Readiness:
-   - Monitoring and alerting thresholds should be configurable
-   - Backup and recovery settings should be complete with all necessary credentials
-   - Resource limits should be appropriate for the environment
-   - Log paths should be configurable and container-friendly
-   - Cache sizes and memory thresholds should be configurable
-   - High availability configurations should be complete
-   - Memory thresholds and cache sizes must not be hardcoded
-   - Backup configurations must include all necessary cloud provider settings
+## Specific Configuration Requirements
 
-5. Container and Cloud Readiness:
-   - All file paths should use environment variables or be container-friendly
-   - Cloud service configurations should be complete
-   - No hardcoded localhost or default ports
-   - Resource limits should be configurable for different deployment sizes
-   - S3 and other cloud service configurations must include all required credentials
-   - Local cache and storage configurations must be container-aware
-
-Special Checks:
 1. Database Configuration:
    - BACKUP_BUCKET must have a default or be clearly marked as required
    - S3 backup configuration must include AWS credentials
@@ -86,11 +47,4 @@ Special Checks:
    - Memory thresholds must be configurable
    - Local cache sizes must be configurable
 
-Files to analyze:
-{% for file in configs %}
-{{ file.path }}:
-```yaml
-{{ file.content }}
-```
-
-{% endfor %}
+Provide your validation results in JSON format according to the schema, including specific recommendations for each configuration issue found.

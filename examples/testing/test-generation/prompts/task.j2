@@ -1,39 +1,61 @@
-Please analyze the provided Python code and generate test cases using {% if framework %}{{ framework }}{% else %}pytest{% endif %}.
+Generate comprehensive unit tests for the following code files:
 
-Requirements:
-1. Generate unit tests for all public functions and methods
-2. Include both positive and negative test cases
-3. Add appropriate fixtures for test setup
-4. Follow {% if framework %}{{ framework }}{% else %}pytest{% endif %} naming conventions and patterns
+## Source Code for Testing
+Review and generate tests for: {{ file_ref("code") }}
 
-The output must be a JSON object containing:
-1. test_cases: Array of test cases, each with:
-   function_name: Name of the function being tested
-   test_name: Name of the test function
-   test_type: One of "unit", "integration", or "edge_case"
-   description: What the test verifies
-   code: The actual test code
-   coverage_impact: Expected lines and branches covered
-2. summary: Object with:
-   total_functions: Number of functions analyzed
-   functions_with_tests: Number of functions that have tests
-   coverage_delta: Estimated coverage improvement
+## Test Generation Requirements
 
-Focus on testing:
-1. Main functionality
-2. Parameter validation
-3. Error conditions
-4. Edge cases
+For each file, generate:
 
-The output will be used to:
-1. Create new test files
-2. Update existing tests
-3. Identify areas needing more coverage
-4. Track testing progress
+1. **Unit Tests**:
+   - Test all public methods and functions
+   - Cover edge cases and error conditions
+   - Include both positive and negative test cases
+   - Test boundary conditions
 
-Below are the files to analyze:
+2. **Test Structure**:
+   - Use descriptive test method names
+   - Include setup and teardown methods where needed
+   - Group related tests in test classes
+   - Add meaningful assertions and error messages
 
-{% for file in code %}
-## {{ file.path }}
-{{ file.content }}
-{% endfor %}
+3. **Coverage Goals**:
+   - Aim for high code coverage (>90%)
+   - Test all conditional branches
+   - Test exception handling
+   - Test integration points
+
+4. **Test Quality**:
+   - Tests should be independent and isolated
+   - Use appropriate test fixtures and mocks
+   - Include performance tests where relevant
+   - Add integration tests for complex workflows
+
+## Output Format
+
+Provide your test generation results in the following JSON format:
+
+{
+  "test_files": [
+    {
+      "source_file": "<path_to_source_file>",
+      "test_file": "<path_to_test_file>",
+      "test_framework": "<framework_name>",
+      "test_cases": [
+        {
+          "test_name": "<descriptive_test_name>",
+          "test_type": "unit|integration|performance",
+          "description": "<what_this_test_verifies>",
+          "test_code": "<complete_test_implementation>"
+        }
+      ],
+      "setup_code": "<any_setup_or_fixture_code>",
+      "imports": ["<required_imports>"],
+      "coverage_estimate": "<percentage_estimate>"
+    }
+  ],
+  "overall_strategy": "<testing_strategy_summary>",
+  "recommendations": [
+    "<specific_testing_recommendations>"
+  ]
+}

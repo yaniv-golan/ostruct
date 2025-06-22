@@ -1,0 +1,81 @@
+# Code Review Report
+
+## Executive Summary
+
+This review analyzes source and test files for code quality, security, and maintainability.
+
+## Configuration Analysis
+
+```yaml
+{{ config.content }}
+```
+
+**Note:** Review the configuration above for security settings and environment-specific values.
+
+## Source Code Review
+
+{% if source is iterable and source is not string %}
+{% for file in source %}
+### {{ file.name }}
+
+**File Size:** {{ file.content | length }} characters
+**Language:** {{ file.name.split('.')[-1] }}
+
+```{{ file.name.split('.')[-1] }}
+{{ file.content }}
+```
+
+**Analysis Notes:**
+- Review this file for security vulnerabilities
+- Check for proper error handling
+- Verify input validation
+
+---
+{% endfor %}
+{% else %}
+### {{ source.name }}
+
+**File Size:** {{ source.content | length }} characters
+**Language:** {{ source.name.split('.')[-1] }}
+
+```{{ source.name.split('.')[-1] }}
+{{ source.content }}
+```
+
+**Analysis Notes:**
+- Review this file for security vulnerabilities
+- Check for proper error handling
+- Verify input validation
+{% endif %}
+
+## Test Coverage Analysis
+
+{% if tests is iterable and tests is not string %}
+{% for file in tests %}
+### {{ file.name }}
+
+```{{ file.name.split('.')[-1] }}
+{{ file.content }}
+```
+{% endfor %}
+{% else %}
+### {{ tests.name }}
+
+```{{ tests.name.split('.')[-1] }}
+{{ tests.content }}
+```
+{% endif %}
+
+## Recommendations
+
+Based on the manual review of the above files:
+
+1. **Security:** Check all user inputs in the source files
+2. **Testing:** Ensure test coverage for edge cases
+3. **Configuration:** Validate all config settings are documented
+
+## File Summary
+
+- **Config File:** {{ config.content | length }} characters
+- **Source Files:** Manual review completed
+- **Test Files:** Manual review completed

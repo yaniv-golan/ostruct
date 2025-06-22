@@ -1,12 +1,78 @@
 You are an expert JSON Schema architect specializing in creating schemas for OpenAI's Structured Outputs feature. Your task is to analyze a user's Jinja2 prompt template and generate a comprehensive JSON schema that defines the structure of the expected output.
 
-## User's Prompt Template
+## Template to Analyze
+{{ safe_get('user_template.content', 'No template provided') }}
 
-The user has provided the following Jinja2 template:
+## Schema Generation Instructions
 
-```jinja2
-{{ user_template.content | default('No template provided') }}
-```
+Analyze the template above and generate a comprehensive JSON schema that:
+
+1. **Identifies Output Structure**
+   - Determines if the template expects structured JSON output
+   - Identifies required vs optional fields
+   - Infers appropriate data types from template logic
+
+2. **Analyzes Template Variables**
+   - Maps all template variables to schema properties
+   - Determines data types from template usage
+   - Identifies nested objects and arrays
+
+3. **Considers Template Logic**
+   - Accounts for conditional blocks (if/else)
+   - Handles loops and iterations
+   - Recognizes default values and fallbacks
+
+4. **Follows JSON Schema Standards**
+   - Uses proper JSON Schema Draft 2020-12 format
+   - Includes appropriate constraints and validations
+   - Provides clear descriptions and examples
+
+## Output Requirements
+
+Generate a valid JSON schema that:
+- Matches the template's expected output structure
+- Includes all necessary properties and types
+- Provides helpful descriptions for each field
+- Includes examples where appropriate
+- Uses proper JSON Schema validation rules
+
+## Schema Generation Context
+
+Please provide a comprehensive JSON schema in the following format:
+
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "<descriptive_title>",
+  "description": "<template_purpose_description>",
+  "properties": {
+    // ... generated properties based on template analysis
+  },
+  "required": [
+    // ... required fields identified from template
+  ],
+  "additionalProperties": false
+}
+
+## Generation Metadata
+
+Include the following metadata in your response:
+
+{
+  "schema": { /* the generated schema above */ },
+  "analysis": {
+    "template_complexity": "simple|moderate|complex",
+    "output_type": "structured|text|mixed",
+    "variable_count": <number>,
+    "conditional_blocks": <number>,
+    "loop_structures": <number>
+  },
+  "generation_info": {
+    "schema_generation_model_id": "{{ safe_get('model_id', 'gpt-4') }}",
+    "generation_timestamp_utc": "{{ safe_get('now_utc', '') }}",
+    "confidence_level": "high|medium|low"
+  }
+}
 
 ## Your Task
 
@@ -55,43 +121,6 @@ Analyze this template and generate a JSON schema that:
    - Complies with OpenAI's Structured Outputs requirements
    - Uses only supported JSON Schema features
    - Has appropriate error handling and validation
-
-## Output Requirements
-
-Generate a response that matches this exact structure:
-
-```json
-{
-  "generated_schema": "<JSON-escaped string containing the complete JSON schema>",
-  "input_template_digest": "<SHA256 hash of the input template>",
-  "schema_generation_model_id": "{{ model_id | default('gpt-4') }}",
-  "generation_timestamp_utc": "{{ now_utc | default('') }}",
-  "identified_placeholders": ["<array of placeholder names found in template>"],
-  "inferred_property_details": [
-    {
-      "placeholder_name": "<name>",
-      "inferred_type": "<JSON schema type>",
-      "confidence_score": <0-1>,
-      "reasoning": "<explanation for type choice>"
-    }
-  ],
-  "schema_quality_assessment": {
-    "confidence_score": <0-1>,
-    "completeness_notes": "<assessment of schema completeness>",
-    "ambiguity_warnings": ["<list of potential ambiguities>"],
-    "improvement_suggestions": ["<suggestions for template or schema improvements>"]
-  },
-  "best_practices_adherence_check": {
-    "has_root_object": true,
-    "uses_additional_properties_false": true,
-    "all_properties_required": true,
-    "uses_supported_types_only": true,
-    "avoids_unsupported_keywords": true,
-    "has_appropriate_constraints": true,
-    "compliance_notes": ["<any compliance notes or exceptions>"]
-  }
-}
-```
 
 ## Critical Requirements
 

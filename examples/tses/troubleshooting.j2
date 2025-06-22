@@ -1,0 +1,238 @@
+# System Troubleshooting Request
+
+Please analyze the provided system information, logs, and configuration files to diagnose issues and provide troubleshooting recommendations. Focus on identifying root causes and providing actionable solutions.
+
+## Issue Description
+
+{% if issue_summary %}
+**Problem Summary**: {{ issue_summary }}
+{% endif %}
+{% if symptoms %}
+**Observed Symptoms**: {{ symptoms }}
+{% endif %}
+{% if impact %}
+**Business Impact**: {{ impact }}
+{% endif %}
+{% if timeline %}
+**Issue Timeline**: {{ timeline }}
+{% endif %}
+
+## System Information
+
+{% if system_info %}
+### Environment Details
+{{ system_info | appendix('system-info', 'text', 'System Environment Information') }}
+{% endif %}
+
+{% if architecture %}
+### System Architecture
+{{ architecture | appendix('architecture', 'text', 'System Architecture Overview') }}
+{% endif %}
+
+## Log Files
+
+{% if logs %}
+{% for log in logs %}
+### {{ log.name or 'Log File ' + loop.index|string }}
+
+**Type**: {{ log.type or 'Application Log' }}
+**Time Range**: {{ log.time_range or 'Unknown' }}
+**Size**: {{ log.size or 'Unknown' }}
+{% if log.description %}
+**Description**: {{ log.description }}
+{% endif %}
+
+{{ log.content | appendix('log-' + loop.index|string, 'text', log.name or 'Log File ' + loop.index|string) }}
+
+{% endfor %}
+{% else %}
+*No log files provided for analysis.*
+{% endif %}
+
+## Configuration Files
+
+{% if configs %}
+{% for config in configs %}
+### {{ config.name or 'Configuration ' + loop.index|string }}
+
+**Type**: {{ config.type or 'Configuration File' }}
+**Format**: {{ config.format or 'Text' }}
+{% if config.description %}
+**Description**: {{ config.description }}
+{% endif %}
+
+{{ config.content | appendix('config-' + loop.index|string, config.format or 'text', config.name or 'Configuration ' + loop.index|string) }}
+
+{% endfor %}
+{% endif %}
+
+## Troubleshooting Analysis
+
+### 1. Issue Identification
+
+Please analyze the provided information to:
+
+- **Symptom Analysis**: Correlate observed symptoms with system behavior
+- **Error Pattern Recognition**: Identify recurring errors and failure patterns
+- **Timeline Analysis**: Map events to understand the sequence of issues
+- **Impact Assessment**: Evaluate the scope and severity of problems
+
+### 2. Root Cause Analysis
+
+Conduct a thorough root cause analysis:
+
+- **Log Analysis**:
+  - Parse error messages and stack traces
+  - Identify critical errors vs. warnings
+  - Track error frequency and patterns
+  - Correlate errors across different components
+
+- **Configuration Review**:
+  - Validate configuration parameters
+  - Check for misconfigurations or conflicts
+  - Verify resource allocations and limits
+  - Assess security and access settings
+
+- **System Health Check**:
+  - Resource utilization analysis (CPU, memory, disk, network)
+  - Performance bottleneck identification
+  - Capacity planning assessment
+  - Dependency and integration analysis
+
+### 3. Correlation Analysis
+
+Identify relationships between different system components:
+
+- **Cross-Component Impact**: How issues in one component affect others
+- **Timing Correlations**: Events that occur simultaneously or in sequence
+- **Resource Contention**: Competition for system resources
+- **External Dependencies**: Third-party services or systems affecting performance
+
+## Diagnostic Areas
+
+### Performance Issues
+- Response time degradation
+- Throughput reduction
+- Resource exhaustion
+- Memory leaks or CPU spikes
+
+### Availability Issues
+- Service outages or downtime
+- Connection failures
+- Timeout errors
+- Failover and recovery problems
+
+### Security Issues
+- Authentication failures
+- Authorization errors
+- Security policy violations
+- Suspicious activity patterns
+
+### Data Issues
+- Data corruption or inconsistency
+- Database connectivity problems
+- Data synchronization failures
+- Backup and recovery issues
+
+## Troubleshooting Methodology
+
+Please follow this systematic approach:
+
+### 1. Issue Categorization
+- **Severity Level**: Critical, High, Medium, Low
+- **Issue Type**: Performance, Availability, Security, Data, Configuration
+- **Scope**: System-wide, Component-specific, User-specific
+- **Urgency**: Immediate, Short-term, Long-term
+
+### 2. Evidence Collection
+- **Log Evidence**: Specific error messages and stack traces
+- **Performance Metrics**: Resource utilization data
+- **Configuration Evidence**: Relevant settings and parameters
+- **Timeline Evidence**: Sequence of events and changes
+
+### 3. Hypothesis Formation
+- **Primary Hypothesis**: Most likely root cause
+- **Alternative Hypotheses**: Other possible causes
+- **Testing Strategy**: How to validate each hypothesis
+- **Risk Assessment**: Potential impact of testing
+
+## Expected Deliverables
+
+### 1. Executive Summary
+- **Issue Overview**: Clear description of the problem
+- **Root Cause**: Primary cause of the issue
+- **Impact Assessment**: Business and technical impact
+- **Resolution Timeline**: Estimated time to resolve
+
+### 2. Detailed Analysis Report
+- **Findings**: Comprehensive analysis results
+- **Evidence**: Supporting data and log excerpts
+- **Methodology**: Analysis approach and tools used
+- **Confidence Level**: Certainty in the diagnosis
+
+### 3. Resolution Plan
+- **Immediate Actions**: Steps to mitigate current issues
+- **Short-term Solutions**: Fixes to resolve the problem
+- **Long-term Improvements**: Preventive measures and optimizations
+- **Risk Mitigation**: Steps to prevent recurrence
+
+### 4. Implementation Guide
+- **Step-by-step Instructions**: Detailed resolution procedures
+- **Prerequisites**: Requirements before implementing fixes
+- **Testing Procedures**: How to validate the solution
+- **Rollback Plan**: Recovery steps if resolution fails
+
+## Monitoring and Prevention
+
+### Recommended Monitoring
+- **Key Metrics**: What to monitor going forward
+- **Alert Thresholds**: When to trigger notifications
+- **Dashboard Requirements**: Visual monitoring needs
+- **Reporting Frequency**: Regular health check intervals
+
+### Preventive Measures
+- **Configuration Improvements**: Settings to prevent recurrence
+- **Process Enhancements**: Operational procedure updates
+- **Training Needs**: Team knowledge gaps to address
+- **Tool Requirements**: Additional monitoring or diagnostic tools
+
+## Additional Context
+
+{% if recent_changes %}
+### Recent Changes
+{{ recent_changes | appendix('changes', 'text', 'Recent System Changes and Updates') }}
+{% endif %}
+
+{% if monitoring_data %}
+### Monitoring Data
+{{ monitoring_data | appendix('monitoring', 'json', 'System Monitoring and Performance Data') }}
+{% endif %}
+
+{% if previous_incidents %}
+### Previous Incidents
+{{ previous_incidents | appendix('incidents', 'text', 'Historical Incident Reports') }}
+{% endif %}
+
+## Escalation Criteria
+
+{% if escalation_contacts %}
+**Escalation Contacts**: {{ escalation_contacts }}
+{% endif %}
+
+Escalate if:
+- Issue cannot be resolved within {{ escalation_timeframe or '4 hours' }}
+- Root cause requires vendor support
+- Resolution requires significant system changes
+- Issue affects critical business operations
+
+## Success Criteria
+
+The troubleshooting is successful when:
+- Root cause is clearly identified and validated
+- Resolution plan addresses the underlying issue
+- System performance returns to acceptable levels
+- Preventive measures are in place to avoid recurrence
+
+---
+
+*This troubleshooting analysis should be systematic, thorough, and focused on providing actionable solutions that resolve the immediate issue and prevent future occurrences.*
