@@ -519,7 +519,27 @@ async def validate_inputs(
     template_context = await create_template_context_from_routing(
         args, security_manager, routing_result
     )
-    env = create_jinja_env()
+
+    # Extract files from template context for file reference support
+    files = []
+    for key, value in template_context.items():
+        if hasattr(value, "__iter__") and not isinstance(value, (str, dict)):
+            # Check if this is a list of FileInfo objects
+            try:
+                for item in value:
+                    if hasattr(
+                        item, "parent_alias"
+                    ):  # FileInfo with TSES fields
+                        files.append(item)
+            except (TypeError, AttributeError):
+                continue
+
+    # Create environment with file reference support
+    env, alias_manager = create_jinja_env(files=files)
+
+    # Store alias manager in args for use by template processor if it has any aliases
+    if alias_manager.aliases:
+        args["_alias_manager"] = alias_manager  # type: ignore[typeddict-unknown-key]
 
     return (
         security_manager,

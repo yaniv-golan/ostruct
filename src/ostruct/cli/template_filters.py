@@ -14,6 +14,7 @@ from typing import (
     List,
     Optional,
     Sequence,
+    Set,
     TypeVar,
     Union,
 )
@@ -31,6 +32,192 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+# ============================================================================
+# Template Structure Enhancement System (TSES) Components
+# ============================================================================
+
+
+class TemplateStructureError(Exception):
+    """Exception for TSES-specific errors with helpful suggestions."""
+
+    def __init__(self, message: str, suggestions: Optional[List[str]] = None):
+        super().__init__(message)
+        self.suggestions = suggestions or []
+
+
+def format_tses_error(error: TemplateStructureError) -> str:
+    """Format TSES error with suggestions."""
+    lines = [f"Template Structure Error: {error}"]
+    if error.suggestions:
+        lines.append("Suggestions:")
+        for suggestion in error.suggestions:
+            lines.append(f"  • {suggestion}")
+    return "\n".join(lines)
+
+
+class AliasManager:
+    """Manages file aliases and tracks references."""
+
+    def __init__(self) -> None:
+        self.aliases: Dict[str, Dict[str, Any]] = {}
+        self.referenced: Set[str] = set()
+
+    def register_attachment(
+        self,
+        alias: str,
+        path: str,
+        files: List[Any],
+        is_collection: bool = False,
+    ) -> None:
+        """Register files attached via CLI with their alias."""
+        # Determine attachment type from the files themselves
+        if is_collection:
+            attachment_type = "collection"
+        elif files:
+            # Use the attachment_type from the first file if available
+            first_file = files[0]
+            attachment_type = getattr(first_file, "attachment_type", "file")
+        else:
+            # Fallback for empty file lists
+            attachment_type = "file"
+
+        self.aliases[alias] = {
+            "type": attachment_type,
+            "path": path,
+            "files": files,
+        }
+
+    def reference_alias(self, alias: str) -> None:
+        """Mark an alias as referenced by file_ref()."""
+        if alias not in self.aliases:
+            available = list(self.aliases.keys())
+            raise TemplateStructureError(
+                f"Unknown alias '{alias}' in file_ref()",
+                [
+                    f"Available aliases: {', '.join(available) if available else 'none'}",
+                    "Check your --dir and --file attachments",
+                ],
+            )
+        self.referenced.add(alias)
+
+    def get_referenced_aliases(self) -> Dict[str, Dict[str, Any]]:
+        """Get only the aliases that were actually referenced."""
+        return {
+            alias: data
+            for alias, data in self.aliases.items()
+            if alias in self.referenced
+        }
+
+
+class XMLAppendixBuilder:
+    """Builds XML appendix for referenced file aliases."""
+
+    def __init__(self, alias_manager: AliasManager) -> None:
+        self.alias_manager = alias_manager
+
+    def build_appendix(self) -> str:
+        """Build XML appendix for all referenced aliases."""
+        referenced = self.alias_manager.get_referenced_aliases()
+
+        if not referenced:
+            return ""
+
+        lines = ["<files>"]
+
+        for alias, data in referenced.items():
+            alias_type = data["type"]
+            path = data["path"]
+            files = data["files"]
+
+            if alias_type == "file":
+                # Single file
+                file_info = files[0]
+                lines.append(f'  <file alias="{alias}" path="{path}">')
+                lines.append(
+                    f"    <content><![CDATA[{file_info.content}]]></content>"
+                )
+                lines.append("  </file>")
+
+            elif alias_type == "dir":
+                # Directory with multiple files
+                lines.append(f'  <dir alias="{alias}" path="{path}">')
+                for file_info in files:
+                    rel_path = getattr(
+                        file_info, "relative_path", file_info.name
+                    )
+                    lines.append(f'    <file path="{rel_path}">')
+                    lines.append(
+                        f"      <content><![CDATA[{file_info.content}]]></content>"
+                    )
+                    lines.append("    </file>")
+                lines.append("  </dir>")
+
+            elif alias_type == "collection":
+                # File collection
+                lines.append(f'  <collection alias="{alias}" path="{path}">')
+                for file_info in files:
+                    file_path = getattr(file_info, "path", file_info.name)
+                    lines.append(f'    <file path="{file_path}">')
+                    lines.append(
+                        f"      <content><![CDATA[{file_info.content}]]></content>"
+                    )
+                    lines.append("    </file>")
+                lines.append("  </collection>")
+
+        lines.append("</files>")
+        return "\n".join(lines)
+
+
+# Global alias manager instance (set during environment creation)
+_alias_manager: Optional[AliasManager] = None
+
+
+def file_ref(alias_name: str) -> str:
+    """Reference a file collection by its CLI alias name.
+
+    Args:
+        alias_name: The alias from --dir or --file attachment
+
+    Returns:
+        Reference string that renders as <alias_name>
+
+    Usage:
+        {{ file_ref("source-code") }}  -> renders as "<source-code>"
+    """
+    global _alias_manager
+
+    if not _alias_manager:
+        raise TemplateStructureError(
+            "File references not initialized",
+            [
+                "Check template processing pipeline",
+                "Ensure files are properly attached via CLI",
+            ],
+        )
+
+    # Register this alias as referenced
+    _alias_manager.reference_alias(alias_name)
+
+    # Return the reference format
+    return f"<{alias_name}>"
+
+
+def register_tses_filters(
+    env: Environment, alias_manager: AliasManager
+) -> None:
+    """Register TSES functions in Jinja2 environment."""
+    global _alias_manager
+    _alias_manager = alias_manager
+
+    # Register file_ref as a global function
+    env.globals["file_ref"] = file_ref
+
+
+# ============================================================================
+# End TSES v2.0 Components
+# ============================================================================
 
 
 def extract_keywords(text: str) -> List[str]:

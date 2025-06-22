@@ -78,6 +78,19 @@ class FileInfo:
         self.routing_type = routing_type
         self.routing_intent = routing_intent
 
+        # TSES v2.0 fields for alias tracking
+        self.parent_alias: Optional[str] = (
+            None  # CLI alias this file came from
+        )
+        self.relative_path: Optional[str] = (
+            None  # Path relative to attachment root
+        )
+        self.base_path: Optional[str] = None  # Base path of attachment
+        self.from_collection: bool = False  # Whether file came from --collect
+        self.attachment_type: str = (
+            "file"  # Original attachment type: "file", "dir", or "collection"
+        )
+
         logger.debug(
             "Creating FileInfo for path: %s, routing_type: %s",
             path,
@@ -472,6 +485,11 @@ class FileInfo:
         security_manager: SecurityManager,
         routing_type: Optional[str] = None,
         routing_intent: Optional[FileRoutingIntent] = None,
+        parent_alias: Optional[str] = None,
+        relative_path: Optional[str] = None,
+        base_path: Optional[str] = None,
+        from_collection: bool = False,
+        attachment_type: str = "file",
     ) -> "FileInfo":
         """Create FileInfo instance from path.
 
@@ -480,6 +498,11 @@ class FileInfo:
             security_manager: Security manager for path validation
             routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
             routing_intent: The intended use of the file in the pipeline
+            parent_alias: CLI alias this file came from (for TSES)
+            relative_path: Path relative to attachment root (for TSES)
+            base_path: Base path of attachment (for TSES)
+            from_collection: Whether file came from --collect (for TSES)
+            attachment_type: Original attachment type: "file", "dir", or "collection" (for TSES)
 
         Returns:
             FileInfo instance
@@ -488,12 +511,21 @@ class FileInfo:
             FileNotFoundError: If file does not exist
             PathSecurityError: If path is not allowed
         """
-        return cls(
+        file_info = cls(
             path,
             security_manager,
             routing_type=routing_type,
             routing_intent=routing_intent,
         )
+
+        # Set TSES fields
+        file_info.parent_alias = parent_alias
+        file_info.relative_path = relative_path
+        file_info.base_path = base_path
+        file_info.from_collection = from_collection
+        file_info.attachment_type = attachment_type
+
+        return file_info
 
     def __str__(self) -> str:
         """String representation showing path."""
@@ -516,6 +548,17 @@ class FileInfo:
         # Allow setting routing_type and routing_intent if they're not already set (i.e., during __init__)
         if name in ("routing_type", "routing_intent") and not hasattr(
             self, name
+        ):
+            object.__setattr__(self, name, value)
+            return
+
+        # Allow setting TSES fields
+        if name in (
+            "parent_alias",
+            "relative_path",
+            "base_path",
+            "from_collection",
+            "attachment_type",
         ):
             object.__setattr__(self, name, value)
             return

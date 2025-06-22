@@ -16,6 +16,22 @@ from .template_schema import DotDict
 
 logger = logging.getLogger(__name__)
 
+# Template variable name constants
+UTILITY_VARIABLES = {
+    "files",
+    "file_count",
+    "has_files",
+}
+
+SYSTEM_CONFIG_VARIABLES = {
+    "current_model",
+    "stdin",
+    "web_search_enabled",
+    "code_interpreter_enabled",
+    "auto_download_enabled",
+    "code_interpreter_config",
+}
+
 
 class LazyLoadError(Exception):
     """Exception raised during lazy loading operations."""
@@ -597,49 +613,79 @@ class AttachmentTemplateContext:
         click.echo("\n📝 Template Variables Created:", err=True)
         attachment_vars = []
         utility_vars = []
-        legacy_vars = []
+        user_defined_vars = []
+        system_config_vars = []
 
         for key, value in context.items():
             if key in processed_attachments.alias_map:
                 attachment_vars.append(key)
-            elif key.startswith("_") or key in [
-                "files",
-                "file_count",
-                "has_files",
-            ]:
+            elif key.startswith("_") or key in UTILITY_VARIABLES:
                 utility_vars.append(key)
-            elif key in [
-                "current_model",
-                "stdin",
-                "web_search_enabled",
-                "code_interpreter_enabled",
-            ]:
-                utility_vars.append(key)
+            elif key in SYSTEM_CONFIG_VARIABLES:
+                system_config_vars.append(key)
             elif isinstance(value, LazyFileContent):
-                legacy_vars.append(key)
+                user_defined_vars.append(key)
             else:
-                legacy_vars.append(key)
+                user_defined_vars.append(key)
 
         if attachment_vars:
             click.echo("  Attachment aliases:", err=True)
             for var in sorted(attachment_vars):
-                var_type = (
-                    "LazyFileContent"
-                    if isinstance(context[var], LazyFileContent)
-                    else type(context[var]).__name__
-                )
-                click.echo(f"    {var}: {var_type}", err=True)
-
-        if legacy_vars:
-            click.echo("  Legacy-compatible variables:", err=True)
-            for var in sorted(legacy_vars):
-                if not var.startswith("_"):  # Skip internal variables
-                    var_type = type(context[var]).__name__
+                value = context[var]
+                if isinstance(value, LazyFileContent):
+                    # Show user-friendly file information instead of class name
+                    try:
+                        file_size = value.actual_size or 0
+                        if file_size > 0:
+                            size_str = f"{file_size:,} bytes"
+                        else:
+                            size_str = "unknown size"
+                        click.echo(
+                            f"    {var}: file {value.name} ({size_str})",
+                            err=True,
+                        )
+                    except Exception:
+                        click.echo(
+                            f"    {var}: file {getattr(value, 'name', 'unknown')}",
+                            err=True,
+                        )
+                elif hasattr(value, "__len__"):
+                    # FileInfoList or similar collections
+                    try:
+                        count = len(value)
+                        if count == 1:
+                            click.echo(f"    {var}: 1 file", err=True)
+                        else:
+                            click.echo(f"    {var}: {count} files", err=True)
+                    except Exception:
+                        click.echo(f"    {var}: file collection", err=True)
+                else:
+                    # Fallback to type name for other cases
+                    var_type = type(value).__name__
                     click.echo(f"    {var}: {var_type}", err=True)
+
+        if user_defined_vars:
+            click.echo("  User-defined variables:", err=True)
+            for var in sorted(user_defined_vars):
+                if not var.startswith("_"):  # Skip internal variables
+                    if isinstance(context[var], (int, bool)):
+                        click.echo(f"    {var}: {context[var]}", err=True)
+                    else:
+                        var_type = type(context[var]).__name__
+                        click.echo(f"    {var}: {var_type}", err=True)
 
         if utility_vars:
             click.echo("  Utility variables:", err=True)
             for var in sorted(utility_vars):
+                if isinstance(context[var], (int, bool)):
+                    click.echo(f"    {var}: {context[var]}", err=True)
+                else:
+                    var_type = type(context[var]).__name__
+                    click.echo(f"    {var}: {var_type}", err=True)
+
+        if system_config_vars:
+            click.echo("  System configuration variables:", err=True)
+            for var in sorted(system_config_vars):
                 if isinstance(context[var], (int, bool)):
                     click.echo(f"    {var}: {context[var]}", err=True)
                 else:
@@ -669,7 +715,7 @@ class AttachmentTemplateContext:
                 files_list[:10]
             ):  # Show first 10 files
                 click.echo(
-                    f"  {i+1}. {file_info.path} ({file_info.routing_intent.value})",
+                    f"  {i + 1}. {file_info.path} ({file_info.routing_intent.value})",
                     err=True,
                 )
             if len(files_list) > 10:
@@ -700,6 +746,11 @@ class AttachmentTemplateContext:
                 self.security_manager,
                 routing_type="template",
                 routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+                parent_alias=spec.alias,
+                relative_path=path.name,
+                base_path=str(path.parent),
+                from_collection=False,
+                attachment_type=spec.attachment_type,
             )
 
             # Use progressive loader if available, otherwise create LazyFileContent directly
@@ -761,11 +812,16 @@ class AttachmentTemplateContext:
                             context=f"directory expansion {spec.alias}",
                         )
                     )
-                    file_info = FileInfo(
+                    file_info = FileInfo.from_path(
                         str(validated_path),
                         self.security_manager,
                         routing_type="template",
                         routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+                        parent_alias=spec.alias,
+                        relative_path=str(file_path.relative_to(path)),
+                        base_path=str(spec.path),
+                        from_collection=False,
+                        attachment_type=spec.attachment_type,
                     )
                     files.append(file_info)
                 except Exception as e:
@@ -803,6 +859,11 @@ class AttachmentTemplateContext:
                         self.security_manager,
                         routing_type="template",
                         routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+                        parent_alias=spec.collection_base_alias or spec.alias,
+                        relative_path=Path(spec.path).name,
+                        base_path=str(Path(spec.path).parent),
+                        from_collection=spec.from_collection,
+                        attachment_type=spec.attachment_type,
                     )
                     all_files.append(file_info)
                 except Exception as e:
@@ -822,6 +883,11 @@ class AttachmentTemplateContext:
                         self.security_manager,
                         routing_type="template",
                         routing_intent=FileRoutingIntent.CODE_INTERPRETER,
+                        parent_alias=spec.collection_base_alias or spec.alias,
+                        relative_path=Path(spec.path).name,
+                        base_path=str(Path(spec.path).parent),
+                        from_collection=spec.from_collection,
+                        attachment_type=spec.attachment_type,
                     )
                     all_files.append(file_info)
                 except Exception as e:
@@ -835,6 +901,11 @@ class AttachmentTemplateContext:
                         self.security_manager,
                         routing_type="template",
                         routing_intent=FileRoutingIntent.FILE_SEARCH,
+                        parent_alias=spec.collection_base_alias or spec.alias,
+                        relative_path=Path(spec.path).name,
+                        base_path=str(Path(spec.path).parent),
+                        from_collection=spec.from_collection,
+                        attachment_type=spec.attachment_type,
                     )
                     all_files.append(file_info)
                 except Exception as e:

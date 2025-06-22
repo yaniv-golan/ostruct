@@ -252,7 +252,20 @@ class PathSecurityError(SecurityErrorBase):
 class TaskTemplateError(CLIError):
     """Base class for task template-related errors."""
 
-    pass
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        exit_code: int = ExitCode.VALIDATION_ERROR,
+    ) -> None:
+        """Initialize task template error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+            exit_code: Exit code (defaults to VALIDATION_ERROR)
+        """
+        super().__init__(message, context=context, exit_code=exit_code)
 
 
 class TaskTemplateSyntaxError(TaskTemplateError):
@@ -285,7 +298,22 @@ class TaskTemplateVariableError(TaskTemplateError):
 class TemplateValidationError(TaskTemplateError):
     """Raised when template validation fails."""
 
-    pass
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize template validation error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+        """
+        super().__init__(
+            message,
+            context=context,
+            exit_code=ExitCode.VALIDATION_ERROR,
+        )
 
 
 class SystemPromptError(TaskTemplateError):

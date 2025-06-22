@@ -27,6 +27,15 @@ class AttachmentSpec:
     ]  # Target tools: {"prompt", "code-interpreter", "file-search"}
     recursive: bool = False  # For directory attachments
     pattern: Optional[str] = None  # Glob pattern for directory attachments
+    from_collection: bool = (
+        False  # Whether this came from a --collect filelist
+    )
+    collection_base_alias: Optional[str] = (
+        None  # Original collection alias for TSES
+    )
+    attachment_type: str = (
+        "file"  # Original attachment type: "file", "dir", or "collection"
+    )
 
 
 @dataclass
@@ -100,6 +109,9 @@ class AttachmentProcessor:
                     targets=set(attachment_dict["targets"]),
                     recursive=attachment_dict.get("recursive", False),
                     pattern=attachment_dict.get("pattern"),
+                    attachment_type=attachment_dict.get(
+                        "attachment_type", "file"
+                    ),
                 )
 
                 # Validate file/directory with security manager
@@ -220,6 +232,9 @@ class AttachmentProcessor:
                             targets=targets,
                             recursive=False,  # Files from list are individual files
                             pattern=None,
+                            from_collection=True,  # Mark as from collection
+                            collection_base_alias=base_alias,  # Store original alias
+                            attachment_type="collection",  # From --collect
                         )
 
                         specs.append(spec)
@@ -406,24 +421,33 @@ def _extract_attachments_from_args(args: CLIParams) -> List[Dict[str, Any]]:
         args: CLI parameters containing attachment specifications
 
     Returns:
-        List of attachment dictionaries
+        List of attachment dictionaries with attachment_type added
     """
     attachments: List[Dict[str, Any]] = []
 
-    # Extract --attach specifications
+    # Extract --attach specifications (file attachments)
     attaches = args.get("attaches", [])
     if attaches:
-        attachments.extend(attaches)
+        for attach in attaches:
+            attach_with_type = dict(attach)
+            attach_with_type["attachment_type"] = "file"
+            attachments.append(attach_with_type)
 
-    # Extract --dir specifications
+    # Extract --dir specifications (directory attachments)
     dirs = args.get("dirs", [])
     if dirs:
-        attachments.extend(dirs)
+        for dir_spec in dirs:
+            dir_with_type = dict(dir_spec)
+            dir_with_type["attachment_type"] = "dir"
+            attachments.append(dir_with_type)
 
-    # Extract --collect specifications
+    # Extract --collect specifications (collection attachments)
     collects = args.get("collects", [])
     if collects:
-        attachments.extend(collects)
+        for collect in collects:
+            collect_with_type = dict(collect)
+            collect_with_type["attachment_type"] = "collection"
+            attachments.append(collect_with_type)
 
     logger.debug(
         "Extracted %d attachment specifications from args", len(attachments)

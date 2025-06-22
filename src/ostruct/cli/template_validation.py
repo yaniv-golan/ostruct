@@ -218,7 +218,8 @@ def validate_template_placeholders(
 
     try:
         # 1) Create Jinja2 environment with meta extension and safe undefined
-        env = create_jinja_env(validation_mode=True)
+        env_tuple = create_jinja_env(validation_mode=True)
+        env = env_tuple[0]
 
         # Register custom filters with None-safe wrappers
         env.filters.update(

@@ -389,110 +389,56 @@ async def process_templates(
     env: jinja2.Environment,
     template_path: Optional[str] = None,
 ) -> Tuple[str, str]:
-    """Process system prompt and user prompt templates.
+    """Process system and user prompt templates.
 
     Args:
-        args: Command line arguments
-        task_template: Validated task template
-        template_context: Template context dictionary
-        env: Jinja2 environment
+        args: CLI parameters
+        task_template: Task template content
+        template_context: Template context variables
+        env: Jinja2 environment with file reference support already configured
+        template_path: Path to template file (for debugging)
 
     Returns:
         Tuple of (system_prompt, user_prompt)
 
     Raises:
-        CLIError: For template processing errors
+        TemplateError: If template processing fails
+        ValidationError: If template validation fails
     """
-    logger.debug("=== Template Processing Phase ===")
+    # Show original template content if PRE_EXPAND capacity is active
+    td_log_if_active(TDCap.PRE_EXPAND, "--- original template content ---")
+    td_log_if_active(TDCap.PRE_EXPAND, task_template)
+    td_log_if_active(TDCap.PRE_EXPAND, "--- end original template ---")
 
-    # Add template debugging if enabled
+    # Check for debug mode
     debug_enabled = args.get("debug", False)
+    debugger = None
+
+    if debug_enabled or is_capacity_active(TDCap.POST_EXPAND):
+        from .template_debug import TemplateDebugger
+
+        debugger = TemplateDebugger()
+
+    # Check for optimization mode
     no_optimization = args.get("no_optimization", False)
 
-    # Log pre-expand template content
-    td_log_if_active(TDCap.PRE_EXPAND, "--- original template ---")
-    td_log_if_active(TDCap.PRE_EXPAND, task_template)
-
-    # Log variable context
-    if is_capacity_active(TDCap.VARS):
-        td_log_vars(template_context)
-    if is_capacity_active(TDCap.PREVIEW):
-        td_log_preview(template_context)
-
-    debugger = None
-    if debug_enabled or is_capacity_active(TDCap.STEPS):
-        from .template_debug import (
-            TemplateDebugger,
-            log_template_expansion,
-            show_file_content_expansions,
-        )
-
-        # Initialize template debugger
-        debugger = TemplateDebugger(enabled=True)
-
-        # Log template context for general debug
-        if debug_enabled:
-            show_file_content_expansions(template_context)
-            logger.debug("Raw task template:")
-            logger.debug(task_template)
-
-        # Log initial template state
-        debugger.log_expansion_step(
-            "Initial template loaded",
-            "",
-            task_template,
-            {"template_path": template_path},
-        )
-
-    # Check for undefined variables if context inspection is enabled
-    if is_capacity_active(TDCap.VARS) or is_capacity_active(TDCap.PREVIEW):
-        from .template_debug import detect_undefined_variables
-
-        undefined_vars = detect_undefined_variables(
-            task_template, template_context
-        )
-        if undefined_vars:
-            click.echo(
-                f"⚠️  Potentially undefined variables: {', '.join(undefined_vars)}",
-                err=True,
-            )
-            click.echo(
-                f"   Available variables: {', '.join(sorted(template_context.keys()))}",
-                err=True,
-            )
-
-    system_prompt, template_has_system_prompt = process_system_prompt(
+    # System prompt processing
+    system_prompt, _ = process_system_prompt(
         task_template,
         args.get("system_prompt"),
         args.get("system_prompt_file"),
         template_context,
         env,
-        args.get("ignore_task_sysprompt", False),
-        template_path,
+        ignore_task_sysprompt=args.get("ignore_task_sysprompt", False),
+        template_path=template_path,
     )
 
-    # Log system prompt processing step
-    if debugger:
-        debugger.log_expansion_step(
-            "System prompt processed",
-            task_template,
-            system_prompt,
-            {
-                "system_prompt_source": (
-                    "task_template"
-                    if not args.get("system_prompt")
-                    else "custom"
-                )
-            },
-        )
-
-    # Handle optimization debugging with custom rendering
+    # Render user prompt template
     if (
         no_optimization
         or is_capacity_active(TDCap.OPTIMIZATION)
         or is_capacity_active(TDCap.OPTIMIZATION_STEPS)
     ):
-        # We need custom handling for optimization debugging
         debug_caps = set()
         if is_capacity_active(TDCap.OPTIMIZATION):
             debug_caps.add(TDCap.OPTIMIZATION)
@@ -507,8 +453,21 @@ async def process_templates(
             debug_capacities=debug_caps,
         )
     else:
-        # Standard rendering with optimization
         user_prompt = render_template(task_template, template_context, env)
+
+    # Generate XML appendix for referenced files if alias manager is available
+    alias_manager = args.get("_alias_manager")
+    if alias_manager:
+        from .template_filters import AliasManager, XMLAppendixBuilder
+
+        # Type assertion since we know this is an AliasManager
+        assert isinstance(alias_manager, AliasManager)
+        appendix_builder = XMLAppendixBuilder(alias_manager)
+        appendix_content = appendix_builder.build_appendix()
+
+        # Append XML content if any aliases were referenced
+        if appendix_content:
+            user_prompt = user_prompt + "\n\n" + appendix_content
 
     # Log user prompt rendering step
     if debugger:
@@ -916,6 +875,13 @@ async def create_template_context_from_routing(
                     debug_enabled or is_capacity_active(TDCap.PREVIEW)
                 ),
             )
+
+        # Add proper template debug capacity logging with prefixes
+        if is_capacity_active(TDCap.VARS):
+            td_log_vars(context)
+
+        if is_capacity_active(TDCap.PREVIEW):
+            td_log_preview(context)
 
         logger.debug(
             f"Built attachment-based template context with {len(context)} variables"

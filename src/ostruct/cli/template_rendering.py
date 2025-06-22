@@ -169,7 +169,7 @@ def render_template(
                 progress.update(1)  # Update progress for setup
 
             if env is None:
-                env = create_jinja_env(loader=jinja2.FileSystemLoader("."))
+                env, _ = create_jinja_env(loader=jinja2.FileSystemLoader("."))
 
             logger.debug("=== Raw Input ===")
             logger.debug(
