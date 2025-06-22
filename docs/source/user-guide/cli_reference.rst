@@ -297,10 +297,10 @@ Process multiple files from lists:
    ostruct run analyze.j2 schema.json --collect ci:datasets @data-files.txt
 
 File Type Limitations
-====================
+=====================
 
 Text File Processing
--------------------
+--------------------
 
 ostruct processes files as text content for template rendering. When templates
 access file content (``{{ file.content }}``), the file must be decodable as UTF-8 text.
@@ -466,8 +466,8 @@ Output and Execution Options
 
    Write output to file instead of stdout.
 
-Debug and Help Options
-----------------------
+Debug and Progress Options
+---------------------------
 
 .. option:: --debug
 
@@ -476,6 +476,33 @@ Debug and Help Options
 .. option:: --verbose
 
    Enable verbose output.
+
+.. option:: --progress [none|basic|detailed]
+
+   Control progress display during execution.
+
+   :param none: Disable all progress indicators (silent operation)
+   :param basic: Show key progress steps (default)
+   :param detailed: Show detailed progress with additional information
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Silent operation (no progress indicators)
+      ostruct run task.j2 schema.json --progress none
+
+      # Basic progress (default)
+      ostruct run task.j2 schema.json --progress basic
+
+      # Detailed progress with additional information
+      ostruct run task.j2 schema.json --progress detailed
+
+   **Use Cases:**
+
+   - ``--progress none``: Ideal for CI/CD pipelines and automated scripts where you want clean output
+   - ``--progress basic``: Default behavior showing key milestones like file processing and API calls
+   - ``--progress detailed``: Useful for debugging and monitoring long-running operations
 
 
 
@@ -524,6 +551,34 @@ Starting in v0.8.0, ostruct validates model names against the OpenAI model regis
 - **Typos**: ``gpt4o`` → ``gpt-4o``
 - **Old names**: ``gpt-4-turbo`` → ``gpt-4o``
 - **Custom names**: Use ``ostruct list-models`` to see what's available
+
+Progress Options (v1.0.0+)
+---------------------------
+
+Starting in v1.0.0, progress control has been simplified from two separate flags to a single option.
+
+**What Changed:**
+
+- ``--no-progress`` and ``--progress-level`` have been merged into ``--progress``
+- Single option with three choices: ``none``, ``basic``, ``detailed``
+- Default behavior remains the same (``basic`` progress)
+
+**Migration:**
+
+.. list-table:: Progress Options Migration
+   :widths: 50 50
+   :header-rows: 1
+
+   * - Legacy (v0.9.x)
+     - New (v1.0.0+)
+   * - ``--no-progress``
+     - ``--progress none``
+   * - ``--progress-level none``
+     - ``--progress none``
+   * - ``--progress-level basic``
+     - ``--progress basic`` (default)
+   * - ``--progress-level detailed``
+     - ``--progress detailed``
 
 Quick Migration Reference
 --------------------------

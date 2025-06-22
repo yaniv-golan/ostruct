@@ -289,8 +289,7 @@ Debug & Progress
 
 **Progress Control**:
 
-- ``--progress-level [none|basic|detailed]``: Set progress reporting level (default: basic)
-- ``--no-progress``: Disable all progress indicators
+- ``--progress [none|basic|detailed]``: Control progress display (default: basic)
 - ``--verbose``: Enable verbose logging
 
 **Template Debugging**:
