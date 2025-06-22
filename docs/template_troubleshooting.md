@@ -338,61 +338,40 @@ Last file: {{ last_file.name if last_file }}
 
 4. **Break down complex templates** into smaller parts for testing
 
-## Optimization Issues
+## File Content Display Issues
 
 ### Symptoms
 
-- Template works with `--no-optimization` but fails normally
-- Optimization changes break template logic
-- Unexpected content in optimized output
+- Template shows `FileInfoList(['filename'])` instead of file content
+- File content appears as object representation instead of actual content
 
 ### Diagnostic Steps
 
-#### 1. Compare Before/After Optimization
+#### 1. Check File Content Access
 
 ```bash
-ostruct run template.j2 schema.json --template-debug optimization --file large large_file.txt
+ostruct run template.j2 schema.json --template-debug vars,preview --file data file.txt
 ```
 
 **Look for**:
 
-- Unexpected variable changes
-- Content moved to appendix incorrectly
-- References that might be broken
+- How file variables are being accessed
+- Whether `.content` property is being used
+- File variable types and available properties
 
-#### 2. Track Optimization Steps
-
-```bash
-ostruct run template.j2 schema.json --template-debug optimization-steps --file large large_file.txt
-```
-
-**Check each step for**:
-
-- Logical transformations
-- Content preservation
-- Reference accuracy
-
-#### 3. Test Without Optimization
+#### 2. Test Template Expansion
 
 ```bash
-ostruct run template.j2 schema.json --no-optimization --file large large_file.txt
+ostruct run template.j2 schema.json --template-debug steps --file data file.txt
 ```
 
-**If this works**: The issue is in optimization logic.
+**Check for**:
 
-### Common Optimization Problems
+- Proper variable expansion
+- Template syntax errors
+- Variable access patterns
 
-#### Issue: Optimizer Breaking File References
-
-**Symptoms**: Template refers to moved content incorrectly.
-
-**Debug**:
-
-```bash
-ostruct run template.j2 schema.json --template-debug optimization-steps --file large file.txt
-```
-
-**Solution**: Report as bug if optimizer generates invalid references.
+### Common File Content Problems
 
 #### Issue: FileInfoList Shows Instead of Content
 
@@ -405,13 +384,13 @@ ostruct run template.j2 schema.json --template-debug optimization-steps --file l
 - ✅ Correct: `{{ my_file.content }}`
 - ❌ Wrong: `{{ my_file }}`
 
-#### Issue: Content Moved Incorrectly
+#### Issue: File Variable Undefined
 
-**Symptoms**: File content appears in appendix when it shouldn't.
+**Symptoms**: Template fails with undefined variable errors.
 
-**Debug**: Check if file is actually large enough to warrant optimization.
+**Debug**: Check file routing and variable naming.
 
-**Solution**: Use explicit file routing or smaller files.
+**Solution**: Use proper file attachment flags and verify variable names.
 
 ## Performance Problems
 
@@ -429,16 +408,10 @@ ostruct run template.j2 schema.json --template-debug optimization-steps --file l
 time ostruct run template.j2 schema.json --debug --file large large_file.txt
 ```
 
-#### 2. Check Optimization Impact
+#### 2. Test Template Complexity
 
 ```bash
-ostruct run template.j2 schema.json --template-debug optimization --file large large_file.txt
-```
-
-#### 3. Test Without Optimization
-
-```bash
-time ostruct run template.j2 schema.json --no-optimization --file large large_file.txt
+ostruct run template.j2 schema.json --template-debug steps --file large large_file.txt
 ```
 
 ### Performance Solutions
@@ -446,8 +419,8 @@ time ostruct run template.j2 schema.json --no-optimization --file large large_fi
 #### Large Files
 
 - Use explicit file routing (`--file alias`, `--dir alias`) instead of generic `-f`
-- Let optimization move large content to appendix
 - Consider breaking large files into smaller pieces
+- Use file content selectively (e.g., `{{ file.content | truncate(1000) }}`)
 
 #### Complex Templates
 
@@ -481,13 +454,6 @@ time ostruct run template.j2 schema.json --no-optimization --file large large_fi
 | `PermissionError` | No file access | `--debug` | Fix file permissions |
 | `UnicodeDecodeError` | Binary file as text | `--template-debug vars,preview` | Use correct file type |
 
-### Optimization Errors
-
-| Error Message | Cause | Debug Command | Solution |
-|---------------|-------|---------------|----------|
-| Invalid template after optimization | Optimizer bug | `--template-debug optimization` | Use `--no-optimization`, report bug |
-| Missing content in output | Incorrect optimization | `--template-debug optimization-steps` | Check optimization logic |
-
 ## Emergency Debugging Workflow
 
 When nothing else works, follow this step-by-step process:
@@ -518,14 +484,14 @@ ostruct run template.j2 schema.json --file config config.yaml --file data data.j
 ostruct run template.j2 schema.json --debug --template-debug vars,preview --file config config.yaml
 ```
 
-### 4. Test Optimization Separately
+### 4. Test Template Expansion
 
 ```bash
-# Without optimization
-ostruct run template.j2 schema.json --no-optimization --file config config.yaml
+# Test template expansion steps
+ostruct run template.j2 schema.json --template-debug steps --file config config.yaml
 
-# With optimization tracking
-ostruct run template.j2 schema.json --template-debug optimization-steps --file config config.yaml
+# Test with dry run
+ostruct run template.j2 schema.json --dry-run --template-debug post-expand --file config config.yaml
 ```
 
 ### 5. Get Help

@@ -301,13 +301,7 @@ Debug & Progress
 - ``--template-debug vars,preview``: Show detailed template variable context
 - ``--help``: Show comprehensive CLI help including debugging options
 
-**Optimization Debugging**:
 
-- ``--no-optimization``: Skip template optimization entirely
-- ``--template-debug optimization``: Show template optimization changes
-- ``--template-debug optimization-steps``: Show detailed optimization step tracking
-- ``--no-optimization``: Disable template optimization entirely
-- ``--template-debug pre-expand``: Show template content before optimization
 
 **Validation & Schema**:
 
