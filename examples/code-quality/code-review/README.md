@@ -80,7 +80,7 @@ These commands work exactly as before:
    # Traditional pattern (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
      --dir ci:code examples/security \
-     -R \
+     --recursive \
      --sys-file prompts/system.txt
    ```
 
@@ -89,7 +89,7 @@ These commands work exactly as before:
    ```bash
    # Traditional pattern matching (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -p code "*.py" \
+     --dir ci:code examples/security --pattern "*.py" \
      --sys-file prompts/system.txt
    ```
 
@@ -99,7 +99,7 @@ These commands work exactly as before:
    # Traditional with output file (still works)
    ostruct run prompts/task.j2 schemas/code_review.json \
      --dir ci:code examples/style \
-     -R \
+     --recursive \
      --sys-file prompts/system.txt \
      --output-file style_review.json
    ```
@@ -219,8 +219,8 @@ The review results follow a structured schema defined in `schemas/code_review.js
   run: |
     ostruct run prompts/task.j2 schemas/code_review.json \
       -dc code . \
-      -R \
-      -p code "*.{py,js,ts}" \
+      --recursive \
+              --pattern "*.{py,js,ts}" \
       --sys-file prompts/system.txt \
       --output-file review_results.json
 ```
@@ -266,7 +266,7 @@ code_review:
   script:
     - ostruct run prompts/task.j2 schemas/code_review.json \
         -dc code . \
-        -R \
+        --recursive \
         --sys-file prompts/system.txt
 ```
 
