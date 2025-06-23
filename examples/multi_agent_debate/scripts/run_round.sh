@@ -31,7 +31,7 @@ TURN_NUMBER=$((TURN_COUNT + 1))
 ostruct run "$PROMPT" "$SCHEMA" \
   --model gpt-4.1 \
   --enable-tool web-search \
-  --progress-level none \
+  --progress none \
   -V topic="$TOPIC" \
   -V next_round="$TURN_NUMBER" \
       --file transcript "$TRANSCRIPT" \

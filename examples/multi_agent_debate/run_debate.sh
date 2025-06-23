@@ -38,7 +38,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 TRANSCRIPT="$DIR/output/debate_init.json"
 
 # Always use quiet mode for cleaner output
-PROGRESS_FLAG="--progress-level none"
+PROGRESS_FLAG="--progress none"
 
 # Ensure output directory exists
 mkdir -p "$DIR/output"
