@@ -325,6 +325,29 @@ def render_template(
                     f"  -V {var_name}='value'"
                 )
                 raise TaskTemplateVariableError(error_msg) from e
+            except TypeError as e:
+                error_str = str(e)
+                # Handle iteration errors with user-friendly messages
+                if "object is not iterable" in error_str:
+                    # Extract variable name from iteration context
+                    # Look for patterns like "'ClassName' object is not iterable"
+                    # and provide helpful guidance
+                    user_friendly_msg = (
+                        "Template iteration error: A variable used in a loop ({% for ... %}) "
+                        "is not iterable. This usually means:\n"
+                        "1. The variable is not a file object, list, or other iterable type\n"
+                        "2. Check that your template variable names match the expected data\n"
+                        "3. Verify the variable contains the expected data type\n"
+                        f"Available variables: {', '.join(sorted(context.keys()))}"
+                    )
+                    logger.error("Template iteration error: %s", error_str)
+                    raise TemplateValidationError(user_friendly_msg) from e
+                else:
+                    # Other TypeError - preserve original behavior
+                    logger.error("Template rendering failed: %s", str(e))
+                    raise TemplateValidationError(
+                        f"Template rendering failed: {str(e)}"
+                    ) from e
             except (jinja2.TemplateError, Exception) as e:
                 logger.error("Template rendering failed: %s", str(e))
                 raise TemplateValidationError(
