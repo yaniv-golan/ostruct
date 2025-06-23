@@ -98,11 +98,11 @@ class LazyFileContent:
 
         try:
             return int(
-                os.getenv("OSTRUCT_MAX_FILE_SIZE", "65536")
+                os.getenv("OSTRUCT_TEMPLATE_FILE_LIMIT", "65536")
             )  # 64KB default
         except ValueError:
             logger.warning(
-                "Invalid OSTRUCT_MAX_FILE_SIZE value, using 64KB default"
+                "Invalid OSTRUCT_TEMPLATE_FILE_LIMIT value, using 64KB default"
             )
             return 65536
 
@@ -287,10 +287,10 @@ class FileSizeValidator:
 
         # Use environment variables for defaults if not specified
         default_individual = int(
-            os.getenv("OSTRUCT_MAX_FILE_SIZE", "65536")
+            os.getenv("OSTRUCT_TEMPLATE_FILE_LIMIT", "65536")
         )  # 64KB
         default_total = int(
-            os.getenv("OSTRUCT_MAX_TOTAL_SIZE", "1048576")
+            os.getenv("OSTRUCT_TEMPLATE_TOTAL_LIMIT", "1048576")
         )  # 1MB
 
         self.max_individual = max_individual or default_individual

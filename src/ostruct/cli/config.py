@@ -173,12 +173,12 @@ class OstructConfig(BaseModel):
         # MCP server URLs from environment
         mcp_config = config_data.setdefault("mcp", {})
 
-        # Look for MCP_* environment variables
+        # Look for OSTRUCT_MCP_URL_* environment variables
         for key, value in os.environ.items():
-            if key.startswith("MCP_") and key.endswith("_URL"):
+            if key.startswith("OSTRUCT_MCP_URL_"):
                 server_name = key[
-                    4:-4
-                ].lower()  # Remove MCP_ prefix and _URL suffix
+                    16:
+                ].lower()  # Remove OSTRUCT_MCP_URL_ prefix
                 mcp_config[server_name] = value
 
         # Built-in MCP server shortcuts
@@ -189,7 +189,7 @@ class OstructConfig(BaseModel):
 
         for name, url in builtin_servers.items():
             if name not in mcp_config:
-                env_key = f"MCP_{name.upper()}_URL"
+                env_key = f"OSTRUCT_MCP_URL_{name}"
                 if os.getenv(env_key):
                     mcp_config[name] = os.getenv(env_key)
 
@@ -287,7 +287,7 @@ limits:
 
 # Environment Variables for Secrets:
 # OPENAI_API_KEY - Your OpenAI API key
-# MCP_<NAME>_URL - URL for custom MCP servers (e.g., MCP_STRIPE_URL)
+# OSTRUCT_MCP_URL_<name> - URL for custom MCP servers (e.g., OSTRUCT_MCP_URL_stripe)
 """
 
 

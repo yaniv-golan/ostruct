@@ -1515,12 +1515,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             debug=bool(args.get("debug", False)),
         )
 
-        # 0a. Handle Debug Help Request
-        if args.get("help_debug", False):
-            from .template_debug_help import show_template_debug_help
-
-            show_template_debug_help()
-            return ExitCode.SUCCESS
+        # 0a. Help Debug Request is now handled by callback in click_options.py
 
         # 0. Configure Progress Reporting
         configure_progress_reporter(
