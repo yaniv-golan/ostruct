@@ -154,6 +154,9 @@ You can configure logging behavior through:
    - ``OSTRUCT_LOG_LEVEL``: Set the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
    - ``OSTRUCT_LOG_DIR``: Override the default log directory
    - ``OSTRUCT_LOG_FORMAT``: Customize the log message format
+   - ``OSTRUCT_TEMPLATE_FILE_LIMIT``: Max individual file size for template access (default: 65536 bytes)
+   - ``OSTRUCT_TEMPLATE_TOTAL_LIMIT``: Max total file size for template processing (default: 1048576 bytes)
+   - ``OSTRUCT_TEMPLATE_PREVIEW_LIMIT``: Max characters in template debug previews (default: 4096)
 
 Example:
 

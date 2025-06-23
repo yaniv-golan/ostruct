@@ -233,6 +233,131 @@ Use the ``|single`` filter when you expect exactly one file:
    {% set config = config_files|single %}
    Configuration: {{ config.content }}
 
+.. _template-environment-variables:
+
+Template Environment Variables
+==============================
+
+ostruct provides several environment variables to control template processing behavior. These variables only affect template-only file access (``--file alias path``) and do not impact Code Interpreter (``--file ci:``) or File Search (``--file fs:``) operations.
+
+File Size Limits
+-----------------
+
+Control how large files are handled in templates:
+
+.. code-block:: bash
+
+   # Set individual file size limit (default: 65536 bytes / 64KB)
+   export OSTRUCT_TEMPLATE_FILE_LIMIT=131072  # 128KB
+
+   # Set total file size limit (default: 1048576 bytes / 1MB)
+   export OSTRUCT_TEMPLATE_TOTAL_LIMIT=5242880  # 5MB
+
+   # Run with custom limits
+   ostruct run template.j2 schema.json --file config large_config.yaml
+
+**When to adjust these limits:**
+
+- **Large configuration files**: Increase limits for processing large YAML/JSON configs
+- **Document processing**: Handle larger text files for analysis
+- **Memory constraints**: Reduce limits in resource-constrained environments
+
+**Example usage:**
+
+.. code-block:: bash
+
+   # For processing large documentation
+   export OSTRUCT_TEMPLATE_FILE_LIMIT=262144    # 256KB per file
+   export OSTRUCT_TEMPLATE_TOTAL_LIMIT=10485760 # 10MB total
+
+   ostruct run doc_analysis.j2 schema.json \
+     --file docs ./documentation/ \
+     --file config ./config.yaml
+
+Template Debug Preview Limits
+-----------------------------
+
+Control how much content is shown in template debugging:
+
+.. code-block:: bash
+
+   # Set preview character limit (default: 4096)
+   export OSTRUCT_TEMPLATE_PREVIEW_LIMIT=8192  # 8KB preview
+
+   # Run with debug preview
+   ostruct run template.j2 schema.json \
+     --file data large_file.txt \
+     --template-debug preview
+
+**When to adjust preview limits:**
+
+- **Detailed debugging**: Increase for more context in debug output
+- **Clean logs**: Decrease for shorter, cleaner debug messages
+- **Large files**: Adjust based on typical file sizes you're processing
+
+Environment Variable Scope
+---------------------------
+
+**Important**: These environment variables only affect template processing:
+
+.. list-table:: Environment Variable Scope
+   :header-rows: 1
+   :widths: 30 35 35
+
+   * - Variable
+     - Affects Template Files
+     - Does NOT Affect
+   * - ``OSTRUCT_TEMPLATE_FILE_LIMIT``
+     - ``--file alias path``
+     - ``--file ci:`` or ``--file fs:``
+   * - ``OSTRUCT_TEMPLATE_TOTAL_LIMIT``
+     - ``--file alias path``
+     - ``--file ci:`` or ``--file fs:``
+   * - ``OSTRUCT_TEMPLATE_PREVIEW_LIMIT``
+     - Template debug output
+     - API calls or tool operations
+
+**Example demonstrating scope:**
+
+.. code-block:: bash
+
+   # These files are subject to template limits
+   ostruct run template.j2 schema.json \
+     --file config config.yaml \          # ← Template limits apply
+     --file docs documentation.md \       # ← Template limits apply
+     --file ci:data large_dataset.csv \   # ← Template limits DO NOT apply
+     --file fs:docs manual.pdf             # ← Template limits DO NOT apply
+
+Configuration Best Practices
+----------------------------
+
+**Set in .env files for project-specific limits:**
+
+.. code-block:: bash
+
+   # .env file in your project
+   OSTRUCT_TEMPLATE_FILE_LIMIT=262144
+   OSTRUCT_TEMPLATE_TOTAL_LIMIT=5242880
+   OSTRUCT_TEMPLATE_PREVIEW_LIMIT=8192
+
+**Set globally for your development environment:**
+
+.. code-block:: bash
+
+   # Add to ~/.bashrc or ~/.zshrc
+   export OSTRUCT_TEMPLATE_FILE_LIMIT=131072
+   export OSTRUCT_TEMPLATE_TOTAL_LIMIT=2097152
+   export OSTRUCT_TEMPLATE_PREVIEW_LIMIT=6144
+
+**Temporary overrides for specific tasks:**
+
+.. code-block:: bash
+
+   # One-time override for large file processing
+   OSTRUCT_TEMPLATE_FILE_LIMIT=524288 \
+   OSTRUCT_TEMPLATE_TOTAL_LIMIT=10485760 \
+   ostruct run large_analysis.j2 schema.json --file data huge_file.txt
+
 .. _cli-variables:
 
 CLI Variables

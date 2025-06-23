@@ -280,12 +280,25 @@ If you plan to contribute to the project, see the [Development Setup](#developme
 
 ostruct-cli respects the following environment variables:
 
+**API Configuration:**
+
 - `OPENAI_API_KEY`: Your OpenAI API key (required unless provided via command line)
 - `OPENAI_API_BASE`: Custom API base URL (optional)
 - `OPENAI_API_VERSION`: API version to use (optional)
 - `OPENAI_API_TYPE`: API type (e.g., "azure") (optional)
+
+**System Configuration:**
+
 - `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
-- `MCP_<NAME>_URL`: Custom MCP server URLs (e.g., `MCP_STRIPE_URL=https://mcp.stripe.com`)
+- `OSTRUCT_MCP_URL_<name>`: Custom MCP server URLs (e.g., `OSTRUCT_MCP_URL_stripe=https://mcp.stripe.com`)
+
+**Template Processing Limits (Template-only files via `--file alias path`):**
+
+- `OSTRUCT_TEMPLATE_FILE_LIMIT`: Maximum individual file size for template access (default: 65536 bytes / 64KB)
+- `OSTRUCT_TEMPLATE_TOTAL_LIMIT`: Maximum total file size for all template files (default: 1048576 bytes / 1MB)
+- `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`: Maximum characters shown in template debugging previews (default: 4096)
+
+> **Note**: Template limits only apply to files accessed via `--file alias path` (template-only routing). Files routed to Code Interpreter (`--file ci:`) or File Search (`--file fs:`) are not subject to these limits.
 
 **💡 Tip**: ostruct automatically loads `.env` files from the current directory. Environment variables take precedence over `.env` file values.
 
