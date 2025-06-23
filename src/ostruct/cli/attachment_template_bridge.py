@@ -6,7 +6,7 @@ while maintaining compatibility with existing template patterns.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from .attachment_processor import AttachmentSpec, ProcessedAttachments
 from .file_info import FileInfo, FileRoutingIntent
@@ -238,6 +238,39 @@ class LazyFileContent:
                 return f.read(max_chars)
         except Exception as e:
             return f"[Preview error: {e}]"
+
+    def __iter__(self) -> Iterator["LazyFileContent"]:
+        """Make LazyFileContent iterable by yielding itself.
+
+        This implements the file-sequence protocol, allowing single files
+        to be treated uniformly with file collections in templates.
+
+        Returns:
+            Iterator that yields this LazyFileContent instance
+        """
+        yield self
+
+    @property
+    def first(self) -> "LazyFileContent":
+        """Get the first file in the sequence (itself for single files).
+
+        This provides a uniform interface with FileInfoList.first,
+        allowing templates to use .first regardless of whether they're
+        dealing with a single file or a collection.
+
+        Returns:
+            This LazyFileContent instance
+        """
+        return self
+
+    @property
+    def is_collection(self) -> bool:
+        """Indicate whether this is a collection of files.
+
+        Returns:
+            False, since LazyFileContent represents a single file
+        """
+        return False
 
 
 class ValidationResult:
