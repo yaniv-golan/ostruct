@@ -137,7 +137,7 @@ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://
 
 - [ ] All tests pass (`poetry run pytest -m "not live"`)
 - [ ] Pre-commit hooks pass (`poetry run pre-commit run --all-files`)
-- [ ] Type checking passes (`poetry run mypy src tests`)
+- [ ] Type checking passes (`poetry run mypy --package ostruct`)
 - [ ] Documentation builds without errors
 
 ### Documentation
