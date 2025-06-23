@@ -30,6 +30,19 @@ DecoratedCommand = Union[Command, Callable[..., Any]]
 logger = logging.getLogger(__name__)
 
 
+def _handle_help_debug(
+    ctx: click.Context, param: click.Parameter, value: bool
+) -> None:
+    """Handle --help-debug flag by showing debug help and exiting."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    from .template_debug_help import show_template_debug_help
+
+    show_template_debug_help()
+    ctx.exit()
+
+
 def get_available_models() -> List[str]:
     """Get list of available models from registry that support structured output.
 
@@ -73,7 +86,7 @@ def _get_fallback_models() -> List[str]:
 
 
 class ModelChoice(click.Choice):
-    """Custom Choice type with better error messages for models."""
+    """Custom Choice type with better error messages and help display for models."""
 
     def convert(
         self,
@@ -93,6 +106,25 @@ class ModelChoice(click.Choice):
                 f"Invalid model '{value}'. Available models: {available}{more_text}.\n"
                 f"Run 'ostruct list-models' to see all {len(choices_list)} available models."
             )
+
+    def shell_complete(
+        self, ctx: click.Context, param: click.Parameter, incomplete: str
+    ) -> list:
+        """Provide shell completion for model names."""
+        from click.shell_completion import CompletionItem
+
+        return [
+            CompletionItem(choice)
+            for choice in self.choices
+            if choice.startswith(incomplete)
+        ]
+
+    def get_metavar(self, param: click.Parameter) -> str:
+        """Override metavar to show simple model info instead of complex list."""
+        choices_list = list(self.choices)
+
+        # Simple, clean display
+        return f"[{len(choices_list)} models available - run 'ostruct list-models' for full list]"
 
 
 def create_model_choice() -> ModelChoice:
@@ -164,92 +196,45 @@ def parse_feature_flags(
 
 
 def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add debug-related CLI options."""
-    # Import the new infrastructure
-    from .template_debug import parse_td
-
-    # Initial conversion to Command if needed
+    """Add debug-related CLI options (now consolidated into debug_progress_options)."""
+    # All debug options have been moved to debug_progress_options for better grouping
+    # This function is kept for backward compatibility but does nothing
     cmd: Any = f if isinstance(f, Command) else f
-
-    # Add new template debug option
-    cmd = click.option(
-        "-t",
-        "--template-debug",
-        metavar="CAPACITIES",
-        default=None,
-        is_flag=False,
-        flag_value="all",
-        expose_value=False,
-        callback=lambda ctx, p, v: (
-            ctx.obj.setdefault("_template_debug_caps", parse_td(v))
-            if ctx.obj is not None and v is not None
-            else None
-        ),
-        help="🔍 Debug prompt-template expansion. "
-        "Capacities: pre-expand,vars,preview,steps,post-expand "
-        "(comma list or 'all'). Use -t CAPACITIES or bare -t for all capacities.",
-    )(cmd)
-
-    # Keep existing non-template debug options
-    cmd = click.option(
-        "--show-model-schema",
-        is_flag=True,
-        help="Show generated Pydantic model schema",
-    )(cmd)
-
-    cmd = click.option(
-        "--debug-validation",
-        is_flag=True,
-        help="Show detailed validation errors",
-    )(cmd)
-
-    cmd = click.option(
-        "--debug",
-        is_flag=True,
-        help="🐛 Enable debug-level logging including template expansion",
-    )(cmd)
-
-    cmd = click.option(
-        "--help-debug",
-        is_flag=True,
-        help="📚 Show comprehensive template debugging help and examples",
-    )(cmd)
-
-    # Final cast to Command for return type
     return cast(Command, cmd)
 
 
-def variable_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add variable-related CLI options."""
-    cmd: Any = f if isinstance(f, Command) else f
-
-    cmd = click.option(
-        "-V",
-        "--var",
-        "var",
-        multiple=True,
-        metavar="name=value",
-        callback=validate_variable,
-        help="""🏷️  [VARIABLES] Define a simple string variable for template substitution.
+def variable_options(cmd: Callable[..., Any]) -> Callable[..., Any]:
+    """Add variable-related options to a command."""
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "-J",
+            "--json-var",
+            "json_var",
+            multiple=True,
+            metavar='name=\'{"json":"value"}\'',
+            callback=validate_json_variable,
+            help="""📋 [VARIABLES] Define a JSON variable for complex data structures.
+            JSON variables are parsed and available in templates as structured objects.
+            Format: name='{"key":"value"}'
+            Example: -J config='{"env":"prod","debug":true}'""",
+        ),
+        click.option(
+            "-V",
+            "--var",
+            "var",
+            multiple=True,
+            metavar="name=value",
+            callback=validate_variable,
+            help="""🏷️  [VARIABLES] Define a simple string variable for template substitution.
         Variables are available in your template as {{ variable_name }}.
         Format: name=value
         Example: -V debug=true -V env=prod""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "-J",
-        "--json-var",
-        "json_var",
-        multiple=True,
-        metavar='name=\'{"json":"value"}\'',
-        callback=validate_json_variable,
-        help="""📋 [VARIABLES] Define a JSON variable for complex data structures.
-        JSON variables are parsed and available in templates as structured objects.
-        Format: name='{"key":"value"}'
-        Example: -J config='{"env":"prod","debug":true}'""",
-    )(cmd)
-
-    return cast(Command, cmd)
+    return cast(Callable[..., Any], cmd)
 
 
 def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
@@ -265,56 +250,55 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
     if default_model not in choices_list and choices_list:
         default_model = choices_list[0]
 
-    cmd = click.option(
-        "-m",
-        "--model",
-        type=model_choice,
-        default=default_model,
-        show_default=True,
-        help="OpenAI model to use. Must support structured output.",
-    )(cmd)
-
-    cmd = click.option(
-        "--temperature",
-        type=click.FloatRange(0.0, 2.0),
-        help="""Sampling temperature. Controls randomness in the output.
-        Range: 0.0 to 2.0. Lower values are more focused.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--max-output-tokens",
-        type=click.IntRange(1, None),
-        help="""Maximum number of tokens in the output.
-        Higher values allow longer responses but cost more.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--top-p",
-        type=click.FloatRange(0.0, 1.0),
-        help="""Top-p (nucleus) sampling parameter. Controls diversity.
-        Range: 0.0 to 1.0. Lower values are more focused.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--frequency-penalty",
-        type=click.FloatRange(-2.0, 2.0),
-        help="""Frequency penalty for text generation.
-        Range: -2.0 to 2.0. Positive values reduce repetition.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--presence-penalty",
-        type=click.FloatRange(-2.0, 2.0),
-        help="""Presence penalty for text generation.
-        Range: -2.0 to 2.0. Positive values encourage new topics.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--reasoning-effort",
-        type=click.Choice(["low", "medium", "high"]),
-        help="""Control reasoning effort (if supported by model).
-        Higher values may improve output quality but take longer.""",
-    )(cmd)
+    # Apply Model Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--reasoning-effort",
+            type=click.Choice(["low", "medium", "high"]),
+            help="""Control reasoning effort (if supported by model).
+            Higher values may improve output quality but take longer.""",
+        ),
+        click.option(
+            "--presence-penalty",
+            type=click.FloatRange(-2.0, 2.0),
+            help="""Presence penalty for text generation.
+            Range: -2.0 to 2.0. Positive values encourage new topics.""",
+        ),
+        click.option(
+            "--frequency-penalty",
+            type=click.FloatRange(-2.0, 2.0),
+            help="""Frequency penalty for text generation.
+            Range: -2.0 to 2.0. Positive values reduce repetition.""",
+        ),
+        click.option(
+            "--top-p",
+            type=click.FloatRange(0.0, 1.0),
+            help="""Top-p (nucleus) sampling parameter. Controls diversity.
+            Range: 0.0 to 1.0. Lower values are more focused.""",
+        ),
+        click.option(
+            "--max-output-tokens",
+            type=click.IntRange(1, None),
+            help="""Maximum number of tokens in the output.
+            Higher values allow longer responses but cost more.""",
+        ),
+        click.option(
+            "--temperature",
+            type=click.FloatRange(0.0, 2.0),
+            help="""Sampling temperature. Controls randomness in the output.
+            Range: 0.0 to 2.0. Lower values are more focused.""",
+        ),
+        click.option(
+            "-m",
+            "--model",
+            type=model_choice,
+            default=default_model,
+            show_default=True,
+            help="OpenAI model to use. Must support structured output. Run 'ostruct list-models' for complete list.",
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -323,28 +307,33 @@ def system_prompt_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add system prompt related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--sys-prompt",
-        "system_prompt",
-        help="""Provide system prompt directly. This sets the initial context
-        for the model. Example: --sys-prompt "You are a code reviewer." """,
-    )(cmd)
-
-    cmd = click.option(
-        "--sys-file",
-        "system_prompt_file",
-        type=click.Path(exists=True, dir_okay=False),
-        help="""Load system prompt from file. The file should contain the prompt text.
+    # Apply System Prompt Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--ignore-task-sysprompt",
+            is_flag=True,
+            help="""Ignore system prompt in task template. By default, system prompts
+            in template frontmatter are used.""",
+        ),
+        click.option(
+            "--sys-file",
+            "system_prompt_file",
+            type=click.Path(exists=True, dir_okay=False),
+            help="""Load system prompt from file. The file should contain the prompt text.
         Example: --sys-file prompts/code_review.txt""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "--ignore-task-sysprompt",
-        is_flag=True,
-        help="""Ignore system prompt in task template. By default, system prompts
-        in template frontmatter are used.""",
-    )(cmd)
+            shell_complete=click.Path(
+                exists=True, file_okay=True, dir_okay=False
+            ),
+        ),
+        click.option(
+            "--sys-prompt",
+            "system_prompt",
+            help="""Provide system prompt directly. This sets the initial context
+            for the model. Example: --sys-prompt "You are a code reviewer.\"""",
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -353,35 +342,36 @@ def output_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add output-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--output-file",
-        type=click.Path(dir_okay=False),
-        help="""Write output to file instead of stdout.
-        Example: --output-file result.json""",
-        shell_complete=click.Path(file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "--dry-run",
-        is_flag=True,
-        help="""Validate and render but skip API call. Useful for testing
-        template rendering and validation.""",
-    )(cmd)
-
-    # JSON output options per unified guidelines
-    cmd = click.option(
-        "--dry-run-json",
-        is_flag=True,
-        help="""Output execution plan as JSON (requires --dry-run).
+    # Apply Output and Execution Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--run-summary-json",
+            is_flag=True,
+            help="""Output run summary as JSON to stderr (cannot be used with --dry-run).
+            Provides machine-readable execution summary after live runs.""",
+        ),
+        click.option(
+            "--dry-run-json",
+            is_flag=True,
+            help="""Output execution plan as JSON (requires --dry-run).
         Outputs structured execution plan to stdout for programmatic consumption.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--run-summary-json",
-        is_flag=True,
-        help="""Output run summary as JSON to stderr (cannot be used with --dry-run).
-        Provides machine-readable execution summary after live runs.""",
-    )(cmd)
+        ),
+        click.option(
+            "--dry-run",
+            is_flag=True,
+            help="""Validate and render but skip API call. Useful for testing
+            template rendering and validation.""",
+        ),
+        click.option(
+            "--output-file",
+            type=click.Path(dir_okay=False),
+            help="""Write output to file instead of stdout.
+            Example: --output-file result.json""",
+            shell_complete=click.Path(file_okay=True, dir_okay=False),
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -390,26 +380,28 @@ def api_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add API-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--config",
-        type=click.Path(exists=True),
-        help="Configuration file path (default: ostruct.yaml)",
-    )(cmd)
-
-    cmd = click.option(
-        "--api-key",
-        help="""OpenAI API key. If not provided, uses OPENAI_API_KEY
-        environment variable.""",
-    )(cmd)
-
-    # API timeout for OpenAI calls
-    cmd = click.option(
-        "--timeout",
-        type=click.FloatRange(1.0, None),
-        default=60.0,
-        show_default=True,
-        help="Timeout in seconds for OpenAI API calls.",
-    )(cmd)
+    # Apply Configuration and API Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--timeout",
+            type=click.FloatRange(1.0, None),
+            default=60.0,
+            show_default=True,
+            help="Timeout in seconds for OpenAI API calls.",
+        ),
+        click.option(
+            "--api-key",
+            help="""OpenAI API key. If not provided, uses OPENAI_API_KEY
+            environment variable.""",
+        ),
+        click.option(
+            "--config",
+            type=click.Path(exists=True),
+            help="Configuration file path (default: ostruct.yaml)",
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -418,37 +410,39 @@ def mcp_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add MCP (Model Context Protocol) server CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--mcp-server",
-        "mcp_servers",
-        multiple=True,
-        help="""🔌 [MCP] Connect to Model Context Protocol server for extended capabilities.
+    # Apply MCP Server Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--mcp-headers",
+            help="""JSON string of headers for MCP servers.
+            Example: --mcp-headers '{"Authorization": "Bearer token"}'""",
+        ),
+        click.option(
+            "--mcp-require-approval",
+            type=click.Choice(["always", "never"]),
+            default="never",
+            show_default=True,
+            help="""Approval level for MCP tool usage. CLI usage requires 'never'.""",
+        ),
+        click.option(
+            "--mcp-allowed-tools",
+            "mcp_allowed_tools",
+            multiple=True,
+            help="""Allowed tools per server. Format: server_label:tool1,tool2
+            Example: --mcp-allowed-tools deepwiki:search,summary""",
+        ),
+        click.option(
+            "--mcp-server",
+            "mcp_servers",
+            multiple=True,
+            help="""🔌 [MCP] Connect to Model Context Protocol server for extended capabilities.
         MCP servers provide additional tools like web search, databases, APIs, etc.
         Format: [label@]url
         Example: --mcp-server deepwiki@https://mcp.deepwiki.com/sse""",
-    )(cmd)
-
-    cmd = click.option(
-        "--mcp-allowed-tools",
-        "mcp_allowed_tools",
-        multiple=True,
-        help="""Allowed tools per server. Format: server_label:tool1,tool2
-        Example: --mcp-allowed-tools deepwiki:search,summary""",
-    )(cmd)
-
-    cmd = click.option(
-        "--mcp-require-approval",
-        type=click.Choice(["always", "never"]),
-        default="never",
-        show_default=True,
-        help="""Approval level for MCP tool usage. CLI usage requires 'never'.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--mcp-headers",
-        help="""JSON string of headers for MCP servers.
-        Example: --mcp-headers '{"Authorization": "Bearer token"}'""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -457,48 +451,61 @@ def feature_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add feature flag and configuration options (without legacy file routing)."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--ci-download-dir",
-        type=click.Path(file_okay=False, dir_okay=True),
-        default="./downloads",
-        show_default=True,
-        help="""🤖 [CODE INTERPRETER] Directory to save files generated by Code Interpreter.
+    # Apply Code Interpreter Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--ci-cleanup",
+            is_flag=True,
+            default=True,
+            show_default=True,
+            help="""🤖 [CODE INTERPRETER] Clean up uploaded files after execution to save storage quota.""",
+        ),
+        click.option(
+            "--ci-download-dir",
+            type=click.Path(file_okay=False, dir_okay=True),
+            default="./downloads",
+            show_default=True,
+            help="""🤖 [CODE INTERPRETER] Directory to save files generated by Code Interpreter.
         Example: --ci-download-dir ./results""",
-        shell_complete=click.Path(file_okay=False, dir_okay=True),
-    )(cmd)
+            shell_complete=click.Path(file_okay=False, dir_okay=True),
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--ci-cleanup",
-        is_flag=True,
-        default=True,
-        show_default=True,
-        help="""🤖 [CODE INTERPRETER] Clean up uploaded files after execution to save storage quota.""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
-    # Feature flags for experimental features
-    cmd = click.option(
-        "--enable-feature",
-        "enabled_features",
-        multiple=True,
-        metavar="<FEATURE>",
-        help="""🔧 [EXPERIMENTAL] Enable experimental features.
+    # Apply Experimental Features Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--disable-feature",
+            "disabled_features",
+            multiple=True,
+            metavar="<FEATURE>",
+            help="""🔧 [EXPERIMENTAL] Disable experimental features.
+            Available features:
+            • ci-download-hack - Force single-pass mode for Code Interpreter downloads.
+              Overrides config file setting.
+            Example: --disable-feature ci-download-hack""",
+        ),
+        click.option(
+            "--enable-feature",
+            "enabled_features",
+            multiple=True,
+            metavar="<FEATURE>",
+            help="""🔧 [EXPERIMENTAL] Enable experimental features.
         Available features:
         • ci-download-hack - Enable two-pass sentinel mode for reliable Code Interpreter
           file downloads with structured output. Overrides config file setting.
         Example: --enable-feature ci-download-hack""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--disable-feature",
-        "disabled_features",
-        multiple=True,
-        metavar="<FEATURE>",
-        help="""🔧 [EXPERIMENTAL] Disable experimental features.
-        Available features:
-        • ci-download-hack - Force single-pass mode for Code Interpreter downloads.
-          Overrides config file setting.
-        Example: --disable-feature ci-download-hack""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
@@ -509,37 +516,42 @@ def file_search_config_options(
     """Add File Search configuration options (without legacy file routing)."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--fs-store-name",
-        type=str,
-        default="ostruct_search",
-        help="""📁 [FILE SEARCH] Name for the vector store used for file search.
+    # Apply File Search Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--fs-timeout",
+            type=float,
+            default=60.0,
+            help="""📁 [FILE SEARCH] Timeout in seconds for vector store indexing operations.
+            Increase for large file uploads.""",
+        ),
+        click.option(
+            "--fs-retries",
+            type=int,
+            default=3,
+            help="""📁 [FILE SEARCH] Number of retry attempts for file search operations.
+            Increase for unreliable network connections.""",
+        ),
+        click.option(
+            "--fs-cleanup",
+            is_flag=True,
+            default=True,
+            help="""📁 [FILE SEARCH] Clean up uploaded files and vector stores after use.
+            Disable with --no-fs-cleanup to keep files for debugging.""",
+        ),
+        click.option(
+            "--fs-store-name",
+            type=str,
+            default="ostruct_search",
+            help="""📁 [FILE SEARCH] Name for the vector store used for file search.
         Example: --fs-store-name project_docs""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--fs-cleanup",
-        is_flag=True,
-        default=True,
-        help="""📁 [FILE SEARCH] Clean up uploaded files and vector stores after use.
-        Disable with --no-fs-cleanup to keep files for debugging.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--fs-retries",
-        type=int,
-        default=3,
-        help="""📁 [FILE SEARCH] Number of retry attempts for file search operations.
-        Increase for unreliable network connections.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--fs-timeout",
-        type=float,
-        default=60.0,
-        help="""📁 [FILE SEARCH] Timeout in seconds for vector store indexing operations.
-        Increase for large file uploads.""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
@@ -548,33 +560,38 @@ def web_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add Web Search CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--ws-country",
-        type=str,
-        help="""🌐 [WEB SEARCH] Specify user country for geographically tailored search results.
-        Used to improve search relevance by location (e.g., 'US', 'UK', 'Germany').""",
-    )(cmd)
-
-    cmd = click.option(
-        "--ws-city",
-        type=str,
-        help="""🌐 [WEB SEARCH] Specify user city for geographically tailored search results.
+    # Apply Web Search Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--ws-context-size",
+            type=click.Choice(["low", "medium", "high"]),
+            help="""🌐 [WEB SEARCH] Control the amount of content retrieved from search results.
+            'low' = brief snippets, 'medium' = balanced content, 'high' = comprehensive content.""",
+        ),
+        click.option(
+            "--ws-region",
+            type=str,
+            help="""🌐 [WEB SEARCH] Specify user region/state for geographically tailored search results.
+            Used to improve search relevance by location (e.g., 'California', 'Texas').""",
+        ),
+        click.option(
+            "--ws-city",
+            type=str,
+            help="""🌐 [WEB SEARCH] Specify user city for geographically tailored search results.
         Used to improve search relevance by location (e.g., 'San Francisco', 'London').""",
-    )(cmd)
+        ),
+        click.option(
+            "--ws-country",
+            type=str,
+            help="""🌐 [WEB SEARCH] Specify user country for geographically tailored search results.
+            Used to improve search relevance by location (e.g., 'US', 'UK', 'Germany').""",
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--ws-region",
-        type=str,
-        help="""🌐 [WEB SEARCH] Specify user region/state for geographically tailored search results.
-        Used to improve search relevance by location (e.g., 'California', 'Texas').""",
-    )(cmd)
-
-    cmd = click.option(
-        "--ws-context-size",
-        type=click.Choice(["low", "medium", "high"]),
-        help="""🌐 [WEB SEARCH] Control the amount of content retrieved from search results.
-        'low' = brief snippets, 'medium' = balanced content, 'high' = comprehensive content.""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
@@ -583,47 +600,104 @@ def tool_toggle_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add universal tool toggle CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--enable-tool",
-        "enabled_tools",
-        multiple=True,
-        metavar="<TOOL>",
-        help="""🔧 [TOOL TOGGLES] Enable a tool for this run (repeatable).
+    # Apply Tool Integration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--disable-tool",
+            "disabled_tools",
+            multiple=True,
+            metavar="<TOOL>",
+            help="""🔧 [TOOL TOGGLES] Disable a tool for this run (repeatable).
+            Overrides configuration file and implicit activation.
+            Available tools: code-interpreter, file-search, web-search, mcp
+            Example: --disable-tool web-search --disable-tool mcp""",
+        ),
+        click.option(
+            "--enable-tool",
+            "enabled_tools",
+            multiple=True,
+            metavar="<TOOL>",
+            help="""🔧 [TOOL TOGGLES] Enable a tool for this run (repeatable).
         Overrides configuration file and implicit activation.
         Available tools: code-interpreter, file-search, web-search, mcp
         Example: --enable-tool code-interpreter --enable-tool web-search""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--disable-tool",
-        "disabled_tools",
-        multiple=True,
-        metavar="<TOOL>",
-        help="""🔧 [TOOL TOGGLES] Disable a tool for this run (repeatable).
-        Overrides configuration file and implicit activation.
-        Available tools: code-interpreter, file-search, web-search, mcp
-        Example: --disable-tool web-search --disable-tool mcp""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
 
 def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add debugging and progress CLI options."""
+    # Import the new infrastructure for template debug
+    from .template_debug import parse_td
+
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--progress",
-        type=click.Choice(["none", "basic", "detailed"]),
-        default="basic",
-        show_default=True,
-        help="""Control progress display. 'none' disables progress indicators,
-        'basic' shows key steps, 'detailed' shows all operations.""",
-    )(cmd)
+    # Apply Debug and Development Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--help-debug",
+            is_flag=True,
+            is_eager=True,
+            expose_value=False,
+            callback=lambda ctx, param, value: _handle_help_debug(
+                ctx, param, value
+            ),
+            help="📚 Show comprehensive template debugging help and examples",
+        ),
+        click.option(
+            "--debug",
+            is_flag=True,
+            help="🐛 Enable debug-level logging including template expansion",
+        ),
+        click.option(
+            "--debug-validation",
+            is_flag=True,
+            help="Show detailed validation errors",
+        ),
+        click.option(
+            "--show-model-schema",
+            is_flag=True,
+            help="Show generated Pydantic model schema",
+        ),
+        click.option(
+            "-t",
+            "--template-debug",
+            metavar="CAPACITIES",
+            default=None,
+            is_flag=False,
+            flag_value="all",
+            expose_value=False,
+            callback=lambda ctx, p, v: (
+                ctx.obj.setdefault("_template_debug_caps", parse_td(v))
+                if ctx.obj is not None and v is not None
+                else None
+            ),
+            help="🔍 Debug prompt-template expansion. "
+            "Capacities: pre-expand,vars,preview,steps,post-expand "
+            "(comma list or 'all'). Use -t CAPACITIES or bare -t for all capacities.",
+        ),
+        click.option("--verbose", is_flag=True, help="Enable verbose logging"),
+        click.option(
+            "--progress",
+            type=click.Choice(["none", "basic", "detailed"]),
+            default="basic",
+            show_default=True,
+            help="""Control progress display. 'none' disables progress indicators,
+            'basic' shows key steps, 'detailed' shows all operations.""",
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--verbose", is_flag=True, help="Enable verbose logging"
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
@@ -632,38 +706,43 @@ def security_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add path security and allowlist CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "-S",
-        "--path-security",
-        type=click.Choice(
-            ["permissive", "warn", "strict"], case_sensitive=False
+    # Apply Security and Path Control Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--allow-list",
+            "allow_list",
+            multiple=True,
+            type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+            help="📋 Allow paths from file list for strict/warn mode (repeatable)",
         ),
-        help="🔒 Path security mode: permissive (allow all), warn (log warnings), strict (allowlist only)",
-    )(cmd)
+        click.option(
+            "--allow-file",
+            "allow_file",
+            multiple=True,
+            type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+            help="📄 Allow specific file for strict/warn mode (repeatable)",
+        ),
+        click.option(
+            "--allow",
+            "allow_dir",
+            multiple=True,
+            type=click.Path(exists=True, file_okay=False),
+            help="🗂️  Allow directory for strict/warn mode (repeatable)",
+        ),
+        click.option(
+            "-S",
+            "--path-security",
+            type=click.Choice(
+                ["permissive", "warn", "strict"], case_sensitive=False
+            ),
+            help="🔒 Path security mode: permissive (allow all), warn (log warnings), strict (allowlist only)",
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--allow",
-        "allow_dir",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False),
-        help="🗂️  Allow directory for strict/warn mode (repeatable)",
-    )(cmd)
-
-    cmd = click.option(
-        "--allow-file",
-        "allow_file",
-        multiple=True,
-        type=click.Path(exists=True, dir_okay=False, resolve_path=True),
-        help="📄 Allow specific file for strict/warn mode (repeatable)",
-    )(cmd)
-
-    cmd = click.option(
-        "--allow-list",
-        "allow_list",
-        multiple=True,
-        type=click.Path(exists=True, dir_okay=False, resolve_path=True),
-        help="📋 Allow paths from file list for strict/warn mode (repeatable)",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
@@ -687,8 +766,6 @@ def help_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
 def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add file attachment options with target/alias syntax."""
-
-    cmd: Any = f if isinstance(f, Command) else f
 
     # Import validation functions here to avoid circular imports
     def validate_attachment_file(
@@ -783,82 +860,91 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
         return result
 
-    # Modern file attachment options
-    cmd = click.option(
-        "-F",
-        "--file",
-        "attaches",
-        multiple=True,
-        nargs=2,
-        callback=validate_attachment_file,
-        metavar="[TARGETS:]ALIAS PATH",
-        help="Attach file: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
-    )(cmd)
+    # Apply File Attachment Options using click-option-group
+    # Fix: Attach options first, then wrap them in the group decorator last
+    cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "-D",
-        "--dir",
-        "dirs",
-        multiple=True,
-        nargs=2,
-        callback=validate_attachment_dir,
-        metavar="[TARGETS:]ALIAS PATH",
-        help="Attach directory: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
-    )(cmd)
+    # Attach options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--pattern",
+            metavar="GLOB",
+            help="Apply to last --dir/--collect (replaces legacy --glob)",
+        ),
+        click.option(
+            "--recursive",
+            is_flag=True,
+            help="Apply to last --dir/--collect",
+        ),
+        click.option(
+            "-C",
+            "--collect",
+            "collects",
+            multiple=True,
+            nargs=2,
+            callback=validate_attachment_collect,
+            metavar="[TARGETS:]ALIAS @FILELIST",
+            help="Attach file collection: '[targets:]alias @file-list.txt'",
+        ),
+        click.option(
+            "-D",
+            "--dir",
+            "dirs",
+            multiple=True,
+            nargs=2,
+            callback=validate_attachment_dir,
+            metavar="[TARGETS:]ALIAS PATH",
+            help="Attach directory: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+        ),
+        click.option(
+            "-F",
+            "--file",
+            "attaches",
+            multiple=True,
+            nargs=2,
+            callback=validate_attachment_file,
+            metavar="[TARGETS:]ALIAS PATH",
+            help="Attach file: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "-C",
-        "--collect",
-        "collects",
-        multiple=True,
-        nargs=2,
-        callback=validate_attachment_collect,
-        metavar="[TARGETS:]ALIAS @FILELIST",
-        help="Attach file collection: '[targets:]alias @file-list.txt'",
-    )(cmd)
-
-    cmd = click.option(
-        "--recursive",
-        is_flag=True,
-        help="Apply to last --dir/--collect",
-    )(cmd)
-
-    cmd = click.option(
-        "--pattern",
-        metavar="GLOB",
-        help="Apply to last --dir/--collect (replaces legacy --glob)",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
 
 def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Apply all CLI options to a command.
+    """Apply all CLI options to a command in progressive disclosure order.
 
-    Uses modern file attachment system instead of legacy options.
+    Order: Essential → Core Workflow → Advanced Features → Debug/Development
     """
     cmd: Any = f if isinstance(f, Command) else f
 
-    # Apply option groups in order
-    cmd = variable_options(cmd)
-    cmd = model_options(cmd)
-    cmd = system_prompt_options(cmd)
-    cmd = output_options(cmd)
-    cmd = api_options(cmd)
-    cmd = mcp_options(cmd)
-    cmd = file_options(cmd)  # File attachment system
-    cmd = security_options(cmd)  # Path security and allowlist options
-    cmd = feature_options(
-        cmd
-    )  # Feature flags and config (no legacy file options)
-    cmd = file_search_config_options(
-        cmd
-    )  # File search config (no legacy file options)
-    cmd = web_search_options(cmd)
-    cmd = tool_toggle_options(cmd)
-    cmd = debug_options(cmd)
-    cmd = debug_progress_options(cmd)
+    # Apply option groups in progressive disclosure order (REVERSE order since they stack)
+    # Debug and Development Options (last - most advanced)
     cmd = help_options(cmd)
+    cmd = debug_progress_options(cmd)
+    cmd = debug_options(cmd)
+
+    # Advanced Configuration Options
+    cmd = security_options(cmd)  # Path security and allowlist options
+    cmd = web_search_options(cmd)
+    cmd = file_search_config_options(cmd)  # File search config
+    cmd = feature_options(cmd)  # Feature flags and config
+    cmd = mcp_options(cmd)
+    cmd = api_options(cmd)
+
+    # Core Workflow Options
+    cmd = output_options(cmd)
+    cmd = system_prompt_options(cmd)
+    cmd = tool_toggle_options(cmd)
+    cmd = file_options(cmd)  # File attachment system
+    cmd = model_options(cmd)
+
+    # Essential Options (first - most important)
+    cmd = variable_options(cmd)
 
     return cast(Command, cmd)
 

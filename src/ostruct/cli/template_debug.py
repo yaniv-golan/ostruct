@@ -82,7 +82,7 @@ def td_log(ctx: click.Context, cap: TDCap, msg: str) -> None:
         click.echo(f"[{tag}] {msg}", err=True)
 
 
-MAX_PREVIEW = int(os.getenv("OSTRUCT_PREVIEW_LIMIT", "4096"))
+MAX_PREVIEW = int(os.getenv("OSTRUCT_TEMPLATE_PREVIEW_LIMIT", "4096"))
 
 
 def preview_snip(val: Any, max_size: int | None = None) -> str:
@@ -90,7 +90,7 @@ def preview_snip(val: Any, max_size: int | None = None) -> str:
 
     Args:
         val: Variable value to preview
-        max_size: Maximum preview size (default: OSTRUCT_PREVIEW_LIMIT)
+        max_size: Maximum preview size (default: OSTRUCT_TEMPLATE_PREVIEW_LIMIT)
 
     Returns:
         Preview string with truncation info if needed
