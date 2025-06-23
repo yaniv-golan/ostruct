@@ -2,8 +2,7 @@
 
 import click
 import pytest
-
-from src.ostruct.cli.params import (
+from ostruct.cli.params import (
     TARGET_NORMALISE,
     AttachmentSpec,
     AttachParam,

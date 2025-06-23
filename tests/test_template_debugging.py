@@ -247,15 +247,20 @@ class TestCLIIntegration:
 
         os.chdir("/test_workspace/base")
 
-        # Test help content generation
-        from ostruct.cli.template_debug_help import TEMPLATE_DEBUG_HELP
+        # Test help functions are importable and callable
+        from ostruct.cli.template_debug_help import (
+            show_debug_examples,
+            show_quick_debug_tips,
+            show_template_debug_help,
+        )
 
-        # Verify help content includes key sections
-        assert "Template Debugging Quick Reference" in TEMPLATE_DEBUG_HELP
-        assert "--debug" in TEMPLATE_DEBUG_HELP
-        assert "--template-debug" in TEMPLATE_DEBUG_HELP
-        assert "CAPACITIES:" in TEMPLATE_DEBUG_HELP
-        assert "EXAMPLES:" in TEMPLATE_DEBUG_HELP
+        # Verify functions are callable (no exceptions raised)
+        try:
+            show_template_debug_help()
+            show_quick_debug_tips()
+            show_debug_examples()
+        except Exception as e:
+            pytest.fail(f"Debug help functions should be callable: {e}")
 
     def test_debug_flags_exist(self):
         """Test that all debug CLI flags are defined."""

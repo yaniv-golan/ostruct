@@ -76,7 +76,9 @@ class TestOstructConfig:
         config = OstructConfig.load(config_file)
         assert config.models.default == "gpt-4o"
 
-    @patch.dict(os.environ, {"MCP_STRIPE_URL": "https://custom.stripe.com"})
+    @patch.dict(
+        os.environ, {"OSTRUCT_MCP_URL_stripe": "https://custom.stripe.com"}
+    )
     def test_environment_variable_override(self):
         """Test environment variable overrides."""
         # Test the _apply_env_overrides method directly to avoid filesystem issues
@@ -86,7 +88,9 @@ class TestOstructConfig:
         assert "mcp" in result
         assert result["mcp"].get("stripe") == "https://custom.stripe.com"
 
-    @patch.dict(os.environ, {"MCP_CUSTOM_URL": "https://custom.mcp.com"})
+    @patch.dict(
+        os.environ, {"OSTRUCT_MCP_URL_custom": "https://custom.mcp.com"}
+    )
     def test_mcp_environment_variables(self):
         """Test MCP environment variable processing."""
         # Test the _apply_env_overrides method directly to avoid filesystem issues

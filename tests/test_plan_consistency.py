@@ -7,15 +7,14 @@ import io
 import json
 
 import pytest
-
-from src.ostruct.cli.attachment_processor import ProcessedAttachments
-from src.ostruct.cli.plan_assembly import PlanAssembler
-from src.ostruct.cli.plan_printing import PlanPrinter
+from ostruct.cli.attachment_processor import ProcessedAttachments
+from ostruct.cli.plan_assembly import PlanAssembler
+from ostruct.cli.plan_printing import PlanPrinter
 
 
 def create_test_processed_attachments() -> ProcessedAttachments:
     """Create test processed attachments for consistency testing."""
-    from src.ostruct.cli.attachment_processor import AttachmentSpec
+    from ostruct.cli.attachment_processor import AttachmentSpec
 
     # Create some test attachment specs
     spec1 = AttachmentSpec(

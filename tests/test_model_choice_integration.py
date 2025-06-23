@@ -62,7 +62,11 @@ class TestModelChoiceIntegration:
         )
         assert result.exit_code != 0
         assert "Invalid model 'invalid-model'" in result.output
-        assert "Available models:" in result.output
+        # Rich-click formats the error message differently but still shows available models
+        assert (
+            "Available models:" in result.output
+            or "available models" in result.output.lower()
+        )
         assert "list-models" in result.output
 
     def test_help_shows_available_models(self, runner, mock_model_registry):
