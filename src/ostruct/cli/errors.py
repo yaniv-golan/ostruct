@@ -776,7 +776,17 @@ def handle_error(e: Exception) -> None:
         msg = f"Model creation error: {str(e)}"
         exit_code = ExitCode.SCHEMA_ERROR
     elif isinstance(e, click.UsageError):
-        msg = f"Usage error: {str(e)}"
+        error_msg = str(e)
+
+        # Enhance usage error messages with helpful guidance
+        if "Missing parameter" in error_msg:
+            if "task_template" in error_msg:
+                msg = f"Usage error: {error_msg}\n\nTry 'ostruct run --help' for usage information, 'ostruct --quick-ref' for examples, or 'ostruct run --help-debug' for troubleshooting help."
+            else:
+                msg = f"Usage error: {error_msg}\n\nTry 'ostruct run --help' for usage information or 'ostruct --quick-ref' for examples."
+        else:
+            msg = f"Usage error: {error_msg}"
+
         exit_code = ExitCode.USAGE_ERROR
     elif isinstance(e, SchemaFileError):
         msg = str(e)  # Use existing __str__ formatting

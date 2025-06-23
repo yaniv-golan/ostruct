@@ -4,9 +4,9 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Any
+from typing import Any, Tuple
 
-import click
+import rich_click as click
 
 from ..click_options import all_options
 from ..config import OstructConfig
@@ -24,7 +24,12 @@ from ..types import CLIParams
 logger = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(
+    cls=click.RichCommand,
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+    },
+)
 @click.argument("task_template", type=click.Path(exists=True))
 @click.argument("schema_file", type=click.Path(exists=True))
 @all_options
@@ -35,50 +40,46 @@ def run(
     schema_file: str,
     **kwargs: Any,
 ) -> None:
-    """Run structured output generation with modern file attachment system.
+    """Transform unstructured inputs into structured JSON using OpenAI APIs, Jinja2 templates, and powerful tool integrations.
 
-    \b
-    📁 FILE ATTACHMENT SYSTEM:
+    🚀 QUICK START
 
-    Template Access (default):
-      --file data file.txt              File available in template only
-      --dir config ./config             Directory for template access
+    ostruct run template.j2 schema.json -V name=value
 
-    Code Interpreter (execution & analysis):
-      --file ci:data data.csv           Upload file for code execution
-      --dir ci:datasets ./data          Upload directory for analysis
+    📎 FILE ATTACHMENT
 
-    File Search (document retrieval):
-      --file fs:docs manual.pdf         Upload file for vector search
-      --dir fs:knowledge ./docs         Upload directory for search
+    --file data file.txt              Template access (default)
 
-    Multi-target routing:
-      --file ci,fs:shared data.json     Share file between multiple tools
-      --collect all:files @file-list.txt Process files from list
+    --file ci:data data.csv           Code Interpreter upload
 
-    \b
-    🔧 TOOL INTEGRATION:
+    --file fs:docs manual.pdf         File Search upload
 
-    MCP Servers:
-      --mcp-server [LABEL@]URL          Connect to MCP server
-                                        Example: --mcp-server deepwiki@https://mcp.deepwiki.com/sse
+    🔧 TOOL INTEGRATION
 
-    \b
-    ⚡ EXAMPLES:
+    --enable-tool code-interpreter    Code execution & analysis
 
-    Basic usage:
-      ostruct run template.j2 schema.json -V name=value
+    --enable-tool file-search         Document search & retrieval
 
-    Modern file attachment:
-      ostruct run analysis.j2 schema.json --file ci:data data.csv --file fs:docs manual.pdf --file config config.yaml
+    --enable-tool web-search          Real-time web information
 
-    Multi-tool integration:
-      ostruct run workflow.j2 schema.json --file ci,fs:shared data.json --dir prompt:config ./settings
+    🔧 ENVIRONMENT VARIABLES
 
-    \b
-    Arguments:
-      TASK_TEMPLATE  Path to Jinja2 template file
-      SCHEMA_FILE    Path to JSON schema file defining output structure
+    ```text
+    Core API Configuration:
+    OPENAI_API_KEY                           OpenAI API authentication key
+    OPENAI_API_BASE                          Custom OpenAI API base URL
+
+    Template Processing Limits:
+    OSTRUCT_TEMPLATE_FILE_LIMIT              Max individual file size (default: 64KB)
+    OSTRUCT_TEMPLATE_TOTAL_LIMIT             Max total files size (default: 1MB)
+    OSTRUCT_TEMPLATE_PREVIEW_LIMIT           Template preview size limit (default: 4096)
+
+    System Behavior:
+    OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS   Disable model registry updates
+    OSTRUCT_MCP_URL_<name>                   Custom MCP server URLs
+    ```
+
+    See organized option groups below for complete functionality.
     """
     try:
         # Convert Click parameters to typed dict
@@ -104,8 +105,6 @@ def run(
             )
 
         # Process tool toggle flags (Step 2: Conflict guard & normalisation)
-        from typing import Tuple
-
         enabled_tools_raw: Tuple[str, ...] = params.get("enabled_tools", ())  # type: ignore[assignment]
         disabled_tools_raw: Tuple[str, ...] = params.get("disabled_tools", ())  # type: ignore[assignment]
 
@@ -245,7 +244,7 @@ def run(
                     logger.debug("Template rendering validation passed")
 
                     # Check for template warnings by processing system prompt
-                    from typing import Tuple, cast
+                    from typing import cast
 
                     from ..template_processor import process_system_prompt
 
