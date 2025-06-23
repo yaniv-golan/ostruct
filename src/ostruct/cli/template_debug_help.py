@@ -55,19 +55,19 @@ def show_template_debug_help() -> None:
     basic_examples = [
         (
             "Show everything (most verbose)",
-            "ostruct run template.j2 schema.json --debug -ft config.yaml",
+            "ostruct run template.j2 schema.json --debug --file config config.yaml",
         ),
         (
             "Just template content (clean)",
-            "ostruct run template.j2 schema.json --template-debug post-expand -ft config.yaml",
+            "ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml",
         ),
         (
             "Show variables and context",
-            "ostruct run template.j2 schema.json --template-debug vars,preview -ft config.yaml",
+            "ostruct run template.j2 schema.json --template-debug vars,preview --file config config.yaml",
         ),
         (
             "Step-by-step expansion",
-            "ostruct run template.j2 schema.json --template-debug steps -ft config.yaml",
+            "ostruct run template.j2 schema.json --template-debug steps --file config config.yaml",
         ),
     ]
 
@@ -81,7 +81,7 @@ def show_template_debug_help() -> None:
 
     # Combined debugging example
     console.print("[dim]# Full debugging with context[/dim]")
-    combined_cmd = "ostruct run template.j2 schema.json --debug --template-debug vars,preview,post-expand -ft config.yaml"
+    combined_cmd = "ostruct run template.j2 schema.json --debug --template-debug vars,preview,post-expand --file config config.yaml"
     syntax = Syntax(
         combined_cmd, "bash", theme="monokai", background_color="default"
     )
@@ -101,19 +101,19 @@ def show_template_debug_help() -> None:
             "title": "❌ Undefined Variable Errors",
             "problem": "UndefinedError: 'variable_name' is undefined",
             "solution": "Use --template-debug vars,preview to see available variables",
-            "example": "ostruct run template.j2 schema.json --template-debug vars,preview -ft config.yaml",
+            "example": "ostruct run template.j2 schema.json --template-debug vars,preview --file config config.yaml",
         },
         {
             "title": "❌ Template Not Expanding",
             "problem": "Template appears unchanged in output",
             "solution": "Use --template-debug post-expand to see expansion",
-            "example": "ostruct run template.j2 schema.json --template-debug post-expand -ft config.yaml",
+            "example": "ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml",
         },
         {
             "title": "❌ Performance Issues",
             "problem": "Template rendering is slow",
             "solution": "Use --template-debug steps to see processing bottlenecks",
-            "example": "ostruct run template.j2 schema.json --template-debug steps -ft config.yaml",
+            "example": "ostruct run template.j2 schema.json --template-debug steps --file config config.yaml",
         },
     ]
 
