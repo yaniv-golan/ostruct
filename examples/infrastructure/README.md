@@ -53,9 +53,9 @@ All infrastructure examples leverage ostruct's enhanced capabilities:
 ```bash
 # Automated analysis in GitHub workflow
 ostruct --config ci/ostruct.yaml run prompts/ci-analysis.j2 schemas/ci_analysis.json \
-  -fc src/ \
-  -fc tests/ \
-  -fs docs/ \
+  --file ci:src src/ \
+  --file ci:tests tests/ \
+  --file fs:docs docs/ \
   --output-file analysis_results.json
 ```
 
@@ -64,8 +64,8 @@ ostruct --config ci/ostruct.yaml run prompts/ci-analysis.j2 schemas/ci_analysis.
 ```bash
 # Comprehensive security analysis
 ostruct --config ci/security.yaml run prompts/security-scan.j2 schemas/security_report.json \
-  -fc src/ \
-  -fs security_docs/ \
+  --file ci:src src/ \
+  --file fs:security_docs security_docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse
 ```
 
@@ -74,8 +74,8 @@ ostruct --config ci/security.yaml run prompts/security-scan.j2 schemas/security_
 ```bash
 # Environment-specific configuration validation
 ostruct run prompts/infrastructure-validate.j2 schemas/validation_result.json \
-  -ft config/ \
-  -fs docs/deployment/ \
+  --file config config/ \
+  --file fs:deployment_docs docs/deployment/ \
   -V environment=production
 ```
 

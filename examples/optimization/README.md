@@ -51,15 +51,15 @@ All optimization examples demonstrate ostruct's efficiency capabilities:
 ```bash
 # Traditional (inefficient): All files in template context
 ostruct run templates/analysis.j2 schemas/result.json \
-  -f data=large_dataset.csv \
-  -f code=script.py \
-  -f docs=documentation.md
+  --file data large_dataset.csv \
+  --file code script.py \
+  --file docs documentation.md
 
 # Optimized (efficient): Tool-specific routing
 ostruct run templates/smart-analysis.j2 schemas/result.json \
-  -fc large_dataset.csv \
-  -fc script.py \
-  -fs documentation.md
+  --file ci:data large_dataset.csv \
+  --file ci:code script.py \
+  --file fs:docs documentation.md
 ```
 
 **Cost-Focused Configuration:**
@@ -67,8 +67,8 @@ ostruct run templates/smart-analysis.j2 schemas/result.json \
 ```bash
 # Budget-controlled optimization
 ostruct --config configs/cost-focused.yaml run templates/efficient-analysis.j2 schemas/result.json \
-  -fc data.csv \
-  -fs docs/
+  --file ci:data data.csv \
+  --file fs:docs docs/
 ```
 
 **Performance Benchmarking:**
@@ -91,10 +91,10 @@ python scripts/cost-comparison.py traditional_result.json optimized_result.json
 
 ### 1. File Routing Optimization
 
-- Use `-fc` for files requiring code execution or data processing
-- Use `-fs` for reference documents and search contexts
-- Use `-ft` for configuration files and metadata
-- Avoid generic `-f` flags that load everything into templates
+- Use `--file ci:` for files requiring code execution or data processing
+- Use `--file fs:` for reference documents and search contexts
+- Use `--file alias` for configuration files and metadata (template-only)
+- Use explicit target prefixes to route files to appropriate tools
 
 ### 2. Template Design
 
@@ -216,7 +216,7 @@ bash scripts/optimization-demo.sh
 
 **Phase 2: File Routing Optimization**
 
-1. Convert generic `-f` flags to tool-specific routing
+1. Convert generic file flags to tool-specific routing with target prefixes
 2. Update templates for multi-tool integration
 3. Test with `--dry-run` to validate improvements
 

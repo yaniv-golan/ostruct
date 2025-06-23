@@ -225,7 +225,7 @@ Example output:
 - name: Generate Tests
   run: |
     ostruct run prompts/task.j2 schemas/test_cases.json \
-      -dc code . \
+      --dir ci:code . \
       -R \
       --sys-file prompts/system.txt \
       -V framework=pytest
@@ -237,7 +237,7 @@ Example output:
 test_generation:
   script:
     - ostruct run prompts/task.j2 schemas/test_cases.json \
-        -dc code . \
+        --dir ci:code . \
         -R \
         --sys-file prompts/system.txt \
         -V framework=pytest

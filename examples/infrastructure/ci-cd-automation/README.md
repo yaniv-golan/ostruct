@@ -99,11 +99,11 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           ostruct --config ci/ostruct.yaml run prompts/ci-analysis.j2 schemas/ci_analysis.json \
-            -fc src/ \
-            -fc tests/ \
-            -fs docs/ \
-            -fs README.md \
-            -ft ci/ \
+            --file ci:src src/ \
+            --file ci:tests tests/ \
+            --file fs:docs docs/ \
+            --file fs:readme README.md \
+            --file ci_config ci/ \
             --sys-file prompts/system-ci.txt \
             --progress basic \
             --output-file analysis_results.json
@@ -113,8 +113,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           ostruct --config ci/security.yaml run prompts/security-scan.j2 schemas/security_report.json \
-            -fc src/ \
-            -fs security_docs/ \
+            --file ci:src src/ \
+            --file fs:security_docs security_docs/ \
             --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
             --sys-file prompts/system-ci.txt \
             -V repo_owner=${{ github.repository_owner }} \
@@ -237,9 +237,9 @@ jobs:
 
           # Run comprehensive security scan
           ostruct --config security_config.yaml run prompts/security-scan.j2 schemas/security_report.json \
-            -fc src/ \
-            -fc config/ \
-            -fs security_docs/ \
+            --file ci:src src/ \
+            --file ci:config config/ \
+            --file fs:security_docs security_docs/ \
             --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
             --sys-file prompts/system-ci.txt \
             -V scan_type=comprehensive \
@@ -306,10 +306,10 @@ code_analysis:
   script:
     - |
       ostruct --config $OSTRUCT_CONFIG run prompts/ci-analysis.j2 schemas/ci_analysis.json \
-        -fc src/ \
-        -fc tests/ \
-        -fs docs/ \
-        -ft ci/ \
+        --file ci:src src/ \
+        --file ci:tests tests/ \
+        --file fs:docs docs/ \
+        --file ci_config ci/ \
         --sys-file prompts/system-ci.txt \
         --progress basic \
         --output-file analysis_results.json
@@ -331,8 +331,8 @@ security_scan:
   script:
     - |
       ostruct --config ci/security.yaml run prompts/security-scan.j2 schemas/security_report.json \
-        -fc src/ \
-        -fs security_docs/ \
+        --file ci:src src/ \
+        --file fs:security_docs security_docs/ \
         --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
         --sys-file prompts/system-ci.txt \
         -V repo_owner=$CI_PROJECT_NAMESPACE \
@@ -422,10 +422,10 @@ pipeline {
 
                             sh """
                                 ostruct --config \$OSTRUCT_CONFIG run prompts/ci-analysis.j2 schemas/ci_analysis.json \\
-                                  -fc src/ \\
-                                  -fc tests/ \\
-                                  -fs docs/ \\
-                                  -ft ci/ \\
+                                  --file ci:src src/ \\
+                                  --file ci:tests tests/ \\
+                                  --file fs:docs docs/ \\
+                                  --file ci_config ci/ \\
                                   ${mcpFlag} \\
                                   --sys-file prompts/system-ci.txt \\
                                   --output-file analysis_results.json
@@ -444,8 +444,8 @@ pipeline {
                     steps {
                         sh '''
                             ostruct --config ci/security.yaml run prompts/security-scan.j2 schemas/security_report.json \\
-                              -fc src/ \\
-                              -fs security_docs/ \\
+                              --file ci:src src/ \\
+                              --file fs:security_docs security_docs/ \\
                               --mcp-server deepwiki@https://mcp.deepwiki.com/sse \\
                               --sys-file prompts/system-ci.txt \\
                               --output-file security_report.json
@@ -766,10 +766,10 @@ jobs:
         run: |
           # Traditional approach - all files processed the same way
           ostruct run analysis.j2 schema.json \
-            -f code=src/ \
-            -d tests=tests/ \
-            -d docs=docs/ \
-            -R \
+            --file code src/ \
+            --dir tests tests/ \
+            --dir docs docs/ \
+            --recursive \
             --output-file results.json
 ```
 
@@ -853,11 +853,11 @@ jobs:
         run: |
           # Enhanced approach with explicit routing
           ostruct --config ci-config.yaml run templates/ci-analysis.j2 schemas/analysis_result.json \
-            -fc src/ \
-            -fc tests/ \
-            -fs docs/ \
-            -fs README.md \
-            -ft .github/ \
+            --file ci:src src/ \
+            --file ci:tests tests/ \
+            --file fs:docs docs/ \
+            --file fs:readme README.md \
+            --file github_config .github/ \
             --progress basic \
             --output-file analysis_results.json
 

@@ -104,28 +104,28 @@ estimate_costs() {
     # Create a sample file for estimation
     echo "Sample document content for cost estimation" > "$temp_dir/sample.txt"
     ostruct run --dry-run \
-        -fc "$temp_dir/sample.txt" \
+        --file ci:sample "$temp_dir/sample.txt" \
         prompts/convert.j2 \
         schemas/convert_schema.json 2>&1 | grep -E "Estimated cost:" || echo "   Cost estimation not available"
     echo
 
     echo "2. Fact Extraction (File Search):"
     ostruct run --dry-run \
-        -ds "$temp_dir" \
+        --dir fs:docs "$temp_dir" \
         prompts/extract.j2 \
         schemas/extract_schema.json 2>&1 | grep -E "Estimated cost:" || echo "   Cost estimation not available"
     echo
 
     echo "3. Coverage Analysis:"
     ostruct run --dry-run \
-        -ds "$temp_dir" \
+        --dir fs:docs "$temp_dir" \
         prompts/assess.j2 \
         schemas/assessment_schema.json 2>&1 | grep -E "Estimated cost:" || echo "   Cost estimation not available"
     echo
 
     echo "4. Patch Generation:"
     ostruct run --dry-run \
-        -ds "$temp_dir" \
+        --dir fs:docs "$temp_dir" \
         prompts/patch.j2 \
         schemas/patch_schema.json 2>&1 | grep -E "Estimated cost:" || echo "   Cost estimation not available"
     echo

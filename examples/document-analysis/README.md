@@ -113,7 +113,7 @@ All document analysis examples leverage ostruct's enhanced capabilities:
 # Compare two document versions
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
   --file ci:old_pdf contract_v1.pdf \
---file ci:new_pdf contract_v2.pdf
+  --file ci:new_pdf contract_v2.pdf
 ```
 
 **Batch Document Processing:**
@@ -121,8 +121,8 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 ```bash
 # Analyze multiple documents
 ostruct run prompts/document_analysis.j2 schemas/analysis_result.json \
-  -fc documents/ \
-  -fs reference_docs/
+  --file ci:documents documents/ \
+  --file fs:reference_docs reference_docs/
 ```
 
 **Documentation Example Validation:**
@@ -131,7 +131,7 @@ ostruct run prompts/document_analysis.j2 schemas/analysis_result.json \
 # Extract and validate all examples from project documentation
 ostruct run doc-example-validator/prompts/extract_examples.j2 \
   doc-example-validator/schemas/example_task_list.schema.json \
-  -ds docs/ \
+  --dir fs:docs docs/ \
   -V project_name="MyProject" \
   -V project_type="CLI" \
   --output-file validation_tasks.json
@@ -142,8 +142,8 @@ ostruct run doc-example-validator/prompts/extract_examples.j2 \
 ```bash
 # Document analysis with external context
 ostruct run prompts/enhanced_analysis.j2 schemas/enhanced_result.json \
-  -fc target_document.pdf \
-  -fs related_docs/ \
+  --file ci:target_document target_document.pdf \
+  --file fs:related_docs related_docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse
 ```
 
@@ -172,7 +172,7 @@ ostruct run prompts/enhanced_analysis.j2 schemas/enhanced_result.json \
 
 ### 3. Performance Optimization
 
-- Use explicit file routing (`-fc`, `-fs`) for optimal processing
+- Use explicit file routing (`--file ci:`, `--file fs:`) for optimal processing
 - Leverage File Search for reference document context
 - Configure appropriate cost limits for batch processing
 - Cache results when processing similar documents repeatedly

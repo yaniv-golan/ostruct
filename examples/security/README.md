@@ -11,10 +11,10 @@ Please be aware of the following when using `ostruct` with different file routin
   * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
 * **Template-Only Access & Prompt Content**:
-  * Flags like `-ft`, `--fta`, `-dt`, `--dta` (and legacy `-f`, `-d`) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
+  * Flags like `--file alias` (template-only, no target prefix) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
   * **However, if your Jinja2 template includes the content of these files (e.g., using `{{ my_file.content }}`), that file content WILL become part of the prompt sent to the main OpenAI Chat Completions API.**
-  * For large files or sensitive data that should not be part of the main prompt, even if used with `-ft`, avoid rendering their full content in the template or use redaction techniques.
-  * If a large file is intended for analysis or search, prefer using `-fc`/`-fs` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
+  * For large files or sensitive data that should not be part of the main prompt, even if used with template-only flags, avoid rendering their full content in the template or use redaction techniques.
+  * If a large file is intended for analysis or search, prefer using `--file ci:` or `--file fs:` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
 
 Always review which files are being routed to which tools and how their content is used in your templates to manage data privacy and API costs effectively.
 

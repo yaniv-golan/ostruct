@@ -41,7 +41,7 @@ echo ""
 # Run dry-run first
 echo -e "${BLUE}🧪 Running dry-run validation...${NC}"
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds test_data/sample_project/ \
+  --dir fs:docs test_data/sample_project/ \
   -V project_name="AwesomeCLI" \
   -V project_type="CLI" \
   -V validation_level="comprehensive" \
@@ -60,7 +60,7 @@ echo -e "${BLUE}🚀 Running full documentation analysis...${NC}"
 OUTPUT_FILE="validation_tasks_$(date +%Y%m%d_%H%M%S).json"
 
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds test_data/sample_project/ \
+  --dir fs:docs test_data/sample_project/ \
   -V project_name="AwesomeCLI" \
   -V project_type="CLI" \
   -V validation_level="comprehensive" \

@@ -11,10 +11,10 @@ Please be aware of the following when using `ostruct` with different file routin
   * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
 * **Template-Only Access & Prompt Content**:
-  * Flags like `-ft`, `--fta`, `-dt`, `--dta` (and legacy `-f`, `-d`) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
+  * Flags like `--file alias` (template-only, no target prefix) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
   * **However, if your Jinja2 template includes the content of these files (e.g., using `{{ my_file.content }}`), that file content WILL become part of the prompt sent to the main OpenAI Chat Completions API.**
-  * For large files or sensitive data that should not be part of the main prompt, even if used with `-ft`, avoid rendering their full content in the template or use redaction techniques.
-  * If a large file is intended for analysis or search, prefer using `-fc`/`-fs` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
+  * For large files or sensitive data that should not be part of the main prompt, even if used with template-only flags, avoid rendering their full content in the template or use redaction techniques.
+  * If a large file is intended for analysis or search, prefer using `--file ci:` or `--file fs:` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
 
 Always review which files are being routed to which tools and how their content is used in your templates to manage data privacy and API costs effectively.
 
@@ -64,10 +64,10 @@ Combine all tools for comprehensive analysis:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc sales_data data/sales_data.csv \
-  -fc analytics_code code/analytics.py \
-  -ds docs docs/ \
-  -ft analysis_config config/analysis.yaml \
+  --file ci:sales_data data/sales_data.csv \
+  --file ci:analytics_code code/analytics.py \
+  --dir fs:docs docs/ \
+  --file analysis_config config/analysis.yaml \
   --sys-file prompts/system.txt \
   --output-file comprehensive_analysis.json
 ```
@@ -78,8 +78,8 @@ Analyze data while searching for relevant documentation:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -dc data data/ \
-  -ds docs docs/ \
+  --dir ci:data data/ \
+  --dir fs:docs docs/ \
   --sys-file prompts/system.txt \
   -V analysis_type=data_exploration \
   -V include_visualizations=true
@@ -91,8 +91,8 @@ Analyze code using external repository documentation via MCP:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -dc code code/ \
-  -ds docs docs/ \
+  --dir ci:code code/ \
+  --dir fs:docs docs/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   --sys-file prompts/system.txt \
   -V repo_owner=your-org \
@@ -106,9 +106,9 @@ Execute performance analysis code while searching documentation:
 
 ```bash
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc performance_log data/performance.log \
-  -fc analytics_code code/analytics.py \
-  -ft troubleshooting docs/troubleshooting.md \
+  --file ci:performance_log data/performance.log \
+  --file ci:analytics_code code/analytics.py \
+  --file troubleshooting docs/troubleshooting.md \
   --sys-file prompts/system.txt \
   -V analysis_type=performance \
   -V execute_analysis=true \
@@ -127,10 +127,10 @@ Use persistent configuration for consistent multi-tool analysis:
 # - Cost controls
 
 ostruct --config config/ostruct.yaml run prompts/analysis.j2 schemas/analysis_result.json \
-  -dc data data/ \
-  -dc src src/ \
-  -ds docs docs/ \
-  -dc config config/ \
+  --dir ci:data data/ \
+  --dir ci:src src/ \
+  --dir fs:docs docs/ \
+  --dir config config/ \
   --sys-file prompts/system.txt
 ```
 
@@ -216,7 +216,7 @@ This pattern is ideal for:
 ```bash
 # All files processed the same way
 ostruct run analysis.j2 schema.json \
-  -dc all_files . \
+  --dir ci:all_files . \
   -R
 ```
 
@@ -225,10 +225,10 @@ ostruct run analysis.j2 schema.json \
 ```bash
 # Optimized routing for better results
 ostruct run analysis.j2 schema.json \
-  -dc data data/ \
-  -dc code code/ \
-  -ds docs docs/ \
-  -dc config config/
+  --dir ci:data data/ \
+  --dir ci:code code/ \
+  --dir fs:docs docs/ \
+  --dir ci:config config/
 ```
 
 ## CI/CD Integration
@@ -256,10 +256,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           ostruct --config config/ostruct.yaml run prompts/analysis.j2 schemas/analysis_result.json \
-            -dc data data/ \
-            -dc src src/ \
-            -ds docs docs/ \
-            -dc config config/ \
+            --dir ci:data data/ \
+            --dir ci:src src/ \
+            --dir fs:docs docs/ \
+            --dir ci:config config/ \
             --progress none \
             --output-file analysis_results.json
 

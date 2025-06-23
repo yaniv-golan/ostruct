@@ -51,9 +51,9 @@ All data analysis examples leverage the full spectrum of ostruct's capabilities:
 ```bash
 # Complete data analysis with context
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc dataset.csv \
-  -fc analysis_code.py \
-  -fs documentation/ \
+  --file ci:dataset dataset.csv \
+  --file ci:analysis_code analysis_code.py \
+  --file fs:documentation documentation/ \
   -V analysis_type=data_exploration
 ```
 
@@ -62,9 +62,9 @@ ostruct run prompts/analysis.j2 schemas/analysis_result.json \
 ```bash
 # Code analysis with documentation context
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc codebase/ \
-  -fs docs/ \
-  -fs README.md \
+  --file ci:codebase codebase/ \
+  --file fs:docs docs/ \
+  --file fs:readme README.md \
   -V analysis_type=code_analysis
 ```
 
@@ -73,8 +73,8 @@ ostruct run prompts/analysis.j2 schemas/analysis_result.json \
 ```bash
 # Analysis with external knowledge integration
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc research_data.csv \
-  -fs literature/ \
+  --file ci:research_data research_data.csv \
+  --file fs:literature literature/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   -V analysis_type=research_analysis
 ```
@@ -84,10 +84,10 @@ ostruct run prompts/analysis.j2 schemas/analysis_result.json \
 ```bash
 # Complex workflow with multiple data sources
 ostruct run prompts/analysis.j2 schemas/analysis_result.json \
-  -fc sales_data.csv \
-  -fc customer_data.csv \
-  -fc analysis_scripts/ \
-  -fs business_docs/ \
+  --file ci:sales_data sales_data.csv \
+  --file ci:customer_data customer_data.csv \
+  --file ci:analysis_scripts analysis_scripts/ \
+  --file fs:business_docs business_docs/ \
   -V analysis_type=business_intelligence
 ```
 

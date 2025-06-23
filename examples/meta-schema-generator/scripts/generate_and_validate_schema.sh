@@ -157,7 +157,7 @@ generate_schema() {
         # Split additional_vars by space and add each as a parameter
         read -ra VARS <<< "${additional_vars}"
         for var in "${VARS[@]}"; do
-            cmd+=(-ft "${var}")
+            cmd+=(--file "${var}")
         done
     fi
 

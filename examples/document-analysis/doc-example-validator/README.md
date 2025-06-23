@@ -4,7 +4,7 @@ This example demonstrates ostruct's ability to analyze project documentation usi
 
 ## 🔒 Security & Data Privacy Notice
 
-**⚠️ IMPORTANT**: This example uses File Search (`-fs`) features that **upload your documentation files to OpenAI's services** for processing.
+**⚠️ IMPORTANT**: This example uses File Search (`--file fs:` and `--dir fs:`) features that **upload your documentation files to OpenAI's services** for processing.
 
 **Before using with your documentation:**
 
@@ -29,7 +29,7 @@ cd examples/document-analysis/doc-example-validator
 
 # Analyze ostruct's own documentation
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds ../../../docs/ \
+  --dir fs:docs ../../../docs/ \
   -V project_name=ostruct \
   -V project_type=CLI \
   --model gpt-4o --temperature 0
@@ -50,7 +50,7 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 
 ```bash
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds /path/to/project/docs/ \
+  --dir fs:docs /path/to/project/docs/ \
   -V project_name="MyProject" \
   -V project_type="API" \
   --output-file example_tasks.json
@@ -60,9 +60,9 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 
 ```bash
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -fs README.md \
-  -fs docs/installation.md \
-  -ds docs/ \
+  --file fs:readme README.md \
+  --file fs:install docs/installation.md \
+  --dir fs:docs docs/ \
   -V project_name="MyAPI" \
   -V project_type="REST_API" \
   -V include_setup_examples=true \
@@ -71,8 +71,8 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 
 ### Command-Line Options
 
-- `-ds <directory>`: Upload entire documentation directory to File Search
-- `-fs <file>`: Upload specific documentation files to File Search
+- `--dir fs:<alias> <directory>`: Upload entire documentation directory to File Search
+- `--file fs:<alias> <file>`: Upload specific documentation files to File Search
 - `-V project_name=<name>`: Specify the project name for context-aware analysis
 - `-V project_type=<type>`: Specify project type (CLI, API, Library, Framework, etc.)
 - `-V include_setup_examples=<bool>`: Include installation/setup examples in analysis
@@ -92,9 +92,9 @@ The test data includes documentation in multiple formats to demonstrate format s
 
 # Test specific format combinations
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -fs test_data/sample_project/README.md \
-  -fs test_data/sample_project/docs/api_reference.rst \
-  -fs test_data/sample_project/docs/troubleshooting.txt \
+  --file fs:readme test_data/sample_project/README.md \
+  --file fs:api_ref test_data/sample_project/docs/api_reference.rst \
+  --file fs:troubleshoot test_data/sample_project/docs/troubleshooting.txt \
   -V project_name="MultiFormat" \
   -V project_type="CLI"
 
@@ -103,7 +103,7 @@ python scripts/validate_output.py example_tasks.json
 
 # Dry run (validation only)
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds test_data/sample_project/ \
+  --dir fs:docs test_data/sample_project/ \
   -V project_name="SampleProject" \
   -V project_type="CLI" \
   --dry-run
@@ -250,7 +250,7 @@ The generated task list is designed to be executed by AI coding agents:
 ```bash
 # Generate task list
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/ -V project_name="MyProject" -V project_type="CLI" \
+  --dir fs:docs docs/ -V project_name="MyProject" -V project_type="CLI" \
   --output-file validation_tasks.json
 
 # Use with Cursor
@@ -285,9 +285,9 @@ File Search is specifically designed for large documentation scenarios:
 ```bash
 # Analyze large open-source project (e.g., entire docs/ directory)
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds /path/to/large-project/docs/ \
-  -ds /path/to/large-project/examples/ \
-  -ds /path/to/large-project/wiki/ \
+  --dir fs:docs /path/to/large-project/docs/ \
+  --dir fs:examples /path/to/large-project/examples/ \
+  --dir fs:wiki /path/to/large-project/wiki/ \
   -V project_name="LargeProject" \
   -V project_type="Framework" \
   -V validation_level="comprehensive" \
@@ -295,9 +295,9 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 
 # Multi-repository documentation analysis
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds /repos/frontend/docs/ \
-  -ds /repos/backend/docs/ \
-  -ds /repos/api/docs/ \
+  --dir fs:frontend /repos/frontend/docs/ \
+  --dir fs:backend /repos/backend/docs/ \
+  --dir fs:api /repos/api/docs/ \
   -V project_name="Microservices" \
   -V project_type="Distributed_System" \
   --output-file microservices_validation.json
@@ -310,9 +310,9 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 ```bash
 # Focus on specific documentation areas
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/user-guides/ \
-  -ds docs/api-reference/ \
-  -ds docs/tutorials/ \
+  --dir fs:guides docs/user-guides/ \
+  --dir fs:api docs/api-reference/ \
+  --dir fs:tutorials docs/tutorials/ \
   -V project_name="SelectiveAnalysis" \
   -V focus_areas="user_facing_docs"
 ```
@@ -322,15 +322,15 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 ```bash
 # Step 1: High-priority documentation first
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -fs README.md \
-  -fs GETTING_STARTED.md \
-  -ds docs/quick-start/ \
+  --file fs:readme README.md \
+  --file fs:getting_started GETTING_STARTED.md \
+  --dir fs:quickstart docs/quick-start/ \
   -V project_name="Progressive" \
   -V validation_level="critical_only"
 
 # Step 2: Complete analysis
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/ \
+  --dir fs:docs docs/ \
   -V project_name="Progressive" \
   -V validation_level="comprehensive"
 ```
@@ -340,7 +340,7 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 ```bash
 # Prioritize certain formats
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/ \
+  --dir fs:docs docs/ \
   -V project_name="FormatPriority" \
   -V preferred_formats="markdown,rst" \
   -V exclude_formats="txt,log"
@@ -350,7 +350,7 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 
 | Documentation Size | Recommended Approach | Estimated Cost* | Processing Time |
 |-------------------|---------------------|----------------|-----------------|
-| Small (< 50 files) | Full directory scan (`-ds docs/`) | $0.50 - $2.00 | 1-3 minutes |
+| Small (< 50 files) | Full directory scan (`--dir fs:docs docs/`) | $0.50 - $2.00 | 1-3 minutes |
 | Medium (50-200 files) | Selective scanning + File Search | $2.00 - $8.00 | 3-8 minutes |
 | Large (200-1000 files) | Progressive analysis strategy | $8.00 - $25.00 | 8-20 minutes |
 | Enterprise (1000+ files) | Multi-stage filtering approach | $25.00+ | 20+ minutes |
@@ -365,7 +365,7 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 # Analyze multiple documentation repositories
 for repo in docs-user docs-dev docs-api; do
   ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-    -ds "/repos/$repo/" \
+    --dir fs:docs "/repos/$repo/" \
     -V project_name="Enterprise_${repo}" \
     -V project_type="Documentation_Set" \
     --output-file "${repo}_validation.json"
@@ -380,7 +380,7 @@ jq -s 'add' *_validation.json > enterprise_validation.json
 ```bash
 # Focus on installation/setup examples only
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/ \
+  --dir fs:docs docs/ \
   -V project_name="SetupFocus" \
   -V example_types="installation,setup,configuration" \
   -V exclude_types="api_examples,advanced_features"
@@ -393,7 +393,7 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 ```bash
 # Validate all examples before release
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/ \
+  --dir fs:docs docs/ \
   -V project_name="MyProject" \
   -V validation_level="comprehensive" \
   --output-file pre_release_validation.json
@@ -404,7 +404,7 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 ```bash
 # Add to CI pipeline
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/ \
+  --dir fs:docs docs/ \
   -V project_name="$PROJECT_NAME" \
   -V project_type="$PROJECT_TYPE" \
   --output-file ci_validation_tasks.json
@@ -418,7 +418,7 @@ python scripts/execute_validation_tasks.py ci_validation_tasks.json
 ```bash
 # Validate examples after major version changes
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds docs/ \
+  --dir fs:docs docs/ \
   -V project_name="MyProject" \
   -V project_version="2.0" \
   -V migration_context="Breaking changes in v2.0" \
@@ -448,8 +448,8 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 
 **Upload Strategy**:
 
-- Use `-ds` for entire directories (most efficient for large sets)
-- Use `-fs` for specific high-priority files
+- Use `--dir fs:` for entire directories (most efficient for large sets)
+- Use `--file fs:` for specific high-priority files
 - Combine both approaches for hybrid strategies
 
 **Cost Management**:
@@ -471,9 +471,9 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 
 | Project Scale | Files | Recommended Command | Estimated Cost |
 |--------------|-------|-------------------|---------------|
-| **Small** | < 50 | `ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json -ds docs/ -V project_name="Small" -V project_type="CLI"` | $0.50-$2 |
+| **Small** | < 50 | `ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json --dir fs:docs docs/ -V project_name="Small" -V project_type="CLI"` | $0.50-$2 |
 | **Medium** | 50-200 | `./scripts/large_scale_example.sh` (Progressive strategy) | $2-$8 |
-| **Large** | 200-1000 | Multiple targeted `-ds` calls with filtering | $8-$25 |
+| **Large** | 200-1000 | Multiple targeted `--dir fs:` calls with filtering | $8-$25 |
 | **Enterprise** | 1000+ | Repository-specific analysis with automation | $25+ |
 
 ### Large-Scale Script
@@ -499,9 +499,9 @@ For comprehensive large-scale examples:
 ```bash
 # Analyze a typical open source project
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -fs README.md \
-  -fs CONTRIBUTING.md \
-  -ds docs/ \
+  --file fs:readme README.md \
+  --file fs:contributing CONTRIBUTING.md \
+  --dir fs:docs docs/ \
   -V project_name="awesome-cli" \
   -V project_type="CLI" \
   -V include_contributing_examples=true
@@ -512,7 +512,7 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 ```bash
 # Focus on API endpoint examples
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -ds api-docs/ \
+  --dir fs:api api-docs/ \
   -V project_name="payments-api" \
   -V project_type="REST_API" \
   -V focus_areas="authentication,endpoints,webhooks"
@@ -523,8 +523,8 @@ ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
 ```bash
 # Validate internal setup guides
 ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-  -fs docs/internal/setup.md \
-  -fs docs/internal/deployment.md \
+  --file fs:setup docs/internal/setup.md \
+  --file fs:deployment docs/internal/deployment.md \
   -V project_name="internal-tools" \
   -V project_type="Framework" \
   -V audience="internal_developers"

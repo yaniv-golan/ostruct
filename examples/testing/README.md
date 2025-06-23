@@ -69,8 +69,8 @@ This directory contains examples for automated test generation, test analysis, a
 ```bash
 # Generate unit tests for code
 ostruct run prompts/test_generation.j2 schemas/test_result.json \
-  -fc source_code src/calculator.py \
-  -fs test_examples tests/ \
+  --file ci:source_code src/calculator.py \
+  --file fs:test_examples tests/ \
   --sys-file prompts/system.txt
 ```
 
@@ -79,9 +79,9 @@ ostruct run prompts/test_generation.j2 schemas/test_result.json \
 ```bash
 # Analyze test failures
 ostruct run prompts/failure_analysis.j2 schemas/analysis_result.json \
-  -fc test_results test_output.xml \
-  -fc source_code src/ \
-  -fs documentation docs/ \
+  --file ci:test_results test_output.xml \
+  --file ci:source_code src/ \
+  --file fs:documentation docs/ \
   --sys-file prompts/system.txt
 ```
 
@@ -90,10 +90,10 @@ ostruct run prompts/failure_analysis.j2 schemas/analysis_result.json \
 ```bash
 # Full testing workflow
 ostruct run prompts/comprehensive_test.j2 schemas/test_suite.json \
-  -fc source_code src/ \
-  -fc existing_tests tests/ \
-  -fs documentation docs/ \
-  -ft config pytest.ini \
+  --file ci:source_code src/ \
+  --file ci:existing_tests tests/ \
+  --file fs:documentation docs/ \
+  --file config pytest.ini \
   --sys-file prompts/system.txt
 ```
 

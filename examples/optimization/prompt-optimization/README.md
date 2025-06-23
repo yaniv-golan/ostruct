@@ -53,10 +53,10 @@ This example showcases ostruct's built-in optimization capabilities:
 ```bash
 # All files processed the same way - inefficient
 ostruct run templates/analysis.j2 schemas/analysis_result.json \
-  -f data=large_dataset.csv \
-  -f code=sample_code.py \
-  -f docs=documentation.md \
-  -f config=config.yaml \
+  --file data large_dataset.csv \
+  --file code sample_code.py \
+  --file docs documentation.md \
+  --file config config.yaml \
   --sys-file prompts/system.txt
 ```
 
@@ -72,10 +72,10 @@ ostruct run templates/analysis.j2 schemas/analysis_result.json \
 ```bash
 # Explicit routing for optimal processing
 ostruct run templates/smart-analysis.j2 schemas/analysis_result.json \
-  -fc large_dataset.csv \
-  -fc sample_code.py \
-  -fs documentation.md \
-  -ft config.yaml \
+  --file ci:data large_dataset.csv \
+  --file ci:code sample_code.py \
+  --file fs:docs documentation.md \
+  --file config config.yaml \
   --sys-file prompts/system.txt
 ```
 
@@ -229,9 +229,9 @@ time ostruct run before-after/traditional/data-analysis.j2 schemas/analysis_resu
 ```bash
 # Efficient: Tool-specific routing
 time ostruct --config configs/optimized.yaml run before-after/optimized/efficient-analysis.j2 schemas/analysis_result.json \
-  -fc data/large_dataset.csv \
-  -fc data/sample_code.py \
-  -fs data/documentation.md \
+  --file ci:dataset data/large_dataset.csv \
+  --file ci:code data/sample_code.py \
+  --file fs:docs data/documentation.md \
   --output-file optimized_result.json
 ```
 
@@ -254,9 +254,9 @@ ostruct run before-after/traditional/code-review.j2 schemas/analysis_result.json
 ```bash
 # Optimized tool usage
 ostruct run before-after/optimized/multi-tool-review.j2 schemas/analysis_result.json \
-  -fc src/ \
-  -fc tests/ \
-  -fs docs/ \
+  --dir ci:src src/ \
+  --dir ci:tests tests/ \
+  --dir fs:docs docs/ \
   --output-file optimized_review.json
 ```
 
@@ -267,8 +267,8 @@ ostruct run before-after/optimized/multi-tool-review.j2 schemas/analysis_result.
 ```bash
 # Leverage external knowledge efficiently
 ostruct --config configs/optimized.yaml run before-after/optimized/smart-analysis.j2 schemas/analysis_result.json \
-  -fc data/research_data.csv \
-  -fs data/literature/ \
+  --file ci:research_data data/research_data.csv \
+  --dir fs:literature data/literature/ \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   -V repo_owner=research-org \
   -V repo_name=data-analysis \
@@ -350,9 +350,9 @@ def main():
         {
             "name": "Optimized Data Analysis",
             "cmd": """ostruct --config configs/optimized.yaml run before-after/optimized/efficient-analysis.j2 schemas/analysis_result.json \
-                     -fc data/large_dataset.csv \
-                     -fc data/sample_code.py \
-                     -fs data/documentation.md \
+                     --file ci:dataset data/large_dataset.csv \
+                     --file ci:code data/sample_code.py \
+                     --file fs:docs data/documentation.md \
                      --dry-run""",
             "type": "optimized"
         },
@@ -369,8 +369,8 @@ def main():
         {
             "name": "Multi-Tool Code Review",
             "cmd": """ostruct run before-after/optimized/multi-tool-review.j2 schemas/analysis_result.json \
-                     -fc data/sample_code.py \
-                     -fs data/documentation.md \
+                     --file ci:code data/sample_code.py \
+                     --file fs:docs data/documentation.md \
                      --dry-run""",
             "type": "optimized"
         }
@@ -552,9 +552,9 @@ ostruct run before-after/traditional/data-analysis.j2 schemas/analysis_result.js
 
 echo "Running optimized approach..."
 ostruct --config configs/optimized.yaml run before-after/optimized/efficient-analysis.j2 schemas/analysis_result.json \
-  -fc data/large_dataset.csv \
-  -fc data/sample_code.py \
-  -fs data/documentation.md \
+  --file ci:dataset data/large_dataset.csv \
+  --file ci:code data/sample_code.py \
+  --file fs:docs data/documentation.md \
   --dry-run > optimized_output.txt 2>&1 || true
 
 echo "Comparing results..."
@@ -568,14 +568,14 @@ echo "---------------------------"
 
 echo "Testing cost-focused configuration..."
 ostruct --config configs/cost-focused.yaml run before-after/optimized/efficient-analysis.j2 schemas/analysis_result.json \
-  -fc data/sample_code.py \
-  -fs data/documentation.md \
+  --file ci:code data/sample_code.py \
+  --file fs:docs data/documentation.md \
   --dry-run
 
 echo "Testing performance-focused configuration..."
 ostruct --config configs/optimized.yaml run before-after/optimized/efficient-analysis.j2 schemas/analysis_result.json \
-  -fc data/sample_code.py \
-  -fs data/documentation.md \
+  --file ci:code data/sample_code.py \
+  --file fs:docs data/documentation.md \
   --dry-run
 
 echo
@@ -586,8 +586,8 @@ echo "-------------------------"
 
 echo "Demonstrating Code Interpreter + File Search + MCP integration..."
 ostruct --config configs/optimized.yaml run before-after/optimized/smart-analysis.j2 schemas/analysis_result.json \
-  -fc data/sample_code.py \
-  -fs data/documentation.md \
+  --file ci:code data/sample_code.py \
+  --file fs:docs data/documentation.md \
   --mcp-server deepwiki@https://mcp.deepwiki.com/sse \
   -V repo_owner=example-org \
   -V repo_name=sample-project \
@@ -733,7 +733,7 @@ def main():
             "description": "Traditional code review workflow"
         },
         {
-            "cmd": "ostruct run before-after/optimized/smart-analysis.j2 schemas/analysis_result.json -fc data/large_dataset.csv -fc data/sample_code.py -fs data/documentation.md",
+            "cmd": "ostruct run before-after/optimized/smart-analysis.j2 schemas/analysis_result.json --file ci:dataset data/large_dataset.csv --file ci:code data/sample_code.py --file fs:docs data/documentation.md",
             "description": "Optimized multi-tool workflow"
         }
     ]
@@ -818,9 +818,9 @@ def validate_migration():
     print("Testing optimized approach...")
     optimized_cmd = """
     ostruct --config configs/optimized.yaml run before-after/optimized/smart-analysis.j2 schemas/analysis_result.json \
-      -fc data/large_dataset.csv \
-      -fc data/sample_code.py \
-      -fs data/documentation.md \
+      --file ci:dataset data/large_dataset.csv \
+      --file ci:code data/sample_code.py \
+      --file fs:docs data/documentation.md \
       --dry-run
     """
 
@@ -928,7 +928,7 @@ if __name__ == "__main__":
    ostruct run template.j2 schema.json -f data=file.csv -f code=script.py
 
    # After: Explicit tool routing
-   ostruct run template.j2 schema.json -fc file.csv -fc script.py
+   ostruct run template.j2 schema.json --file ci:data file.csv --file ci:code script.py
    ```
 
 2. **Test Improvements**:
@@ -958,7 +958,7 @@ if __name__ == "__main__":
 2. **Use Configuration**:
 
    ```bash
-   ostruct --config configs/optimized.yaml run template.j2 schema.json -fc data.csv
+   ostruct --config configs/optimized.yaml run template.j2 schema.json --file ci:data data.csv
    ```
 
 #### Phase 4: Template Optimization

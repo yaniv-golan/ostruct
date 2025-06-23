@@ -11,10 +11,10 @@ Please be aware of the following when using `ostruct` with different file routin
   * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
 * **Template-Only Access & Prompt Content**:
-  * Flags like `-ft`, `--fta`, `-dt`, `--dta` (and legacy `-f`, `-d`) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
+  * Flags like `--file alias` (template-only, no target prefix) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
   * **However, if your Jinja2 template includes the content of these files (e.g., using `{{ my_file.content }}`), that file content WILL become part of the prompt sent to the main OpenAI Chat Completions API.**
-  * For large files or sensitive data that should not be part of the main prompt, even if used with `-ft`, avoid rendering their full content in the template or use redaction techniques.
-  * If a large file is intended for analysis or search, prefer using `-fc`/`-fs` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
+  * For large files or sensitive data that should not be part of the main prompt, even if used with template-only flags, avoid rendering their full content in the template or use redaction techniques.
+  * If a large file is intended for analysis or search, prefer using `--file ci:` or `--file fs:` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
 
 Always review which files are being routed to which tools and how their content is used in your templates to manage data privacy and API costs effectively.
 
@@ -35,8 +35,8 @@ cd examples/enhanced/pdf-semantic-diff
 
 # Run the analysis
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-  -fc old_pdf test_data/contracts/v1.pdf \
-  -fc new_pdf test_data/contracts/v2.pdf \
+  --file ci:old_pdf test_data/contracts/v1.pdf \
+  --file ci:new_pdf test_data/contracts/v2.pdf \
   --model gpt-4o --temperature 0
 ```
 
@@ -56,8 +56,8 @@ The enhanced approach uses explicit file routing to ensure PDFs are processed by
 
 ```bash
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-  -fc old_pdf path/to/old_document.pdf \
-  -fc new_pdf path/to/new_document.pdf \
+  --file ci:old_pdf path/to/old_document.pdf \
+  --file ci:new_pdf path/to/new_document.pdf \
   --model gpt-4o \
   --temperature 0 \
   --output-file results.json
@@ -65,8 +65,8 @@ ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
 
 ### Command-Line Options
 
-* `-fc old_pdf <file>`: Route old PDF to Code Interpreter as `old_pdf` variable
-* `-fc new_pdf <file>`: Route new PDF to Code Interpreter as `new_pdf` variable
+* `--file ci:old_pdf <file>`: Route old PDF to Code Interpreter as `old_pdf` variable
+* `--file ci:new_pdf <file>`: Route new PDF to Code Interpreter as `new_pdf` variable
 * `--model gpt-4o`: Recommended model for best results
 * `--temperature 0`: Ensures consistent, deterministic output
 * `--output-file <file>`: Save results to specified JSON file
@@ -82,8 +82,8 @@ python scripts/validate_output.py output.json
 
 # Dry run (validation only)
 ostruct run prompts/pdf_semantic_diff.j2 schemas/semantic_diff.schema.json \
-  -fc old_pdf test_data/contracts/v1.pdf \
-  -fc new_pdf test_data/contracts/v2.pdf \
+  --file ci:old_pdf test_data/contracts/v1.pdf \
+  --file ci:new_pdf test_data/contracts/v2.pdf \
   --dry-run
 ```
 

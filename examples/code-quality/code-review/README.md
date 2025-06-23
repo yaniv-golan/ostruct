@@ -11,16 +11,16 @@ Please be aware of the following when using `ostruct` with different file routin
   * Ensure you understand OpenAI's data usage policies before using these options with sensitive data.
 
 * **Template-Only Access & Prompt Content**:
-  * Flags like `-ft`, `--fta`, `-dt`, `--dta` (and legacy `-f`, `-d`) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
+  * Flags like `--file alias` (template-only, no target prefix) are designed for template-only access and **do not directly upload files to Code Interpreter or File Search services.**
   * **However, if your Jinja2 template includes the content of these files (e.g., using `{{ my_file.content }}`), that file content WILL become part of the prompt sent to the main OpenAI Chat Completions API.**
-  * For large files or sensitive data that should not be part of the main prompt, even if used with `-ft`, avoid rendering their full content in the template or use redaction techniques.
-  * If a large file is intended for analysis or search, prefer using `-fc`/`-fs` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
+  * For large files or sensitive data that should not be part of the main prompt, even if used with template-only flags, avoid rendering their full content in the template or use redaction techniques.
+  * If a large file is intended for analysis or search, prefer using `--file ci:` or `--file fs:` to optimize token usage and costs, and to prevent exceeding model context limits by inadvertently including its full content in the prompt. `ostruct` will issue a warning if you attempt to render the content of a large template-only file.
 
 Always review which files are being routed to which tools and how their content is used in your templates to manage data privacy and API costs effectively.
 
 For detailed information about data handling and security best practices, see the [Security Overview](../../../docs/source/security/overview.rst) documentation.
 
-**Alternative**: Use template-only options (`-ft`, `-dt`) for local-only processing without uploads.
+**Alternative**: Use template-only options (`--file alias`, `--dir alias`) for local-only processing without uploads.
 
 ## Features
 
@@ -113,19 +113,19 @@ Upload code for execution and dynamic analysis:
 ```bash
 # Directory routing for code analysis
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -dc security_code examples/security \
+  --dir ci:security_code examples/security \
   --sys-file prompts/system.txt
 
 # Individual file routing
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -fc sql_injection examples/security/sql_injection.py \
-  -fc perf_code examples/performance/n_plus_one.py \
+  --file ci:sql_injection examples/security/sql_injection.py \
+  --file ci:perf_code examples/performance/n_plus_one.py \
   --sys-file prompts/system.txt
 
-# Two-argument alias syntax (best tab completion)
+# Multiple files with explicit aliases
 ostruct run prompts/task.j2 schemas/code_review.json \
-  --file-for-code-interpreter security_code examples/security/sql_injection.py \
-  --file-for-code-interpreter performance_code examples/performance/n_plus_one.py \
+  --file ci:security_code examples/security/sql_injection.py \
+  --file ci:performance_code examples/performance/n_plus_one.py \
   --file system_prompt prompts/system.txt
 ```
 
@@ -136,15 +136,15 @@ Search documentation for best practices and context:
 ```bash
 # Code review with documentation context
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -dc security_code examples/security \
-  -ds docs docs/ \
+  --dir ci:security_code examples/security \
+  --dir fs:docs docs/ \
   --sys-file prompts/system.txt
 
 # Template-only configuration files
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -dc source_code source_code/ \
-  -ds documentation documentation/ \
-  -ft eslint_config .eslintrc.json \
+  --dir ci:source_code source_code/ \
+  --dir fs:documentation documentation/ \
+  --file eslint_config .eslintrc.json \
   --sys-file prompts/system.txt
 ```
 
@@ -155,10 +155,10 @@ Combine Code Interpreter and File Search for comprehensive analysis:
 ```bash
 # Full multi-tool analysis
 ostruct run prompts/task.j2 schemas/code_review.json \
-  -dc security_code examples/security \
-  -dc performance_code examples/performance \
-  -ds docs docs/ \
-  -ft config config.yaml \
+  --dir ci:security_code examples/security \
+  --dir ci:performance_code examples/performance \
+  --dir fs:docs docs/ \
+  --file config config.yaml \
   --sys-file prompts/system.txt \
   --output-file comprehensive_review.json
 ```
@@ -186,8 +186,8 @@ EOF
 
 # Run with configuration
 ostruct --config ostruct.yaml run prompts/task.j2 schemas/code_review.json \
-  -dc src src/ \
-  -ds docs docs/ \
+  --dir ci:src src/ \
+  --dir fs:docs docs/ \
   --sys-file prompts/system.txt
 ```
 
@@ -218,7 +218,7 @@ The review results follow a structured schema defined in `schemas/code_review.js
 - name: Run Code Review
   run: |
     ostruct run prompts/task.j2 schemas/code_review.json \
-      -dc code . \
+      --dir ci:code . \
       --recursive \
               --pattern "*.{py,js,ts}" \
       --sys-file prompts/system.txt \
@@ -249,10 +249,10 @@ The review results follow a structured schema defined in `schemas/code_review.js
 
     # Run enhanced analysis
     ostruct --config ci_config.yaml run prompts/task.j2 schemas/code_review.json \
-      -dc src src/ \
-      -dc tests tests/ \
-      -ds docs docs/ \
-      -dc workflows .github/workflows \
+      --dir ci:src src/ \
+      --dir ci:tests tests/ \
+      --dir fs:docs docs/ \
+      --dir ci:workflows .github/workflows \
       --sys-file prompts/system.txt \
       --output-file enhanced_review.json
 ```
@@ -265,7 +265,7 @@ The review results follow a structured schema defined in `schemas/code_review.js
 code_review:
   script:
     - ostruct run prompts/task.j2 schemas/code_review.json \
-        -dc code . \
+        --dir ci:code . \
         --recursive \
         --sys-file prompts/system.txt
 ```
@@ -294,9 +294,9 @@ enhanced_code_review:
       EOF
     - |
       ostruct run prompts/task.j2 schemas/code_review.json \
-        -dc src src/ \
-        -ds documentation documentation/ \
-        -dc ci ci/ \
+        --dir ci:src src/ \
+        --dir fs:documentation documentation/ \
+        --dir ci:ci ci/ \
         --sys-file prompts/system.txt \
         --output-file comprehensive_review.json
   artifacts:
@@ -344,10 +344,10 @@ limits:
                     pip install ostruct-cli
 
                     ostruct --config jenkins_config.yaml run prompts/task.j2 schemas/code_review.json \
-                      -dc src src/ \
-                      -dc test test/ \
-                      -ds docs docs/ \
-                      -ft jenkinsfile Jenkinsfile \
+                        --dir ci:src src/ \
+  --dir ci:test test/ \
+  --dir fs:docs docs/ \
+  --file jenkinsfile Jenkinsfile \
                       --sys-file prompts/system.txt \
                       --output-file jenkins_review.json
                 '''

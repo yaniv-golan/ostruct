@@ -42,8 +42,8 @@ Should be: {{ config_file.content }}  # ✅ Correct: shows actual content
 
 ## Debugging Hints
 # To debug these errors:
-# 1. Run with --show-context to see available variables
+# 1. Run with --template-debug vars to see available variables
 # 2. Check variable names for typos
-# 3. Verify all required variables are provided via -f, --fta, or --ftl
+# 3. Verify all required variables are provided via --file or --dir
 # 4. Check loop variable scope
 # 5. Always use .content to access file content: {{ variable.content }}

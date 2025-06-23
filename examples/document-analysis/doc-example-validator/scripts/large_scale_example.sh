@@ -95,8 +95,8 @@ run_analysis \
     "Critical documentation files only" \
     "progressive_phase1.json" \
     "ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-     -fs test_data/sample_project/README.md \
-     -fs test_data/sample_project/changelog.md \
+     --file fs:readme test_data/sample_project/README.md \
+     --file fs:changelog test_data/sample_project/changelog.md \
      -V project_name=\"ProgressiveDemo\" \
      -V project_type=\"CLI\" \
      -V validation_level=\"critical_only\" \
@@ -109,7 +109,7 @@ run_analysis \
     "Complete documentation analysis" \
     "progressive_phase2.json" \
     "ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-     -ds test_data/sample_project/ \
+     --dir fs:docs test_data/sample_project/ \
      -V project_name=\"ProgressiveDemo\" \
      -V project_type=\"CLI\" \
      -V validation_level=\"comprehensive\" \
@@ -126,8 +126,8 @@ run_analysis \
     "User-facing documentation only" \
     "selective_analysis.json" \
     "ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-     -fs test_data/sample_project/README.md \
-     -ds test_data/sample_project/docs/ \
+     --file fs:readme test_data/sample_project/README.md \
+     --dir fs:docs test_data/sample_project/docs/ \
      -V project_name=\"SelectiveDemo\" \
      -V project_type=\"CLI\" \
      -V focus_areas=\"user_guides,tutorials\" \
@@ -145,10 +145,10 @@ run_analysis \
     "Markdown documentation files only" \
     "markdown_analysis.json" \
     "ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-     -fs test_data/sample_project/README.md \
-     -fs test_data/sample_project/changelog.md \
-     -fs test_data/sample_project/docs/installation.md \
-     -fs test_data/sample_project/docs/configuration.md \
+     --file fs:readme test_data/sample_project/README.md \
+     --file fs:changelog test_data/sample_project/changelog.md \
+     --file fs:install test_data/sample_project/docs/installation.md \
+     --file fs:config test_data/sample_project/docs/configuration.md \
      -V project_name=\"MarkdownDemo\" \
      -V project_type=\"CLI\" \
      -V preferred_formats=\"markdown\" \
@@ -174,9 +174,9 @@ run_analysis \
     "Multiple repository documentation" \
     "multi_repo_analysis.json" \
     "ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-     -ds temp_repos/frontend/ \
-     -ds temp_repos/backend/docs/ \
-     -ds temp_repos/api/docs/ \
+     --dir fs:frontend temp_repos/frontend/ \
+     --dir fs:backend temp_repos/backend/docs/ \
+     --dir fs:api temp_repos/api/docs/ \
      -V project_name=\"MultiRepoDemo\" \
      -V project_type=\"Microservices\" \
      --output-file multi_repo_analysis.json \
@@ -205,7 +205,7 @@ fi
 echo -e "${BLUE}🎯 Recommendations for Large-Scale Projects${NC}"
 echo ""
 echo -e "${GREEN}For Small Projects (< 50 files):${NC}"
-echo "  • Use full directory scan: -ds docs/"
+echo "  • Use full directory scan: --dir fs:docs docs/"
 echo "  • Single analysis run"
 echo "  • Expected cost: \$0.50 - \$2.00"
 echo ""

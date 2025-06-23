@@ -38,7 +38,7 @@ ostruct run debug_template.j2 test_schema.json --template-debug \
   -V timestamp="2025-01-24 10:30:00"
 
 # Show context variables
-ostruct run debug_template.j2 test_schema.json --show-context \
+ostruct run debug_template.j2 test_schema.json --template-debug vars \
   --file config_yaml example_config.yaml \
   --file code_files sample_code.py \
   -V current_model="gpt-4"
@@ -55,13 +55,13 @@ ostruct run debug_template.j2 test_schema.json --debug \
 
 ```bash
 # Basic context summary
-ostruct run debug_template.j2 test_schema.json --show-context \
+ostruct run debug_template.j2 test_schema.json --template-debug vars \
   --file config_yaml example_config.yaml \
   --file code_files sample_code.py \
   -V current_model="gpt-4"
 
 # Detailed context with content previews
-ostruct run debug_template.j2 test_schema.json --show-context-detailed \
+ostruct run debug_template.j2 test_schema.json --template-debug vars,preview \
   --file config_yaml example_config.yaml \
   --file code_files sample_code.py \
   -V current_model="gpt-4"
@@ -85,7 +85,7 @@ ostruct run debug_template.j2 test_schema.json --template-debug \
 The `debug_template.j2` includes an undefined variable `potentially_missing_var`. This demonstrates:
 
 1. How undefined variables are detected
-2. How to use `--show-context` to see available variables
+2. How to use `--template-debug vars` to see available variables
 3. How to fix undefined variable errors
 
 **Try this:**
@@ -98,7 +98,7 @@ ostruct run debug_template.j2 test_schema.json --template-debug \
   -V current_model="gpt-4"
 
 # Debug by checking available context
-ostruct run debug_template.j2 test_schema.json --show-context \
+ostruct run debug_template.j2 test_schema.json --template-debug vars \
   --file config_yaml example_config.yaml \
   --file code_files sample_code.py \
   -V current_model="gpt-4"
@@ -333,10 +333,10 @@ ostruct run template.j2 schema.json --template-debug all --file alias file.yaml
 ## Pro Tips
 
 1. **Start simple**: Begin with `--template-debug` to see basic expansion
-2. **Check context**: Use `--show-context` when debugging variables
+2. **Check context**: Use `--template-debug vars` when debugging variables
 3. **Use file references**: Prefer `file_ref()` over manual file iteration
 4. **Safe variable access**: Use `safe_get()` for robust variable handling
-5. **Test file routing**: Try different routing options (-f, -fc, -fs) for different use cases
+5. **Test file routing**: Try different routing options (--file alias, --file ci:alias, --file fs:alias) for different use cases
 6. **Dry run first**: Always test with `--dry-run` before live execution
 
 ## Migration Notes
@@ -345,7 +345,7 @@ ostruct run template.j2 schema.json --template-debug all --file alias file.yaml
 
 - **File Access**: `{{ file_ref("alias") }}` instead of `{% for file in alias %}{{ file.content }}{% endfor %}`
 - **Variable Access**: `{{ safe_get('var', 'default') }}` instead of `{{ var | default('default') }}`
-- **CLI Flags**: `--file alias file.txt` instead of `--ftl alias file.txt`
+- **CLI Flags**: `--file alias file.txt` instead of legacy flags
 
 ### Backwards Compatibility
 
