@@ -28,6 +28,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Template debugging examples with various complexity levels
   - Updated existing examples to demonstrate new `file_ref()` patterns
 
+- **Enhanced CLI Help System**: Integrated rich-click for beautiful, modern CLI help output with:
+  - Color-coded help text with professional styling and organized option groups
+  - Rich-formatted panels with borders and visual separation for better readability
+  - Structured option grouping (Template Data, Model Configuration, File Attachment, Tool Integration, etc.)
+  - Enhanced error messages with improved formatting and user guidance
+  - Terminal UI automatically adapts to terminal capabilities
+
+- **Quick Reference System**: Added `--quick-ref` flag for instant access to common usage patterns and examples:
+  - Rich-formatted quick reference with visual panels and syntax highlighting
+  - Comprehensive file attachment examples showing all routing targets
+  - Multi-tool integration patterns with real command examples
+  - Environment variable reference with clear categorization
+  - Replaces the previous `ostruct quick-ref` command with integrated help flag
+
 ### Changed
 
 - **Progress Options Simplification**: Merged `--no-progress` and `--progress-level` flags into a single `--progress [none|basic|detailed]` option for a cleaner, more intuitive CLI interface. This eliminates redundancy and follows standard CLI patterns where a single option controls related functionality.
@@ -48,6 +62,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Examples showing both manual file access and automatic `file_ref()` approaches
 
 - **Streamlined Installation**: Removed complex installation script in favor of standard methods (pipx, Homebrew, Docker), with automated Homebrew formula updates on release.
+
+- **MCP Environment Variables**: Changed MCP environment variable pattern from `MCP_<NAME>_URL` to `OSTRUCT_MCP_URL_<name>` for consistency with other ostruct environment variables (e.g., `OSTRUCT_MCP_URL_stripe` instead of `MCP_STRIPE_URL`). This provides better namespace isolation and follows the established `OSTRUCT_*` pattern used by other environment variables like `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`.
+
+- **Template Environment Variables**: Renamed template-specific environment variables for clarity:
+  - `OSTRUCT_MAX_FILE_SIZE` → `OSTRUCT_TEMPLATE_FILE_LIMIT` (controls individual file size limits for template access)
+  - `OSTRUCT_MAX_TOTAL_SIZE` → `OSTRUCT_TEMPLATE_TOTAL_LIMIT` (controls total file size limits for template processing)
+  - `OSTRUCT_PREVIEW_LIMIT` → `OSTRUCT_TEMPLATE_PREVIEW_LIMIT` (controls template debugging preview character limits)
+
+  These variables only affect template file access (via `--file alias path`) and do not impact Code Interpreter (`--file ci:`) or File Search (`--file fs:`) file routing. The new names clearly indicate their template-specific scope.
 
 ### Fixed
 
@@ -82,6 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Placeholder Files**: Cleaned up dummy/placeholder files from examples that were causing build issues without providing value.
 
+- **Quick Reference Command**: Removed `ostruct quick-ref` command in favor of the new `--quick-ref` flag, which provides the same functionality with enhanced rich formatting and better integration with the main CLI help system.
+
 ### Security
 
 - **Enhanced Validation**: Strengthened security across multiple areas:
@@ -108,6 +133,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI Syntax**: Update to simplified attachment syntax if still using legacy flags:
   - Old: `--fta alias file.txt`
   - New: `--file alias file.txt`
+
+- **MCP Environment Variables**: Update your environment variable names:
+  - Old: `MCP_STRIPE_URL=https://mcp.stripe.com`
+  - New: `OSTRUCT_MCP_URL_stripe=https://mcp.stripe.com`
+  - Old: `MCP_CUSTOM_URL=https://my-server.com`
+  - New: `OSTRUCT_MCP_URL_custom=https://my-server.com`
+
+- **Template Environment Variables**: Update template-specific environment variable names:
+  - `OSTRUCT_MAX_FILE_SIZE` → `OSTRUCT_TEMPLATE_FILE_LIMIT`
+  - `OSTRUCT_MAX_TOTAL_SIZE` → `OSTRUCT_TEMPLATE_TOTAL_LIMIT`
+  - `OSTRUCT_PREVIEW_LIMIT` → `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`
+
+  These variables control template file processing limits and do not affect Code Interpreter or File Search operations.
+
+- **Quick Reference Access**: The `ostruct quick-ref` command has been replaced with the `--quick-ref` flag:
+  - Old: `ostruct quick-ref`
+  - New: `ostruct --quick-ref`
+
+  The new flag provides the same reference information with enhanced rich formatting and better visual organization.
 
 ## [0.8.9] - 2025-06-12
 
@@ -291,7 +335,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Configuration System**:
   - Introduced a YAML-based configuration file (default: `ostruct.yaml` in the current directory or `~/.ostruct/config.yaml`, or a path specified by `--config`) for persistent settings related to models, tools, operational parameters, and cost limits.
-  - Implemented direct loading of specific environment variables (e.g., `OPENAI_API_KEY`, `MCP_<NAME>_URL`) within the configuration system. Generic `${ENV_VAR}` style substitution within the YAML is not supported.
+  - Implemented direct loading of specific environment variables (e.g., `OPENAI_API_KEY`, `OSTRUCT_MCP_URL_<name>`) within the configuration system. Generic `${ENV_VAR}` style substitution within the YAML is not supported.
   - New CLI option: `--config` to specify a custom configuration file path.
 
 - **Progress Reporting**:
