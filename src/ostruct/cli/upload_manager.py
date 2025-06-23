@@ -37,7 +37,17 @@ class UploadRecord:
 class UploadError(CLIError):
     """Error during file upload operations."""
 
-    pass
+    def __init__(self, message: str, **kwargs: Any):
+        """Initialize upload error with appropriate exit code."""
+        from .exit_codes import ExitCode
+
+        super().__init__(message, exit_code=ExitCode.USAGE_ERROR, **kwargs)
+
+    def __str__(self) -> str:
+        """Custom string representation without error type prefix."""
+        # For upload errors, we want clean user-friendly messages
+        # without the [USAGE_ERROR] prefix since our messages are already formatted
+        return self.message
 
 
 class SharedUploadManager:
@@ -236,15 +246,27 @@ class SharedUploadManager:
                 record.tools_completed.add(tool)
                 record.tools_pending.discard(tool)
 
+            except UploadError as e:
+                # UploadError already has user-friendly message, don't duplicate logging
+                failed_uploads.append((record.path, str(e)))
             except Exception as e:
                 logger.error(f"Failed to upload {record.path} for {tool}: {e}")
                 failed_uploads.append((record.path, str(e)))
 
         if failed_uploads:
-            error_msg = "Failed to upload files: " + ", ".join(
-                f"{path} ({error})" for path, error in failed_uploads
-            )
-            raise UploadError(error_msg)
+            # If we have user-friendly error messages, present them cleanly
+            if len(failed_uploads) == 1:
+                # Single file failure - show the detailed error message
+                _, error_msg = failed_uploads[0]
+                raise UploadError(error_msg)
+            else:
+                # Multiple file failures - show summary with details
+                error_msg = (
+                    f"Failed to upload {len(failed_uploads)} files:\n\n"
+                )
+                for i, (path, error) in enumerate(failed_uploads, 1):
+                    error_msg += f"{i}. {error}\n\n"
+                raise UploadError(error_msg.rstrip())
 
         logger.debug(f"Completed {len(uploaded)} uploads for {tool}")
         return uploaded
@@ -282,8 +304,66 @@ class SharedUploadManager:
             return upload_response.id
 
         except Exception as e:
-            logger.error(f"Upload failed for {file_path}: {e}")
-            raise UploadError(f"Failed to upload {file_path}: {e}")
+            # Parse OpenAI API errors for better user experience
+            # Note: We don't log here as the error will be handled at a higher level
+            user_friendly_error = self._parse_upload_error(file_path, e)
+            raise UploadError(user_friendly_error)
+
+    def _parse_upload_error(self, file_path: Path, error: Exception) -> str:
+        """Parse OpenAI upload errors into user-friendly messages.
+
+        Args:
+            file_path: Path to the file that failed to upload
+            error: The original exception from OpenAI API
+
+        Returns:
+            User-friendly error message with actionable suggestions
+        """
+        error_str = str(error)
+        file_ext = file_path.suffix.lower()
+
+        # Check for unsupported file extension error
+        if (
+            "Invalid extension" in error_str
+            and "Supported formats" in error_str
+        ):
+            return (
+                f"❌ Cannot upload {file_path.name} to Code Interpreter/File Search\n"
+                f"   File extension '{file_ext}' is not supported by OpenAI's tools.\n"
+                f"   See: https://platform.openai.com/docs/assistants/tools/code-interpreter#supported-files\n\n"
+                f"💡 Solutions:\n"
+                f"   1. Use template-only routing (recommended):\n"
+                f"      Change: --dir ci:configs {file_path.parent}\n"
+                f"      To:     --dir configs {file_path.parent}\n"
+                f'      Your template can still access content with: {{{{ file_ref("configs") }}}}\n\n'
+                f"   2. Rename file to add .txt extension:\n"
+                f"      {file_path.name} → {file_path.name}.txt\n"
+                f"      Then use: --dir ci:configs {file_path.parent}\n"
+                f"      (OpenAI will treat it as text but preserve YAML content)"
+            )
+
+        # Check for file size errors
+        if (
+            "file too large" in error_str.lower()
+            or "size limit" in error_str.lower()
+        ):
+            return (
+                f"❌ File too large: {file_path.name}\n"
+                f"   OpenAI tools have a file size limit (typically 100MB).\n\n"
+                f"💡 Solutions:\n"
+                f"   1. Use template-only routing: --dir configs {file_path.parent}\n"
+                f"   2. Split large files into smaller chunks\n"
+                f"   3. Use file summarization before upload"
+            )
+
+        # Generic upload error with helpful context
+        return (
+            f"❌ Failed to upload {file_path.name}\n"
+            f"   {error_str}\n\n"
+            f"💡 If this is a configuration file, try template-only routing:\n"
+            f"   Change: --dir ci:configs {file_path.parent}\n"
+            f"   To:     --dir configs {file_path.parent}"
+        )
 
     def get_upload_summary(self) -> Dict[str, Any]:
         """Get summary of upload operations.
