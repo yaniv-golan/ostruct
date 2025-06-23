@@ -605,7 +605,7 @@ class TestCLICore:
         assert result.exit_code == 0
         output = result.output
         assert "version" in output.lower()
-        assert "cli" in output.lower()
+        assert "ostruct" in output.lower()
 
     def test_missing_required_args(self, cli_runner: CliTestRunner) -> None:
         """Test error handling for missing required arguments."""
