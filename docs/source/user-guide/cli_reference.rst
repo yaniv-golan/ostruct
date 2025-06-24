@@ -30,11 +30,20 @@ Quick Reference Commands
    # Show quick reference with new attachment syntax
    ostruct quick-ref
 
-   # Get JSON help for programmatic consumption
+   # Get JSON help for programmatic consumption (experimental)
    ostruct run --help-json
 
    # Update model registry
    ostruct update-registry
+
+.. warning::
+   **Experimental Feature: --help-json**
+
+   The ``--help-json`` option is **experimental** and subject to change. The JSON format it produces is **not yet stable** and is likely to change in future versions without notice.
+
+   - **Use with caution** in production scripts or automation
+   - **Format may change** between versions without backward compatibility
+   - **Intended for development** and testing purposes only
 
 New Attachment System (v0.9.0)
 ===============================

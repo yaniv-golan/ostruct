@@ -1,8 +1,8 @@
 # Migration Guide: Legacy → New Syntax
 
-**ostruct v0.8.x → v0.9.0**
+**ostruct v0.8.x → v1.0.0**
 
-## Breaking Changes Summary (v0.9.0)
+## Breaking Changes Summary (v1.0.0)
 
 The new CLI completely replaces the old file routing system with explicit target/alias syntax. This provides better control, security, and clarity about how files are processed.
 
@@ -17,7 +17,7 @@ The new CLI completely replaces the old file routing system with explicit target
 
 ### Basic File Attachments
 
-| Legacy Syntax (v0.8.x) | New Syntax (v0.9.0) | Notes |
+| Legacy Syntax (v0.8.x) | New Syntax (v1.0.0) | Notes |
 |-------------------------|----------------------|-------|
 | `-f data file.txt` | `--file data file.txt` | Template access only |
 | `-d docs ./docs` | `--dir docs ./docs` | Template access only |
@@ -25,7 +25,7 @@ The new CLI completely replaces the old file routing system with explicit target
 
 ### Tool-Specific Routing
 
-| Legacy Syntax (v0.8.x) | New Syntax (v0.9.0) | Notes |
+| Legacy Syntax (v0.8.x) | New Syntax (v1.0.0) | Notes |
 |-------------------------|----------------------|-------|
 | `-fc file.csv` | `--file ci:data file.csv` | Code Interpreter |
 | `-fs manual.pdf` | `--file fs:docs manual.pdf` | File Search |
@@ -35,7 +35,7 @@ The new CLI completely replaces the old file routing system with explicit target
 
 ### Advanced Routing
 
-| Legacy (v0.8.x) | New (v0.9.0) | Benefit |
+| Legacy (v0.8.x) | New (v1.0.0) | Benefit |
 |------------------|---------------|---------|
 | Multiple `--file-for` calls | `--file ci,fs:shared data.json` | Single attachment, multiple targets |
 | Manual variable naming | Explicit aliases required | Clear template variable names |
@@ -43,7 +43,7 @@ The new CLI completely replaces the old file routing system with explicit target
 
 ## Security Migration
 
-| Legacy (v0.8.x) | New (v0.9.0) | Benefit |
+| Legacy (v0.8.x) | New (v1.0.0) | Benefit |
 |------------------|---------------|---------|
 | No explicit security | `--path-security strict` | Enhanced security |
 | Manual path validation | `--allow /safe/paths` | Explicit allowlists |
@@ -84,7 +84,7 @@ Create a migration script for complex transformations:
 ```python
 #!/usr/bin/env python3
 """
-ostruct CLI Migration Script (v0.8.x → v0.9.0)
+ostruct CLI Migration Script (v0.8.x → v1.0.0)
 Converts legacy file routing to new attachment syntax.
 """
 
@@ -220,7 +220,7 @@ ostruct run template.j2 schema.json --dry-run --dry-run-json
 # Get run summary as JSON
 ostruct run template.j2 schema.json --run-summary-json
 
-# Get JSON help for programmatic consumption
+# Get JSON help for programmatic consumption (experimental - format may change)
 ostruct run --help-json
 ```
 
@@ -258,14 +258,14 @@ ostruct run template.j2 schema.json --path-security strict --dry-run
 ### Comparison Testing
 
 1. **Run legacy version** (v0.8.x) and save output
-2. **Run migrated version** (v0.9.0) with new syntax
+2. **Run migrated version** (v1.0.0) with new syntax
 3. **Compare outputs** to ensure equivalence
 4. **Test error cases** to verify proper validation
 
 ## Getting Help
 
 - **CLI Help**: `ostruct run --help`
-- **JSON Help**: `ostruct run --help-json`
+- **JSON Help**: `ostruct run --help-json` ⚠️ **(Experimental - format may change)**
 - **Quick Reference**: `ostruct quick-ref`
 - **Documentation**: <https://ostruct.readthedocs.io>
 

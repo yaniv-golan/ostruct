@@ -117,6 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Migration Notes
 
+For a comprehensive migration guide with examples and automated migration scripts, see [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md).
+
 - **Template Optimization**: The automatic template optimization system has been removed. Users should migrate to the explicit `file_ref()` system:
   - Templates that relied on automatic optimization should now use `file_ref("alias")` for structured file references
   - The `--no-optimization` flag is no longer available (and no longer needed)
