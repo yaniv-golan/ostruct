@@ -1,0 +1,43 @@
+You are an expert at analyzing documentation and extracting executable commands. Your task is to analyze a README file and extract all ostruct commands that can be executed.
+
+## README Content
+{{ file_ref("readme_content") }}
+
+## Example Directory
+The commands in this README are located in: {{ safe_get("example_directory", "examples/unknown") }}
+
+## Instructions
+
+1. **Find all ostruct commands** in the README content above
+2. **Normalize multi-line commands** - combine lines that use backslash continuation into single commands
+3. **Resolve relative paths** - convert relative file paths to be relative to the example directory
+4. **Identify dependencies** - list all files that each command requires
+5. **Categorize commands** - determine if they're suitable for dry-run testing
+
+## Command Analysis Rules
+
+- Include ANY line that contains "ostruct" as a command (even if in explanatory text)
+- For multi-line commands with backslashes (\), combine them into a single line
+- **KEEP PATHS RELATIVE**: Do NOT convert relative paths - keep them as-is (e.g., "prompts/task.j2" stays "prompts/task.j2")
+- The working_directory will be set to the example directory, so paths should be relative to that
+- Identify all file dependencies (templates, schemas, input files)
+- Mark commands as "executable" if they appear to be complete runnable examples
+- Mark commands as "reference" if they appear to be partial or explanatory
+
+## Output Requirements
+
+Extract commands in the specified JSON schema format. For each command:
+- `command`: The complete, normalized ostruct command
+- `working_directory`: Where the command should be executed from
+- `dependencies`: Array of file paths the command requires
+- `type`: "executable" or "reference"
+- `description`: Brief description of what the command does
+- `original_text`: The original text from the README (for debugging)
+
+## Context Information
+
+- **README File**: {{ safe_get("readme_file", "unknown") }}
+- **Example Directory**: {{ safe_get("example_directory", "examples/unknown") }}
+- **Analysis Target**: Extract executable ostruct commands for validation testing
+
+Focus on commands that appear to be complete, runnable examples rather than partial snippets or explanatory text.

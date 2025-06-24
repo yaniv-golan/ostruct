@@ -1,0 +1,73 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "readme_file": {
+            "type": "string",
+            "description": "Path to the README file that was analyzed"
+        },
+        "example_directory": {
+            "type": "string",
+            "description": "Directory containing the example"
+        },
+        "commands": {
+            "type": "array",
+            "description": "List of extracted ostruct commands",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Complete normalized ostruct command ready for execution"
+                    },
+                    "working_directory": {
+                        "type": "string",
+                        "description": "Directory from which the command should be executed"
+                    },
+                    "dependencies": {
+                        "type": "array",
+                        "description": "List of file paths that this command requires",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "executable",
+                            "reference"
+                        ],
+                        "description": "Whether this is a complete executable command or just a reference/example"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Brief description of what this command does"
+                    },
+                    "original_text": {
+                        "type": "string",
+                        "description": "Original text from README for debugging and context"
+                    }
+                },
+                "required": [
+                    "command",
+                    "working_directory",
+                    "dependencies",
+                    "type",
+                    "description",
+                    "original_text"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "analysis_notes": {
+            "type": "string",
+            "description": "Any additional notes about the extraction process or issues found"
+        }
+    },
+    "required": [
+        "readme_file",
+        "example_directory",
+        "commands"
+    ],
+    "additionalProperties": false
+}

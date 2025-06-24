@@ -16,6 +16,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!scripts/test/validate-examples/lib/
 lib64/
 parts/
 sdist/
@@ -45,6 +46,10 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+
+# Test validation cache
+scripts/test/validate-examples/cache/
+scripts/test/validate-examples/temp/
 
 # Jupyter Notebook
 .ipynb_checkpoints

@@ -22,6 +22,11 @@ Tests that run in isolated Docker environments.
 
 - `test-install.sh` - Tests installation in fresh container environment
 
+### Example Validation
+
+- `validate-examples.sh` - LLM-powered validation system that validates all examples in the `examples/` directory using intelligent command extraction and two-phase testing (dry-run then live execution)
+- `validate-examples/` - Supporting infrastructure including templates, schemas, libraries, and caching system
+
 ## Running Tests
 
 ### Individual Test Categories
@@ -35,6 +40,18 @@ Tests that run in isolated Docker environments.
 
 # Run Docker tests
 ./scripts/test/docker/test-install.sh
+
+# Validate all examples (for pre-release testing)
+./scripts/test/validate-examples.sh
+
+# Validate specific example
+./scripts/test/validate-examples.sh -e etymology
+
+# Dry-run validation only (fast, no API calls)
+./scripts/test/validate-examples.sh -d
+
+# Verbose output with detailed logging
+./scripts/test/validate-examples.sh -v
 ```
 
 ### All Tests
@@ -72,6 +89,16 @@ find scripts/test -name "*.sh" -executable -exec {} \;
 **Dependencies**: Docker runtime
 
 **Example**: Complete installation test in fresh container
+
+### Example Validation (`validate-examples.sh`)
+
+**Purpose**: LLM-powered validation of all examples using ostruct to test ostruct ("dogfooding")
+**Speed**: Variable (dry-run: fast, live: depends on API calls)
+**Dependencies**: Poetry environment, OpenAI API access
+
+**Key Features**: Intelligent command extraction, two-phase validation, caching, comprehensive reporting
+
+See [`validate-examples/README.md`](validate-examples/README.md) for complete documentation.
 
 ## Test Standards
 
@@ -125,6 +152,10 @@ echo "Test summary: X/Y passed"
 1. **Create failing test** that reproduces the bug
 2. **Fix the bug**
 3. **Verify test now passes**
+
+### For Example Validation
+
+The example validation system uses a "dogfooding" approach where ostruct validates ostruct examples using ostruct itself. See [`validate-examples/README.md`](validate-examples/README.md) for detailed guidance on troubleshooting validation issues.
 
 ### Guidelines
 
@@ -192,6 +223,8 @@ make test-all
    ```bash
    timeout 30s test_command || echo "Test timed out"
    ```
+
+4. **Example validation fails**: See [`validate-examples/README.md`](validate-examples/README.md) for comprehensive troubleshooting guide
 
 ## Best Practices
 
