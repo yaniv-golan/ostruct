@@ -11,7 +11,7 @@ extract_ostruct_commands() {
         return 1
     fi
 
-    vlog "DEBUG" "Using LLM to extract commands from: ${readme_file#${PROJECT_ROOT}/}" >&2
+    vlog "PROGRESS" "🔍 Extracting commands from README (this may take 10-20 seconds)..." >&2
 
     # Prepare relative paths for the template
     local relative_example_dir="${example_dir#${PROJECT_ROOT}/}"
@@ -48,15 +48,39 @@ extract_ostruct_commands() {
         return 1
     fi
 
-    # Parse the JSON output and extract executable commands
-    local commands
-    commands=$(extract_executable_commands_from_json "$extraction_output" "$example_dir")
+    # Extract both executable and placeholder commands
+    local executable_commands
+    local placeholder_commands
+    executable_commands=$(extract_executable_commands_from_json "$extraction_output" "$example_dir")
+    placeholder_commands=$(extract_placeholder_commands_from_json "$extraction_output" "$example_dir")
+
+    # Create a combined commands file with type markers
+    local all_commands=""
+
+    # Add executable commands
+    if [[ -n "$executable_commands" ]]; then
+        while IFS= read -r cmd; do
+            if [[ -n "$cmd" ]]; then
+                all_commands+="EXECUTABLE:$cmd"$'\n'
+            fi
+        done <<< "$executable_commands"
+    fi
+
+    # Add placeholder commands
+    if [[ -n "$placeholder_commands" ]]; then
+        while IFS= read -r cmd; do
+            if [[ -n "$cmd" ]]; then
+                all_commands+="PLACEHOLDER:$cmd"$'\n'
+            fi
+        done <<< "$placeholder_commands"
+    fi
 
     # Clean up temporary file
     rm -f "$extraction_output"
 
-    if [[ -n "$commands" ]]; then
-        echo "$commands"
+    if [[ -n "$all_commands" ]]; then
+        # Remove trailing newline
+        echo "${all_commands%$'\n'}"
     fi
 }
 
@@ -83,6 +107,66 @@ extract_executable_commands_from_json() {
         echo "$commands"
     else
         vlog "DEBUG" "No executable commands found in JSON output" >&2
+    fi
+}
+
+# Extract placeholder commands for syntax validation only
+extract_placeholder_commands_from_json() {
+    local json_file="$1"
+    local example_dir="$2"
+
+    if [[ ! -f "$json_file" ]]; then
+        vlog "DEBUG" "No JSON file to parse: $json_file" >&2
+        return 1
+    fi
+
+    # Use jq to extract placeholder commands
+    local commands
+    commands=$(jq -r '
+        .commands[]?
+        | select(.type == "placeholder")
+        | "cd \"\(.working_directory)\" && \(.command)"
+    ' "$json_file" 2>/dev/null)
+
+    if [[ -n "$commands" ]]; then
+        vlog "DEBUG" "Extracted $(echo "$commands" | wc -l) placeholder commands for syntax validation" >&2
+        echo "$commands"
+    else
+        vlog "DEBUG" "No placeholder commands found in JSON output" >&2
+    fi
+}
+
+# Validate syntax of placeholder commands without execution
+validate_placeholder_command_syntax() {
+    local command="$1"
+    local example_name="$2"
+
+    vlog "DEBUG" "Validating syntax for placeholder command: $command"
+
+    # Extract just the ostruct portion of the command (remove cd part)
+    local ostruct_command
+    ostruct_command=$(echo "$command" | sed 's/^cd[^&]*&&[[:space:]]*//')
+
+    # Use ostruct --help to validate basic syntax structure
+    # We'll do a basic pattern check since we can't execute with placeholder paths
+
+    # Check if it starts with 'ostruct' or 'poetry run ostruct'
+    if [[ ! "$ostruct_command" =~ ^(poetry[[:space:]]+run[[:space:]]+)?ostruct[[:space:]] ]]; then
+        vlog "ERROR" "Placeholder command syntax invalid: doesn't start with ostruct"
+        return 1
+    fi
+
+    # Check for basic command structure: ostruct [global-options] command [args]
+    # Allow for 'run' subcommand which is most common
+    if [[ "$ostruct_command" =~ ostruct[[:space:]]+(--[^[:space:]]+[[:space:]]+)*run[[:space:]] ]]; then
+        vlog "DEBUG" "Placeholder command has valid 'run' syntax structure"
+        return 0
+    elif [[ "$ostruct_command" =~ ostruct[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(list-models|version|help) ]]; then
+        vlog "DEBUG" "Placeholder command has valid utility command syntax"
+        return 0
+    else
+        vlog "WARN" "Placeholder command syntax may be invalid: $ostruct_command"
+        return 1
     fi
 }
 
@@ -113,7 +197,8 @@ validate_extracted_commands() {
     vlog "DEBUG" "Validated $valid_count/$command_count commands" >&2
 
     if [[ -n "$valid_commands" ]]; then
-        echo "$valid_commands" | head -n -1  # Remove trailing newline
+        # Remove trailing newline
+        echo "${valid_commands%$'\n'}"
     fi
 }
 

@@ -35,9 +35,10 @@
                         "type": "string",
                         "enum": [
                             "executable",
-                            "reference"
+                            "reference",
+                            "placeholder"
                         ],
-                        "description": "Whether this is a complete executable command or just a reference/example"
+                        "description": "Whether this is a complete executable command, just a reference/example, or contains placeholder paths"
                     },
                     "description": {
                         "type": "string",
