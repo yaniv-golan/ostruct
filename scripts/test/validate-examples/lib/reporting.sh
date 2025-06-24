@@ -7,7 +7,7 @@ TOTAL_COMMANDS=0
 PASSED_COMMANDS=0
 DRY_FAILED_COMMANDS=0
 LIVE_FAILED_COMMANDS=0
-START_TIME=""
+START_TIME=""  # Will be set in init_results_tracking
 
 declare -a FAILED_EXAMPLES
 declare -a PASSED_EXAMPLES
@@ -32,6 +32,13 @@ init_results_tracking() {
     local results_dir="${CACHE_DIR}/results"
     mkdir -p "$results_dir"
 
+    # Clear old result files when force refresh is enabled
+    if [[ "${FORCE_REFRESH:-false}" == "true" ]]; then
+        vlog "DEBUG" "Force refresh enabled, clearing old results"
+        rm -f "$results_dir"/*.json
+        rm -f "$results_dir"/*.initialized
+    fi
+
     vlog "DEBUG" "Initialized results tracking"
 }
 
@@ -50,7 +57,15 @@ record_result() {
             ((PASSED_COMMANDS++))
             add_to_passed_examples "$example_name"
             ;;
+        "SYNTAX_VALID")
+            ((PASSED_COMMANDS++))
+            add_to_passed_examples "$example_name"
+            ;;
         "DRY_FAIL")
+            ((DRY_FAILED_COMMANDS++))
+            add_to_dry_fail_examples "$example_name" "$command" "$error_message"
+            ;;
+        "SYNTAX_ERROR")
             ((DRY_FAILED_COMMANDS++))
             add_to_dry_fail_examples "$example_name" "$command" "$error_message"
             ;;
@@ -125,7 +140,8 @@ store_detailed_result() {
     local result_file="${results_dir}/${example_name//\//_}.json"
 
     # Create or update the result file
-    if [[ ! -f "$result_file" ]]; then
+    # If this is the first command and we're processing fresh, reset the file
+    if [[ ! -f "$result_file" ]] || ([[ "${FORCE_REFRESH:-false}" == "true" ]] && [[ ! -f "${result_file}.initialized" ]]); then
         jq -n \
             --arg example "$example_name" \
             --arg timestamp "$(date -Iseconds)" \
@@ -140,6 +156,11 @@ store_detailed_result() {
                 },
                 "timestamp": $timestamp
             }' > "$result_file"
+
+        # Mark as initialized for this run
+        if [[ "${FORCE_REFRESH:-false}" == "true" ]]; then
+            touch "${result_file}.initialized"
+        fi
     fi
 
     # Add command result using jq
@@ -155,9 +176,9 @@ store_detailed_result() {
          "timestamp": $timestamp
        }] |
        .summary.total += 1 |
-       if $status == "PASS" then
+       if $status == "PASS" or $status == "SYNTAX_VALID" then
          .summary.passed += 1
-       elif $status == "DRY_FAIL" then
+       elif $status == "DRY_FAIL" or $status == "SYNTAX_ERROR" then
          .summary.dry_failed += 1
        elif $status == "LIVE_FAIL" then
          .summary.live_failed += 1
@@ -223,16 +244,12 @@ generate_final_report() {
     # Generate JSON report
     generate_json_report "$end_time" "$duration"
 
-    # Generate detailed HTML report if requested
-    if [[ "$VERBOSE" == "true" ]]; then
-        generate_html_report
-    fi
+    # Generate HTML report (always)
+    generate_html_report
 
     local output_dir="${VALIDATE_DIR}/output"
     vlog "INFO" "JSON report saved to: ${output_dir}/validation_report.json"
-    if [[ "$VERBOSE" == "true" ]]; then
-        vlog "INFO" "HTML report saved to: ${output_dir}/validation_report.html"
-    fi
+    vlog "INFO" "HTML report saved to: ${output_dir}/validation_report.html"
     echo
     echo "Detailed results stored in: ${CACHE_DIR}/results/"
     echo
