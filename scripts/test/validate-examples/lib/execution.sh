@@ -1,6 +1,17 @@
 #!/bin/bash
 # Execution library - handles two-phase command execution (dry-run then live)
 
+# Import color definitions if not already defined
+if [[ -z "${RED:-}" ]]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    MAGENTA='\033[0;35m'
+    NC='\033[0m' # No Color
+fi
+
 # Execute all commands from a commands file
 execute_commands_from_file() {
     local commands_file="$1"
@@ -13,65 +24,145 @@ execute_commands_from_file() {
         return 0
     fi
 
-    vlog "INFO" "Executing commands for: $example_name"
+    # Read all lines into an array to avoid file descriptor issues
+    local commands_array=()
+    while IFS= read -r line; do
+        commands_array+=("$line")
+    done < "$commands_file"
+
+    # Count actual commands (excluding empty lines and comments)
+    local total_commands=0
+    for line in "${commands_array[@]}"; do
+        if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
+            ((total_commands++))
+        fi
+    done
+
+    vlog "PROGRESS" "Found ${total_commands} commands to validate"
 
     local command_count=0
     local success_count=0
     local dry_fail_count=0
     local live_fail_count=0
+    local placeholder_count=0
 
     # Temporarily disable exit-on-error for command execution
     set +e
 
-    while IFS= read -r command; do
-        if [[ -z "$command" || "$command" =~ ^[[:space:]]*# ]]; then
+    vlog "DEBUG" "Read ${#commands_array[@]} lines from commands file"
+
+    # Process each command
+    for line in "${commands_array[@]}"; do
+        vlog "DEBUG" "Processing line: '$line'"
+        if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
             vlog "DEBUG" "Skipping empty or comment line"
             continue
         fi
 
         ((command_count++))
-        vlog "DEBUG" "Command $command_count: $command"
 
-        # Execute two-phase validation
-        vlog "DEBUG" "About to execute two-phase validation for command $command_count"
-        local result=$(execute_two_phase_validation "$command" "$example_name")
-        vlog "DEBUG" "Two-phase validation returned: $result"
+        # Show command progress with a smaller separator
+        echo -e "\n${BLUE}───── Command ${command_count}/${total_commands} ─────${NC}" >&2
 
-        case "$result" in
-            "PASS")
-                ((success_count++))
-                record_result "$example_name" "$command" "PASS" ""
-                vlog "DEBUG" "Recorded PASS result for command $command_count"
+        # Parse command type and actual command
+        local command_type=""
+        local command=""
+
+        if [[ "$line" =~ ^EXECUTABLE: ]]; then
+            command_type="EXECUTABLE"
+            command="${line#EXECUTABLE:}"
+        elif [[ "$line" =~ ^PLACEHOLDER: ]]; then
+            command_type="PLACEHOLDER"
+            command="${line#PLACEHOLDER:}"
+        else
+            # Legacy format - assume executable
+            command_type="EXECUTABLE"
+            command="$line"
+        fi
+
+        # Display the command being processed (truncate if too long)
+        local display_command="$command"
+        if [[ ${#display_command} -gt 80 ]]; then
+            display_command="${display_command:0:77}..."
+        fi
+        vlog "INFO" "Command: ${display_command}"
+
+        # Handle different command types
+        case "$command_type" in
+            "EXECUTABLE")
+                # Execute two-phase validation for executable commands
+                vlog "DEBUG" "About to execute two-phase validation for command $command_count"
+                local result=$(execute_two_phase_validation "$command" "$example_name")
+                vlog "DEBUG" "Two-phase validation returned: $result"
+
+                case "$result" in
+                    "PASS")
+                        ((success_count++))
+                        record_result "$example_name" "$command" "PASS" ""
+                        if [[ "$DRY_RUN_ONLY" == "true" ]]; then
+                            vlog "SUCCESS" "✅ Command passed dry-run validation"
+                        else
+                            vlog "SUCCESS" "✅ Command passed both dry-run and live execution"
+                        fi
+                        ;;
+                    "DRY_FAIL")
+                        ((dry_fail_count++))
+                        record_result "$example_name" "$command" "DRY_FAIL" "Dry-run validation failed"
+                        vlog "ERROR" "❌ Command failed dry-run validation"
+                        ;;
+                    "LIVE_FAIL")
+                        ((live_fail_count++))
+                        record_result "$example_name" "$command" "LIVE_FAIL" "Live execution failed"
+                        vlog "ERROR" "❌ Command failed live execution (dry-run passed)"
+                        ;;
+                    *)
+                        vlog "ERROR" "Unknown result from two-phase validation: $result"
+                        ;;
+                esac
                 ;;
-            "DRY_FAIL")
-                ((dry_fail_count++))
-                record_result "$example_name" "$command" "DRY_FAIL" "Dry-run validation failed"
-                vlog "DEBUG" "Recorded DRY_FAIL result for command $command_count"
-                ;;
-            "LIVE_FAIL")
-                ((live_fail_count++))
-                record_result "$example_name" "$command" "LIVE_FAIL" "Live execution failed"
-                vlog "DEBUG" "Recorded LIVE_FAIL result for command $command_count"
-                ;;
-            *)
-                vlog "ERROR" "Unknown result from two-phase validation: $result"
+            "PLACEHOLDER")
+                # Validate syntax only for placeholder commands
+                ((placeholder_count++))
+                vlog "INFO" "📋 Placeholder command - validating syntax only"
+
+                if validate_placeholder_command_syntax "$command" "$example_name"; then
+                    ((success_count++))
+                    record_result "$example_name" "$command" "SYNTAX_VALID" "Placeholder command syntax validated"
+                    vlog "SUCCESS" "✅ Placeholder command syntax is valid"
+                else
+                    ((dry_fail_count++))
+                    record_result "$example_name" "$command" "SYNTAX_ERROR" "Placeholder command syntax invalid"
+                    vlog "ERROR" "❌ Placeholder command syntax is invalid"
+                fi
                 ;;
         esac
 
         vlog "DEBUG" "Completed processing command $command_count, continuing to next"
 
-    done < "$commands_file"
+    done
 
     # Re-enable exit-on-error
     set -e
 
+    # Show summary for this example
+    echo -e "\n${CYAN}── Example Summary ──${NC}" >&2
     if [[ $command_count -gt 0 ]]; then
-        vlog "INFO" "Example $example_name: $success_count/$command_count commands passed"
+        echo -e "${CYAN}Total commands: ${command_count}${NC}" >&2
+        echo -e "${GREEN}✅ Passed: ${success_count}${NC}" >&2
+        if [[ $placeholder_count -gt 0 ]]; then
+            echo -e "${BLUE}📋 Placeholders: ${placeholder_count} (syntax validated only)${NC}" >&2
+        fi
         if [[ $dry_fail_count -gt 0 ]]; then
-            vlog "WARN" "  $dry_fail_count commands failed dry-run validation"
+            echo -e "${YELLOW}⚠️  Failed validation: ${dry_fail_count}${NC}" >&2
         fi
         if [[ $live_fail_count -gt 0 ]]; then
-            vlog "WARN" "  $live_fail_count commands failed live execution"
+            echo -e "${RED}❌ Failed execution: ${live_fail_count}${NC}" >&2
+        fi
+
+        if [[ $dry_fail_count -gt 0 || $live_fail_count -gt 0 ]]; then
+            if [[ "${SKIP_ERROR_ANALYSIS:-false}" != "true" ]]; then
+                echo -e "${YELLOW}⏱️  Note: Error analysis was performed for failed commands${NC}" >&2
+            fi
         fi
     fi
 }
@@ -91,8 +182,10 @@ execute_two_phase_validation() {
     if [[ "$dry_run_result" != "SUCCESS" ]]; then
         vlog "ERROR" "Dry-run failed for $example_name: $command"
 
-        # Analyze the error using LLM for better categorization
-        analyze_command_failure "$command" "$example_name" "dry-run"
+        # Analyze the error using LLM for better categorization (unless disabled)
+        if [[ "${SKIP_ERROR_ANALYSIS:-false}" != "true" ]]; then
+            analyze_command_failure "$command" "$example_name" "dry-run" || true  # Don't let analysis failure break the loop
+        fi
 
         return_execution_result "DRY_FAIL"
         return
@@ -115,8 +208,10 @@ execute_two_phase_validation() {
     if [[ "$live_result" != "SUCCESS" ]]; then
         vlog "ERROR" "Live execution failed for $example_name: $command"
 
-        # Analyze the error using LLM for better categorization
-        analyze_command_failure "$command" "$example_name" "live"
+        # Analyze the error using LLM for better categorization (unless disabled)
+        if [[ "${SKIP_ERROR_ANALYSIS:-false}" != "true" ]]; then
+            analyze_command_failure "$command" "$example_name" "live" || true  # Don't let analysis failure break the loop
+        fi
 
         return_execution_result "LIVE_FAIL"
         return
@@ -205,12 +300,12 @@ execute_single_command() {
     if [[ $wait_result -eq 124 ]]; then
         vlog "ERROR" "Command timed out after ${TIMEOUT}s: $command"
         cleanup_exec_temp_dir "$exec_temp_dir"
-        return_command_result "TIMEOUT"
+        echo "TIMEOUT"
         return
     fi
 
     # Validate execution result
-    local validation_result=$(validate_command_output "$exit_code" "$stdout_content" "$stderr_content" "$phase")
+    local validation_result=$(validate_command_output "$exit_code" "$stdout_content" "$stderr_content" "$phase" "$command")
 
     # Log output if verbose or if there was an error
     if [[ "$VERBOSE" == "true" || "$validation_result" != "SUCCESS" ]]; then
@@ -227,7 +322,9 @@ execute_single_command() {
     store_execution_details "$example_name" "$command" "$phase" "$exit_code" "$stdout_content" "$stderr_content"
 
     cleanup_exec_temp_dir "$exec_temp_dir"
-    return_command_result "$validation_result"
+
+    # Return the validation result
+    echo "$validation_result"
 }
 
 # Store execution details for later reporting
@@ -277,11 +374,6 @@ return_execution_result() {
     echo "$1"
 }
 
-# Return command result (helper function)
-return_command_result() {
-    echo "$1"
-}
-
 # Analyze command failure using LLM for intelligent error categorization
 analyze_command_failure() {
     local command="$1"
@@ -316,7 +408,7 @@ analyze_command_failure() {
     # Create analysis output file
     local analysis_output="${TEMP_DIR}/error_analysis_${example_name//\//_}_${phase}_$$.json"
 
-    vlog "DEBUG" "Analyzing error for: $example_name ($phase)"
+    vlog "INFO" "🔍 Analyzing error for: $example_name ($phase) - this may take 10-20 seconds..."
 
     # Use ostruct to analyze the failure with LLM
     local analysis_command="poetry run ostruct run ${VALIDATE_DIR}/templates/analyze_error.j2 ${VALIDATE_DIR}/schemas/error_analysis.json"
