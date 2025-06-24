@@ -26,6 +26,25 @@ DRY_RUN_ONLY=false
 SPECIFIC_EXAMPLE=""
 TIMEOUT=300  # 5 minutes per command
 
+# Ensure dependencies are available
+ensure_dependencies() {
+    # Ensure jq is available (required for JSON processing)
+    local jq_installer="${SCRIPT_DIR}/../install/dependencies/ensure_jq.sh"
+    if [[ -f "$jq_installer" ]]; then
+        if ! source "$jq_installer"; then
+            vlog "ERROR" "Failed to ensure jq dependency. Please install jq manually."
+            exit 1
+        fi
+    else
+        # Fallback check if ensure_jq.sh is not available
+        if ! command -v jq >/dev/null 2>&1; then
+            vlog "ERROR" "jq is required but not installed. Please install jq and try again."
+            vlog "ERROR" "Installation: https://jqlang.github.io/jq/download/"
+            exit 1
+        fi
+    fi
+}
+
 # Load library functions
 source "${VALIDATE_DIR}/lib/discovery.sh"
 source "${VALIDATE_DIR}/lib/extraction.sh"
@@ -81,6 +100,9 @@ cleanup() {
 trap cleanup EXIT
 
 main() {
+    # Ensure all dependencies are available before starting
+    ensure_dependencies
+
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in

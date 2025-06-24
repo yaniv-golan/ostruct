@@ -2,10 +2,40 @@
 
 This directory contains a comprehensive validation system for testing all examples in the `examples/` directory. The system automatically discovers README files, extracts ostruct commands, and validates them using a two-phase approach: dry-run first, then live execution.
 
+## Dependencies
+
+The validation system automatically manages its dependencies:
+
+- **jq** - Required for JSON processing and report generation
+- **timeout** - Used for command execution timeouts (usually pre-installed)
+- **ostruct** - The main tool being validated (must be in PATH)
+
+### Automatic Dependency Installation
+
+The system includes automatic dependency management using `scripts/install/dependencies/ensure_jq.sh`:
+
+- **Multi-platform support**: Linux (apt, yum, dnf, apk, pacman), macOS (brew, port)
+- **Fallback strategies**: Package manager → binary download → Docker wrapper
+- **Environment controls**: Set `OSTRUCT_SKIP_AUTO_INSTALL=1` to disable auto-install
+- **Manual instructions**: Provides clear installation steps if auto-install fails
+
+If you encounter dependency issues, you can:
+
+```bash
+# Check if jq is available
+command -v jq
+
+# Manually run the dependency installer
+source scripts/install/dependencies/ensure_jq.sh
+
+# Skip auto-install and handle manually
+OSTRUCT_SKIP_AUTO_INSTALL=1 ./scripts/test/validate-examples.sh
+```
+
 ## Quick Start
 
 ```bash
-# Validate all examples
+# Validate all examples (dependencies auto-installed)
 ./scripts/test/validate-examples.sh
 
 # Validate with verbose output
