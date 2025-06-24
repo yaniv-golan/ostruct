@@ -174,6 +174,13 @@ main() {
     # Ensure required directories exist
     mkdir -p "${CACHE_DIR}" "${TEMP_DIR}"
 
+    # Force refresh: clear entire cache directory
+    if [[ "$FORCE_REFRESH" == "true" ]]; then
+        vlog "INFO" "Force refresh: clearing entire cache directory..."
+        rm -rf "${CACHE_DIR}"/*
+        vlog "DEBUG" "Cache directory cleared: ${CACHE_DIR}"
+    fi
+
     # Capture ostruct help JSON once for the entire run
     capture_ostruct_help || true
 
@@ -188,6 +195,10 @@ main() {
 
     if [[ "$SKIP_ERROR_ANALYSIS" == "true" ]]; then
         vlog "INFO" "Skipping LLM error analysis for speed"
+    fi
+
+    if [[ "$FORCE_REFRESH" == "true" ]]; then
+        vlog "INFO" "Force refresh enabled - ignoring all cached results"
     fi
 
     if [[ -n "$SPECIFIC_EXAMPLE" ]]; then
