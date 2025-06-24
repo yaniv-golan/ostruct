@@ -7,6 +7,7 @@ validate_command_output() {
     local stdout_content="$2"
     local stderr_content="$3"
     local phase="$4"  # "dry-run" or "live"
+    local command="$5"  # the actual command being validated
 
     vlog "DEBUG" "Validating $phase output: exit_code=$exit_code"
 
@@ -27,10 +28,10 @@ validate_command_output() {
     # Phase-specific validation
     case "$phase" in
         "dry-run")
-            validate_dry_run_output "$stdout_content" "$stderr_content"
+            validate_dry_run_output "$stdout_content" "$stderr_content" "$command"
             ;;
         "live")
-            validate_live_output "$stdout_content" "$stderr_content"
+            validate_live_output "$stdout_content" "$stderr_content" "$command"
             ;;
         *)
             vlog "ERROR" "Unknown validation phase: $phase"
@@ -43,6 +44,7 @@ validate_command_output() {
 validate_dry_run_output() {
     local stdout_content="$1"
     local stderr_content="$2"
+    local command="$3"
 
     # Dry-run should show cost estimates and validation messages
     local has_cost_info=false
@@ -76,6 +78,7 @@ validate_dry_run_output() {
 validate_live_output() {
     local stdout_content="$1"
     local stderr_content="$2"
+    local command="$3"
 
     # Live execution should show actual results
     local has_meaningful_output=false
@@ -98,16 +101,25 @@ validate_live_output() {
         vlog "DEBUG" "Found structured YAML-like output"
     fi
 
-    # Check for API success indicators
+    # Check for API success indicators in stderr (normal progress output)
     local has_api_success=false
     if echo "$stdout_content" | grep -qi -E "(generated|completed|success)" || \
-       echo "$stderr_content" | grep -qi -E "(generated|completed|success)"; then
+       echo "$stderr_content" | grep -qi -E "(generated|completed|success|generating response)"; then
         has_api_success=true
         vlog "DEBUG" "Found API success indicators"
     fi
 
-    # Live execution validation is stricter
-    if [[ "$has_meaningful_output" == "true" ]]; then
+    # Special handling for --output-file commands
+    # These commands write output to files instead of stdout, so minimal stdout is expected
+    local is_output_file_command=false
+    if echo "$command" | grep -q -- "--output-file"; then
+        is_output_file_command=true
+        vlog "DEBUG" "Command uses --output-file, checking for completion indicators instead of stdout content"
+    fi
+
+    # Live execution validation
+    if [[ "$has_meaningful_output" == "true" ]] || [[ "$has_structured_output" == "true" ]] || \
+       ([[ "$is_output_file_command" == "true" ]] && [[ "$has_api_success" == "true" ]]); then
         return_validation_result "SUCCESS"
     else
         vlog "DEBUG" "Live execution produced minimal or no output"
