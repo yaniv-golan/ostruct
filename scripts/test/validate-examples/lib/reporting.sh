@@ -126,19 +126,20 @@ store_detailed_result() {
 
     # Create or update the result file
     if [[ ! -f "$result_file" ]]; then
-        cat > "$result_file" << EOF
-{
-  "example": "$example_name",
-  "commands": [],
-  "summary": {
-    "total": 0,
-    "passed": 0,
-    "dry_failed": 0,
-    "live_failed": 0
-  },
-  "timestamp": "$(date -Iseconds)"
-}
-EOF
+        jq -n \
+            --arg example "$example_name" \
+            --arg timestamp "$(date -Iseconds)" \
+            '{
+                "example": $example,
+                "commands": [],
+                "summary": {
+                    "total": 0,
+                    "passed": 0,
+                    "dry_failed": 0,
+                    "live_failed": 0
+                },
+                "timestamp": $timestamp
+            }' > "$result_file"
     fi
 
     # Add command result using jq
@@ -318,38 +319,63 @@ generate_json_report() {
     # Collect error details from execution files
     local error_details=$(collect_error_details)
 
-    cat > "$report_file" << EOF
-{
-  "validation_report": {
-    "metadata": {
-      "timestamp": "$end_time",
-      "duration": "$duration",
-      "validation_scope": "$validation_scope",
-      "validation_mode": "$validation_mode",
-      "cache_mode": "$cache_mode",
-      "timeout_seconds": $TIMEOUT,
-      "verbose_mode": $VERBOSE
-    },
-    "summary": {
-      "total_examples": $TOTAL_EXAMPLES,
-      "total_commands": $TOTAL_COMMANDS,
-      "passed_commands": $PASSED_COMMANDS,
-      "dry_failed_commands": $DRY_FAILED_COMMANDS,
-      "live_failed_commands": $LIVE_FAILED_COMMANDS,
-      "passed_examples": ${#PASSED_EXAMPLES[@]},
-      "dry_fail_examples": ${#DRY_FAIL_EXAMPLES[@]},
-      "live_fail_examples": ${#LIVE_FAIL_EXAMPLES[@]}
-    },
-    "results": {
-      "passed_examples": $(printf '%s\n' "${PASSED_EXAMPLES[@]:-}" | jq -R . | jq -s .),
-      "dry_fail_examples": $(printf '%s\n' "${DRY_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .),
-      "live_fail_examples": $(printf '%s\n' "${LIVE_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .),
-      "detailed_results_dir": "${CACHE_DIR}/results/"
-    },
-    "error_details": $error_details
-  }
-}
-EOF
+    # Convert bash arrays to JSON arrays using jq
+    local passed_examples_json=$(printf '%s\n' "${PASSED_EXAMPLES[@]:-}" | jq -R . | jq -s .)
+    local dry_fail_examples_json=$(printf '%s\n' "${DRY_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .)
+    local live_fail_examples_json=$(printf '%s\n' "${LIVE_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .)
+
+    # Generate JSON report using jq for proper structure and escaping
+    jq -n \
+        --arg timestamp "$end_time" \
+        --arg duration "$duration" \
+        --arg validation_scope "$validation_scope" \
+        --arg validation_mode "$validation_mode" \
+        --arg cache_mode "$cache_mode" \
+        --argjson timeout_seconds "$TIMEOUT" \
+        --argjson verbose_mode "$VERBOSE" \
+        --argjson total_examples "$TOTAL_EXAMPLES" \
+        --argjson total_commands "$TOTAL_COMMANDS" \
+        --argjson passed_commands "$PASSED_COMMANDS" \
+        --argjson dry_failed_commands "$DRY_FAILED_COMMANDS" \
+        --argjson live_failed_commands "$LIVE_FAILED_COMMANDS" \
+        --argjson passed_examples_count "${#PASSED_EXAMPLES[@]}" \
+        --argjson dry_fail_examples_count "${#DRY_FAIL_EXAMPLES[@]}" \
+        --argjson live_fail_examples_count "${#LIVE_FAIL_EXAMPLES[@]}" \
+        --argjson passed_examples "$passed_examples_json" \
+        --argjson dry_fail_examples "$dry_fail_examples_json" \
+        --argjson live_fail_examples "$live_fail_examples_json" \
+        --arg detailed_results_dir "${CACHE_DIR}/results/" \
+        --argjson error_details "$error_details" \
+        '{
+            "validation_report": {
+                "metadata": {
+                    "timestamp": $timestamp,
+                    "duration": $duration,
+                    "validation_scope": $validation_scope,
+                    "validation_mode": $validation_mode,
+                    "cache_mode": $cache_mode,
+                    "timeout_seconds": $timeout_seconds,
+                    "verbose_mode": $verbose_mode
+                },
+                "summary": {
+                    "total_examples": $total_examples,
+                    "total_commands": $total_commands,
+                    "passed_commands": $passed_commands,
+                    "dry_failed_commands": $dry_failed_commands,
+                    "live_failed_commands": $live_failed_commands,
+                    "passed_examples": $passed_examples_count,
+                    "dry_fail_examples": $dry_fail_examples_count,
+                    "live_fail_examples": $live_fail_examples_count
+                },
+                "results": {
+                    "passed_examples": $passed_examples,
+                    "dry_fail_examples": $dry_fail_examples,
+                    "live_fail_examples": $live_fail_examples,
+                    "detailed_results_dir": $detailed_results_dir
+                },
+                "error_details": $error_details
+            }
+        }' > "$report_file"
 
 
 }
