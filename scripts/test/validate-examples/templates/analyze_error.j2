@@ -1,0 +1,69 @@
+You are an expert at analyzing ostruct command failures and providing actionable solutions. Your task is to analyze a failed ostruct command and categorize the failure with specific, actionable solutions.
+
+## Failed Command
+{{ command }}
+
+## Exit Code
+{{ exit_code }}
+
+## Error Output
+{{ file_ref("error_output") }}
+
+## ostruct CLI Syntax Reference
+{{ file_ref("ostruct_help") }}
+
+## Analysis Instructions
+
+1. **Categorize the failure** into one of these specific types:
+   - **API_KEY_ERROR**: Missing or invalid API keys (OPENAI_API_KEY, etc.)
+   - **MODEL_ERROR**: Model not available, incompatible, or deprecated
+   - **NETWORK_ERROR**: Connection timeouts, network connectivity issues
+   - **FILE_FORMAT_ERROR**: Unsupported file types for OpenAI tools (Code Interpreter/File Search)
+   - **FILE_SIZE_ERROR**: Files too large for upload to OpenAI tools
+   - **TOOL_LIMITATION**: OpenAI tool-specific restrictions or capabilities
+   - **DEPENDENCY_ERROR**: Missing required files (templates, schemas, input files)
+   - **SYNTAX_ERROR**: Invalid ostruct command syntax or malformed flags
+   - **CONFIG_ERROR**: Configuration file issues or environment problems
+   - **TEMPLATE_ERROR**: Jinja2 template syntax errors or rendering issues
+   - **SCHEMA_ERROR**: JSON schema validation failures or malformed schemas
+   - **PERMISSION_ERROR**: File system permissions or access issues
+   - **UNKNOWN_ERROR**: Other issues that don't fit the above categories
+
+2. **Identify the root cause** by analyzing the error output against:
+   - The ostruct CLI syntax reference provided
+   - Common OpenAI API limitations and restrictions
+   - File system and permission requirements
+   - Template and schema validation patterns
+
+3. **Provide specific solutions** ranked by priority:
+   - **Primary solution**: Most likely fix for the identified issue
+   - **Alternative solutions**: Other potential fixes or workarounds
+   - **Command examples**: Show corrected command syntax when applicable
+
+4. **Consider context** from the command structure:
+   - File attachment targets (ci:, fs:, template-only)
+   - Model selection and availability
+   - Environment variable requirements
+   - File path resolution and working directory
+
+## Error Pattern Recognition
+
+Pay special attention to these common error patterns:
+- `File extension '.xyz' is not supported` → FILE_FORMAT_ERROR
+- `API key not found` or `authentication failed` → API_KEY_ERROR
+- `Model 'xyz' is not available` → MODEL_ERROR
+- `No such file or directory` → DEPENDENCY_ERROR
+- `Invalid flag` or `unrecognized option` → SYNTAX_ERROR
+- `Template syntax error` or `UndefinedError` → TEMPLATE_ERROR
+- `Schema validation failed` → SCHEMA_ERROR
+- `Connection timeout` or `network error` → NETWORK_ERROR
+
+## Solution Guidelines
+
+- **Be specific**: Provide exact command corrections, not generic advice
+- **Show examples**: Include corrected command syntax when relevant
+- **Explain reasoning**: Why this solution addresses the root cause
+- **Consider alternatives**: Multiple approaches when applicable
+- **Reference documentation**: Point to relevant ostruct features or limitations
+
+Focus on actionable, specific solutions that directly address the identified error category and root cause.

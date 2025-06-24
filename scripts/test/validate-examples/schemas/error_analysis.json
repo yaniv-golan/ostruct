@@ -1,0 +1,118 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Error Analysis Result",
+    "description": "Analysis of ostruct command failure with categorization and solutions",
+    "type": "object",
+    "properties": {
+        "category": {
+            "type": "string",
+            "enum": [
+                "API_KEY_ERROR",
+                "MODEL_ERROR",
+                "NETWORK_ERROR",
+                "FILE_FORMAT_ERROR",
+                "FILE_SIZE_ERROR",
+                "TOOL_LIMITATION",
+                "DEPENDENCY_ERROR",
+                "SYNTAX_ERROR",
+                "CONFIG_ERROR",
+                "TEMPLATE_ERROR",
+                "SCHEMA_ERROR",
+                "PERMISSION_ERROR",
+                "UNKNOWN_ERROR"
+            ],
+            "description": "Primary category of the failure"
+        },
+        "root_cause": {
+            "type": "string",
+            "description": "Specific explanation of what went wrong"
+        },
+        "error_patterns": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Key error patterns or phrases that led to this categorization"
+        },
+        "solutions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "solution": {
+                        "type": "string",
+                        "description": "Description of the solution"
+                    },
+                    "command_example": {
+                        "type": "string",
+                        "description": "Corrected command example if applicable"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "primary",
+                            "alternative"
+                        ],
+                        "description": "Priority level of this solution"
+                    },
+                    "reasoning": {
+                        "type": "string",
+                        "description": "Why this solution addresses the root cause"
+                    }
+                },
+                "required": [
+                    "solution",
+                    "priority"
+                ],
+                "additionalProperties": false
+            },
+            "minItems": 1,
+            "description": "List of potential solutions ranked by priority"
+        },
+        "context_analysis": {
+            "type": "object",
+            "properties": {
+                "command_structure": {
+                    "type": "string",
+                    "description": "Analysis of the command structure and syntax"
+                },
+                "file_attachments": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Analysis of file attachment usage and routing"
+                },
+                "environment_factors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Environment or configuration factors that may contribute"
+                }
+            },
+            "additionalProperties": false,
+            "description": "Contextual analysis of the command and environment"
+        },
+        "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence level in the analysis (0.0 to 1.0)"
+        },
+        "related_documentation": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "References to relevant documentation or help resources"
+        }
+    },
+    "required": [
+        "category",
+        "root_cause",
+        "solutions",
+        "confidence"
+    ],
+    "additionalProperties": false
+}

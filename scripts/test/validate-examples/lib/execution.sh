@@ -90,6 +90,10 @@ execute_two_phase_validation() {
 
     if [[ "$dry_run_result" != "SUCCESS" ]]; then
         vlog "ERROR" "Dry-run failed for $example_name: $command"
+
+        # Analyze the error using LLM for better categorization
+        analyze_command_failure "$command" "$example_name" "dry-run"
+
         return_execution_result "DRY_FAIL"
         return
     fi
@@ -110,6 +114,10 @@ execute_two_phase_validation() {
 
     if [[ "$live_result" != "SUCCESS" ]]; then
         vlog "ERROR" "Live execution failed for $example_name: $command"
+
+        # Analyze the error using LLM for better categorization
+        analyze_command_failure "$command" "$example_name" "live"
+
         return_execution_result "LIVE_FAIL"
         return
     fi
@@ -272,4 +280,88 @@ return_execution_result() {
 # Return command result (helper function)
 return_command_result() {
     echo "$1"
+}
+
+# Analyze command failure using LLM for intelligent error categorization
+analyze_command_failure() {
+    local command="$1"
+    local example_name="$2"
+    local phase="$3"  # "dry-run" or "live"
+
+    # Find the execution details file
+    local details_dir="${CACHE_DIR}/execution_details"
+    local details_file="${details_dir}/${example_name//\//_}_${phase}.json"
+
+    if [[ ! -f "$details_file" ]]; then
+        vlog "WARN" "No execution details found for error analysis: $details_file"
+        return 1
+    fi
+
+    # Extract error information from execution details
+    local exit_code stderr_content
+    exit_code=$(jq -r '.exit_code' "$details_file" 2>/dev/null || echo "1")
+    stderr_content=$(jq -r '.stderr' "$details_file" 2>/dev/null || echo "")
+
+    # If stderr is empty, also include stdout (sometimes errors go there)
+    if [[ -z "$stderr_content" ]]; then
+        local stdout_content
+        stdout_content=$(jq -r '.stdout' "$details_file" 2>/dev/null || echo "")
+        stderr_content="$stdout_content"
+    fi
+
+    # Create temporary error output file for analysis
+    local error_output_file="${TEMP_DIR}/error_output_${example_name//\//_}_${phase}_$$.txt"
+    echo "$stderr_content" > "$error_output_file"
+
+    # Create analysis output file
+    local analysis_output="${TEMP_DIR}/error_analysis_${example_name//\//_}_${phase}_$$.json"
+
+    vlog "DEBUG" "Analyzing error for: $example_name ($phase)"
+
+    # Use ostruct to analyze the failure with LLM
+    local analysis_command="poetry run ostruct run ${VALIDATE_DIR}/templates/analyze_error.j2 ${VALIDATE_DIR}/schemas/error_analysis.json"
+    analysis_command+=" --file error_output $error_output_file"
+    analysis_command+=" --var command=\"$command\""
+    analysis_command+=" --var exit_code=\"$exit_code\""
+    analysis_command+=" --model gpt-4.1"
+    analysis_command+=" --progress none"
+    analysis_command+=" --output-file $analysis_output"
+
+    # Add ostruct help JSON for syntax awareness if available
+    if [[ -n "${OSTRUCT_HELP_JSON_FILE:-}" && -f "${OSTRUCT_HELP_JSON_FILE}" ]]; then
+        analysis_command+=" --file ostruct_help ${OSTRUCT_HELP_JSON_FILE}"
+        vlog "DEBUG" "Including ostruct syntax reference for error analysis"
+    fi
+
+    # Execute the analysis (use dry-run to avoid API costs if not needed)
+    if eval "$analysis_command --dry-run" >/dev/null 2>&1; then
+        # Dry-run successful, now do live analysis
+        if eval "$analysis_command" >/dev/null 2>&1 && [[ -f "$analysis_output" ]]; then
+            # Extract and display analysis results
+            local category root_cause primary_solution
+            category=$(jq -r '.category' "$analysis_output" 2>/dev/null || echo "UNKNOWN_ERROR")
+            root_cause=$(jq -r '.root_cause' "$analysis_output" 2>/dev/null || echo "Failed to analyze error")
+            primary_solution=$(jq -r '.solutions[] | select(.priority=="primary" or .priority=="high") | .solution' "$analysis_output" 2>/dev/null | head -1)
+
+            # Enhanced error reporting
+            vlog "ERROR" "[$category] $root_cause"
+            if [[ -n "$primary_solution" ]]; then
+                vlog "INFO" "💡 Solution: $primary_solution"
+            fi
+
+            # Store analysis results for reporting
+            local analysis_dir="${CACHE_DIR}/error_analysis"
+            mkdir -p "$analysis_dir"
+            cp "$analysis_output" "${analysis_dir}/${example_name//\//_}_${phase}.json"
+
+            vlog "DEBUG" "Error analysis completed for: $example_name ($phase)"
+        else
+            vlog "DEBUG" "Failed to complete error analysis for: $example_name ($phase)"
+        fi
+    else
+        vlog "DEBUG" "Error analysis template validation failed for: $example_name ($phase)"
+    fi
+
+    # Clean up temporary files
+    rm -f "$error_output_file" "$analysis_output"
 }

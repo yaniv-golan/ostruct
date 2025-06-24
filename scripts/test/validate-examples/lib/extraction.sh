@@ -28,6 +28,12 @@ extract_ostruct_commands() {
     extraction_command+=" --progress none"
     extraction_command+=" --output-file ${extraction_output}"
 
+    # Add ostruct help JSON for syntax awareness if available
+    if [[ -n "${OSTRUCT_HELP_JSON_FILE:-}" && -f "${OSTRUCT_HELP_JSON_FILE}" ]]; then
+        extraction_command+=" --file ostruct_help ${OSTRUCT_HELP_JSON_FILE}"
+        vlog "DEBUG" "Including ostruct syntax reference for extraction" >&2
+    fi
+
     vlog "DEBUG" "Extraction command: $extraction_command" >&2
 
     # Execute the extraction

@@ -6,6 +6,9 @@ You are an expert at analyzing documentation and extracting executable commands.
 ## Example Directory
 The commands in this README are located in: {{ safe_get("example_directory", "examples/unknown") }}
 
+## ostruct CLI Syntax Reference
+{{ file_ref("ostruct_help") }}
+
 ## Instructions
 
 1. **Find all ostruct commands** in the README content above
@@ -23,6 +26,21 @@ The commands in this README are located in: {{ safe_get("example_directory", "ex
 - Identify all file dependencies (templates, schemas, input files)
 - Mark commands as "executable" if they appear to be complete runnable examples
 - Mark commands as "reference" if they appear to be partial or explanatory
+
+## Syntax Validation Using CLI Reference
+
+Use the ostruct CLI syntax reference above to:
+- **Validate attachment syntax**: Ensure attachment targets like `ci:`, `fs:`, `code-interpreter:` are correct
+- **Check flag validity**: Verify that flags like `--dry-run`, `--sys-file`, `-V` are supported
+- **Validate command structure**: Ensure commands follow the pattern `ostruct [command] template schema [options]`
+- **Identify routing targets**: Understand when files go to Code Interpreter vs File Search vs template-only
+- **Catch syntax errors**: Flag commands that don't match the expected ostruct syntax patterns
+
+Pay special attention to:
+- File attachment syntax: `--file [targets:]alias path` and `--dir [targets:]alias path`
+- Target routing: `ci` (code-interpreter), `fs` (file-search), multi-target `ci,fs:`
+- Variable syntax: `-V name=value`
+- System file usage: `--sys-file path`
 
 ## Output Requirements
 

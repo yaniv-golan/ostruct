@@ -265,30 +265,105 @@ collect_error_details() {
     echo "$error_details"
 }
 
-# Get error details for a specific example
+# Get LLM error analysis details for a specific example
+get_example_error_analysis() {
+    local example="$1"
+    local phase="$2"  # "dry-run" or "live"
+    local analysis_dir="${CACHE_DIR}/error_analysis"
+    local safe_example="${example//\//_}"
+    local analysis_file="${analysis_dir}/${safe_example}_${phase}.json"
+
+    if [[ -f "$analysis_file" ]]; then
+        local category=$(jq -r '.category // "UNKNOWN_ERROR"' "$analysis_file")
+        local root_cause=$(jq -r '.root_cause // "Analysis not available"' "$analysis_file")
+        # Get the highest priority solution (handle both "primary"/"high" and "alternative"/"medium")
+        local primary_solution=$(jq -r '.solutions[] | select(.priority=="primary" or .priority=="high") | .solution // ""' "$analysis_file" | head -1)
+        local command_example=$(jq -r '.solutions[] | select(.priority=="primary" or .priority=="high") | .command_example // ""' "$analysis_file" | head -1)
+        local confidence=$(jq -r '.confidence // 0' "$analysis_file")
+
+        echo "<div style=\"background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 10px 0;\">"
+        echo "<h4 style=\"margin: 0 0 10px 0; color: #856404;\">🤖 LLM Error Analysis</h4>"
+        echo "<p><strong>Category:</strong> <span style=\"background: #dc3545; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.9em;\">$category</span></p>"
+        echo "<p><strong>Root Cause:</strong> $root_cause</p>"
+
+        if [[ -n "$primary_solution" && "$primary_solution" != "" ]]; then
+            echo "<p><strong>💡 Recommended Solution:</strong> $primary_solution</p>"
+        fi
+
+        if [[ -n "$command_example" && "$command_example" != "" ]]; then
+            echo "<div class=\"command\"><strong>Corrected Command:</strong><br><pre>$command_example</pre></div>"
+        fi
+
+        # Calculate confidence percentage (fallback if bc not available)
+        local confidence_percent
+        if command -v bc >/dev/null 2>&1; then
+            confidence_percent=$(printf "%.0f" $(echo "$confidence * 100" | bc 2>/dev/null || echo "0"))
+        else
+            # Simple fallback calculation
+            confidence_percent=$(printf "%.0f" $(echo "$confidence" | awk '{print $1 * 100}' 2>/dev/null || echo "0"))
+        fi
+        echo "<p style=\"font-size: 0.9em; color: #6c757d;\"><strong>Confidence:</strong> ${confidence_percent}%</p>"
+        echo "</div>"
+
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Get error details for a specific example (fallback to execution details)
 get_example_error_details() {
     local example="$1"
     local phase="$2"  # "dry-run" or "live"
-    local details_dir="${CACHE_DIR}/execution_details"
-    local safe_example="${example//\//_}"
-    local details_file="${details_dir}/${safe_example}_${phase}.json"
 
-    if [[ -f "$details_file" ]]; then
-        local stderr_content=$(jq -r '.stderr // ""' "$details_file")
-        local exit_code=$(jq -r '.exit_code // 1' "$details_file")
-        local command=$(jq -r '.command // ""' "$details_file")
+    # First try to get LLM error analysis
+    if get_example_error_analysis "$example" "$phase"; then
+        # LLM analysis found, also show execution details
+        local details_dir="${CACHE_DIR}/execution_details"
+        local safe_example="${example//\//_}"
+        local details_file="${details_dir}/${safe_example}_${phase}.json"
 
-        if [[ -n "$stderr_content" && "$stderr_content" != "null" && "$stderr_content" != "" ]]; then
+        if [[ -f "$details_file" ]]; then
+            local stderr_content=$(jq -r '.stderr // ""' "$details_file")
+            local exit_code=$(jq -r '.exit_code // 1' "$details_file")
+            local command=$(jq -r '.command // ""' "$details_file")
+
+            echo "<details style=\"margin: 10px 0;\">"
+            echo "<summary style=\"cursor: pointer; color: #495057; font-weight: bold;\">📋 Raw Execution Details</summary>"
+            echo "<div style=\"margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px;\">"
             echo "<div class=\"command\"><strong>Command:</strong> $command</div>"
             echo "<div class=\"command\"><strong>Exit Code:</strong> $exit_code</div>"
-            echo "<div class=\"command\"><strong>Error Output:</strong><br><pre>$(echo "$stderr_content" | head -20)</pre></div>"
-        else
-            echo "<div class=\"command\"><strong>Command:</strong> $command</div>"
-            echo "<div class=\"command\"><strong>Exit Code:</strong> $exit_code</div>"
-            echo "<p>No error output captured</p>"
+            if [[ -n "$stderr_content" && "$stderr_content" != "null" && "$stderr_content" != "" ]]; then
+                echo "<div class=\"command\"><strong>Error Output:</strong><br><pre style=\"max-height: 300px; overflow-y: auto;\">$(echo "$stderr_content" | head -30)</pre></div>"
+            else
+                echo "<p>No error output captured</p>"
+            fi
+            echo "</div>"
+            echo "</details>"
         fi
     else
-        echo "<p>No execution details available</p>"
+        # Fallback to basic execution details if no LLM analysis
+        local details_dir="${CACHE_DIR}/execution_details"
+        local safe_example="${example//\//_}"
+        local details_file="${details_dir}/${safe_example}_${phase}.json"
+
+        if [[ -f "$details_file" ]]; then
+            local stderr_content=$(jq -r '.stderr // ""' "$details_file")
+            local exit_code=$(jq -r '.exit_code // 1' "$details_file")
+            local command=$(jq -r '.command // ""' "$details_file")
+
+            if [[ -n "$stderr_content" && "$stderr_content" != "null" && "$stderr_content" != "" ]]; then
+                echo "<div class=\"command\"><strong>Command:</strong> $command</div>"
+                echo "<div class=\"command\"><strong>Exit Code:</strong> $exit_code</div>"
+                echo "<div class=\"command\"><strong>Error Output:</strong><br><pre>$(echo "$stderr_content" | head -20)</pre></div>"
+            else
+                echo "<div class=\"command\"><strong>Command:</strong> $command</div>"
+                echo "<div class=\"command\"><strong>Exit Code:</strong> $exit_code</div>"
+                echo "<p>No error output captured</p>"
+            fi
+        else
+            echo "<p>No execution details available</p>"
+        fi
     fi
 }
 
@@ -535,7 +610,6 @@ EOF
             cat >> "$html_file" << EOF
                 <div class="example-item failed">
                     <strong>$example</strong>
-                    <p>Dry-run passed but live execution failed - check API keys, model availability, or network issues</p>
                     $error_details
                 </div>
 EOF

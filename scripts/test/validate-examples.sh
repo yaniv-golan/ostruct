@@ -45,6 +45,23 @@ ensure_dependencies() {
     fi
 }
 
+# Capture ostruct help JSON once for the entire run
+capture_ostruct_help() {
+    local help_file="${CACHE_DIR}/ostruct_help.json"
+
+    vlog "DEBUG" "Capturing ostruct --help-json for syntax awareness"
+
+    if ! ostruct --help-json > "$help_file" 2>/dev/null; then
+        vlog "WARN" "Failed to capture ostruct --help-json, proceeding without syntax awareness"
+        echo "{}" > "$help_file"
+        return 1
+    fi
+
+    vlog "DEBUG" "ostruct help JSON captured to: $help_file"
+    export OSTRUCT_HELP_JSON_FILE="$help_file"
+    return 0
+}
+
 # Load library functions
 source "${VALIDATE_DIR}/lib/discovery.sh"
 source "${VALIDATE_DIR}/lib/extraction.sh"
@@ -140,6 +157,9 @@ main() {
 
     # Ensure required directories exist
     mkdir -p "${CACHE_DIR}" "${TEMP_DIR}"
+
+    # Capture ostruct help JSON once for the entire run
+    capture_ostruct_help
 
     vlog "INFO" "Starting example validation..."
     vlog "INFO" "Project root: ${PROJECT_ROOT}"
