@@ -47,9 +47,10 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Test validation cache
+# Test validation cache and output
 scripts/test/validate-examples/cache/
 scripts/test/validate-examples/temp/
+scripts/test/validate-examples/output/
 
 # Jupyter Notebook
 .ipynb_checkpoints

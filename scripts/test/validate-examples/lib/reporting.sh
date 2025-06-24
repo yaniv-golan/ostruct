@@ -227,22 +227,109 @@ generate_final_report() {
         generate_html_report
     fi
 
+    local output_dir="${VALIDATE_DIR}/output"
+    vlog "INFO" "JSON report saved to: ${output_dir}/validation_report.json"
+    if [[ "$VERBOSE" == "true" ]]; then
+        vlog "INFO" "HTML report saved to: ${output_dir}/validation_report.html"
+    fi
     echo
     echo "Detailed results stored in: ${CACHE_DIR}/results/"
     echo
+}
+
+# Collect error details from execution details files
+collect_error_details() {
+    local error_details="[]"
+    local details_dir="${CACHE_DIR}/execution_details"
+
+    if [[ -d "$details_dir" ]]; then
+        # Find all execution detail files for failed examples
+        for example in "${DRY_FAIL_EXAMPLES[@]:-}" "${LIVE_FAIL_EXAMPLES[@]:-}"; do
+            local safe_example="${example//\//_}"
+            local dry_file="${details_dir}/${safe_example}_dry-run.json"
+            local live_file="${details_dir}/${safe_example}_live.json"
+
+            # Check dry-run errors
+            if [[ -f "$dry_file" ]]; then
+                error_details=$(jq --slurpfile detail "$dry_file" '. += $detail' <<< "$error_details")
+            fi
+
+            # Check live execution errors
+            if [[ -f "$live_file" ]]; then
+                error_details=$(jq --slurpfile detail "$live_file" '. += $detail' <<< "$error_details")
+            fi
+        done
+    fi
+
+    echo "$error_details"
+}
+
+# Get error details for a specific example
+get_example_error_details() {
+    local example="$1"
+    local phase="$2"  # "dry-run" or "live"
+    local details_dir="${CACHE_DIR}/execution_details"
+    local safe_example="${example//\//_}"
+    local details_file="${details_dir}/${safe_example}_${phase}.json"
+
+    if [[ -f "$details_file" ]]; then
+        local stderr_content=$(jq -r '.stderr // ""' "$details_file")
+        local exit_code=$(jq -r '.exit_code // 1' "$details_file")
+        local command=$(jq -r '.command // ""' "$details_file")
+
+        if [[ -n "$stderr_content" && "$stderr_content" != "null" && "$stderr_content" != "" ]]; then
+            echo "<div class=\"command\"><strong>Command:</strong> $command</div>"
+            echo "<div class=\"command\"><strong>Exit Code:</strong> $exit_code</div>"
+            echo "<div class=\"command\"><strong>Error Output:</strong><br><pre>$(echo "$stderr_content" | head -20)</pre></div>"
+        else
+            echo "<div class=\"command\"><strong>Command:</strong> $command</div>"
+            echo "<div class=\"command\"><strong>Exit Code:</strong> $exit_code</div>"
+            echo "<p>No error output captured</p>"
+        fi
+    else
+        echo "<p>No execution details available</p>"
+    fi
 }
 
 # Generate JSON report
 generate_json_report() {
     local end_time="$1"
     local duration="$2"
-    local report_file="${CACHE_DIR}/validation_report.json"
+    local output_dir="${VALIDATE_DIR}/output"
+    mkdir -p "$output_dir"
+    local report_file="${output_dir}/validation_report.json"
+
+    # Capture validation parameters
+    local validation_scope="all examples"
+    if [[ -n "$SPECIFIC_EXAMPLE" ]]; then
+        validation_scope="specific example: $SPECIFIC_EXAMPLE"
+    fi
+
+    local validation_mode="full validation (dry-run + live)"
+    if [[ "$DRY_RUN_ONLY" == "true" ]]; then
+        validation_mode="dry-run only"
+    fi
+
+    local cache_mode="using cache"
+    if [[ "$FORCE_REFRESH" == "true" ]]; then
+        cache_mode="force refresh"
+    fi
+
+    # Collect error details from execution files
+    local error_details=$(collect_error_details)
 
     cat > "$report_file" << EOF
 {
   "validation_report": {
-    "timestamp": "$end_time",
-    "duration": "$duration",
+    "metadata": {
+      "timestamp": "$end_time",
+      "duration": "$duration",
+      "validation_scope": "$validation_scope",
+      "validation_mode": "$validation_mode",
+      "cache_mode": "$cache_mode",
+      "timeout_seconds": $TIMEOUT,
+      "verbose_mode": $VERBOSE
+    },
     "summary": {
       "total_examples": $TOTAL_EXAMPLES,
       "total_commands": $TOTAL_COMMANDS,
@@ -253,68 +340,199 @@ generate_json_report() {
       "dry_fail_examples": ${#DRY_FAIL_EXAMPLES[@]},
       "live_fail_examples": ${#LIVE_FAIL_EXAMPLES[@]}
     },
-    "passed_examples": $(printf '%s\n' "${PASSED_EXAMPLES[@]:-}" | jq -R . | jq -s .),
-    "dry_fail_examples": $(printf '%s\n' "${DRY_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .),
-    "live_fail_examples": $(printf '%s\n' "${LIVE_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .),
-    "detailed_results_dir": "${CACHE_DIR}/results/"
+    "results": {
+      "passed_examples": $(printf '%s\n' "${PASSED_EXAMPLES[@]:-}" | jq -R . | jq -s .),
+      "dry_fail_examples": $(printf '%s\n' "${DRY_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .),
+      "live_fail_examples": $(printf '%s\n' "${LIVE_FAIL_EXAMPLES[@]:-}" | jq -R . | jq -s .),
+      "detailed_results_dir": "${CACHE_DIR}/results/"
+    },
+    "error_details": $error_details
   }
 }
 EOF
 
-    vlog "INFO" "JSON report saved to: $report_file"
+
 }
 
 # Generate HTML report (if verbose mode)
 generate_html_report() {
-    local html_file="${CACHE_DIR}/validation_report.html"
+    local output_dir="${VALIDATE_DIR}/output"
+    mkdir -p "$output_dir"
+    local html_file="${output_dir}/validation_report.html"
 
-    cat > "$html_file" << 'EOF'
+    local current_time=$(date)
+    local passed_count=${#PASSED_EXAMPLES[@]}
+    local dry_fail_count=${#DRY_FAIL_EXAMPLES[@]}
+    local live_fail_count=${#LIVE_FAIL_EXAMPLES[@]}
+    local duration=$(calculate_duration "$START_TIME" "$(date -Iseconds)")
+
+    # Capture validation parameters
+    local validation_scope="all examples"
+    if [[ -n "$SPECIFIC_EXAMPLE" ]]; then
+        validation_scope="specific example: $SPECIFIC_EXAMPLE"
+    fi
+
+    local validation_mode="full validation (dry-run + live)"
+    if [[ "$DRY_RUN_ONLY" == "true" ]]; then
+        validation_mode="dry-run only"
+    fi
+
+    local cache_mode="using cache"
+    if [[ "$FORCE_REFRESH" == "true" ]]; then
+        cache_mode="force refresh"
+    fi
+
+    cat > "$html_file" << EOF
 <!DOCTYPE html>
 <html>
 <head>
     <title>ostruct Example Validation Report</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .header { background: #f5f5f5; padding: 20px; border-radius: 5px; }
-        .summary { display: flex; gap: 20px; margin: 20px 0; }
-        .stat-box { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 5px; flex: 1; }
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px; margin-bottom: 30px; }
+        .header h1 { margin: 0 0 10px 0; font-size: 2.5em; }
+        .header p { margin: 5px 0; opacity: 0.9; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 30px 0; }
+        .stat-box { background: #fff; border: 1px solid #e9ecef; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-box h3 { margin: 0 0 10px 0; font-size: 1.1em; color: #495057; }
+        .stat-box .number { font-size: 2.5em; font-weight: bold; margin: 10px 0; }
         .passed { border-left: 4px solid #28a745; }
+        .passed .number { color: #28a745; }
         .warning { border-left: 4px solid #ffc107; }
+        .warning .number { color: #ffc107; }
         .failed { border-left: 4px solid #dc3545; }
+        .failed .number { color: #dc3545; }
+        .section { margin: 30px 0; }
+        .section h2 { color: #495057; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; }
         .example-list { margin: 20px 0; }
-        .example-item { padding: 10px; margin: 5px 0; background: #f8f9fa; border-radius: 3px; }
-        .command { font-family: monospace; background: #e9ecef; padding: 5px; margin: 5px 0; border-radius: 3px; }
+        .example-item { padding: 15px; margin: 10px 0; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #6c757d; }
+        .example-item.passed { border-left-color: #28a745; background: #d4edda; }
+        .example-item.warning { border-left-color: #ffc107; background: #fff3cd; }
+        .example-item.failed { border-left-color: #dc3545; background: #f8d7da; }
+        .command { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #e9ecef; padding: 8px 12px; margin: 8px 0; border-radius: 4px; font-size: 0.9em; overflow-x: auto; }
+        .command pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e9ecef; color: #6c757d; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>ostruct Example Validation Report</h1>
-        <p>Generated: $(date)</p>
-        <p>Duration: $(calculate_duration "$START_TIME" "$(date -Iseconds)")</p>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 ostruct Example Validation Report</h1>
+            <p><strong>Generated:</strong> $current_time</p>
+            <p><strong>Duration:</strong> $duration</p>
+            <p><strong>Scope:</strong> $validation_scope</p>
+            <p><strong>Mode:</strong> $validation_mode</p>
+            <p><strong>Cache:</strong> $cache_mode</p>
+            <p><strong>Timeout:</strong> ${TIMEOUT}s per command</p>
+            <p><strong>Total Examples Processed:</strong> $TOTAL_EXAMPLES</p>
+        </div>
+
+        <div class="summary">
+            <div class="stat-box passed">
+                <h3>✅ Passed Examples</h3>
+                <div class="number">$passed_count</div>
+                <p>Full validation passed</p>
+            </div>
+            <div class="stat-box warning">
+                <h3>⚠️ Dry-run Failures</h3>
+                <div class="number">$dry_fail_count</div>
+                <p>Template/schema issues</p>
+            </div>
+            <div class="stat-box failed">
+                <h3>❌ Live Failures</h3>
+                <div class="number">$live_fail_count</div>
+                <p>API/execution issues</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Command Statistics</h2>
+            <p><strong>Total Commands:</strong> $TOTAL_COMMANDS</p>
+            <p><strong>Passed:</strong> $PASSED_COMMANDS | <strong>Dry-run Failed:</strong> $DRY_FAILED_COMMANDS | <strong>Live Failed:</strong> $LIVE_FAILED_COMMANDS</p>
+        </div>
+EOF
+
+    # Add passed examples section
+    if [[ $passed_count -gt 0 ]]; then
+        cat >> "$html_file" << EOF
+        <div class="section">
+            <h2>✅ Passed Examples</h2>
+            <div class="example-list">
+EOF
+        for example in "${PASSED_EXAMPLES[@]}"; do
+            cat >> "$html_file" << EOF
+                <div class="example-item passed">
+                    <strong>$example</strong>
+                    <p>All commands passed both dry-run and live validation</p>
+                </div>
+EOF
+        done
+        cat >> "$html_file" << EOF
+            </div>
+        </div>
+EOF
+    fi
+
+    # Add dry-run failures section
+    if [[ $dry_fail_count -gt 0 ]]; then
+        cat >> "$html_file" << EOF
+        <div class="section">
+            <h2>⚠️ Dry-run Failures</h2>
+            <div class="example-list">
+EOF
+        for example in "${DRY_FAIL_EXAMPLES[@]}"; do
+            local error_details=$(get_example_error_details "$example" "dry-run")
+            cat >> "$html_file" << EOF
+                <div class="example-item warning">
+                    <strong>$example</strong>
+                    <p>Failed template/schema validation - check for missing files, syntax errors, or configuration issues</p>
+                    $error_details
+                </div>
+EOF
+        done
+        cat >> "$html_file" << EOF
+            </div>
+        </div>
+EOF
+    fi
+
+    # Add live failures section
+    if [[ $live_fail_count -gt 0 ]]; then
+        cat >> "$html_file" << EOF
+        <div class="section">
+            <h2>❌ Live Execution Failures</h2>
+            <div class="example-list">
+EOF
+        for example in "${LIVE_FAIL_EXAMPLES[@]}"; do
+            local error_details=$(get_example_error_details "$example" "live")
+            cat >> "$html_file" << EOF
+                <div class="example-item failed">
+                    <strong>$example</strong>
+                    <p>Dry-run passed but live execution failed - check API keys, model availability, or network issues</p>
+                    $error_details
+                </div>
+EOF
+        done
+        cat >> "$html_file" << EOF
+            </div>
+        </div>
+EOF
+    fi
+
+    # Add footer
+    cat >> "$html_file" << EOF
+        <div class="footer">
+            <p>Generated by ostruct Example Validation System</p>
+            <p>Detailed execution logs available in: <code>${CACHE_DIR}/execution_details/</code></p>
+            <p>Individual results available in: <code>${CACHE_DIR}/results/</code></p>
+        </div>
     </div>
-
-    <div class="summary">
-        <div class="stat-box passed">
-            <h3>Passed Examples</h3>
-            <p>${#PASSED_EXAMPLES[@]} examples</p>
-        </div>
-        <div class="stat-box warning">
-            <h3>Dry-run Failures</h3>
-            <p>${#DRY_FAIL_EXAMPLES[@]} examples</p>
-        </div>
-        <div class="stat-box failed">
-            <h3>Live Failures</h3>
-            <p>${#LIVE_FAIL_EXAMPLES[@]} examples</p>
-        </div>
-    </div>
-
-    <!-- Add detailed results here -->
-
 </body>
 </html>
 EOF
 
-    vlog "INFO" "HTML report saved to: $html_file"
+
 }
 
 # Get exit code based on results

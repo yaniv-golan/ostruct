@@ -236,17 +236,24 @@ store_execution_details() {
 
     local details_file="${details_dir}/${example_name//\//_}_${phase}.json"
 
-    cat > "$details_file" << EOF
-{
-  "example": "$example_name",
-  "command": "$command",
-  "phase": "$phase",
-  "exit_code": $exit_code,
-  "stdout": $(echo "$stdout_content" | jq -R -s .),
-  "stderr": $(echo "$stderr_content" | jq -R -s .),
-  "timestamp": "$(date -Iseconds)"
-}
-EOF
+    # Use jq to properly escape all strings
+    jq -n \
+        --arg example "$example_name" \
+        --arg command "$command" \
+        --arg phase "$phase" \
+        --argjson exit_code "$exit_code" \
+        --arg stdout "$stdout_content" \
+        --arg stderr "$stderr_content" \
+        --arg timestamp "$(date -Iseconds)" \
+        '{
+            "example": $example,
+            "command": $command,
+            "phase": $phase,
+            "exit_code": $exit_code,
+            "stdout": $stdout,
+            "stderr": $stderr,
+            "timestamp": $timestamp
+        }' > "$details_file"
 }
 
 # Clean up temporary execution directory
