@@ -10,11 +10,12 @@ Template Structure
 
    ---
    system_prompt: You are an expert assistant.
-   model: gpt-4o
-   temperature: 0.7
    ---
 
    # Template content with {{ variables }} and {% logic %}
+
+.. note::
+   **Model and Temperature**: Use CLI flags ``--model gpt-4o --temperature 0.7`` instead of frontmatter.
 
 Essential Syntax
 ================

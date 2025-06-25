@@ -670,10 +670,6 @@ Templates can include YAML configuration at the top:
      - Cloud-native architectures
      - Security best practices
      - Performance optimization
-
-   model: gpt-4o
-   temperature: 0.7
-   max_tokens: 2000
    ---
 
    # Architecture Review
@@ -692,15 +688,12 @@ Templates can include YAML configuration at the top:
    * - ``system_prompt``
      - Define AI's role and expertise
      - ``You are an expert...``
-   * - ``model``
-     - Specify OpenAI model
-     - ``gpt-4o``, ``gpt-3.5-turbo``
-   * - ``temperature``
-     - Control randomness (0.0-2.0)
-     - ``0.7``
-   * - ``max_tokens``
-     - Limit response length
-     - ``2000``
+   * - ``include_system``
+     - Include shared system prompts
+     - ``shared/expert.txt``
+
+.. note::
+   **Model and Temperature Configuration**: Model and temperature must be specified via CLI flags (``--model gpt-4o --temperature 0.7``) as they are not currently supported in YAML frontmatter.
 
 **Dynamic System Prompts**
 

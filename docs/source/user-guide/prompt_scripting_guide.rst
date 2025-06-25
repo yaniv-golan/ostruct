@@ -1073,12 +1073,13 @@ Add configuration and system prompts to templates using YAML frontmatter:
    system_prompt: |
      You are an expert software architect with deep knowledge of
      system design patterns and best practices.
-   model: gpt-4o
-   temperature: 0.3
    ---
    Analyze this system architecture:
 
    {{ architecture_doc.content }}
+
+.. note::
+   **Model and Temperature Configuration**: Model and temperature must be specified via CLI flags (``--model gpt-4o --temperature 0.3``) as they are not currently supported in YAML frontmatter.
 
 System Prompt Best Practices
 -----------------------------
@@ -1319,8 +1320,6 @@ Template Composition Example
      - SQL injection and XSS vulnerabilities
 
      Analyze for {{ threat_model }} threat model.
-   model: gpt-4o
-   temperature: 0.1
    ---
 
    # Security Code Review
