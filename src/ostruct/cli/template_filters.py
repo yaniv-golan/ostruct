@@ -388,14 +388,16 @@ def format_error(e: Exception) -> str:
 
 
 @pass_context
-def safe_get(context: Any, path: str, default_value: str = "") -> Any:
+def safe_get(context: Any, *args: Any) -> Any:
     """Safely get a nested attribute path, returning default if any part is undefined.
 
     This function provides safe access to nested object attributes without raising
     UndefinedError when intermediate objects don't exist.
 
+    Template Usage:
+        safe_get(path: str, default_value: Any = "") -> Any
+
     Args:
-        context: Jinja2 template context
         path: Dot-separated path to the attribute (e.g., "transcript.content")
         default_value: Value to return if path doesn't exist (default: "")
 
@@ -405,8 +407,82 @@ def safe_get(context: Any, path: str, default_value: str = "") -> Any:
     Examples:
         {{ safe_get("transcript.content", "No transcript available") }}
         {{ safe_get("user.profile.bio", "No bio provided") }}
+        {{ safe_get("config.debug") }}  # Uses empty string as default
+
+    Common Mistakes:
+        ❌ {{ safe_get(object, 'property', 'default') }}  # Wrong: passing object
+        ✅ {{ safe_get('object.property', 'default') }}   # Right: string path
+
+        ❌ {{ safe_get(user_data, 'name') }}              # Wrong: object first
+        ✅ {{ safe_get('user_data.name') }}               # Right: string path
+
+    Raises:
+        TemplateStructureError: If arguments are incorrect or malformed
     """
     # Import here to avoid circular imports
+
+    # Validate argument count
+    if len(args) < 1 or len(args) > 2:
+        raise TemplateStructureError(
+            f"safe_get() takes 1 or 2 arguments, got {len(args)}",
+            [
+                "Correct usage: safe_get('path.to.property', 'default_value')",
+                "Example: safe_get('user.name', 'Anonymous')",
+                f"You provided: {len(args)} arguments",
+            ],
+        )
+
+    # Extract arguments
+    path = args[0]
+    default_value = args[1] if len(args) > 1 else ""
+
+    # Validate path parameter type
+    if not isinstance(path, str):
+        # Provide helpful error message for common mistakes
+        path_type = type(path).__name__
+        if hasattr(path, "__class__") and hasattr(
+            path.__class__, "__module__"
+        ):
+            # For complex objects, show module.class
+            module_name = path.__class__.__module__
+            if module_name != "builtins":
+                path_type = f"{module_name}.{path.__class__.__name__}"
+
+        # Check for common mistake patterns
+        suggestions = [
+            "Use string path syntax: safe_get('object.property', 'default')",
+            f"You passed: {path_type} as first argument",
+            "WRONG: safe_get(object, 'property', 'default')",
+            "RIGHT: safe_get('object.property', 'default')",
+        ]
+
+        # Add specific suggestions based on the type
+        if hasattr(path, "name") or hasattr(path, "content"):
+            suggestions.append(
+                "For file objects, use: safe_get('filename.property', 'default')"
+            )
+        elif isinstance(path, (list, tuple)):
+            suggestions.append(
+                "For collections, iterate first: {% for item in collection %}"
+            )
+        elif hasattr(path, "__dict__"):
+            suggestions.append(
+                "For objects, use dot notation in quotes: safe_get('object.attribute', 'default')"
+            )
+
+        raise TemplateStructureError(
+            f"safe_get() expects a string path, got {path_type}", suggestions
+        )
+
+    # Validate path is not empty
+    if not path.strip():
+        raise TemplateStructureError(
+            "safe_get() path cannot be empty",
+            [
+                "Provide a valid dot-separated path like 'object.property'",
+                "Example: safe_get('user.name', 'Anonymous')",
+            ],
+        )
 
     try:
         # Split the path and traverse the object tree
@@ -447,7 +523,17 @@ def safe_get(context: Any, path: str, default_value: str = "") -> Any:
         # Return the value (preserving intentional falsy values like False or 0)
         return current
 
-    except (AttributeError, KeyError, TypeError):
+    except AttributeError as e:
+        # More specific error handling for attribute access issues
+        logger.debug(f"safe_get attribute error for path '{path}': {e}")
+        return default_value
+    except (KeyError, TypeError) as e:
+        # Handle other access issues
+        logger.debug(f"safe_get access error for path '{path}': {e}")
+        return default_value
+    except Exception as e:
+        # Catch any other unexpected errors but log them for debugging
+        logger.warning(f"Unexpected error in safe_get for path '{path}': {e}")
         return default_value
 
 

@@ -127,6 +127,7 @@ click.rich_click.OPTION_GROUPS = {
             "name": "Code Interpreter Configuration",
             "options": [
                 "--ci-cleanup",
+                "--ci-duplicate-outputs",
                 "--ci-download-dir",
             ],
         },

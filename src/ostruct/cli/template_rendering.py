@@ -348,11 +348,30 @@ def render_template(
                     raise TemplateValidationError(
                         f"Template rendering failed: {str(e)}"
                     ) from e
-            except (jinja2.TemplateError, Exception) as e:
-                logger.error("Template rendering failed: %s", str(e))
-                raise TemplateValidationError(
-                    f"Template rendering failed: {str(e)}"
-                ) from e
+            except Exception as e:
+                # Import here to avoid circular imports
+                from .template_filters import (
+                    TemplateStructureError,
+                    format_tses_error,
+                )
+
+                # Handle TemplateStructureError with helpful formatting
+                if isinstance(e, TemplateStructureError):
+                    formatted_error = format_tses_error(e)
+                    logger.error(
+                        "Template structure error: %s", formatted_error
+                    )
+                    raise TemplateValidationError(formatted_error) from e
+                elif isinstance(e, jinja2.TemplateError):
+                    logger.error("Template rendering failed: %s", str(e))
+                    raise TemplateValidationError(
+                        f"Template rendering failed: {str(e)}"
+                    ) from e
+                else:
+                    logger.error("Template rendering failed: %s", str(e))
+                    raise TemplateValidationError(
+                        f"Template rendering failed: {str(e)}"
+                    ) from e
 
         except ValueError as e:
             # Re-raise with original context

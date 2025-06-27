@@ -10,6 +10,7 @@ import click
 import jinja2
 import yaml
 
+from .constants import DefaultConfig
 from .errors import (
     DirectoryNotFoundError,
     DuplicateFileMappingError,
@@ -37,7 +38,7 @@ from .types import CLIParams
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+DEFAULT_SYSTEM_PROMPT = DefaultConfig.TEMPLATE["system_prompt"]
 
 
 def _render_template_with_debug(
