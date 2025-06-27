@@ -15,6 +15,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Improved Error Handling**: Specific error classes (`DownloadPermissionError`, `DownloadNetworkError`, `DownloadFileNotFoundError`) with actionable troubleshooting guidance
   - **Enhanced Dry-Run Coverage**: Download configuration validation included in execution plans with directory status and permission checks
 
+- **Centralized Configuration System**: Streamlined configuration management with consistent defaults and improved maintainability:
+  - **Default Model Update**: Changed default model from `gpt-4o` to `gpt-4.1` for enhanced reasoning capabilities and larger context windows
+  - **Unified Constants**: Centralized all default values, paths, and configuration options in a single location for consistency
+  - **Enhanced Configuration Options**: Added support for new Code Interpreter features including duplicate handling and output validation
+  - **Improved Developer Experience**: Better type definitions and IDE support for configuration management
+
+- **Reorganized Examples Library**: Complete restructuring of examples for better discoverability and learning progression:
+  - **Categorical Organization**: Examples now organized into logical categories - analysis/, automation/, debugging/, integration/, security/, tools/, and utilities/
+  - **Focused Learning Path**: Each category provides a clear progression from basic to advanced usage patterns
+  - **Reduced Maintenance Overhead**: Consolidated overlapping examples and removed outdated patterns that don't align with current best practices
+  - **Better Tool Integration**: Examples now demonstrate proper multi-tool usage with Code Interpreter, File Search, Web Search, and MCP servers
+  - **Improved Documentation**: Each example category includes clear README files with usage guidance and learning objectives
+
+- **Enhanced Template System**: Improved template processing with better file handling and user experience:
+  - **Advanced Template Filters**: New filters for better file reference handling and data processing in templates
+  - **Improved Error Handling**: Better error messages and debugging support for template development
+  - **Enhanced Integration**: Seamless integration between template system and new download/file handling features
+  - **Rich CLI Output**: Improved formatting and visual presentation of CLI output and help text
+
+- **Development Tools and Build System**: Streamlined development workflow with new tools and simplified build processes:
+  - **Schema Generator Tool**: New development tool for automatically generating JSON schemas from templates, reducing manual schema creation effort
+  - **Template Analyzer Tool**: Advanced template analysis tool for debugging complex templates and understanding template behavior
+  - **Simplified Build Process**: Removed complex build scripts in favor of standard Python packaging, making the project easier to contribute to
+  - **Enhanced Documentation**: Updated documentation to reflect current best practices and removed outdated installation methods
+
 - **File Reference System**: Introduced `file_ref("alias")` function for clean, structured file references in templates. Files are automatically organized into XML appendices, eliminating the need for manual file content loops in templates. Works seamlessly with existing `--dir`, `--file`, and `--collect` attachments.
 
 - **Enhanced Template Debugging**: Comprehensive template debugging system with granular capacity control:
@@ -79,6 +104,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   These variables only affect template file access (via `--file alias path`) and do not impact Code Interpreter (`--file ci:`) or File Search (`--file fs:`) file routing. The new names clearly indicate their template-specific scope.
 
 ### Fixed
+
+- **Configuration and Test Reliability**: Resolved critical configuration and testing issues that were causing failures in CI/CD environments:
+  - **Default Model Alignment**: Fixed test suite to properly expect `gpt-4.1` as the default model, ensuring consistency between code and tests
+  - **Import and Type Safety**: Resolved duplicate import issues and type annotation problems that were causing runtime errors
+  - **Cross-Environment Compatibility**: Improved test reliability across different development environments by removing dependencies on external tools like poetry where not available
+  - **Error Handling**: Enhanced error handling with proper exit codes and user-friendly error messages
 
 - **Template Rendering**: Fixed template environment creation and validation issues that were causing mypy errors and rendering failures.
 
