@@ -1,0 +1,28 @@
++ set -euo pipefail
++++ dirname ./run.sh
+++ cd ./../../..
+++ pwd
++ ROOT=/Users/yaniv/Documents/code/ostruct
++ source /Users/yaniv/Documents/code/ostruct/scripts/examples/standard_runner.sh
+++++ dirname /Users/yaniv/Documents/code/ostruct/scripts/examples/standard_runner.sh
++++ cd /Users/yaniv/Documents/code/ostruct/scripts/examples
++++ pwd
+++ SCRIPT_DIR=/Users/yaniv/Documents/code/ostruct/scripts/examples
++++ cd /Users/yaniv/Documents/code/ostruct/scripts/examples/../..
++++ pwd
+++ ROOT=/Users/yaniv/Documents/code/ostruct
+++ GETOPTIONS=/Users/yaniv/Documents/code/ostruct/scripts/third_party/getoptions
+++ [[ ! -x /Users/yaniv/Documents/code/ostruct/scripts/third_party/getoptions ]]
+++ DEFAULT_MODEL=gpt-4.1
+++ REQUIRES_JQ=false
+++ REQUIRES_MERMAID=false
+++ MODEL=gpt-4.1
+++ DRY=
+++ MODE=full
+++ VERBOSE=false
+++ [[ false == \t\r\u\e ]]
+++ [[ false == \t\r\u\e ]]
++ parse_standard_args --test-dry-run
++ parse_args_with_getoptions '' --test-dry-run
++ local custom_options
+++ cat

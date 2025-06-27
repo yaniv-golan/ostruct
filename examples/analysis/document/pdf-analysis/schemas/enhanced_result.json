@@ -1,0 +1,398 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "executive_summary": {
+            "type": "object",
+            "properties": {
+                "document_overview": {
+                    "type": "string"
+                },
+                "key_findings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "critical_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "strategic_recommendations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "confidence_level": {
+                    "type": "string",
+                    "enum": [
+                        "high",
+                        "medium",
+                        "low"
+                    ]
+                }
+            },
+            "required": [
+                "document_overview",
+                "key_findings",
+                "strategic_recommendations"
+            ]
+        },
+        "document_analysis": {
+            "type": "object",
+            "properties": {
+                "document_type": {
+                    "type": "string"
+                },
+                "intended_audience": {
+                    "type": "string"
+                },
+                "primary_purpose": {
+                    "type": "string"
+                },
+                "structure_assessment": {
+                    "type": "string"
+                },
+                "content_quality": {
+                    "type": "object",
+                    "properties": {
+                        "clarity_score": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 10
+                        },
+                        "completeness_score": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 10
+                        },
+                        "accuracy_assessment": {
+                            "type": "string"
+                        },
+                        "overall_effectiveness": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "key_information": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "category": {
+                                "type": "string"
+                            },
+                            "information": {
+                                "type": "string"
+                            },
+                            "importance": {
+                                "type": "string",
+                                "enum": [
+                                    "critical",
+                                    "high",
+                                    "medium",
+                                    "low"
+                                ]
+                            },
+                            "source_reference": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "category",
+                            "information",
+                            "importance"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "document_type",
+                "primary_purpose",
+                "key_information"
+            ]
+        },
+        "contextual_analysis": {
+            "type": "object",
+            "properties": {
+                "related_documents_count": {
+                    "type": "integer"
+                },
+                "cross_references": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "reference_type": {
+                                "type": "string"
+                            },
+                            "source_document": {
+                                "type": "string"
+                            },
+                            "target_content": {
+                                "type": "string"
+                            },
+                            "relationship": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "consistency_analysis": {
+                    "type": "object",
+                    "properties": {
+                        "consistent_elements": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "inconsistencies": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "contradictions": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "overall_consistency": {
+                            "type": "string",
+                            "enum": [
+                                "high",
+                                "medium",
+                                "low"
+                            ]
+                        }
+                    }
+                },
+                "contextual_insights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "gap_analysis": {
+            "type": "object",
+            "properties": {
+                "missing_information": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "incomplete_sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "suggested_additions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "completeness_score": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 10
+                }
+            }
+        },
+        "strategic_insights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "insight": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "impact": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "medium",
+                            "low"
+                        ]
+                    },
+                    "urgency": {
+                        "type": "string",
+                        "enum": [
+                            "immediate",
+                            "short-term",
+                            "long-term"
+                        ]
+                    },
+                    "supporting_evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "implications": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "insight",
+                    "category",
+                    "impact",
+                    "urgency"
+                ]
+            }
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "recommendation": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "critical",
+                            "high",
+                            "medium",
+                            "low"
+                        ]
+                    },
+                    "effort_level": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "medium",
+                            "high"
+                        ]
+                    },
+                    "timeline": {
+                        "type": "string"
+                    },
+                    "rationale": {
+                        "type": "string"
+                    },
+                    "success_criteria": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "risks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "recommendation",
+                    "priority",
+                    "rationale"
+                ]
+            }
+        },
+        "risk_assessment": {
+            "type": "object",
+            "properties": {
+                "identified_risks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "risk": {
+                                "type": "string"
+                            },
+                            "probability": {
+                                "type": "string",
+                                "enum": [
+                                    "high",
+                                    "medium",
+                                    "low"
+                                ]
+                            },
+                            "impact": {
+                                "type": "string",
+                                "enum": [
+                                    "high",
+                                    "medium",
+                                    "low"
+                                ]
+                            },
+                            "mitigation_strategies": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "opportunities": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "overall_risk_level": {
+                    "type": "string",
+                    "enum": [
+                        "high",
+                        "medium",
+                        "low"
+                    ]
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "analysis_timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "analysis_version": {
+                    "type": "string"
+                },
+                "context_documents_analyzed": {
+                    "type": "integer"
+                },
+                "total_content_length": {
+                    "type": "integer"
+                },
+                "processing_time": {
+                    "type": "string"
+                },
+                "analyst_confidence": {
+                    "type": "string",
+                    "enum": [
+                        "high",
+                        "medium",
+                        "low"
+                    ]
+                }
+            }
+        }
+    },
+    "required": [
+        "executive_summary",
+        "document_analysis",
+        "strategic_insights",
+        "recommendations"
+    ]
+}

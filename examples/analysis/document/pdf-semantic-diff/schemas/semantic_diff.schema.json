@@ -1,0 +1,89 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "PDF Semantic Diff Result",
+    "description": "Structured output for semantic differences between two PDF documents",
+    "properties": {
+        "changes": {
+            "type": "array",
+            "description": "List of semantic changes between documents",
+            "items": {
+                "type": "object",
+                "required": [
+                    "type",
+                    "description",
+                    "old_snippet",
+                    "new_snippet"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "added",
+                            "deleted",
+                            "reworded",
+                            "changed_in_meaning"
+                        ],
+                        "description": "Type of semantic change"
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "description": "Brief description of the change (≤30 words)"
+                    },
+                    "old_snippet": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 250,
+                        "description": "Text snippet from old version (≤50 words, null for additions)"
+                    },
+                    "new_snippet": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 250,
+                        "description": "Text snippet from new version (≤50 words, null for deletions)"
+                    }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": [
+        "changes"
+    ],
+    "additionalProperties": false,
+    "examples": [
+        {
+            "changes": [
+                {
+                    "type": "changed_in_meaning",
+                    "description": "Payment amount increased from $5,000 to $7,500",
+                    "old_snippet": "Payment of $5,000",
+                    "new_snippet": "Payment of $7,500"
+                },
+                {
+                    "type": "added",
+                    "description": "TypeScript specification added to frontend requirements",
+                    "old_snippet": null,
+                    "new_snippet": "React and TypeScript"
+                },
+                {
+                    "type": "deleted",
+                    "description": "Removed legacy browser support requirement",
+                    "old_snippet": "Support for Internet Explorer 11",
+                    "new_snippet": null
+                },
+                {
+                    "type": "reworded",
+                    "description": "Service description changed from web to full-stack development",
+                    "old_snippet": "web development services",
+                    "new_snippet": "full-stack development services"
+                }
+            ]
+        }
+    ]
+}

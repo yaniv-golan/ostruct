@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Debate - Detailed View</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .topic-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .topic-label {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .topic-text {
+            font-size: 1.4em;
+            font-weight: 400;
+            line-height: 1.4;
+            margin: 0;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .header .subtitle {
+            margin: 15px 0 0 0;
+            opacity: 0.8;
+            font-size: 1em;
+        }
+        .debate-flow {
+            padding: 30px;
+        }
+        .turn {
+            margin-bottom: 30px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .turn-header {
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .turn-pro .turn-header {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+        }
+        .turn-con .turn-header {
+            background: #fce4ec;
+            color: #c2185b;
+            border-left: 4px solid #e91e63;
+        }
+        .turn-content {
+            padding: 20px;
+            background: white;
+        }
+        .stance {
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #dee2e6;
+        }
+        .argument {
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+        .citations {
+            margin-bottom: 20px;
+        }
+        .citations h4 {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .citation {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .citation-number {
+            color: #666;
+            font-weight: bold;
+            min-width: 25px;
+            flex-shrink: 0;
+        }
+        .citation a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+        .citation a:hover {
+            text-decoration: underline;
+        }
+        .citation-link {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 1px 3px;
+            border-radius: 3px;
+            background-color: rgba(25, 118, 210, 0.1);
+        }
+        .citation-link:hover {
+            background-color: rgba(25, 118, 210, 0.2);
+            text-decoration: none;
+        }
+        .relationships {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .relationships h4 {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .relationship {
+            display: inline-block;
+            margin: 4px 8px 4px 0;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        .attacks {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .supports {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        .summary {
+            margin-top: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .summary h2 {
+            margin: 0 0 20px 0;
+            color: #333;
+        }
+        .winner {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .winner-pro {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .winner-con {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+        .strongest-point, .verdict {
+            margin-bottom: 20px;
+        }
+        .strongest-point h3, .verdict h3 {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 1em;
+        }
+        .turn-id {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: normal;
+        }
+        .svg-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .svg-container h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+        }
+        .svg-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Multi-Agent Debate</h1>
+            <div class="topic-section">
+                <div class="topic-label">📋 Debate Topic</div>
+                <div class="topic-text" id="topic-text">Loading debate topic...</div>
+            </div>
+            <p class="subtitle">Evidence-based structured argumentation</p>
+        </div>
+
+        <div class="debate-flow">
+            <div id="turns-container">
+                <!-- Turns will be populated by JavaScript -->
+            </div>
+
+            <div class="summary" id="summary-container">
+                <!-- Summary will be populated by JavaScript -->
+            </div>
+
+            <div class="svg-container" id="svg-container">
+                <h3>📊 Argument Flow Diagram</h3>
+                <!-- SVG will be embedded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Debate data will be injected here
+        const debateData =
+{
+  "topic": "",
+  "turns": [
+    {
+      "round": 1,
+      "agent": "pro",
+      "stance": "Open-source LLMs will surpass proprietary models in capability and safety within two years.",
+      "response": "Open-source large language models (LLMs) are rapidly closing the performance gap with proprietary models, suggesting they will surpass them in capability and safety within two years. By late 2024, top-tier open-source models were only about a year behind the most advanced closed-source models, such as OpenAI's GPT-4, in standardized benchmarks. ([innitor.ai](https://innitor.ai/blog/open-source-models-closing-the-gap-a-performance-benchmark-overview?utm_source=openai)) Meta's Llama 3.1, with 405 billion parameters, has demonstrated performance comparable to leading proprietary models like GPT-4 Omni and Claude 3.5 Sonnet. ([spglobal.com](https://www.spglobal.com/market-intelligence/en/news-insights/research/generative-ai-digest-the-debate-over-open-source-vs-closed-source-models?utm_source=openai)) Additionally, open-source models offer greater transparency, allowing for thorough audits and customization, which enhances safety and trustworthiness. ([forbes.com](https://www.forbes.com/councils/forbestechcouncil/2025/03/20/the-open-source-llm-revolution-transforming-enterprise-ai-for-a-new-era/?utm_source=openai)) The rapid advancements and inherent advantages of open-source LLMs indicate they will overtake proprietary models in both capability and safety within the next two years.",
+      "supports": [],
+      "attacks": [],
+      "research_used": true,
+      "research_queries": [
+        "progress of open-source large language models vs proprietary models 2024"
+      ],
+      "citations": [
+        {
+          "id": "turn0search2",
+          "url": "https://innitor.ai/blog/open-source-models-closing-the-gap-a-performance-benchmark-overview",
+          "title": "Open Source Models Closing the Gap: A Performance Benchmark Overview",
+          "snippet": "By late 2024, top-tier open-source models were only approximately one year behind the most advanced closed-source models, such as OpenAI's GPT-4, in standardized benchmarks and performance tests."
+        },
+        {
+          "id": "turn0search10",
+          "url": "https://www.spglobal.com/market-intelligence/en/news-insights/research/generative-ai-digest-the-debate-over-open-source-vs-closed-source-models",
+          "title": "Generative AI Digest: The debate over open-source vs. closed-source models",
+          "snippet": "Meta's Llama 3.1, with 405 billion parameters, has demonstrated performance comparable to leading proprietary models like GPT-4 Omni and Claude 3.5 Sonnet."
+        },
+        {
+          "id": "turn0search3",
+          "url": "https://www.forbes.com/councils/forbestechcouncil/2025/03/20/the-open-source-llm-revolution-transforming-enterprise-ai-for-a-new-era/",
+          "title": "How The Open-Source LLM Revolution Is Transforming Enterprise AI",
+          "snippet": "Open-source models offer greater transparency, allowing for thorough audits and customization, which enhances safety and trustworthiness."
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "agent": "con",
+      "stance": "Open-source LLMs will not overtake proprietary models in capability and safety within two years.",
+      "response": "While open-source large language models (LLMs) have made significant strides, they are unlikely to surpass proprietary models in capability and safety within the next two years. Proprietary models often benefit from substantial investments in research and development, leading to superior performance and more robust safety measures. For instance, proprietary LLMs are designed with enterprise needs in mind, providing tailored solutions that align with business objectives, and are characterized by their robust security measures, scalability, and dedicated support. ([encora.com](https://www.encora.com/insights/proprietary-vs-open-source-llms?utm_source=openai)) In contrast, open-source models, while promoting transparency and collaboration, may lack the same level of oversight and resources, potentially leading to security vulnerabilities and inconsistent performance. Additionally, the open availability of powerful LLMs is a double-edged sword, as unrestricted access means they can be used for nefarious purposes—generating disinformation, spam, malware code, or hateful content—without the safety filters that proprietary services impose. ([deepresearch.wiki](https://www.deepresearch.wiki/report/open-source-vs-proprietary-large-language-models-jwcs654ffacdm4ft1ktmldpo?utm_source=openai)) Therefore, despite the rapid advancements in open-source LLMs, proprietary models are likely to maintain their lead in both capability and safety in the near future.",
+      "supports": [],
+      "attacks": [
+        1
+      ],
+      "research_used": true,
+      "research_queries": [
+        "proprietary vs open-source LLMs capability safety 2024"
+      ],
+      "citations": [
+        {
+          "id": "turn0search7",
+          "url": "https://www.encora.com/insights/proprietary-vs-open-source-llms",
+          "title": "Proprietary vs. Open-Source LLMs: Best Choice for Enterprises",
+          "snippet": "Proprietary LLMs are designed with enterprise needs in mind, providing tailored solutions that align with business objectives, and are characterized by their robust security measures, scalability, and dedicated support."
+        },
+        {
+          "id": "turn0search0",
+          "url": "https://www.deepresearch.wiki/report/open-source-vs-proprietary-large-language-models-jwcs654ffacdm4ft1ktmldpo",
+          "title": "Open-Source vs. Proprietary Large Language Models: A Comparative Study",
+          "snippet": "The open availability of powerful LLMs is a double-edged sword, as unrestricted access means they can be used for nefarious purposes—generating disinformation, spam, malware code, or hateful content—without the safety filters that proprietary services impose."
+        }
+      ]
+    }
+  ]
+}
+        ;
+
+        // Summary data will be injected here
+        const summaryData =
+{
+  "winning_side": "con",
+  "strongest_point": "\"The open availability of powerful LLMs is a double-edged sword, as unrestricted access means they can be used for nefarious purposes—generating disinformation, spam, malware code, or hateful content—without the safety filters that proprietary services impose.\" (deepresearch.wiki)",
+  "weakest_point": "Pro's weakest point is the assumption that increased transparency and rapid progress inherently guarantee greater safety, ignoring the risks of misuse due to open access.",
+  "contradictions": [
+    "Pro asserts open-source models are safer due to transparency, whereas Con highlights the opposite—open-source's openness can make them less safe due to lack of control and misuse potential.",
+    "Pro claims open-source is now just a year behind proprietary models in benchmarks, but Con notes enterprises still prefer proprietary models for robustness and security, suggesting a qualitative gap remains."
+  ],
+  "verdict": "While open-source LLMs have rapidly improved and narrowed performance benchmarks—supported by credible recent sources—Con's side presents a stronger position regarding safety and capability. The most compelling argument is that open-source models' transparency does confer auditability and customization, but openness simultaneously introduces significant safety and misuse risks, which proprietary models mitigate through controlled access and dedicated safety features. This key drawback, combined with existing enterprise preferences for proprietary models and their capacity for sustained innovation (due to greater funding), makes Con's position stronger at present. Pro shows open-source is rapidly catching up, but not enough evidence supports surpassing in both capability and safety within two years.",
+  "sources_audited": [
+    "innitor.ai OK",
+    "spglobal.com OK",
+    "forbes.com OK",
+    "encora.com OK",
+    "deepresearch.wiki OK"
+  ]
+}
+        ;
+
+        // Populate the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set topic - extract from debate data
+            const topicElement = document.getElementById('topic-text');
+            let topic = '';
+
+            // Try to get topic from the JSON topic field first
+            if (debateData.topic && debateData.topic.trim() !== '') {
+                topic = debateData.topic;
+            }
+            // If no topic field, extract from the first turn's stance
+            else if (debateData.turns && debateData.turns.length > 0 && debateData.turns[0].stance) {
+                topic = debateData.turns[0].stance.trim();
+            }
+            // Fallback to placeholder that will be replaced by shell script
+            else {
+                topic = 'Open-source LLMs will overtake proprietary models in capability and safety within two years.';
+            }
+
+            topicElement.textContent = topic;
+
+            // Populate turns
+            const turnsContainer = document.getElementById('turns-container');
+            debateData.turns.forEach((turn, index) => {
+                const turnDiv = document.createElement('div');
+                turnDiv.className = `turn turn-${turn.agent}`;
+
+                const relationships = [];
+                if (turn.attacks && turn.attacks.length > 0) {
+                    turn.attacks.forEach(attackedTurn => {
+                        relationships.push(`<span class="relationship attacks">⚔️ Attacks Turn ${attackedTurn + 1}</span>`);
+                    });
+                }
+                if (turn.supports && turn.supports.length > 0) {
+                    turn.supports.forEach(supportedTurn => {
+                        relationships.push(`<span class="relationship supports">🤝 Supports Turn ${supportedTurn + 1}</span>`);
+                    });
+                }
+
+                // Post-process citations: convert any format to numbered citations
+                let processedResponse = turn.response;
+                let allCitations = [];
+
+                // Extract inline citations from text first: [text](url) or ([text](url))
+                const inlineLinkRegex = /\(?(\[([^\]]+)\]\(([^)]+)\))\)?/g;
+                let match;
+                const inlineMatches = [];
+
+                while ((match = inlineLinkRegex.exec(turn.response)) !== null) {
+                    const fullMatch = match[1]; // [text](url) part
+                    const linkText = match[2];  // text inside brackets
+                    const url = match[3];       // url inside parentheses
+
+                    inlineMatches.push({
+                        fullMatch: match[0], // includes potential outer parentheses
+                        linkMatch: fullMatch,
+                        text: linkText,
+                        url: url,
+                        source: 'inline'
+                    });
+
+                    // Add to citations if not already present
+                    if (!allCitations.find(c => c.url === url)) {
+                        allCitations.push({
+                            url: url,
+                            title: linkText,
+                            source: 'inline'
+                        });
+                    }
+                }
+
+                // Add structured citations only if they're not duplicates of inline ones
+                if (turn.citations && turn.citations.length > 0) {
+                    turn.citations.forEach(citation => {
+                        if (!allCitations.find(c => c.url === citation.url)) {
+                            allCitations.push({
+                                url: citation.url,
+                                title: citation.title || citation.url,
+                                source: 'structured'
+                            });
+                        }
+                    });
+                }
+
+                // Replace inline citations with numbered references
+                for (const inlineMatch of inlineMatches) {
+                    const citationIndex = allCitations.findIndex(c => c.url === inlineMatch.url);
+                    const citationNumber = citationIndex + 1;
+
+                    // Replace the inline citation with numbered link
+                    const replacement = `<a href="${inlineMatch.url}" target="_blank" class="citation-link">[${citationNumber}]</a>`;
+                    processedResponse = processedResponse.replace(inlineMatch.fullMatch, replacement);
+                }
+
+                // Also handle any existing numbered citations [1], [2], etc.
+                allCitations.forEach((citation, index) => {
+                    const citationNumber = index + 1;
+                    const numberRegex = new RegExp(`\\[${citationNumber}\\](?![^<]*>)`, 'g');
+                    processedResponse = processedResponse.replace(numberRegex,
+                        `<a href="${citation.url}" target="_blank" class="citation-link">[${citationNumber}]</a>`);
+                });
+
+                // Generate citations HTML
+                const citations = allCitations.map((citation, index) => {
+                    const citationNumber = index + 1;
+                    return `<div class="citation"><span class="citation-number">[${citationNumber}]</span> <a href="${citation.url}" target="_blank">${citation.title}</a></div>`;
+                }).join('');
+
+                turnDiv.innerHTML = `
+                    <div class="turn-header">
+                        <span>${turn.agent.toUpperCase()}</span>
+                        <span class="turn-id">Turn ${index + 1}</span>
+                    </div>
+                    <div class="turn-content">
+                        <div class="stance">${turn.stance}</div>
+                        <div class="argument">${processedResponse}</div>
+                        ${citations ? `
+                            <div class="citations">
+                                <h4>📚 Citations</h4>
+                                ${citations}
+                            </div>
+                        ` : ''}
+                        ${relationships.length > 0 ? `
+                            <div class="relationships">
+                                <h4>🔗 Argument Relationships</h4>
+                                ${relationships.join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                turnsContainer.appendChild(turnDiv);
+            });
+
+            // Populate summary if available
+            if (summaryData) {
+                const summaryContainer = document.getElementById('summary-container');
+                summaryContainer.innerHTML =
+                    '<h2>🏆 Debate Results</h2>' +
+                    '<div class="winner winner-' + summaryData.winning_side.toLowerCase() + '">' +
+                        '🥇 Winner: ' + summaryData.winning_side.toUpperCase() +
+                    '</div>' +
+                    '<div class="strongest-point">' +
+                        '<h3>💪 Strongest Argument</h3>' +
+                        '<p>' + summaryData.strongest_point + '</p>' +
+                    '</div>' +
+                    '<div class="verdict">' +
+                        '<h3>📋 Judge\'s Reasoning</h3>' +
+                        '<p>' + summaryData.verdict + '</p>' +
+                    '</div>';
+            } else {
+                document.getElementById('summary-container').style.display = 'none';
+            }
+
+            // Embed SVG if available
+            const svgContainer = document.getElementById('svg-container');
+            // SVG content will be injected here by the shell script
+        });
+    </script>
+</body>
+</html>

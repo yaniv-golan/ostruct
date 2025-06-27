@@ -1,0 +1,83 @@
+{
+  "word": "pneumonoultramicroscopicsilicovolcanoconiosis",
+  "etymology": {
+    "component": "pneumonoultramicroscopicsilicovolcanoconiosis",
+    "originLanguage": "English",
+    "meaning": "a type of lung disease caused by inhaling very fine silicate or quartz dust",
+    "order": 1,
+    "children": [
+      {
+        "component": "pneumono",
+        "originLanguage": "Greek",
+        "meaning": "lung",
+        "order": 1,
+        "children": []
+      },
+      {
+        "component": "ultra",
+        "originLanguage": "Latin",
+        "meaning": "beyond",
+        "order": 2,
+        "children": []
+      },
+      {
+        "component": "microscopic",
+        "originLanguage": "Greek",
+        "meaning": "invisible to the eye without a microscope",
+        "order": 3,
+        "children": [
+          {
+            "component": "micro",
+            "originLanguage": "Greek",
+            "meaning": "small",
+            "order": 1,
+            "children": []
+          },
+          {
+            "component": "scopic",
+            "originLanguage": "Greek",
+            "meaning": "viewing",
+            "order": 2,
+            "children": []
+          }
+        ]
+      },
+      {
+        "component": "silico",
+        "originLanguage": "Latin",
+        "meaning": "silicon",
+        "order": 4,
+        "children": []
+      },
+      {
+        "component": "volcano",
+        "originLanguage": "Latin",
+        "meaning": "volcano",
+        "order": 5,
+        "children": []
+      },
+      {
+        "component": "coniosis",
+        "originLanguage": "Greek",
+        "meaning": "dust disease",
+        "order": 6,
+        "children": [
+          {
+            "component": "coni",
+            "originLanguage": "Greek",
+            "meaning": "dust",
+            "order": 1,
+            "children": []
+          },
+          {
+            "component": "osis",
+            "originLanguage": "Greek",
+            "meaning": "disease",
+            "order": 2,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

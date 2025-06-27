@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "summary": {
+            "type": "object",
+            "properties": {
+                "total_sales": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "average_price": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "product_count": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "total_transactions": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "required": [
+                "total_sales",
+                "average_price",
+                "product_count",
+                "total_transactions"
+            ],
+            "additionalProperties": false
+        },
+        "sales_by_product": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "number",
+                "minimum": 0
+            }
+        },
+        "chart_info": {
+            "type": "object",
+            "properties": {
+                "filename": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "chart_type": {
+                    "type": "string",
+                    "enum": [
+                        "bar",
+                        "line",
+                        "pie",
+                        "scatter",
+                        "histogram"
+                    ]
+                }
+            },
+            "required": [
+                "filename",
+                "description",
+                "chart_type"
+            ],
+            "additionalProperties": false
+        },
+        "data_quality": {
+            "type": "object",
+            "properties": {
+                "rows_processed": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "missing_values": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "data_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "rows_processed",
+                "missing_values",
+                "data_issues"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "summary",
+        "sales_by_product",
+        "chart_info",
+        "data_quality"
+    ],
+    "additionalProperties": false
+}

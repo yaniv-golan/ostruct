@@ -1,0 +1,33 @@
+This template contains INTENTIONAL syntax errors for demonstration purposes.
+
+# Broken Syntax Examples
+
+## Error 1: Unclosed if statement
+{% if user_name
+Hello {{ user_name }}!
+
+## Error 2: Mismatched tags
+{% for item in items %}
+- {{ item }}
+{% endwhile %}
+
+## Error 3: Invalid variable syntax
+Hello {{ user.name.first.middle.last.really.long.chain }}!
+
+## Error 4: Unclosed expression
+{{ "Hello " + user_name
+
+## Error 5: Invalid filter syntax
+{{ items | filter(lambda x: x > 5) }}
+
+## Error 6: Nested template tags incorrectly
+{% if condition %}
+  {% if another_condition
+    Content here
+  {% endif %}
+{% endif %}
+
+## Error 7: Wrong quotation marks
+{{ 'Hello "world"' }}
+
+This template will fail validation and show various syntax errors.

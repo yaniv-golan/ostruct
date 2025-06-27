@@ -1,0 +1,96 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Troubleshooting Output",
+    "description": "Schema for validating troubleshooting cookbook output",
+    "type": "object",
+    "properties": {
+        "troubleshooting_info": {
+            "type": "object",
+            "description": "Information about troubleshooting and fixes applied",
+            "properties": {
+                "syntax_valid": {
+                    "type": "boolean",
+                    "description": "Whether the template syntax is valid after fixes"
+                },
+                "errors_fixed": {
+                    "type": "integer",
+                    "description": "Number of errors that were corrected",
+                    "minimum": 0
+                },
+                "best_practices": {
+                    "type": "array",
+                    "description": "List of best practices demonstrated",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "error_categories": {
+                    "type": "array",
+                    "description": "Categories of errors addressed",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "syntax",
+                            "variables",
+                            "logic",
+                            "performance",
+                            "security"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "syntax_valid",
+                "errors_fixed",
+                "best_practices"
+            ],
+            "additionalProperties": true
+        },
+        "examples": {
+            "type": "array",
+            "description": "Array of broken→fixed examples",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "problem": {
+                        "type": "string",
+                        "description": "Description of the problem"
+                    },
+                    "broken_code": {
+                        "type": "string",
+                        "description": "Example of broken code"
+                    },
+                    "fixed_code": {
+                        "type": "string",
+                        "description": "Corrected version of the code"
+                    },
+                    "explanation": {
+                        "type": "string",
+                        "description": "Explanation of why the fix works"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "syntax",
+                            "variables",
+                            "logic",
+                            "performance",
+                            "security"
+                        ]
+                    }
+                },
+                "required": [
+                    "problem",
+                    "broken_code",
+                    "fixed_code",
+                    "explanation"
+                ],
+                "additionalProperties": true
+            }
+        }
+    },
+    "required": [
+        "troubleshooting_info"
+    ],
+    "additionalProperties": true
+}

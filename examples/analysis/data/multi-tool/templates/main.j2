@@ -1,0 +1,62 @@
+# Multi-Tool Data Analysis
+
+## Analysis Request
+**Type**: {{ analysis_type | title }}
+
+## Data Sources
+
+### Files Provided
+**Sales Data**: {{ safe_get('sales_data.name', 'Unknown file') }}
+- Size: {{ safe_get('sales_data.size', 'Unknown') }} bytes
+- Preview:
+{{ safe_get('sales_data.content', 'No content available')[:500] }}...
+
+**Customer Data**: {{ safe_get('customer_data.name', 'Unknown file') }}
+- Size: {{ safe_get('customer_data.size', 'Unknown') }} bytes
+- Preview:
+{{ safe_get('customer_data.content', 'No content available')[:500] }}...
+
+**Analysis Scripts**: {{ safe_get('analysis_scripts.name', 'Script directory') }}
+- Available scripts:
+{% for script in safe_get('analysis_scripts.files', []) %}
+- {{ safe_get('script.name', 'Unknown script') }}
+{% endfor %}
+
+**Business Documentation**: {{ safe_get('business_docs.name', 'Business docs directory') }}
+- Available documents:
+{% for doc in safe_get('business_docs.files', []) %}
+- {{ safe_get('doc.name', 'Unknown document') }}: {{ safe_get('doc.content', 'No content')[:200] }}...
+{% endfor %}
+
+## Analysis Instructions
+
+Please perform a {{ analysis_type | lower }} analysis of the provided data:
+
+1. **Data Quality Assessment**
+   - Check for missing values, duplicates, and inconsistencies
+   - Validate data types and formats
+   - Identify any data quality issues
+
+2. **Exploratory Data Analysis**
+   - Generate summary statistics
+   - Create visualizations to understand data patterns
+   - Identify key trends and relationships
+
+3. **Business Insights**
+   - Based on the business documentation, provide domain-specific insights
+   - Highlight actionable findings
+   - Suggest recommendations
+
+4. **Technical Implementation**
+   - Use the provided analysis scripts as reference
+   - Apply appropriate statistical methods
+   - Generate clear, interpretable results
+
+## Expected Deliverables
+
+- Summary of data quality findings
+- Key statistical insights with visualizations
+- Business recommendations based on analysis
+- Technical notes on methodology used
+
+Please ensure all analysis is thorough, accurate, and aligned with the business context provided in the documentation.
