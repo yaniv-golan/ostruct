@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.12-slim
 
+# Install git (required for poetry-dynamic-versioning)
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
