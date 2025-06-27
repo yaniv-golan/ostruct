@@ -69,7 +69,7 @@ jobs:
         run: |
           python -m venv test_env
           test_env\Scripts\activate
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           echo "VIRTUAL_ENV_ACTIVATED=test_env\Scripts\activate" >> $env:GITHUB_ENV
 
       - name: Install ostruct from wheel (Unix)
@@ -82,7 +82,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           test_env\Scripts\activate
-          pip install (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          python -m pip install (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
         shell: pwsh
 
       - name: Test basic functionality (Unix)
