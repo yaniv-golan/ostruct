@@ -53,11 +53,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Dynamic Model Validation**: Enhanced model selection with real-time validation against OpenAI's model registry, ensuring compatibility and providing helpful error messages for unsupported models.
 
+- **Enhanced Examples Testing Infrastructure**: Comprehensive automated testing system for all examples:
+  - **Auto-Discovery**: Automatically discovers and tests all examples following EXAMPLES_STANDARD.md specification
+  - **Dual Testing Modes**: Fast dry-run validation (no API calls) and live API testing with `@pytest.mark.live` for cost control
+  - **Structure Validation**: Ensures examples follow standard structure (README.md, templates/, schemas/, run.sh with standard_runner.sh)
+  - **CI/CD Integration**: Seamlessly integrates into pytest test suite for continuous validation of 9+ examples across analysis, tools, integration, security, and utilities categories
+  - **Cross-Platform Compatibility**: Works with pyfakefs and handles subprocess calls reliably across different development environments
+
 - **Comprehensive Examples**: Added extensive example collection demonstrating real-world usage patterns:
   - File reference examples with security audit, code review, and data analysis templates
   - Multi-tool integration examples showing file routing to different services
   - Template debugging examples with various complexity levels
   - Updated existing examples to demonstrate new `file_ref()` patterns
+
+- **Experimental --help-json Flag**: Added experimental JSON help output for programmatic CLI integration:
+  - **Hidden Flag**: `--help-json` flag available but hidden from help output (not ready for public use)
+  - **Structured Output**: Outputs complete command help in JSON format for tools and automation
+  - **Dynamic Model Information**: Includes real-time model registry metadata and validation details
+  - **Attachment System Documentation**: Comprehensive JSON documentation of file routing targets and syntax
+  - **Note**: JSON format designed for eventual public API but subject to (and will) change
 
 - **Enhanced CLI Help System**: Integrated rich-click for beautiful, modern CLI help output with:
   - Color-coded help text with professional styling and organized option groups
@@ -79,11 +93,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Simplified CLI Syntax**: Updated all examples and documentation to use thes simplified attachment system with explicit file routing (`--file ci:`, `--dir fs:`, etc.) instead of legacy flags.
 
-- **Improved Error Handling**: Enhanced error messages throughout the system:
-  - Clean, user-friendly error display without technical stack traces for common issues
-  - Better template error messages with proper variable name extraction
-  - Improved schema validation feedback with actionable guidance
-  - Fixed template rendering edge cases and error handling
+- **Comprehensive Error Categorization System**: Revolutionary error handling with intelligent categorization and solutions:
+  - **13 Specific Error Categories**: FILE_FORMAT_ERROR, API_KEY_ERROR, SCHEMA_ERROR, TEMPLATE_ERROR, and 9 others for precise problem identification
+  - **Actionable Solutions**: Each error provides primary and alternative solutions with corrected command examples
+  - **Context-Aware Messaging**: Errors include relevant context (file paths, line numbers, configuration details) for faster troubleshooting
+  - **Exit Code Mapping**: Consistent exit codes (USAGE_ERROR=2, DATA_ERROR=3, VALIDATION_ERROR=4, etc.) for reliable automation integration
+
+- **Enhanced CLI Reference with Better Examples**: Comprehensive improvements to CLI documentation and error handling:
+  - **Dynamic Model Validation**: Real-time validation against OpenAI model registry with helpful suggestions for invalid models
+  - **Rich Error Messages**: Clean, user-friendly error display without technical stack traces for common issues
+  - **Better Template Error Messages**: Proper variable name extraction from Jinja2 errors with actionable feedback
+  - **Improved Schema Validation**: Enhanced schema validation feedback with specific guidance for common issues
 
 - **Documentation Overhaul**: Complete documentation update including:
   - Comprehensive file reference system guide with usage examples
@@ -95,6 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Streamlined Installation**: Removed complex installation script in favor of standard methods (pipx, Homebrew, Docker), with automated Homebrew formula updates on release.
 
 - **MCP Environment Variables**: Changed MCP environment variable pattern from `MCP_<NAME>_URL` to `OSTRUCT_MCP_URL_<name>` for consistency with other ostruct environment variables (e.g., `OSTRUCT_MCP_URL_stripe` instead of `MCP_STRIPE_URL`). This provides better namespace isolation and follows the established `OSTRUCT_*` pattern used by other environment variables like `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`.
+
+- **YAML Frontmatter Configuration Updates**: Clarified configuration requirements for template frontmatter:
+  - **Model and Temperature Restriction**: Model and temperature parameters must be specified via CLI flags (`--model gpt-4.1 --temperature 0.7`) and are not supported in YAML frontmatter
+  - **System Prompt Support**: YAML frontmatter continues to support `system_prompt` and `include_system` configuration options
+  - **Documentation Updates**: Updated all template documentation to reflect CLI-only requirement for model parameters
+  - **Conflict Detection**: Added warning when both YAML frontmatter system_prompt and `--sys-file` are provided, with CLI taking precedence
 
 - **Template Environment Variables**: Renamed template-specific environment variables for clarity:
   - `OSTRUCT_MAX_FILE_SIZE` → `OSTRUCT_TEMPLATE_FILE_LIMIT` (controls individual file size limits for template access)
