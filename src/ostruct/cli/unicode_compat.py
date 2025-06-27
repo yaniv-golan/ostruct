@@ -14,7 +14,7 @@ Environment Variables:
 
 import os
 import sys
-from typing import Optional
+from typing import Any, Optional
 
 
 def _get_unicode_setting() -> str:
@@ -162,10 +162,11 @@ def safe_emoji(emoji: str, text_without_emoji: Optional[str] = None) -> str:
         return text_without_emoji or ""
 
 
-def safe_format(format_string: str, *args: str, **kwargs: str) -> str:
+def safe_format(format_string: str, *args: Any, **kwargs: Any) -> str:
     """Format string with emoji safety.
 
     Processes format strings containing emoji through safe_emoji() automatically.
+    Optimized to skip processing when no emoji are present.
 
     Args:
         format_string: Format string that may contain emoji
@@ -174,6 +175,13 @@ def safe_format(format_string: str, *args: str, **kwargs: str) -> str:
     Returns:
         Formatted string with emoji handled appropriately for the terminal
     """
+    # Quick check: if no emoji characters are present, skip processing entirely
+    # This optimizes the common case of plain text messages
+    # Check for the specific emoji we handle rather than broad Unicode ranges
+    emoji_chars = {"🚀", "🔍", "⚙️", "ℹ️", "📖", "💻", "📄", "🌐"}
+    if not any(emoji in format_string for emoji in emoji_chars):
+        return format_string.format(*args, **kwargs)
+
     # Common emoji replacements for CLI output
     emoji_map = {
         "🚀": "",  # Just omit, the text context is clear
@@ -189,9 +197,30 @@ def safe_format(format_string: str, *args: str, **kwargs: str) -> str:
     # Apply emoji safety to the format string
     safe_format_string = format_string
     for emoji, fallback in emoji_map.items():
-        safe_format_string = safe_format_string.replace(
-            emoji, safe_emoji(emoji, fallback)
-        )
+        if emoji in format_string:  # Only process if emoji is actually present
+            safe_format_string = safe_format_string.replace(
+                emoji, safe_emoji(emoji, fallback)
+            )
 
     # Format with the processed string
     return safe_format_string.format(*args, **kwargs)
+
+
+def safe_print(message: str, **print_kwargs: Any) -> None:
+    """Print message with emoji safety.
+
+    Convenience function for safe printing with automatic emoji handling.
+
+    Args:
+        message: Message to print (may contain emoji)
+        **print_kwargs: Additional arguments passed to print()
+    """
+    # Fast path for messages without emoji
+    emoji_chars = {"🚀", "🔍", "⚙️", "ℹ️", "📖", "💻", "📄", "🌐"}
+    if not any(emoji in message for emoji in emoji_chars):
+        print(message, **print_kwargs)
+        return
+
+    # Process emoji for compatibility
+    safe_message = safe_format(message)
+    print(safe_message, **print_kwargs)

@@ -9,6 +9,8 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, Optional, TextIO
 
+from .unicode_compat import safe_emoji
+
 
 class PlanPrinter:
     """Renders execution plans for human eyes using same dict as JSON output.
@@ -29,7 +31,11 @@ class PlanPrinter:
             file = sys.stdout
 
         plan_type = plan.get("type", "unknown").replace("_", " ").title()
-        print(f"🔍 {plan_type}\n", file=file)
+        emoji = safe_emoji("🔍")
+        if emoji:
+            print(f"{emoji} {plan_type}\n", file=file)
+        else:
+            print(f"{plan_type}\n", file=file)
 
         # Header with timestamp
         timestamp = plan["timestamp"]
