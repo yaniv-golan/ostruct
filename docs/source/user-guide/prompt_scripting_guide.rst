@@ -6,7 +6,7 @@ Learn how to create powerful Jinja2 templates for ostruct that combine static te
 .. note::
    This guide assumes no prior knowledge of Jinja2. Templates use a customized Jinja2 environment with ostruct-specific enhancements.
 
-   .. tip::
+.. tip::
    **Schema Creation Tool**: When creating templates, use the **Schema Generator** meta-tool to automatically create corresponding JSON schemas:
 
    .. code-block:: bash
