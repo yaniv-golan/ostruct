@@ -70,7 +70,7 @@ format-jinja = """
     {%- elif revision is not none -%}
         {{ serialize_pep440(base, stage, revision + 1, dev=distance) }}
     {%- else -%}
-        {{ serialize_pep440(bump_version(base), stage="dev", revision=distance) }}
+        {{ serialize_pep440("1.0.0", dev=distance) }}
     {%- endif -%}
 """
 
