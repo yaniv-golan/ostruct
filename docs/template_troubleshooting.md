@@ -99,6 +99,31 @@ Return your analysis in this exact format:
 - **Wrong link format** → Use `[name](sandbox:/mnt/data/name)`
 - **Model doesn't follow instructions** → Try different model (GPT-4o-mini works well)
 
+#### File Conflict Resolution
+
+**Files being overwritten?**
+
+Use the `--ci-duplicate-outputs` flag to control behavior:
+
+```bash
+# Generate unique names for duplicate files
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs rename
+
+# Skip files that already exist
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs skip
+
+# Overwrite existing files (default)
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs overwrite
+```
+
+Or configure permanently in `ostruct.yaml`:
+
+```yaml
+tools:
+  code_interpreter:
+    duplicate_outputs: "rename"  # overwrite|rename|skip
+```
+
 ## Quick Diagnostic Checklist
 
 When encountering template issues, follow this checklist:

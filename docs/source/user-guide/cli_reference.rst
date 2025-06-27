@@ -475,6 +475,52 @@ Output and Execution Options
 
    Write output to file instead of stdout.
 
+Tool Configuration Options
+---------------------------
+
+.. option:: --ci-duplicate-outputs {overwrite|rename|skip}
+
+   Control how Code Interpreter handles duplicate output file names.
+
+   :param overwrite: Replace existing files (default)
+   :param rename: Generate unique names (file_1.txt, file_2.txt)
+   :param skip: Skip files that already exist
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Generate unique names for duplicate files
+      ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs rename
+
+      # Skip files that already exist
+      ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs skip
+
+      # Overwrite existing files (default behavior)
+      ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs overwrite
+
+   **Configuration File:**
+
+   You can set the default behavior in ``ostruct.yaml``:
+
+   .. code-block:: yaml
+
+      tools:
+        code_interpreter:
+          duplicate_outputs: "rename"  # overwrite|rename|skip
+          output_validation: "basic"   # basic|strict|off
+
+.. option:: --ci-download-dir DIRECTORY
+
+   Specify directory for Code Interpreter output files.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Save outputs to custom directory
+      ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-download-dir ./results
+
 Debug and Progress Options
 ---------------------------
 
@@ -531,6 +577,15 @@ Debug and Progress Options
       --template-debug vars,preview      # Show variables and content previews
       --template-debug post-expand       # Show final expanded template
       --template-debug all               # Show all debugging information
+
+   .. tip::
+      **Advanced Template Analysis**: For comprehensive template analysis beyond basic debugging, use the Template Analyzer meta-tool:
+
+      .. code-block:: bash
+
+         tools/template-analyzer/run.sh my_template.j2 my_schema.json
+
+      This provides detailed analysis including security, performance, best practices, and OpenAI compliance checking with interactive HTML reports.
 
 Migration from v0.8.x
 ======================

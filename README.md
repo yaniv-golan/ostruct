@@ -459,7 +459,7 @@ models:
 tools:
   code_interpreter:
     auto_download: true
-    output_directory: "./output"
+    output_directory: "./downloads"
     download_strategy: "two_pass_sentinel"  # Enable reliable file downloads
 
 mcp:
@@ -525,6 +525,10 @@ ostruct run template.j2 schema.json --file ci:data data.csv --enable-feature ci-
 
 # Force single-pass mode (override config)
 ostruct run template.j2 schema.json --file ci:data data.csv --disable-feature ci-download-hack
+
+# Handle duplicate output file names
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs rename
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs skip
 ```
 
 #### Option 2: Configuration File (Recommended for persistent settings)
@@ -536,6 +540,8 @@ tools:
     download_strategy: "two_pass_sentinel"  # Enables reliable file downloads
     auto_download: true
     output_directory: "./downloads"
+    duplicate_outputs: "rename"  # Handle duplicate file names: overwrite|rename|skip
+    output_validation: "basic"   # Validate downloaded files: basic|strict|off
 ```
 
 **Why this is needed**: OpenAI's structured output mode can prevent file download annotations from being generated. The two-pass strategy works around this by making two API calls: one to generate files (without structured output), then another to ensure schema compliance. For detailed technical information, see [docs/known-issues/2025-06-responses-ci-file-output.md](docs/known-issues/2025-06-responses-ci-file-output.md).

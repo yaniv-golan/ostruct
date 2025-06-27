@@ -9,6 +9,7 @@ Key Features
 - **Schema-First Approach**: Define your output structure using JSON Schema (validation is always performed automatically)
 - **Template-Based Input**: Use Jinja2 templates with support for YAML frontmatter, system prompts, and shared system prompt includes
 - **Multi-Tool Integration**: Native support for Code Interpreter, File Search, Web Search, and MCP servers
+- **Development Tools**: Built-in meta-tools for schema generation and template analysis
 - **File Processing**: Handle single files, multiple files, or entire directories with thread-safe operations
 - **Cross-Platform**: Robust support for Windows, macOS, and Linux with consistent path handling
 - **Security-Focused**: Safe file access with explicit directory permissions and enhanced error handling

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Enhanced Code Interpreter Download System**: Comprehensive improvements to file download reliability and user experience:
+  - **Duplicate File Handling**: New `--ci-duplicate-outputs` CLI option and `duplicate_outputs` config setting with three strategies: `overwrite` (default), `rename` (generates unique names like file_1.txt), and `skip` (ignores existing files)
+  - **Early Validation**: Download directory permissions and configuration validated during dry-run and startup, catching issues before API calls
+  - **Improved Error Handling**: Specific error classes (`DownloadPermissionError`, `DownloadNetworkError`, `DownloadFileNotFoundError`) with actionable troubleshooting guidance
+  - **Enhanced Dry-Run Coverage**: Download configuration validation included in execution plans with directory status and permission checks
+
 - **File Reference System**: Introduced `file_ref("alias")` function for clean, structured file references in templates. Files are automatically organized into XML appendices, eliminating the need for manual file content loops in templates. Works seamlessly with existing `--dir`, `--file`, and `--collect` attachments.
 
 - **Enhanced Template Debugging**: Comprehensive template debugging system with granular capacity control:

@@ -97,14 +97,12 @@ The quickest way to understand ostruct is through a simple example:
         "required": ["summary", "key_points"]
       }
 
-   .. tip::
-      **Automated Schema Creation**: Use the Meta-Schema Generator to create schemas automatically:
+         .. tip::
+      **Automated Schema Creation**: Use the Schema Generator meta-tool to create schemas automatically:
 
       .. code-block:: bash
 
-         examples/meta-schema-generator/scripts/generate_and_validate_schema.sh -o summary.json summarize.j2
-
-      See :doc:`examples` for complete documentation.
+         tools/schema-generator/run.sh -o summary.json summarize.j2
 
 2. **Create a template** (``summarize.j2``):
 

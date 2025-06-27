@@ -160,14 +160,14 @@ Create ``pet_schema.json`` to specify exactly what information you want to extra
      "required": ["name", "breed", "age", "personality_traits", "medical_status"]
    }
 
-.. tip::
-   **Schema Creation Tool**: Instead of writing schemas manually, use the **Meta-Schema Generator** to automatically create schemas from your templates:
+   .. tip::
+   **Schema Creation Tool**: Instead of writing schemas manually, use the **Schema Generator** meta-tool to automatically create schemas from your templates:
 
    .. code-block:: bash
 
-      examples/meta-schema-generator/scripts/generate_and_validate_schema.sh -o pet_schema.json analyze_pet.j2
+      tools/schema-generator/run.sh -o pet_schema.json analyze_pet.j2
 
-   This tool analyzes your template and generates OpenAI-compliant schemas automatically. See :doc:`examples` for details.
+   This tool analyzes your template and generates OpenAI-compliant schemas automatically.
 
 Step 3: Create the Analysis Template
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

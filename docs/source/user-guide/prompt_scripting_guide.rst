@@ -6,14 +6,14 @@ Learn how to create powerful Jinja2 templates for ostruct that combine static te
 .. note::
    This guide assumes no prior knowledge of Jinja2. Templates use a customized Jinja2 environment with ostruct-specific enhancements.
 
-.. tip::
-   **Schema Creation Tool**: When creating templates, use the **Meta-Schema Generator** to automatically create corresponding JSON schemas:
+   .. tip::
+   **Schema Creation Tool**: When creating templates, use the **Schema Generator** meta-tool to automatically create corresponding JSON schemas:
 
    .. code-block:: bash
 
-      examples/meta-schema-generator/scripts/generate_and_validate_schema.sh -o my_schema.json my_template.j2
+      tools/schema-generator/run.sh -o my_schema.json my_template.j2
 
-   This ensures your schemas are OpenAI-compliant and match your template structure. See :doc:`examples` for complete documentation.
+   This ensures your schemas are OpenAI-compliant and match your template structure.
 
 Template Basics
 ================
