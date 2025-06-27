@@ -118,8 +118,9 @@ jobs:
           # Test pipx installation (Unix only for now)
           pip install pipx
           pipx install dist/*.whl
-          pipx run ostruct --help
-          pipx run ostruct --version
+          # Use the installed binary directly since pipx run has package name issues
+          ~/.local/bin/ostruct --help || ostruct --help
+          ~/.local/bin/ostruct --version || ostruct --version
 
   test_docker_environments:
     name: Test Docker Environments
