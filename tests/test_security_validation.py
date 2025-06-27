@@ -278,8 +278,14 @@ class SecurityPenetrationTests:
 
     def _run_ostruct_cmd(self, args: List[str]) -> subprocess.CompletedProcess:
         """Run ostruct command for security testing."""
-        # Use poetry run for now - could be optimized later
-        cmd = ["poetry", "run", "ostruct"] + args
+        import sys
+
+        # Use direct Python execution instead of poetry to avoid dependency issues
+        cmd = [
+            sys.executable,
+            "-c",
+            "from ostruct.cli.cli import main; main()",
+        ] + args
         project_root = Path(__file__).parent.parent
         # Reduced timeout for dry-run tests
         timeout = 10 if "--dry-run" in args else 30
