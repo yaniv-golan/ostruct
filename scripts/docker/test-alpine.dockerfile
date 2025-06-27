@@ -1,21 +1,33 @@
 FROM python:3.11-alpine
 
-# Install system dependencies
+# Install system dependencies including build tools for native packages
 RUN apk add --no-cache \
     bash \
     curl \
-    git
+    git \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    make \
+    rust \
+    cargo
 
 # Create a non-root user for testing
 RUN adduser -D -s /bin/bash testuser
 USER testuser
 WORKDIR /home/testuser
 
-# Copy wheel file to container
-COPY dist/*.whl /tmp/
+# Copy source code (not built artifacts)
+COPY --chown=testuser:testuser pyproject.toml poetry.lock ./
+COPY --chown=testuser:testuser src/ src/
+COPY --chown=testuser:testuser README.md ./
 
-# Install ostruct from wheel
-RUN pip install --user /tmp/*.whl
+# Install poetry and build + install ostruct
+RUN pip install --user poetry && \
+    ~/.local/bin/poetry config virtualenvs.create false && \
+    ~/.local/bin/poetry build && \
+    pip install --user dist/*.whl
 
 # Add user's local bin to PATH
 ENV PATH="/home/testuser/.local/bin:${PATH}"

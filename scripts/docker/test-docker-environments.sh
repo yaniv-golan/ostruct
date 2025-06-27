@@ -14,15 +14,17 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=== Docker Environment Testing for ostruct ===${NC}"
 echo ""
 
-# Check if dist directory exists and has wheel files
-if [ ! -d "dist" ] || [ -z "$(ls -A dist/*.whl 2>/dev/null)" ]; then
-    echo -e "${RED}❌ Error: No wheel files found in dist/ directory${NC}"
-    echo "Please build the package first with: poetry build"
+# Check if required source files exist
+if [ ! -f "pyproject.toml" ] || [ ! -f "poetry.lock" ] || [ ! -d "src" ]; then
+    echo -e "${RED}❌ Error: Missing required files (pyproject.toml, poetry.lock, or src/)${NC}"
+    echo "Please run this script from the project root directory"
     exit 1
 fi
 
-echo -e "${YELLOW}📦 Found wheel files:${NC}"
-ls -la dist/*.whl
+echo -e "${YELLOW}📦 Found required source files${NC}"
+echo "  - pyproject.toml: ✅"
+echo "  - poetry.lock: ✅"
+echo "  - src/: ✅"
 echo ""
 
 # Test environments

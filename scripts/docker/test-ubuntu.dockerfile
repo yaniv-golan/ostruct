@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-venv \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for testing
@@ -13,11 +14,16 @@ RUN useradd -m -s /bin/bash testuser
 USER testuser
 WORKDIR /home/testuser
 
-# Copy wheel file to container
-COPY dist/*.whl /tmp/
+# Copy source code (not built artifacts)
+COPY --chown=testuser:testuser pyproject.toml poetry.lock ./
+COPY --chown=testuser:testuser src/ src/
+COPY --chown=testuser:testuser README.md ./
 
-# Install ostruct from wheel
-RUN pip3 install --user /tmp/*.whl
+# Install poetry and build + install ostruct
+RUN pip3 install --user poetry && \
+    ~/.local/bin/poetry config virtualenvs.create false && \
+    ~/.local/bin/poetry build && \
+    pip3 install --user dist/*.whl
 
 # Add user's local bin to PATH
 ENV PATH="/home/testuser/.local/bin:${PATH}"
