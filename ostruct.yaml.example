@@ -10,7 +10,7 @@ models:
 tools:
   code_interpreter:
     auto_download: true
-    output_directory: "./output"
+    output_directory: "./downloads"
 
   file_search:
     max_results: 10
