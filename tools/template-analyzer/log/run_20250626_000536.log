@@ -1,0 +1,14 @@
+2025-06-26 00:05:36 [INFO] Starting Template & Schema Analyzer
+2025-06-26 00:05:36 [INFO] Log file: /Users/yaniv/Documents/code/ostruct/tools/template-analyzer/log/run_20250626_000536.log
+2025-06-26 00:05:36 [INFO] Log level: INFO
+2025-06-26 00:05:36 [INFO] Analyzing template: test/demo_template.j2
+2025-06-26 00:05:36 [INFO] Running: Template analysis
+2025-06-26 00:05:56 [INFO] ✅ Template analysis completed
+2025-06-26 00:05:56 [INFO] Analyzing schema: test/demo_schema.json
+2025-06-26 00:05:56 [INFO] Running: Schema analysis
+2025-06-26 00:06:08 [INFO] ✅ Schema analysis completed
+2025-06-26 00:06:08 [INFO] Generating HTML report
+2025-06-26 00:06:08 [INFO] Running: HTML report generation
+2025-06-26 00:06:08 [INFO] ✅ HTML report generation completed
+2025-06-26 00:06:08 [INFO] Opening HTML report in browser
+2025-06-26 00:06:08 [INFO] Finished Template & Schema Analyzer at Thu Jun 26 00:06:08 IDT 2025

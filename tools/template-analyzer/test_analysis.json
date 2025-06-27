@@ -1,0 +1,30 @@
+{
+    "analysis_summary": "This is a test analysis of a demo template. The template shows good structure but has a few optimization opportunities.",
+    "total_issues": 3,
+    "critical_errors": 0,
+    "warnings": 2,
+    "optimizations": 1,
+    "issues": [
+        {
+            "severity": "warning",
+            "category": "best_practices",
+            "description": "Template lacks proper error handling for undefined variables",
+            "location": "Line 15-20",
+            "recommendation": "Add default values using the `default()` filter or safe_get() function to prevent KeyError exceptions"
+        },
+        {
+            "severity": "optimization",
+            "category": "performance",
+            "description": "Consider using ostruct's safe_get() function for nested data access",
+            "location": "Line 8",
+            "recommendation": "Replace direct attribute access with safe_get(data, 'key.nested.path', 'default') to prevent runtime errors and improve reliability"
+        },
+        {
+            "severity": "warning",
+            "category": "openai_compatibility",
+            "description": "Schema may exceed OpenAI's 100 property limit",
+            "location": "Schema definition",
+            "recommendation": "Review schema structure and consider consolidating related properties into nested objects to stay within OpenAI's limits"
+        }
+    ]
+}

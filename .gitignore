@@ -16,7 +16,7 @@ downloads/
 eggs/
 .eggs/
 lib/
-!scripts/test/validate-examples/lib/
+
 lib64/
 parts/
 sdist/
@@ -47,10 +47,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Test validation cache and output
-scripts/test/validate-examples/cache/
-scripts/test/validate-examples/temp/
-scripts/test/validate-examples/output/
+
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -140,3 +137,4 @@ examples/people-crm-demo/
 fix_rst_titles.py
 examples/code-quality/code-review/style_review.json
 examples/etymology/etymology_result.json
+old-examples/
