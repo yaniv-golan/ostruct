@@ -9,7 +9,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import click
 import jinja2
 
+from .constants import DefaultPaths
 from .errors import (
+    CLIError,
     DirectoryNotFoundError,
     InvalidJSONError,
     SchemaFileError,
@@ -17,6 +19,7 @@ from .errors import (
     VariableNameError,
     VariableValueError,
 )
+from .exit_codes import ExitCode
 from .security import SecurityManager
 from .template_env import create_jinja_env
 from .template_processor import (
@@ -163,7 +166,7 @@ def validate_json_variable(
 
         if "=" not in var:
             raise InvalidJSONError(
-                f"JSON variable must be in format name='{'json':\"value\"}': {var}"
+                f'JSON variable must be in format name={{"json":"value"}}: {var}'
             )
         name, json_str = var.split("=", 1)
         name = name.strip()
@@ -430,6 +433,103 @@ def validate_security_manager(
     return security_manager
 
 
+def validate_download_configuration(args: CLIParams) -> None:
+    """Validate download configuration without creating directories.
+
+    This function validates that the download directory can be written to
+    when Code Interpreter is being used, without actually creating the directory.
+
+    Args:
+        args: CLI parameters
+
+    Raises:
+        CLIError: If download directory validation fails
+    """
+    logger.debug("=== Download Directory Validation ===")
+
+    # Check if Code Interpreter is being used
+    routing_result = args.get("_routing_result")
+    logger.debug(f"Routing result: {routing_result}")
+
+    if not routing_result or not hasattr(routing_result, "enabled_tools"):
+        logger.debug(
+            "No routing result available, skipping download validation"
+        )
+        return  # No routing result available, skip validation
+
+    logger.debug(f"Enabled tools: {routing_result.enabled_tools}")
+
+    if "code-interpreter" not in routing_result.enabled_tools:
+        logger.debug(
+            "Code Interpreter not being used, skipping download validation"
+        )
+        return  # Code Interpreter not being used, skip validation
+
+    # Get resolved download directory using same logic as runner.py
+    from typing import Union, cast
+
+    from .config import OstructConfig
+
+    config_path = cast(Union[str, Path, None], args.get("config"))
+    config = OstructConfig.load(config_path)
+    ci_config = config.get_code_interpreter_config()
+
+    download_dir = (
+        args.get("ci_download_dir")  # CLI flag has highest priority
+        or ci_config.get("output_directory")  # Config file is second
+        or DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR  # Default is last
+    )
+
+    logger.debug(f"Validating download directory: {download_dir}")
+
+    # Convert to Path object
+    download_path = Path(download_dir)
+
+    # Validate parent directory exists and is writable
+    parent_dir = download_path.parent
+    if not parent_dir.exists():
+        raise CLIError(
+            f"Parent directory does not exist: {parent_dir}\n"
+            f"💡 Try:\n"
+            f"  • Create parent directory: mkdir -p {parent_dir}\n"
+            f"  • Use different directory: --ci-download-dir ./my-downloads\n"
+            f"  • Check current directory: pwd",
+            exit_code=ExitCode.USAGE_ERROR,
+        )
+
+    if not os.access(parent_dir, os.W_OK):
+        raise CLIError(
+            f"No write permission to parent directory: {parent_dir}\n"
+            f"💡 Try:\n"
+            f"  • Check directory permissions: ls -la {parent_dir}\n"
+            f"  • Fix permissions: chmod u+w {parent_dir}\n"
+            f"  • Use different directory: --ci-download-dir ./my-downloads",
+            exit_code=ExitCode.USAGE_ERROR,
+        )
+
+    # Check if download directory exists and is writable (if it exists)
+    if download_path.exists():
+        if not download_path.is_dir():
+            raise CLIError(
+                f"Download path exists but is not a directory: {download_path}\n"
+                f"💡 Try:\n"
+                f"  • Remove the file: rm {download_path}\n"
+                f"  • Use different directory: --ci-download-dir ./my-downloads",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+        if not os.access(download_path, os.W_OK):
+            raise CLIError(
+                f"No write permission to download directory: {download_path}\n"
+                f"💡 Try:\n"
+                f"  • Fix permissions: chmod u+w {download_path}\n"
+                f"  • Use different directory: --ci-download-dir ./my-downloads",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+    logger.debug(f"Download directory validation passed: {download_dir}")
+
+
 async def validate_inputs(
     args: CLIParams,
 ) -> Tuple[
@@ -459,6 +559,7 @@ async def validate_inputs(
         SchemaValidationError: When schema is invalid
     """
     logger.debug("=== Input Validation Phase ===")
+    logger.debug(f"validate_inputs called with args keys: {list(args.keys())}")
     security_manager = validate_security_manager(
         base_dir=args.get("base_dir"),
         allowed_dirs=args.get("allow_dir"),  # type: ignore[arg-type]
@@ -496,6 +597,11 @@ async def validate_inputs(
 
     # Store routing result in args for use by tool processors
     args["_routing_result"] = routing_result  # type: ignore[typeddict-unknown-key]
+
+    # Validate download directory configuration (after routing is processed)
+    logger.debug("About to call validate_download_configuration")
+    validate_download_configuration(args)
+    logger.debug("Finished validate_download_configuration")
 
     task_template = validate_task_template(
         args.get("task"), args.get("task_file")

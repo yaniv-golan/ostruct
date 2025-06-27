@@ -146,6 +146,36 @@ class PlanPrinter:
                     if details:
                         print(f"      ({', '.join(details)})", file=file)
 
+        # Download validation for Code Interpreter
+        download_validation = plan.get("download_validation", {})
+        if download_validation.get("enabled"):
+            print("\n📥 Download Configuration:", file=file)
+            print(
+                f"   Directory: {download_validation.get('directory', 'N/A')}",
+                file=file,
+            )
+
+            # Show writability status
+            if download_validation.get("writable"):
+                print("   ✅ Directory writable", file=file)
+            else:
+                print("   ❌ Directory not writable", file=file)
+
+            # Show issues if any
+            issues = download_validation.get("issues", [])
+            if issues:
+                print("   ⚠️  Issues:", file=file)
+                for issue in issues:
+                    print(f"      - {issue}", file=file)
+
+            # Show potential conflicts
+            conflicts = download_validation.get("conflicts", [])
+            if conflicts:
+                print(
+                    f"   ⚠️  Potential conflicts: {', '.join(conflicts)}",
+                    file=file,
+                )
+
         # Variables
         variables = plan.get("variables", {})
         if variables:

@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, Union
 from urllib.parse import urlparse
@@ -254,8 +255,15 @@ async def process_code_interpreter_configuration(
     config = OstructConfig.load(config_path)
     ci_config = config.get_code_interpreter_config()
 
+    # Apply CLI parameter overrides to config
+    effective_ci_config = dict(ci_config)  # Make a copy
+
+    # Override duplicate_outputs if CLI flag is provided
+    if args.get("ci_duplicate_outputs") is not None:
+        effective_ci_config["duplicate_outputs"] = args["ci_duplicate_outputs"]
+
     # Create Code Interpreter manager
-    manager = CodeInterpreterManager(client, ci_config)
+    manager = CodeInterpreterManager(client, effective_ci_config)
 
     # Validate files before upload
     validation_errors = manager.validate_files_for_upload(files_to_upload)
@@ -555,8 +563,44 @@ async def create_structured_output(
                 data, markdown_text = split_json_and_text(content)
             except ValueError:
                 # Fallback to original parsing for non-fenced JSON
-                data = json.loads(content.strip())
-                markdown_text = ""
+                try:
+                    data = json.loads(content.strip())
+                    markdown_text = ""
+                except json.JSONDecodeError as json_error:
+                    # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
+                    # OpenAI's Code Interpreter can append commentary after valid JSON when using strict schemas,
+                    # causing json.loads() to fail. This is a known intermittent issue documented in OpenAI forums.
+                    # We extract the JSON portion and warn the user that the workaround was applied.
+                    if tools and any(
+                        tool.get("type") == "code_interpreter"
+                        for tool in tools
+                    ):
+                        logger.debug(
+                            "Code Interpreter detected with JSON parsing failure, attempting defensive parsing"
+                        )
+
+                        # Try to extract JSON from the beginning of the response
+                        json_match = re.search(
+                            r"\{.*?\}", content.strip(), re.DOTALL
+                        )
+                        if json_match:
+                            try:
+                                data = json.loads(json_match.group(0))
+                                markdown_text = ""
+                                logger.warning(
+                                    "Code Interpreter added extra content after JSON. "
+                                    "Extracted JSON successfully using defensive parsing. "
+                                    "This is a known intermittent issue with OpenAI's API."
+                                )
+                            except json.JSONDecodeError:
+                                # Even defensive parsing failed, re-raise original error
+                                raise json_error
+                        else:
+                            # No JSON pattern found, re-raise original error
+                            raise json_error
+                    else:
+                        # Not using Code Interpreter, re-raise original error
+                        raise json_error
 
             validated = output_schema.model_validate(data)
 
@@ -708,10 +752,12 @@ async def _execute_two_pass_sentinel(
     if code_interpreter_info and code_interpreter_info.get("manager"):
         cm = code_interpreter_info["manager"]
         # Use output directory from config, fallback to args, then default
+        from .constants import DefaultPaths
+
         download_dir = (
             ci_config.get("output_directory")
             or args.get("ci_download_dir")
-            or "./downloads"
+            or DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR
         )
         logger.debug(f"Downloading files to: {download_dir}")
         downloaded_files = await cm.download_generated_files(
@@ -759,8 +805,34 @@ async def _execute_two_pass_sentinel(
             data_final, markdown_text = split_json_and_text(content)
         except ValueError:
             # Fallback to original parsing for non-fenced JSON
-            data_final = json.loads(content.strip())
-            markdown_text = ""
+            try:
+                data_final = json.loads(content.strip())
+                markdown_text = ""
+            except json.JSONDecodeError as json_error:
+                # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
+                # In two-pass mode, the second pass should be clean, but apply defensive parsing
+                # as a safety net in case the issue still occurs.
+                logger.debug(
+                    "JSON parsing failure in two-pass mode, attempting defensive parsing"
+                )
+
+                # Try to extract JSON from the beginning of the response
+                json_match = re.search(r"\{.*?\}", content.strip(), re.DOTALL)
+                if json_match:
+                    try:
+                        data_final = json.loads(json_match.group(0))
+                        markdown_text = ""
+                        logger.warning(
+                            "Two-pass mode: Extra content found after JSON in structured response. "
+                            "Extracted JSON successfully using defensive parsing. "
+                            "This should not happen in pass 2 - please report this issue."
+                        )
+                    except json.JSONDecodeError:
+                        # Even defensive parsing failed, re-raise original error
+                        raise json_error
+                else:
+                    # No JSON pattern found, re-raise original error
+                    raise json_error
 
         validated = output_model.model_validate(data_final)
 
@@ -1373,8 +1445,11 @@ async def execute_model(
                     api_response = getattr(last_response, "_api_response")
                     # Responses API has 'output' attribute, not 'messages'
                     if hasattr(api_response, "output"):
+                        from .constants import DefaultPaths
+
                         download_dir = args.get(
-                            "ci_download_dir", "./downloads"
+                            "ci_download_dir",
+                            DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR,
                         )
                         manager = code_interpreter_info["manager"]
 
