@@ -16,7 +16,7 @@ class TestOstructConfig:
         """Test default configuration values."""
         config = OstructConfig()
 
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
         assert config.tools.code_interpreter["auto_download"] is True
         assert config.tools.file_search["max_results"] == 10
         assert config.operation.timeout_minutes == 60
@@ -63,7 +63,7 @@ class TestOstructConfig:
     def test_load_nonexistent_file(self):
         """Test loading from nonexistent file returns defaults."""
         config = OstructConfig.load("nonexistent.yaml")
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
 
     @pytest.mark.no_fs
     def test_invalid_yaml_file(self, tmp_path):
@@ -74,7 +74,7 @@ class TestOstructConfig:
 
         # Should return defaults when YAML is invalid
         config = OstructConfig.load(config_file)
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
 
     @patch.dict(
         os.environ, {"OSTRUCT_MCP_URL_stripe": "https://custom.stripe.com"}
@@ -104,7 +104,7 @@ class TestOstructConfig:
         """Test configuration getter methods."""
         config = OstructConfig()
 
-        assert config.get_model_default() == "gpt-4o"
+        assert config.get_model_default() == "gpt-4.1"
         assert isinstance(config.get_mcp_servers(), dict)
         assert isinstance(config.get_code_interpreter_config(), dict)
         assert isinstance(config.get_file_search_config(), dict)
@@ -205,7 +205,7 @@ class TestGetConfig:
         """Test that get_config returns a valid instance."""
         config = get_config()
         assert isinstance(config, OstructConfig)
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
 
 
 class TestConfigurationIntegration:
