@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, Optional, TextIO
 
-from .unicode_compat import safe_emoji
+from .unicode_compat import safe_emoji, safe_format
 
 
 class PlanPrinter:
@@ -53,14 +53,22 @@ class PlanPrinter:
             timestamp_dt = datetime.fromtimestamp(timestamp)
 
         formatted_time = timestamp_dt.strftime("%Y-%m-%d %H:%M:%S")
-        print(f"🕐 Generated: {formatted_time}", file=file)
+        print(safe_format("🕐 Generated: {}", formatted_time), file=file)
 
         # Template and schema
         template = plan.get("template", {})
         schema = plan.get("schema", {})
 
-        template_status = "✅" if template.get("exists", False) else "❌"
-        schema_status = "✅" if schema.get("exists", False) else "❌"
+        template_status = (
+            safe_emoji("✅", "[OK]")
+            if template.get("exists", False)
+            else safe_emoji("❌", "[ERROR]")
+        )
+        schema_status = (
+            safe_emoji("✅", "[OK]")
+            if schema.get("exists", False)
+            else safe_emoji("❌", "[ERROR]")
+        )
 
         # Show more helpful template warning information
         template_path = template.get("path", "unknown")
@@ -68,9 +76,15 @@ class PlanPrinter:
 
         if template_warning:
             # Use warning indicator for configuration issues with existing files
-            warning_status = "⚠️" if template.get("exists", False) else "❌"
+            warning_status = (
+                safe_emoji("⚠️", "[WARNING]")
+                if template.get("exists", False)
+                else safe_emoji("❌", "[ERROR]")
+            )
             print(
-                f"📄 Template: {warning_status} {template_path}",
+                safe_format(
+                    "📄 Template: {} {}", warning_status, template_path
+                ),
                 file=file,
             )
             print(
@@ -80,7 +94,9 @@ class PlanPrinter:
         elif template_path == "---":
             # Special case for YAML frontmatter display issue (legacy)
             print(
-                f"📄 Template: {template_status} {template_path}",
+                safe_format(
+                    "📄 Template: {} {}", template_status, template_path
+                ),
                 file=file,
             )
             print(
@@ -89,23 +105,34 @@ class PlanPrinter:
             )
         else:
             print(
-                f"📄 Template: {template_status} {template_path}",
+                safe_format(
+                    "📄 Template: {} {}", template_status, template_path
+                ),
                 file=file,
             )
 
         print(
-            f"📋 Schema: {schema_status} {schema.get('path', 'unknown')}",
+            safe_format(
+                "📋 Schema: {} {}",
+                schema_status,
+                schema.get("path", "unknown"),
+            ),
             file=file,
         )
 
         # Model
         if "model" in plan:
-            print(f"🤖 Model: {plan['model']}", file=file)
+            print(safe_format("🤖 Model: {}", plan["model"]), file=file)
 
         # Security
         security = plan.get("security", {})
         if security:
-            print(f"🔒 Security: {security.get('mode', 'unknown')}", file=file)
+            print(
+                safe_format(
+                    "🔒 Security: {}", security.get("mode", "unknown")
+                ),
+                file=file,
+            )
             allowed_paths = security.get("allowed_paths", [])
             if allowed_paths:
                 print(
@@ -120,19 +147,26 @@ class PlanPrinter:
                 name for name, enabled in tools.items() if enabled
             ]
             if enabled_tools:
-                print(f"🛠️  Tools: {', '.join(enabled_tools)}", file=file)
+                print(
+                    safe_format("🛠️  Tools: {}", ", ".join(enabled_tools)),
+                    file=file,
+                )
 
         print()  # Blank line before attachments
 
         # Attachments
         attachments = plan.get("attachments", [])
-        print(f"📎 Attachments ({len(attachments)}):", file=file)
+        print(safe_format("📎 Attachments ({}):", len(attachments)), file=file)
 
         if not attachments:
             print("   (none)", file=file)
         else:
             for att in attachments:
-                exists_status = "✅" if att.get("exists", False) else "❌"
+                exists_status = (
+                    safe_emoji("✅", "[OK]")
+                    if att.get("exists", False)
+                    else safe_emoji("❌", "[ERROR]")
+                )
                 targets = ", ".join(att.get("targets", []))
                 path = att.get("path", "unknown")
                 alias = att.get("alias", "unknown")
@@ -155,7 +189,7 @@ class PlanPrinter:
         # Download validation for Code Interpreter
         download_validation = plan.get("download_validation", {})
         if download_validation.get("enabled"):
-            print("\n📥 Download Configuration:", file=file)
+            print(safe_format("\n📥 Download Configuration:"), file=file)
             print(
                 f"   Directory: {download_validation.get('directory', 'N/A')}",
                 file=file,
@@ -163,14 +197,30 @@ class PlanPrinter:
 
             # Show writability status
             if download_validation.get("writable"):
-                print("   ✅ Directory writable", file=file)
+                print(
+                    safe_format(
+                        "   {} Directory writable", safe_emoji("✅", "[OK]")
+                    ),
+                    file=file,
+                )
             else:
-                print("   ❌ Directory not writable", file=file)
+                print(
+                    safe_format(
+                        "   {} Directory not writable",
+                        safe_emoji("❌", "[ERROR]"),
+                    ),
+                    file=file,
+                )
 
             # Show issues if any
             issues = download_validation.get("issues", [])
             if issues:
-                print("   ⚠️  Issues:", file=file)
+                print(
+                    safe_format(
+                        "   {}  Issues:", safe_emoji("⚠️", "[WARNING]")
+                    ),
+                    file=file,
+                )
                 for issue in issues:
                     print(f"      - {issue}", file=file)
 
@@ -178,14 +228,20 @@ class PlanPrinter:
             conflicts = download_validation.get("conflicts", [])
             if conflicts:
                 print(
-                    f"   ⚠️  Potential conflicts: {', '.join(conflicts)}",
+                    safe_format(
+                        "   {}  Potential conflicts: {}",
+                        safe_emoji("⚠️", "[WARNING]"),
+                        ", ".join(conflicts),
+                    ),
                     file=file,
                 )
 
         # Variables
         variables = plan.get("variables", {})
         if variables:
-            print(f"\n📊 Variables ({len(variables)}):", file=file)
+            print(
+                safe_format("\n📊 Variables ({}):", len(variables)), file=file
+            )
             for name, value in variables.items():
                 # Truncate long values for readability
                 value_str = str(value)
@@ -198,7 +254,11 @@ class PlanPrinter:
         if cost and cost.get("approx_usd", 0) > 0:
             estimated_note = " (estimated)" if cost.get("estimated") else ""
             print(
-                f"\n💰 Cost: ~${cost.get('approx_usd', 0):.4f}{estimated_note}",
+                safe_format(
+                    "\n💰 Cost: ~${:.4f}{}",
+                    cost.get("approx_usd", 0),
+                    estimated_note,
+                ),
                 file=file,
             )
             if "tokens" in cost:
@@ -209,24 +269,45 @@ class PlanPrinter:
             exec_time = plan.get("execution_time")
             success = plan.get("success", True)
 
-            status_icon = "✅" if success else "❌"
+            status_icon = (
+                safe_emoji("✅", "[OK]")
+                if success
+                else safe_emoji("❌", "[ERROR]")
+            )
             print(
-                f"\n{status_icon} Status: {'Success' if success else 'Failed'}",
+                safe_format(
+                    "\n{} Status: {}",
+                    status_icon,
+                    "Success" if success else "Failed",
+                ),
                 file=file,
             )
 
             if exec_time is not None:
-                print(f"⏱️  Execution time: {exec_time:.2f}s", file=file)
+                print(
+                    safe_format("⏱️  Execution time: {:.2f}s", exec_time),
+                    file=file,
+                )
 
             # Show error if present
             if "error" in plan:
-                print(f"❌ Error: {plan['error']}", file=file)
+                print(
+                    safe_format(
+                        "{} Error: {}",
+                        safe_emoji("❌", "[ERROR]"),
+                        plan["error"],
+                    ),
+                    file=file,
+                )
 
             # Show cost breakdown if present
             if "cost_breakdown" in plan:
                 cost_breakdown = plan["cost_breakdown"]
                 print(
-                    f"💰 Final cost: ${cost_breakdown.get('total', 0):.4f}",
+                    safe_format(
+                        "💰 Final cost: ${:.4f}",
+                        cost_breakdown.get("total", 0),
+                    ),
                     file=file,
                 )
 

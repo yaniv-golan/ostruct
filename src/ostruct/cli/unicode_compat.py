@@ -178,7 +178,29 @@ def safe_format(format_string: str, *args: Any, **kwargs: Any) -> str:
     # Quick check: if no emoji characters are present, skip processing entirely
     # This optimizes the common case of plain text messages
     # Check for the specific emoji we handle rather than broad Unicode ranges
-    emoji_chars = {"🚀", "🔍", "⚙️", "ℹ️", "📖", "💻", "📄", "🌐"}
+    emoji_chars = {
+        "🚀",
+        "🔍",
+        "⚙️",
+        "ℹ️",
+        "📖",
+        "💻",
+        "📄",
+        "🌐",
+        "🕐",
+        "📋",
+        "🤖",
+        "🔒",
+        "🛠️",
+        "📎",
+        "📥",
+        "📊",
+        "💰",
+        "✅",
+        "❌",
+        "⚠️",
+        "⏱️",
+    }
     if not any(emoji in format_string for emoji in emoji_chars):
         return format_string.format(*args, **kwargs)
 
@@ -192,6 +214,19 @@ def safe_format(format_string: str, *args: Any, **kwargs: Any) -> str:
         "💻": "",  # Just omit for Code Interpreter
         "📄": "",  # Just omit for file references
         "🌐": "",  # Just omit for web search
+        "🕐": "",  # Just omit for timestamp
+        "📋": "",  # Just omit for schema
+        "🤖": "",  # Just omit for model
+        "🔒": "",  # Just omit for security
+        "🛠️": "",  # Just omit for tools
+        "📎": "",  # Just omit for attachments
+        "📥": "",  # Just omit for downloads
+        "📊": "",  # Just omit for variables
+        "💰": "",  # Just omit for cost
+        "✅": "[OK]",  # Show status indicator
+        "❌": "[ERROR]",  # Show status indicator
+        "⚠️": "[WARNING]",  # Show status indicator
+        "⏱️": "",  # Just omit for timing
     }
 
     # Apply emoji safety to the format string
@@ -216,7 +251,29 @@ def safe_print(message: str, **print_kwargs: Any) -> None:
         **print_kwargs: Additional arguments passed to print()
     """
     # Fast path for messages without emoji
-    emoji_chars = {"🚀", "🔍", "⚙️", "ℹ️", "📖", "💻", "📄", "🌐"}
+    emoji_chars = {
+        "🚀",
+        "🔍",
+        "⚙️",
+        "ℹ️",
+        "📖",
+        "💻",
+        "📄",
+        "🌐",
+        "🕐",
+        "📋",
+        "🤖",
+        "🔒",
+        "🛠️",
+        "📎",
+        "📥",
+        "📊",
+        "💰",
+        "✅",
+        "❌",
+        "⚠️",
+        "⏱️",
+    }
     if not any(emoji in message for emoji in emoji_chars):
         print(message, **print_kwargs)
         return
