@@ -21,6 +21,102 @@ class PlanAssembler:
     """
 
     @staticmethod
+    def validate_download_configuration(
+        enabled_tools: Optional[set[str]] = None,
+        ci_config: Optional[Dict[str, Any]] = None,
+        expected_files: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Validate download configuration for dry-run.
+
+        Args:
+            enabled_tools: Set of enabled tools
+            ci_config: Code Interpreter configuration
+            expected_files: List of expected output filenames (optional)
+
+        Returns:
+            Dictionary with validation results
+        """
+        validation: Dict[str, Any] = {
+            "enabled": False,
+            "directory": None,
+            "writable": False,
+            "conflicts": [],
+            "issues": [],
+        }
+
+        # Check if Code Interpreter is enabled
+        if not enabled_tools or "code-interpreter" not in enabled_tools:
+            return validation
+
+        validation["enabled"] = True
+
+        # Get download directory
+
+        download_dir = "./downloads"  # Default
+        if ci_config:
+            download_dir = ci_config.get("output_directory", download_dir)
+
+        validation["directory"] = download_dir
+
+        # Check directory permissions
+        try:
+            download_path = Path(download_dir)
+            parent_dir = download_path.parent
+
+            # Check if parent exists and is writable
+            if parent_dir.exists():
+                # Try to create a test file in parent
+                test_file = parent_dir / ".ostruct_write_test"
+                try:
+                    test_file.touch()
+                    test_file.unlink()
+
+                    # If download dir exists, check it specifically
+                    if download_path.exists():
+                        if not download_path.is_dir():
+                            validation["issues"].append(
+                                f"Path exists but is not a directory: {download_dir}"
+                            )
+                        else:
+                            # Test write in actual directory
+                            test_file = download_path / ".ostruct_write_test"
+                            test_file.touch()
+                            test_file.unlink()
+                            validation["writable"] = True
+                    else:
+                        # Directory doesn't exist but parent is writable
+                        validation["writable"] = True
+
+                except Exception as e:
+                    validation["issues"].append(
+                        f"Cannot write to directory: {e}"
+                    )
+            else:
+                validation["issues"].append(
+                    f"Parent directory does not exist: {parent_dir}"
+                )
+
+        except Exception as e:
+            validation["issues"].append(f"Error checking directory: {e}")
+
+        # Check for potential conflicts if expected files provided
+        if expected_files and validation["writable"]:
+            try:
+                download_path = Path(download_dir)
+                if download_path.exists():
+                    existing_files = {
+                        f.name for f in download_path.iterdir() if f.is_file()
+                    }
+                    conflicts = [
+                        f for f in expected_files if f in existing_files
+                    ]
+                    validation["conflicts"] = conflicts
+            except Exception:
+                pass  # Ignore errors in conflict detection
+
+        return validation
+
+    @staticmethod
     def build_execution_plan(
         processed_attachments: ProcessedAttachments,
         template_path: str,
@@ -103,6 +199,22 @@ class PlanAssembler:
 
             if tools_dict:
                 plan["tools"] = tools_dict
+
+        # Add download validation for Code Interpreter
+        if enabled_tools and "code-interpreter" in enabled_tools:
+            # Get CI config if available
+            ci_config = kwargs.get("ci_config")
+            download_validation = (
+                PlanAssembler.validate_download_configuration(
+                    enabled_tools=enabled_tools,
+                    ci_config=ci_config,
+                    expected_files=kwargs.get("expected_files"),
+                )
+            )
+
+            # Add to plan if there are issues or useful info
+            if download_validation["enabled"]:
+                plan["download_validation"] = download_validation
 
         # Add optional fields
         if kwargs.get("allowed_paths"):

@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import sys
+from pathlib import Path
 from typing import Any, Tuple
 
 import rich_click as click
@@ -315,6 +316,17 @@ def run(
 
             if plan_enabled_tools:
                 plan_kwargs["enabled_tools"] = plan_enabled_tools
+
+            # Add CI configuration for download validation
+            if "code-interpreter" in plan_enabled_tools:
+                config_path = params.get("config")
+                config = OstructConfig.load(
+                    config_path
+                    if isinstance(config_path, (str, Path))
+                    else None
+                )
+                ci_config = config.get_code_interpreter_config()
+                plan_kwargs["ci_config"] = ci_config
 
             plan = PlanAssembler.build_execution_plan(
                 processed_attachments=processed_attachments,
