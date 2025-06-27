@@ -1,10 +1,10 @@
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [project]
 name = "ostruct-cli"
-version = "1.0.0"
+dynamic = ["version"]
 description = "CLI for OpenAI Structured Output with Multi-Tool Integration"
 authors = [{name = "Yaniv Golan", email = "yaniv@golan.name"}]
 readme = "README.md"
@@ -52,8 +52,27 @@ examples = [
 ]
 
 [tool.poetry]
+name = "ostruct-cli"
+version = "0.0.0"  # Placeholder, will be overridden by dynamic versioning
+description = "CLI for OpenAI Structured Output with Multi-Tool Integration"
+authors = ["Yaniv Golan <yaniv@golan.name>"]
+readme = "README.md"
 packages = [{include = "ostruct", from = "src"}]
 include = ["py.typed"]
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "pep440"
+format-jinja = """
+    {%- if distance == 0 -%}
+        {{ serialize_pep440(base, stage, revision) }}
+    {%- elif revision is not none -%}
+        {{ serialize_pep440(base, stage, revision + 1, dev=distance, metadata=[commit]) }}
+    {%- else -%}
+        {{ serialize_pep440(bump_version(base), stage="dev", revision=distance, metadata=[commit]) }}
+    {%- endif -%}
+"""
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4,<9.0"
