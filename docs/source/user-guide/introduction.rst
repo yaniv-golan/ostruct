@@ -97,7 +97,7 @@ The quickest way to understand ostruct is through a simple example:
         "required": ["summary", "key_points"]
       }
 
-         .. tip::
+   .. tip::
       **Automated Schema Creation**: Use the Schema Generator meta-tool to create schemas automatically:
 
       .. code-block:: bash

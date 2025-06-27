@@ -160,7 +160,7 @@ Create ``pet_schema.json`` to specify exactly what information you want to extra
      "required": ["name", "breed", "age", "personality_traits", "medical_status"]
    }
 
-   .. tip::
+.. tip::
    **Schema Creation Tool**: Instead of writing schemas manually, use the **Schema Generator** meta-tool to automatically create schemas from your templates:
 
    .. code-block:: bash
