@@ -4,8 +4,8 @@
 
 set -e  # Exit on any error
 
-VERSION=$1
-RC_NUMBER=$2
+VERSION=""
+RC_NUMBER=""
 SIGN_TAG=true
 
 # Parse options
