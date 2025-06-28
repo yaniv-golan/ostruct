@@ -6,13 +6,43 @@ set -e  # Exit on any error
 
 VERSION=$1
 RC_NUMBER=$2
+SIGN_TAG=true
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-sign)
+            SIGN_TAG=false
+            shift
+            ;;
+        -*)
+            echo "Unknown option $1"
+            exit 1
+            ;;
+        *)
+            if [[ -z "$VERSION" ]]; then
+                VERSION=$1
+            elif [[ -z "$RC_NUMBER" ]]; then
+                RC_NUMBER=$1
+            else
+                echo "Too many arguments"
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
 
 if [[ -z "$VERSION" || -z "$RC_NUMBER" ]]; then
-    echo "Usage: $0 <version> <rc_number>"
+    echo "Usage: $0 <version> <rc_number> [--no-sign]"
     echo "Example: $0 1.0.0 1"
+    echo "Example: $0 1.0.0 1 --no-sign"
     echo ""
-    echo "This script creates a signed release candidate tag and pushes it to origin."
+    echo "This script creates a release candidate tag and pushes it to origin."
     echo "The tag format will be: v<version>-rc<rc_number>"
+    echo ""
+    echo "Options:"
+    echo "  --no-sign    Create unsigned tag (useful when GPG is not configured)"
     echo ""
     echo "Current branch: $(git branch --show-current)"
     echo "Latest commit: $(git log --oneline -1)"
@@ -67,9 +97,26 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
 fi
 
-# Create signed tag
-echo "📝 Creating signed tag $TAG_NAME..."
-git tag -s "$TAG_NAME" -m "Release candidate $RC_NUMBER for version $VERSION
+# Create tag (signed or unsigned)
+if [[ "$SIGN_TAG" == "true" ]]; then
+    echo "📝 Creating signed tag $TAG_NAME..."
+    if ! git tag -s "$TAG_NAME" -m "Release candidate $RC_NUMBER for version $VERSION
+
+This is a pre-release version for testing purposes.
+- Built from branch: $CURRENT_BRANCH
+- Commit: $(git rev-parse HEAD)
+- Created: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+For testing installation:
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ ostruct-cli==${VERSION}rc${RC_NUMBER}
+" 2>/dev/null; then
+        echo "⚠️  GPG signing failed. Use --no-sign option to create unsigned tag."
+        echo "❌ Aborted due to signing failure"
+        exit 1
+    fi
+else
+    echo "📝 Creating unsigned tag $TAG_NAME..."
+    git tag "$TAG_NAME" -m "Release candidate $RC_NUMBER for version $VERSION
 
 This is a pre-release version for testing purposes.
 - Built from branch: $CURRENT_BRANCH
@@ -79,6 +126,7 @@ This is a pre-release version for testing purposes.
 For testing installation:
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ ostruct-cli==${VERSION}rc${RC_NUMBER}
 "
+fi
 
 # Push tag to origin
 echo "🚀 Pushing tag to origin..."
