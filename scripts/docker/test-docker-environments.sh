@@ -30,6 +30,9 @@ echo ""
 # Build wheel locally first (to avoid Git dependency issues in Docker)
 echo -e "${YELLOW}🔨 Building wheel locally...${NC}"
 
+# Track whether we built the wheel ourselves
+BUILT_WHEEL_LOCALLY=false
+
 # Check if wheel already exists (e.g., from CI artifacts)
 if ls dist/*.whl 1> /dev/null 2>&1; then
     echo -e "${GREEN}✅ Using existing wheel from dist/${NC}"
@@ -47,6 +50,7 @@ else
     # Build the wheel
     if poetry build > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Wheel built successfully${NC}"
+        BUILT_WHEEL_LOCALLY=true
     else
         echo -e "${RED}❌ Failed to build wheel${NC}"
         exit 1
@@ -148,9 +152,13 @@ done
 # Clean up log files
 rm -f /tmp/ostruct-test-*.log
 
-# Clean up the locally built wheel
-echo -e "${YELLOW}🧹 Cleaning up locally built wheel...${NC}"
-rm -rf dist/
+# Clean up the locally built wheel (if we built it)
+if [ "$BUILT_WHEEL_LOCALLY" = true ]; then
+    echo -e "${YELLOW}🧹 Cleaning up locally built wheel...${NC}"
+    rm -rf dist/
+else
+    echo -e "${YELLOW}🧹 Keeping existing wheel artifacts...${NC}"
+fi
 
 # Exit with appropriate code
 if [ $FAILED -gt 0 ] || [ $BUILD_FAILED -gt 0 ]; then
