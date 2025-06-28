@@ -36,8 +36,8 @@ ostruct = "ostruct.cli.cli:main"
 
 [project.optional-dependencies]
 docs = [
-    "sphinx>=7.0.0,<8.0",
-    "sphinx-rtd-theme>=2.0,<3.0",
+    "sphinx>=7.0.0,<9.0",
+    "sphinx-rtd-theme>=3.0,<4.0",
     "myst-parser>=4.0.1,<5.0",
     "sphinx-design>=0.4.1,<1.0",
     "tomli>=2.0.1,<3.0;python_version<'3.11'",
@@ -84,7 +84,7 @@ twine = ">=6.0.1,<7.0"
 python-dotenv = ">=1.0.1,<2.0"
 types-jsonschema = ">=4.23.0.20241208"
 anyio = {version = "==3.7.1", extras = ["trio"]}
-sphinx = ">=7.0.0,<8.0"
+sphinx = ">=7.0.0,<9.0"
 types-pyyaml = ">=6.0.12.20241230"
 types-pygments = ">=2.19.0.20250107"
 types-chardet = ">=5.0.4.6"
