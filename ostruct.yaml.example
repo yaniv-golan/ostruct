@@ -4,7 +4,7 @@
 
 # Model configuration
 models:
-  default: gpt-4o  # Default model to use
+  default: gpt-4.1  # Default model to use
 
 # Tool-specific settings
 tools:

@@ -30,7 +30,7 @@ ostruct processes unstructured data (text files, code, CSVs, etc.), input variab
 
 <div align="center">
 
-![How ostruct works](src/assets/ostrict-hl-diagram.png)
+![How ostruct works](src/assets/ostruct-hl-diagram.png)
 
 </div>
 
@@ -191,14 +191,16 @@ We provide multiple installation methods to suit different user needs. Choose th
 **macOS (with Homebrew):**
 ```bash
 brew install pipx
-pipx install ostruct-cli
+pipx install ostruct-cli       # new users
+pipx upgrade ostruct-cli       # existing users
 ```
 
 **Linux (Ubuntu/Debian):**
 
 ```bash
 sudo apt install pipx
-pipx install ostruct-cli
+pipx install ostruct-cli       # new users
+pipx upgrade ostruct-cli       # existing users
 ```
 
 **Other systems:**
