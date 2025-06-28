@@ -11,7 +11,7 @@ build:
     post_install:
       - poetry install --extras docs
       # Ensure key Sphinx extensions are present even if Poetry/extras resolution misbehaves
-      - pip install myst-parser sphinx-design
+      - pip install myst-parser sphinx-design sphinx-rtd-theme
 
 sphinx:
   configuration: docs/source/conf.py
