@@ -155,3 +155,20 @@ Add this to your development routine:
    ./scripts/verify-environment.sh
 
 This ensures consistent behavior throughout the development process.
+
+Documentation Quality Assurance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The pre-commit hooks include automated link checking for documentation:
+
+- **Sphinx linkcheck**: Automatically runs when documentation files are modified
+- **Fast execution**: Only checks links when docs files change (~2-3 seconds)
+- **Early detection**: Catches broken links before they reach CI or production
+
+The linkcheck validates:
+
+- External URLs (GitHub, documentation sites, etc.)
+- Internal cross-references between documentation pages
+- Proper formatting of reStructuredText links
+
+If linkcheck fails, review the output for broken or redirected links and fix them before committing.

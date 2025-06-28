@@ -102,6 +102,7 @@ Documentation
    :caption: 🛠️ Contributing:
 
    contribute/setting_up
+   contribute/environment-consistency
    contribute/style_guide
    contribute/how_to_contribute
 

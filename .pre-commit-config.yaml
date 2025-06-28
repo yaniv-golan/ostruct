@@ -34,3 +34,10 @@ repos:
         # Do not pass filenames to mypy, we are checking the whole src folder
         pass_filenames: false
         types: [python]
+
+    -   id: sphinx-linkcheck
+        name: sphinx linkcheck
+        entry: bash -c 'cd docs && poetry run sphinx-build -b linkcheck source build/linkcheck'
+        language: system
+        files: ^docs/
+        pass_filenames: false
