@@ -1,7 +1,7 @@
 ostruct Template Quick Reference
 =================================
 
-This quick reference provides a concise summary of ostruct's most commonly used template features. For comprehensive documentation, see the :doc:`ostruct_template_scripting_guide`.
+This quick reference provides a concise summary of ostruct's most commonly used template features. For comprehensive documentation, see the :doc:`template_authoring`.
 
 Template Structure
 ==================
@@ -350,6 +350,6 @@ Debugging
 
 .. seealso::
 
-   - :doc:`ostruct_template_scripting_guide` - Complete templating guide
+   - :doc:`template_authoring` - Complete templating guide
    - :doc:`cli_reference` - Full CLI documentation
    - :doc:`examples` - Practical examples and use cases
