@@ -184,24 +184,31 @@ The optional `file_ref()` function provides clean references with automatic XML 
 We provide multiple installation methods to suit different user needs. Choose the one that's right for you.
 
 <details>
-<summary><strong>Recommended: pipx (Python Users)</strong></summary>
+<summary><strong>Recommended: pipx</strong></summary>
 
-For users who have Python installed, `pipx` is the recommended installation method. It installs `ostruct` in an isolated environment, preventing conflicts with other Python packages.
+`pipx` is the recommended installation method. It installs `ostruct` in an isolated environment, preventing conflicts with other Python packages.
 
-1. **Install pipx**:
+**macOS (with Homebrew):**
+```bash
+brew install pipx
+pipx install ostruct-cli
+```
 
-    ```bash
-    python3 -m pip install --user pipx
-    python3 -m pipx ensurepath
-    ```
+**Linux (Ubuntu/Debian):**
 
-    *(Restart your terminal after running `ensurepath` to update your `PATH`)*
+```bash
+sudo apt install pipx
+pipx install ostruct-cli
+```
 
-2. **Install ostruct-cli**:
+**Other systems:**
 
-    ```bash
-    pipx install ostruct-cli
-    ```
+```bash
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+# Restart your terminal
+pipx install ostruct-cli
+```
 
 </details>
 
