@@ -55,7 +55,7 @@ examples = [
 
 [tool.poetry]
 name = "ostruct-cli"
-version = "0.0.0"  # Placeholder, will be overridden by dynamic versioning
+version = "1.0.2"  # Placeholder, will be overridden by dynamic versioning
 description = "CLI for OpenAI Structured Output with Multi-Tool Integration"
 authors = ["Yaniv Golan <yaniv@golan.name>"]
 readme = "README.md"
