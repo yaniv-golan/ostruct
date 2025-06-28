@@ -29,24 +29,32 @@ echo ""
 
 # Build wheel locally first (to avoid Git dependency issues in Docker)
 echo -e "${YELLOW}🔨 Building wheel locally...${NC}"
-if ! command -v poetry &> /dev/null; then
-    echo -e "${RED}❌ Poetry not found. Please install poetry first.${NC}"
-    exit 1
-fi
 
-# Clean any existing dist directory
-rm -rf dist/
-
-# Build the wheel
-if poetry build > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Wheel built successfully${NC}"
+# Check if wheel already exists (e.g., from CI artifacts)
+if ls dist/*.whl 1> /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Using existing wheel from dist/${NC}"
+    echo "  Found: $(ls dist/*.whl)"
 else
-    echo -e "${RED}❌ Failed to build wheel${NC}"
-    exit 1
+    # No existing wheel, need to build with Poetry
+    if ! command -v poetry &> /dev/null; then
+        echo -e "${RED}❌ Poetry not found. Please install poetry first.${NC}"
+        exit 1
+    fi
+
+    # Clean any existing dist directory
+    rm -rf dist/
+
+    # Build the wheel
+    if poetry build > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Wheel built successfully${NC}"
+    else
+        echo -e "${RED}❌ Failed to build wheel${NC}"
+        exit 1
+    fi
 fi
 
-# Verify wheel was created
-if [ ! -f dist/*.whl ]; then
+# Verify wheel was created/exists
+if ! ls dist/*.whl 1> /dev/null 2>&1; then
     echo -e "${RED}❌ No wheel file found in dist/${NC}"
     exit 1
 fi
