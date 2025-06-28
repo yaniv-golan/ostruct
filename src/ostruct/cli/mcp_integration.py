@@ -17,9 +17,9 @@ except ImportError:
     requests = None  # type: ignore[assignment]
 
 try:
-    import bleach
+    import bleach  # type: ignore[import-untyped]
 except ImportError:
-    bleach = None  # type: ignore[assignment]
+    bleach = None
 
 if TYPE_CHECKING:
     from .services import ServiceHealth

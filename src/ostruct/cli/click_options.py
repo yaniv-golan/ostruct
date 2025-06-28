@@ -120,7 +120,9 @@ class ModelChoice(click.Choice):
             if choice.startswith(incomplete)
         ]
 
-    def get_metavar(self, param: click.Parameter) -> str:
+    def get_metavar(
+        self, param: click.Parameter, ctx: click.Context | None = None
+    ) -> str:
         """Override metavar to show simple model info instead of complex list."""
         choices_list = list(self.choices)
 
