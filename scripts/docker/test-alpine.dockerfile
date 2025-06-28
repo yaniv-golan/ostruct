@@ -18,16 +18,11 @@ RUN adduser -D -s /bin/bash testuser
 USER testuser
 WORKDIR /home/testuser
 
-# Copy source code (not built artifacts)
-COPY --chown=testuser:testuser pyproject.toml poetry.lock ./
-COPY --chown=testuser:testuser src/ src/
-COPY --chown=testuser:testuser README.md ./
+# Copy pre-built wheel (built outside Docker to avoid Git dependency issues)
+COPY --chown=testuser:testuser dist/*.whl ./
 
-# Install poetry and build + install ostruct
-RUN pip install --user poetry && \
-    ~/.local/bin/poetry config virtualenvs.create false && \
-    ~/.local/bin/poetry build && \
-    pip install --user dist/*.whl
+# Install ostruct from the wheel
+RUN pip install --user *.whl
 
 # Add user's local bin to PATH
 ENV PATH="/home/testuser/.local/bin:${PATH}"

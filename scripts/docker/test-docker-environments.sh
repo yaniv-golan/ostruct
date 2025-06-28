@@ -27,6 +27,32 @@ echo "  - poetry.lock: ✅"
 echo "  - src/: ✅"
 echo ""
 
+# Build wheel locally first (to avoid Git dependency issues in Docker)
+echo -e "${YELLOW}🔨 Building wheel locally...${NC}"
+if ! command -v poetry &> /dev/null; then
+    echo -e "${RED}❌ Poetry not found. Please install poetry first.${NC}"
+    exit 1
+fi
+
+# Clean any existing dist directory
+rm -rf dist/
+
+# Build the wheel
+if poetry build > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Wheel built successfully${NC}"
+else
+    echo -e "${RED}❌ Failed to build wheel${NC}"
+    exit 1
+fi
+
+# Verify wheel was created
+if [ ! -f dist/*.whl ]; then
+    echo -e "${RED}❌ No wheel file found in dist/${NC}"
+    exit 1
+fi
+
+echo ""
+
 # Test environments
 ENVIRONMENTS=(
     "ubuntu:scripts/docker/test-ubuntu.dockerfile"
@@ -113,6 +139,10 @@ done
 
 # Clean up log files
 rm -f /tmp/ostruct-test-*.log
+
+# Clean up the locally built wheel
+echo -e "${YELLOW}🧹 Cleaning up locally built wheel...${NC}"
+rm -rf dist/
 
 # Exit with appropriate code
 if [ $FAILED -gt 0 ] || [ $BUILD_FAILED -gt 0 ]; then
