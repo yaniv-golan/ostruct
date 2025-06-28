@@ -53,7 +53,7 @@ Workflow for a hot-fix release
 ------------------------------
 
 Scenario A – fix is **already** on ``main`` and safe to release
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1.  Ensure ``CHANGELOG.md`` has a *Hot-fix* entry.
 2.  Tag and push directly from ``main``::
@@ -63,7 +63,7 @@ Scenario A – fix is **already** on ``main`` and safe to release
         git push origin main v1.1.1
 
 Scenario B – fix must **not** include unreleased work on ``main``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1.  Create a throw-away branch from the last tag::
 
