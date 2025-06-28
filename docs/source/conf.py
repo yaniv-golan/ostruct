@@ -49,6 +49,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
+    "sphinx_rtd_theme",
     "myst_parser",
     "sphinx_design",
 ]
