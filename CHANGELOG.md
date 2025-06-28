@@ -5,7 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-06-22
+## [1.0.2] - 2025-06-28
+
+### Fixed
+
+- **Read the Docs Build Compatibility**: Complete resolution of documentation build failures on Read the Docs:
+  - **Sphinx Extension Registration**: Added `sphinx_rtd_theme` to Sphinx extensions list in `conf.py`, required for Sphinx 8+ theme discovery
+  - **Explicit Package Installation**: Added explicit pip installation of `myst-parser`, `sphinx-design`, and `sphinx-rtd-theme` in Read the Docs build configuration to ensure package availability
+  - **Documentation Dependencies**: Restored key documentation dependencies to the `docs` optional-dependencies section for environments that rely on the extras mechanism
+  - **Lock File Consistency**: Updated `poetry.lock` to reflect the documentation dependency changes
+
+This release ensures both "stable" and "latest" documentation builds work correctly on Read the Docs with Sphinx 8.x.
+
+## [1.0.1] - 2025-06-28
+
+### Fixed
+
+- **Sphinx 8 Compatibility**: Updated documentation build system for compatibility with Sphinx 8.x:
+  - **Theme Dependency Update**: Updated `sphinx-rtd-theme` from 2.0.x to 3.0+ which supports Sphinx 8
+  - **Sphinx Version Range**: Updated Sphinx version constraints from `<8.0` to `<9.0` to allow Sphinx 8.x
+  - **Dependency Resolution**: Updated `poetry.lock` with compatible package versions
+  - **Configuration Cleanup**: Removed incorrect `sphinx_rtd_theme` from extensions list (themes are not extensions in older Sphinx versions)
+
+This release resolves Read the Docs build failures that occurred when Read the Docs upgraded to Sphinx 8.2.3.
+
+## [1.0.0] - 2025-06-28
 
 ### Added
 
