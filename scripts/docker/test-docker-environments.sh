@@ -122,15 +122,15 @@ for result in "${RESULTS[@]}"; do
     case $status in
         "PASSED")
             echo -e "${GREEN}✅ $env_name: PASSED${NC}"
-            ((PASSED++))
+            PASSED=$((PASSED + 1))
             ;;
         "FAILED")
             echo -e "${RED}❌ $env_name: FAILED${NC}"
-            ((FAILED++))
+            FAILED=$((FAILED + 1))
             ;;
         "BUILD_FAILED")
             echo -e "${RED}🔥 $env_name: BUILD FAILED${NC}"
-            ((BUILD_FAILED++))
+            BUILD_FAILED=$((BUILD_FAILED + 1))
             ;;
     esac
 done
@@ -150,7 +150,7 @@ for env in "${ENVIRONMENTS[@]}"; do
 done
 
 # Clean up log files
-rm -f /tmp/ostruct-test-*.log
+rm -f /tmp/ostruct-test-*.log || true
 
 # Clean up the locally built wheel (if we built it)
 if [ "$BUILT_WHEEL_LOCALLY" = true ]; then
