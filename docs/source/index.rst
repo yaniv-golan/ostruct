@@ -103,6 +103,7 @@ Documentation
    contribute/environment-consistency
    contribute/style_guide
    contribute/how_to_contribute
+   contribute/release_workflow
 
 Why Structured Output?
 ----------------------

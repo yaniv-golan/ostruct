@@ -1,6 +1,10 @@
 # Release Readiness Checklist for ostruct
 
-This checklist ensures that ostruct releases are thoroughly tested and can be installed successfully on any clean system. It documents the validation process used by maintainers before publishing to PyPI.
+This checklist covers validation steps **after** you decide a version is ready.
+
+For **branching and tagging rules** (what to do *before* you start coding, how to tag, how to hot-fix) see the full guide: `docs › contribute › release_workflow`_
+
+.. _docs › contribute › release_workflow: <https://ostruct.readthedocs.io/en/latest/contribute/release_workflow.html>
 
 ## 🏷️ Dynamic Versioning & Release Process
 
