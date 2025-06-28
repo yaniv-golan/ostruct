@@ -135,21 +135,6 @@ class ExplicitFileProcessor:
         """
         routing = ExplicitRouting()
 
-        # Legacy options (-f, -d) are handled separately in create_template_context_from_routing
-        # to preserve their custom variable naming semantics
-        legacy_files = args.get("files", [])
-        legacy_dirs = args.get("dir", [])
-
-        if legacy_files:
-            logger.debug(
-                f"Legacy -f flag detected: {len(legacy_files)} files (handled separately)"
-            )
-
-        if legacy_dirs:
-            logger.debug(
-                f"Legacy -d flag detected: {len(legacy_dirs)} dirs (handled separately)"
-            )
-
         # Handle explicit tool routing - file options now have different formats
 
         # Template files (from -ft) - now single-argument auto-naming

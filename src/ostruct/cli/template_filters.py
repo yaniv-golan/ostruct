@@ -14,6 +14,7 @@ from typing import (
     List,
     Optional,
     Sequence,
+    Set,
     TypeVar,
     Union,
 )
@@ -33,6 +34,192 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+# ============================================================================
+# Template Structure Enhancement System (TSES) Components
+# ============================================================================
+
+
+class TemplateStructureError(Exception):
+    """Exception for TSES-specific errors with helpful suggestions."""
+
+    def __init__(self, message: str, suggestions: Optional[List[str]] = None):
+        super().__init__(message)
+        self.suggestions = suggestions or []
+
+
+def format_tses_error(error: TemplateStructureError) -> str:
+    """Format TSES error with suggestions."""
+    lines = [f"Template Structure Error: {error}"]
+    if error.suggestions:
+        lines.append("Suggestions:")
+        for suggestion in error.suggestions:
+            lines.append(f"  • {suggestion}")
+    return "\n".join(lines)
+
+
+class AliasManager:
+    """Manages file aliases and tracks references."""
+
+    def __init__(self) -> None:
+        self.aliases: Dict[str, Dict[str, Any]] = {}
+        self.referenced: Set[str] = set()
+
+    def register_attachment(
+        self,
+        alias: str,
+        path: str,
+        files: List[Any],
+        is_collection: bool = False,
+    ) -> None:
+        """Register files attached via CLI with their alias."""
+        # Determine attachment type from the files themselves
+        if is_collection:
+            attachment_type = "collection"
+        elif files:
+            # Use the attachment_type from the first file if available
+            first_file = files[0]
+            attachment_type = getattr(first_file, "attachment_type", "file")
+        else:
+            # Fallback for empty file lists
+            attachment_type = "file"
+
+        self.aliases[alias] = {
+            "type": attachment_type,
+            "path": path,
+            "files": files,
+        }
+
+    def reference_alias(self, alias: str) -> None:
+        """Mark an alias as referenced by file_ref()."""
+        if alias not in self.aliases:
+            available = list(self.aliases.keys())
+            raise TemplateStructureError(
+                f"Unknown alias '{alias}' in file_ref()",
+                [
+                    f"Available aliases: {', '.join(available) if available else 'none'}",
+                    "Check your --dir and --file attachments",
+                ],
+            )
+        self.referenced.add(alias)
+
+    def get_referenced_aliases(self) -> Dict[str, Dict[str, Any]]:
+        """Get only the aliases that were actually referenced."""
+        return {
+            alias: data
+            for alias, data in self.aliases.items()
+            if alias in self.referenced
+        }
+
+
+class XMLAppendixBuilder:
+    """Builds XML appendix for referenced file aliases."""
+
+    def __init__(self, alias_manager: AliasManager) -> None:
+        self.alias_manager = alias_manager
+
+    def build_appendix(self) -> str:
+        """Build XML appendix for all referenced aliases."""
+        referenced = self.alias_manager.get_referenced_aliases()
+
+        if not referenced:
+            return ""
+
+        lines = ["<files>"]
+
+        for alias, data in referenced.items():
+            alias_type = data["type"]
+            path = data["path"]
+            files = data["files"]
+
+            if alias_type == "file":
+                # Single file
+                file_info = files[0]
+                lines.append(f'  <file alias="{alias}" path="{path}">')
+                lines.append(
+                    f"    <content><![CDATA[{file_info.content}]]></content>"
+                )
+                lines.append("  </file>")
+
+            elif alias_type == "dir":
+                # Directory with multiple files
+                lines.append(f'  <dir alias="{alias}" path="{path}">')
+                for file_info in files:
+                    rel_path = getattr(
+                        file_info, "relative_path", file_info.name
+                    )
+                    lines.append(f'    <file path="{rel_path}">')
+                    lines.append(
+                        f"      <content><![CDATA[{file_info.content}]]></content>"
+                    )
+                    lines.append("    </file>")
+                lines.append("  </dir>")
+
+            elif alias_type == "collection":
+                # File collection
+                lines.append(f'  <collection alias="{alias}" path="{path}">')
+                for file_info in files:
+                    file_path = getattr(file_info, "path", file_info.name)
+                    lines.append(f'    <file path="{file_path}">')
+                    lines.append(
+                        f"      <content><![CDATA[{file_info.content}]]></content>"
+                    )
+                    lines.append("    </file>")
+                lines.append("  </collection>")
+
+        lines.append("</files>")
+        return "\n".join(lines)
+
+
+# Global alias manager instance (set during environment creation)
+_alias_manager: Optional[AliasManager] = None
+
+
+def file_ref(alias_name: str) -> str:
+    """Reference a file collection by its CLI alias name.
+
+    Args:
+        alias_name: The alias from --dir or --file attachment
+
+    Returns:
+        Reference string that renders as <alias_name>
+
+    Usage:
+        {{ file_ref("source-code") }}  -> renders as "<source-code>"
+    """
+    global _alias_manager
+
+    if not _alias_manager:
+        raise TemplateStructureError(
+            "File references not initialized",
+            [
+                "Check template processing pipeline",
+                "Ensure files are properly attached via CLI",
+            ],
+        )
+
+    # Register this alias as referenced
+    _alias_manager.reference_alias(alias_name)
+
+    # Return the reference format
+    return f"<{alias_name}>"
+
+
+def register_tses_filters(
+    env: Environment, alias_manager: AliasManager
+) -> None:
+    """Register TSES functions in Jinja2 environment."""
+    global _alias_manager
+    _alias_manager = alias_manager
+
+    # Register file_ref as a global function
+    env.globals["file_ref"] = file_ref
+
+
+# ============================================================================
+# End TSES v2.0 Components
+# ============================================================================
+
+
 def extract_keywords(text: str) -> List[str]:
     """Extract keywords from text."""
     return text.split()
@@ -50,12 +237,12 @@ def char_count(text: str) -> int:
 
 def to_json(obj: Any) -> str:
     """Convert object to JSON string."""
-    return json.dumps(obj, indent=2)
+    return json.dumps(obj)
 
 
-def from_json(text: str) -> Any:
+def from_json(json_str: str) -> Any:
     """Parse JSON string to object."""
-    return json.loads(text)
+    return json.loads(json_str)
 
 
 def remove_comments(text: str) -> str:
@@ -159,6 +346,16 @@ def debug_print(x: Any) -> None:
     print(f"DEBUG: {x}")
 
 
+def format_json(obj: Any) -> str:
+    """Format JSON with proper indentation."""
+    if isinstance(obj, str):
+        try:
+            obj = json.loads(obj)
+        except json.JSONDecodeError:
+            return str(obj)
+    return json.dumps(obj, indent=2, ensure_ascii=False)
+
+
 def type_of(x: Any) -> str:
     """Get type name of object."""
     return type(x).__name__
@@ -191,6 +388,156 @@ def format_error(e: Exception) -> str:
 
 
 @pass_context
+def safe_get(context: Any, *args: Any) -> Any:
+    """Safely get a nested attribute path, returning default if any part is undefined.
+
+    This function provides safe access to nested object attributes without raising
+    UndefinedError when intermediate objects don't exist.
+
+    Template Usage:
+        safe_get(path: str, default_value: Any = "") -> Any
+
+    Args:
+        path: Dot-separated path to the attribute (e.g., "transcript.content")
+        default_value: Value to return if path doesn't exist (default: "")
+
+    Returns:
+        The value at the path if it exists and is non-empty, otherwise default_value
+
+    Examples:
+        {{ safe_get("transcript.content", "No transcript available") }}
+        {{ safe_get("user.profile.bio", "No bio provided") }}
+        {{ safe_get("config.debug") }}  # Uses empty string as default
+
+    Common Mistakes:
+        ❌ {{ safe_get(object, 'property', 'default') }}  # Wrong: passing object
+        ✅ {{ safe_get('object.property', 'default') }}   # Right: string path
+
+        ❌ {{ safe_get(user_data, 'name') }}              # Wrong: object first
+        ✅ {{ safe_get('user_data.name') }}               # Right: string path
+
+    Raises:
+        TemplateStructureError: If arguments are incorrect or malformed
+    """
+    # Import here to avoid circular imports
+
+    # Validate argument count
+    if len(args) < 1 or len(args) > 2:
+        raise TemplateStructureError(
+            f"safe_get() takes 1 or 2 arguments, got {len(args)}",
+            [
+                "Correct usage: safe_get('path.to.property', 'default_value')",
+                "Example: safe_get('user.name', 'Anonymous')",
+                f"You provided: {len(args)} arguments",
+            ],
+        )
+
+    # Extract arguments
+    path = args[0]
+    default_value = args[1] if len(args) > 1 else ""
+
+    # Validate path parameter type
+    if not isinstance(path, str):
+        # Provide helpful error message for common mistakes
+        path_type = type(path).__name__
+        if hasattr(path, "__class__") and hasattr(
+            path.__class__, "__module__"
+        ):
+            # For complex objects, show module.class
+            module_name = path.__class__.__module__
+            if module_name != "builtins":
+                path_type = f"{module_name}.{path.__class__.__name__}"
+
+        # Check for common mistake patterns
+        suggestions = [
+            "Use string path syntax: safe_get('object.property', 'default')",
+            f"You passed: {path_type} as first argument",
+            "WRONG: safe_get(object, 'property', 'default')",
+            "RIGHT: safe_get('object.property', 'default')",
+        ]
+
+        # Add specific suggestions based on the type
+        if hasattr(path, "name") or hasattr(path, "content"):
+            suggestions.append(
+                "For file objects, use: safe_get('filename.property', 'default')"
+            )
+        elif isinstance(path, (list, tuple)):
+            suggestions.append(
+                "For collections, iterate first: {% for item in collection %}"
+            )
+        elif hasattr(path, "__dict__"):
+            suggestions.append(
+                "For objects, use dot notation in quotes: safe_get('object.attribute', 'default')"
+            )
+
+        raise TemplateStructureError(
+            f"safe_get() expects a string path, got {path_type}", suggestions
+        )
+
+    # Validate path is not empty
+    if not path.strip():
+        raise TemplateStructureError(
+            "safe_get() path cannot be empty",
+            [
+                "Provide a valid dot-separated path like 'object.property'",
+                "Example: safe_get('user.name', 'Anonymous')",
+            ],
+        )
+
+    try:
+        # Split the path and traverse the object tree
+        parts = path.split(".")
+        current = context
+
+        # Start from the first part in the context
+        for i, part in enumerate(parts):
+            if i == 0:
+                # First part: look in the template context
+                if part in context:
+                    current = context[part]
+                else:
+                    return default_value
+            else:
+                # Subsequent parts: traverse the object
+                if hasattr(current, part):
+                    current = getattr(current, part)
+                elif isinstance(current, dict) and part in current:
+                    current = current[part]
+                else:
+                    # Path doesn't exist, return default
+                    return default_value
+
+        # Apply emptiness check to the final value
+        # Check for None
+        if current is None:
+            return default_value
+
+        # Check for empty string
+        if isinstance(current, str) and not current.strip():
+            return default_value
+
+        # Check for empty collections (list, dict, etc.)
+        if hasattr(current, "__len__") and len(current) == 0:
+            return default_value
+
+        # Return the value (preserving intentional falsy values like False or 0)
+        return current
+
+    except AttributeError as e:
+        # More specific error handling for attribute access issues
+        logger.debug(f"safe_get attribute error for path '{path}': {e}")
+        return default_value
+    except (KeyError, TypeError) as e:
+        # Handle other access issues
+        logger.debug(f"safe_get access error for path '{path}': {e}")
+        return default_value
+    except Exception as e:
+        # Catch any other unexpected errors but log them for debugging
+        logger.warning(f"Unexpected error in safe_get for path '{path}': {e}")
+        return default_value
+
+
+@pass_context
 def estimate_tokens(context: Any, text: str) -> int:
     """Estimate number of tokens in text."""
     try:
@@ -200,11 +547,6 @@ def estimate_tokens(context: Any, text: str) -> int:
     except Exception as e:
         logger.warning(f"Failed to estimate tokens: {e}")
         return len(str(text).split())
-
-
-def format_json(obj: Any) -> str:
-    """Format JSON with indentation."""
-    return json.dumps(obj, indent=2, default=str)
 
 
 def auto_table(data: Any) -> str:
@@ -641,6 +983,60 @@ def single_filter(value: Any) -> Any:
     return value
 
 
+def files_filter(value: Any) -> List[Any]:
+    """Ensure a file-bearing value is iterable.
+
+    This filter implements the file-sequence protocol by ensuring that
+    any file-bearing value can be iterated over. Single files yield
+    themselves, while collections remain as-is.
+
+    Args:
+        value: A file-bearing value (FileInfo, FileInfoList, or other iterable)
+
+    Returns:
+        A list containing the file(s) for uniform iteration
+    """
+    # Handle strings and bytes specially - treat as single items, not character sequences
+    if isinstance(value, (str, bytes)):
+        return [value]
+
+    try:
+        # If it's already iterable (but not string/bytes), convert to list
+        return list(value)
+    except TypeError:
+        # If not iterable, wrap in a list
+        return [value]
+
+
+def is_fileish(value: Any) -> bool:
+    """Test if a value is file-like (iterable collection of file objects).
+
+    This test function helps templates identify file-bearing values
+    that implement the file-sequence protocol.
+
+    Args:
+        value: The value to test
+
+    Returns:
+        True if the value is iterable and contains file-like objects
+    """
+    try:
+        # Import here to avoid circular imports
+        from .file_info import FileInfo
+
+        # Check if it's iterable
+        if not hasattr(value, "__iter__"):
+            return False
+
+        # Convert to list to check contents
+        items = list(value)
+
+        # Check if all items are FileInfo objects
+        return all(isinstance(item, FileInfo) for item in items)
+    except (TypeError, ImportError):
+        return False
+
+
 def register_template_filters(env: Environment) -> None:
     """Register all template filters with the Jinja2 environment.
 
@@ -682,9 +1078,18 @@ def register_template_filters(env: Environment) -> None:
         "auto_table": auto_table,
         # Single item extraction
         "single": single_filter,
+        # File-sequence protocol support
+        "files": files_filter,
     }
 
     env.filters.update(filters)
+
+    # Add template tests
+    tests = {
+        "fileish": is_fileish,
+    }
+
+    env.tests.update(tests)
 
     # Add template globals
     env.globals.update(
@@ -703,5 +1108,7 @@ def register_template_filters(env: Environment) -> None:
             "pivot_table": pivot_table,
             # Table utilities
             "auto_table": auto_table,
+            # Safe access utilities
+            "safe_get": safe_get,
         }
     )

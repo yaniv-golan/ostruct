@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Debate - Detailed View</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .topic-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .topic-label {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .topic-text {
+            font-size: 1.4em;
+            font-weight: 400;
+            line-height: 1.4;
+            margin: 0;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .header .subtitle {
+            margin: 15px 0 0 0;
+            opacity: 0.8;
+            font-size: 1em;
+        }
+        .debate-flow {
+            padding: 30px;
+        }
+        .turn {
+            margin-bottom: 30px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .turn-header {
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .turn-pro .turn-header {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+        }
+        .turn-con .turn-header {
+            background: #fce4ec;
+            color: #c2185b;
+            border-left: 4px solid #e91e63;
+        }
+        .turn-content {
+            padding: 20px;
+            background: white;
+        }
+        .stance {
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #dee2e6;
+        }
+        .argument {
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+        .citations {
+            margin-bottom: 20px;
+        }
+        .citations h4 {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .citation {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .citation-number {
+            color: #666;
+            font-weight: bold;
+            min-width: 25px;
+            flex-shrink: 0;
+        }
+        .citation a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+        .citation a:hover {
+            text-decoration: underline;
+        }
+        .citation-link {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 1px 3px;
+            border-radius: 3px;
+            background-color: rgba(25, 118, 210, 0.1);
+        }
+        .citation-link:hover {
+            background-color: rgba(25, 118, 210, 0.2);
+            text-decoration: none;
+        }
+        .relationships {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .relationships h4 {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .relationship {
+            display: inline-block;
+            margin: 4px 8px 4px 0;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        .attacks {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .supports {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        .summary {
+            margin-top: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .summary h2 {
+            margin: 0 0 20px 0;
+            color: #333;
+        }
+        .winner {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .winner-pro {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .winner-con {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+        .strongest-point, .verdict {
+            margin-bottom: 20px;
+        }
+        .strongest-point h3, .verdict h3 {
+            margin: 0 0 10px 0;
+            color: #666;
+            font-size: 1em;
+        }
+        .turn-id {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: normal;
+        }
+        .svg-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .svg-container h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+        }
+        .svg-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Multi-Agent Debate</h1>
+            <div class="topic-section">
+                <div class="topic-label">📋 Debate Topic</div>
+                <div class="topic-text" id="topic-text">Loading debate topic...</div>
+            </div>
+            <p class="subtitle">Evidence-based structured argumentation</p>
+        </div>
+
+        <div class="debate-flow">
+            <div id="turns-container">
+                <!-- Turns will be populated by JavaScript -->
+            </div>
+
+            <div class="summary" id="summary-container">
+                <!-- Summary will be populated by JavaScript -->
+            </div>
+
+            <div class="svg-container" id="svg-container">
+                <h3>📊 Argument Flow Diagram</h3>
+                <svg aria-roledescription="flowchart-v2" role="graphics-document document" viewBox="0 0 1566.51953125 1188.5" style="max-width: 1566.52px; background-color: white;" class="flowchart" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" width="100%" id="my-svg"><style>#my-svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#my-svg .error-icon{fill:#552222;}#my-svg .error-text{fill:#552222;stroke:#552222;}#my-svg .edge-thickness-normal{stroke-width:1px;}#my-svg .edge-thickness-thick{stroke-width:3.5px;}#my-svg .edge-pattern-solid{stroke-dasharray:0;}#my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#my-svg .edge-pattern-dashed{stroke-dasharray:3;}#my-svg .edge-pattern-dotted{stroke-dasharray:2;}#my-svg .marker{fill:#333333;stroke:#333333;}#my-svg .marker.cross{stroke:#333333;}#my-svg svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#my-svg p{margin:0;}#my-svg .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#333;}#my-svg .cluster-label text{fill:#333;}#my-svg .cluster-label span{color:#333;}#my-svg .cluster-label span p{background-color:transparent;}#my-svg .label text,#my-svg span{fill:#333;color:#333;}#my-svg .node rect,#my-svg .node circle,#my-svg .node ellipse,#my-svg .node polygon,#my-svg .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#my-svg .rough-node .label text,#my-svg .node .label text,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-anchor:middle;}#my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#my-svg .rough-node .label,#my-svg .node .label,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-align:center;}#my-svg .node.clickable{cursor:pointer;}#my-svg .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#my-svg .arrowheadPath{fill:#333333;}#my-svg .edgePath .path{stroke:#333333;stroke-width:2.0px;}#my-svg .flowchart-link{stroke:#333333;fill:none;}#my-svg .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#my-svg .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#my-svg .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#my-svg .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#my-svg .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#my-svg .cluster text{fill:#333;}#my-svg .cluster span{color:#333;}#my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#my-svg rect.text{fill:none;stroke-width:0;}#my-svg .icon-shape,#my-svg .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#my-svg .icon-shape p,#my-svg .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#my-svg .icon-shape rect,#my-svg .image-shape rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#my-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}#my-svg .topicNode<!-- SVG will be embedded here -->gt;*{fill:#fff3e0!important;stroke:#ff9800!important;stroke-width:3px!important;color:#000!important;font-size:11px!important;}#my-svg .topicNode span{fill:#fff3e0!important;stroke:#ff9800!important;stroke-width:3px!important;color:#000!important;font-size:11px!important;}#my-svg .topicNode tspan{fill:#000!important;}#my-svg .proNode<!-- SVG will be embedded here -->gt;*{fill:#e3f2fd!important;stroke:#1976d2!important;stroke-width:2px!important;color:#000!important;font-size:10px!important;}#my-svg .proNode span{fill:#e3f2fd!important;stroke:#1976d2!important;stroke-width:2px!important;color:#000!important;font-size:10px!important;}#my-svg .proNode tspan{fill:#000!important;}#my-svg .conNode<!-- SVG will be embedded here -->gt;*{fill:#fce4ec!important;stroke:#c2185b!important;stroke-width:2px!important;color:#000!important;font-size:10px!important;}#my-svg .conNode span{fill:#fce4ec!important;stroke:#c2185b!important;stroke-width:2px!important;color:#000!important;font-size:10px!important;}#my-svg .conNode tspan{fill:#000!important;}</style><g><marker orient="auto" markerHeight="8" markerWidth="8" markerUnits="userSpaceOnUse" refY="5" refX="5" viewBox="0 0 10 10" class="marker flowchart-v2" id="my-svg_flowchart-v2-pointEnd"><path style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 0 0 L 10 5 L 0 10 z"/></marker><marker orient="auto" markerHeight="8" markerWidth="8" markerUnits="userSpaceOnUse" refY="5" refX="4.5" viewBox="0 0 10 10" class="marker flowchart-v2" id="my-svg_flowchart-v2-pointStart"><path style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 0 5 L 10 10 L 10 0 z"/></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5" refX="11" viewBox="0 0 10 10" class="marker flowchart-v2" id="my-svg_flowchart-v2-circleEnd"><circle style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" r="5" cy="5" cx="5"/></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5" refX="-1" viewBox="0 0 10 10" class="marker flowchart-v2" id="my-svg_flowchart-v2-circleStart"><circle style="stroke-width: 1; stroke-dasharray: 1, 0;" class="arrowMarkerPath" r="5" cy="5" cx="5"/></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5.2" refX="12" viewBox="0 0 11 11" class="marker cross flowchart-v2" id="my-svg_flowchart-v2-crossEnd"><path style="stroke-width: 2; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 1,1 l 9,9 M 10,1 l -9,9"/></marker><marker orient="auto" markerHeight="11" markerWidth="11" markerUnits="userSpaceOnUse" refY="5.2" refX="-1" viewBox="0 0 11 11" class="marker cross flowchart-v2" id="my-svg_flowchart-v2-crossStart"><path style="stroke-width: 2; stroke-dasharray: 1, 0;" class="arrowMarkerPath" d="M 1,1 l 9,9 M 10,1 l -9,9"/></marker><g class="root"><g class="clusters"/><g class="edgePaths"><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T0_T1_0" d="M1184.848,85.116L1168.969,89.68C1153.09,94.244,1121.332,103.372,1105.453,111.436C1089.574,119.5,1089.574,126.5,1089.574,130L1089.574,133.5"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T0_T2_0" d="M1444.848,85.116L1460.727,89.68C1476.605,94.244,1508.363,103.372,1524.242,118.353C1540.121,133.333,1540.121,154.167,1540.121,177C1540.121,199.833,1540.121,224.667,1515.825,243.09C1491.53,261.513,1442.939,273.527,1418.643,279.533L1394.347,285.54"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T1_T2_0" d="M959.574,184.589L812.912,195.408C666.25,206.226,372.926,227.863,402.185,248.59C431.444,269.318,783.285,289.135,959.206,299.044L1135.127,308.953"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T1_T3_0" d="M959.574,185.178L822.645,195.898C685.716,206.619,411.858,228.059,274.929,249.946C138,271.833,138,294.167,138,316.5C138,338.833,138,361.167,138,377.833C138,394.5,138,405.5,138,411L138,416.5"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T2_T3_0" d="M1214.876,346.5L1203.725,352.667C1192.575,358.833,1170.274,371.167,1013.126,388.103C855.978,405.039,563.984,426.578,417.986,437.347L271.989,448.116"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T2_T4_0" d="M1241.024,346.5L1235.249,352.667C1229.473,358.833,1217.922,371.167,1212.147,389.75C1206.371,408.333,1206.371,433.167,1206.371,458C1206.371,482.833,1206.371,507.667,1114.744,529.062C1023.116,550.457,839.861,568.414,748.233,577.393L656.606,586.371"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T3_T4_0" d="M92.812,495.5L85.381,501.667C77.95,507.833,63.088,520.167,112.397,534.347C161.706,548.527,275.185,564.554,331.925,572.567L388.664,580.581"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T1_T5_0" d="M1089.574,212.5L1089.574,218.667C1089.574,224.833,1089.574,237.167,1089.574,254.5C1089.574,271.833,1089.574,294.167,1089.574,316.5C1089.574,338.833,1089.574,361.167,1089.574,384.75C1089.574,408.333,1089.574,433.167,1089.574,458C1089.574,482.833,1089.574,507.667,1089.574,531.25C1089.574,554.833,1089.574,577.167,1089.574,599.5C1089.574,621.833,1089.574,644.167,993.162,665.415C896.751,686.663,703.927,706.827,607.515,716.908L511.103,726.99"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T3_T5_0" d="M122.207,495.5L119.61,501.667C117.013,507.833,111.819,520.167,109.222,537.5C106.625,554.833,106.625,577.167,106.625,599.5C106.625,621.833,106.625,644.167,129.399,661.606C152.173,679.045,197.721,691.589,220.495,697.862L243.269,704.134"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T4_T5_0" d="M457.476,629.5L444.084,635.667C430.692,641.833,403.909,654.167,390.517,665.833C377.125,677.5,377.125,688.5,377.125,694L377.125,699.5"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T2_T6_0" d="M1269.121,346.5L1269.121,352.667C1269.121,358.833,1269.121,371.167,1269.121,389.75C1269.121,408.333,1269.121,433.167,1269.121,458C1269.121,482.833,1269.121,507.667,1269.121,531.25C1269.121,554.833,1269.121,577.167,1269.121,599.5C1269.121,621.833,1269.121,644.167,1269.121,667.75C1269.121,691.333,1269.121,716.167,1269.121,741C1269.121,765.833,1269.121,790.667,1180.743,811.998C1092.366,833.329,915.61,851.157,827.233,860.072L738.855,868.986"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T4_T6_0" d="M559.453,629.5L567.024,635.667C574.594,641.833,589.734,654.167,597.305,672.75C604.875,691.333,604.875,716.167,604.875,741C604.875,765.833,604.875,790.667,604.875,808.583C604.875,826.5,604.875,837.5,604.875,843L604.875,848.5"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T5_T6_0" d="M324.839,778.5L316.241,784.667C307.643,790.833,290.446,803.167,314.799,815.991C339.151,828.814,405.053,842.129,438.004,848.786L470.954,855.443"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T1_T7_0" d="M1219.574,201.332L1259.207,209.36C1298.84,217.388,1378.105,233.444,1417.738,252.639C1457.371,271.833,1457.371,294.167,1457.371,316.5C1457.371,338.833,1457.371,361.167,1457.371,384.75C1457.371,408.333,1457.371,433.167,1457.371,458C1457.371,482.833,1457.371,507.667,1457.371,531.25C1457.371,554.833,1457.371,577.167,1457.371,599.5C1457.371,621.833,1457.371,644.167,1457.371,667.75C1457.371,691.333,1457.371,716.167,1457.371,741C1457.371,765.833,1457.371,790.667,1457.371,814.25C1457.371,837.833,1457.371,860.167,1457.371,882.5C1457.371,904.833,1457.371,927.167,1377.109,947.07C1296.848,966.972,1136.324,984.445,1056.062,993.181L975.801,1001.917"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T3_T7_0" d="M153.793,495.5L156.39,501.667C158.987,507.833,164.181,520.167,166.778,537.5C169.375,554.833,169.375,577.167,169.375,599.5C169.375,621.833,169.375,644.167,169.375,667.75C169.375,691.333,169.375,716.167,169.375,741C169.375,765.833,169.375,790.667,169.375,814.25C169.375,837.833,169.375,860.167,169.375,882.5C169.375,904.833,169.375,927.167,259.12,947.275C348.865,967.384,528.354,985.267,618.099,994.209L707.844,1003.151"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T5_T7_0" d="M377.125,778.5L377.125,784.667C377.125,790.833,377.125,803.167,377.125,820.5C377.125,837.833,377.125,860.167,377.125,882.5C377.125,904.833,377.125,927.167,432.248,946.281C487.372,965.395,597.618,981.291,652.742,989.238L707.865,997.186"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T2_T7_0" d="M1297.218,346.5L1302.994,352.667C1308.769,358.833,1320.32,371.167,1326.096,389.75C1331.871,408.333,1331.871,433.167,1331.871,458C1331.871,482.833,1331.871,507.667,1331.871,531.25C1331.871,554.833,1331.871,577.167,1331.871,599.5C1331.871,621.833,1331.871,644.167,1331.871,667.75C1331.871,691.333,1331.871,716.167,1331.871,741C1331.871,765.833,1331.871,790.667,1331.871,814.25C1331.871,837.833,1331.871,860.167,1331.871,882.5C1331.871,904.833,1331.871,927.167,1272.524,946.447C1213.177,965.728,1094.482,981.956,1035.135,990.07L975.787,998.184"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T4_T7_0" d="M652.625,626.787L684.158,633.406C715.691,640.025,778.758,653.262,810.291,672.298C841.824,691.333,841.824,716.167,841.824,741C841.824,765.833,841.824,790.667,841.824,814.25C841.824,837.833,841.824,860.167,841.824,882.5C841.824,904.833,841.824,927.167,841.824,943.833C841.824,960.5,841.824,971.5,841.824,977L841.824,982.5"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T6_T7_0" d="M589.606,912.5L586.467,918.667C583.328,924.833,577.051,937.167,598.212,949.34C619.374,961.513,667.975,973.527,692.275,979.533L716.575,985.54"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T2_T8_0" d="M1325.315,346.5L1336.866,352.667C1348.417,358.833,1371.519,371.167,1383.07,389.75C1394.621,408.333,1394.621,433.167,1394.621,458C1394.621,482.833,1394.621,507.667,1394.621,531.25C1394.621,554.833,1394.621,577.167,1394.621,599.5C1394.621,621.833,1394.621,644.167,1394.621,667.75C1394.621,691.333,1394.621,716.167,1394.621,741C1394.621,765.833,1394.621,790.667,1394.621,814.25C1394.621,837.833,1394.621,860.167,1394.621,882.5C1394.621,904.833,1394.621,927.167,1394.621,949.5C1394.621,971.833,1394.621,994.167,1394.621,1016.5C1394.621,1038.833,1394.621,1061.167,1317.28,1080.998C1239.938,1100.83,1085.256,1118.16,1007.914,1126.825L930.573,1135.49"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T4_T8_0" d="M652.625,617.488L711.658,625.657C770.691,633.826,888.758,650.163,947.791,670.748C1006.824,691.333,1006.824,716.167,1006.824,741C1006.824,765.833,1006.824,790.667,1006.824,814.25C1006.824,837.833,1006.824,860.167,1006.824,882.5C1006.824,904.833,1006.824,927.167,1006.824,949.5C1006.824,971.833,1006.824,994.167,1006.824,1016.5C1006.824,1038.833,1006.824,1061.167,988.11,1078.298C969.396,1095.428,931.968,1107.357,913.254,1113.321L894.54,1119.285"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T6_T8_0" d="M617.949,912.5L620.637,918.667C623.324,924.833,628.699,937.167,631.387,954.5C634.074,971.833,634.074,994.167,634.074,1016.5C634.074,1038.833,634.074,1061.167,648.416,1078.246C662.759,1095.325,691.443,1107.15,705.786,1113.063L720.128,1118.975"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T1_T8_0" d="M1219.574,197.495L1269.665,206.162C1319.757,214.83,1419.939,232.165,1470.03,251.999C1520.121,271.833,1520.121,294.167,1520.121,316.5C1520.121,338.833,1520.121,361.167,1520.121,384.75C1520.121,408.333,1520.121,433.167,1520.121,458C1520.121,482.833,1520.121,507.667,1520.121,531.25C1520.121,554.833,1520.121,577.167,1520.121,599.5C1520.121,621.833,1520.121,644.167,1520.121,667.75C1520.121,691.333,1520.121,716.167,1520.121,741C1520.121,765.833,1520.121,790.667,1520.121,814.25C1520.121,837.833,1520.121,860.167,1520.121,882.5C1520.121,904.833,1520.121,927.167,1520.121,949.5C1520.121,971.833,1520.121,994.167,1520.121,1016.5C1520.121,1038.833,1520.121,1061.167,1421.864,1081.432C1323.608,1101.698,1127.094,1119.895,1028.837,1128.994L930.581,1138.093"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T3_T8_0" d="M268,468.396L401.596,479.08C535.191,489.764,802.383,511.132,935.979,532.983C1069.574,554.833,1069.574,577.167,1069.574,599.5C1069.574,621.833,1069.574,644.167,1069.574,667.75C1069.574,691.333,1069.574,716.167,1069.574,741C1069.574,765.833,1069.574,790.667,1069.574,814.25C1069.574,837.833,1069.574,860.167,1069.574,882.5C1069.574,904.833,1069.574,927.167,1069.574,949.5C1069.574,971.833,1069.574,994.167,1069.574,1016.5C1069.574,1038.833,1069.574,1061.167,1045.097,1078.341C1020.62,1095.516,971.665,1107.531,947.188,1113.539L922.711,1119.547"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T5_T8_0" d="M408.711,778.5L413.905,784.667C419.099,790.833,429.487,803.167,434.681,820.5C439.875,837.833,439.875,860.167,439.875,882.5C439.875,904.833,439.875,927.167,439.875,949.5C439.875,971.833,439.875,994.167,439.875,1016.5C439.875,1038.833,439.875,1061.167,477.007,1079.307C514.139,1097.448,588.403,1111.397,625.534,1118.371L662.666,1125.345"/><path marker-end="url(#my-svg_flowchart-v2-pointEnd)" style="" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" id="L_T7_T8_0" d="M841.824,1046.5L841.824,1052.667C841.824,1058.833,841.824,1071.167,838.035,1082.947C834.245,1094.728,826.666,1105.956,822.876,1111.571L819.086,1117.185"/></g><g class="edgeLabels"><g class="edgeLabel"><g transform="translate(0, 0)" class="label"><foreignObject height="0" width="0"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g transform="translate(0, 0)" class="label"><foreignObject height="0" width="0"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"></span></div></foreignObject></g></g><g transform="translate(79.6015625, 249.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(138, 316.5)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(1147.97265625, 383.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(1206.37109375, 458)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(48.2265625, 532.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(1089.57421875, 458)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(106.625, 599.5)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(377.125, 666.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(1269.12109375, 599.5)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(604.875, 741)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(273.25, 815.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(1457.37109375, 599.5)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(169.375, 741)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(377.125, 882.5)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(1331.87109375, 666.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(841.82421875, 815.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(570.7734375, 949.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(1394.62109375, 741)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(1006.82421875, 882.5)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(634.07421875, 1016.5)" class="edgeLabel"><g transform="translate(-42.75, -12)" class="label"><foreignObject height="24" width="85.5"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>🤝 supports</p></span></div></foreignObject></g></g><g transform="translate(1520.12109375, 666.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(1069.57421875, 815.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(439.875, 949.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g><g transform="translate(841.82421875, 1083.5)" class="edgeLabel"><g transform="translate(-38.3984375, -12)" class="label"><foreignObject height="24" width="76.796875"><div style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" class="labelBkg" xmlns="http://www.w3.org/1999/xhtml"><span class="edgeLabel"><p>⚔️ attacks</p></span></div></foreignObject></g></g></g><g class="nodes"><g transform="translate(1314.84765625, 47.75)" id="flowchart-T0-0" class="node default topicNode"><rect height="79.5" width="260" y="-39.75" x="-130" style="fill:#fff3e0 !important;stroke:#ff9800 !important;stroke-width:3px !important" class="basic label-container"/><g transform="translate(-100, -24.75)" style="color:#000 !important;font-size:11px !important" class="label"><rect/><foreignObject height="49.5" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 11px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:11px !important"><p>📋 TOPIC: Should artificial general intelligence development be regulated by international law?</p></span></div></foreignObject></g></g><g transform="translate(1089.57421875, 175)" id="flowchart-T1-1" class="node default proNode"><rect height="75" width="260" y="-37.5" x="-130" style="fill:#e3f2fd !important;stroke:#1976d2 !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -22.5)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="45" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Artificial general intelligence (AGI) development should be regulated by interna…</p></span></div></foreignObject></g></g><g transform="translate(1269.12109375, 316.5)" id="flowchart-T2-2" class="node default conNode"><rect height="60" width="260" y="-30" x="-130" style="fill:#fce4ec !important;stroke:#c2185b !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -15)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="30" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Implementing international law to regulate artificial general intelligence (AGI)…</p></span></div></foreignObject></g></g><g transform="translate(138, 458)" id="flowchart-T3-3" class="node default proNode"><rect height="75" width="260" y="-37.5" x="-130" style="fill:#e3f2fd !important;stroke:#1976d2 !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -22.5)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="45" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Artificial general intelligence (AGI) development should be regulated by interna…</p></span></div></foreignObject></g></g><g transform="translate(522.625, 599.5)" id="flowchart-T4-4" class="node default conNode"><rect height="60" width="260" y="-30" x="-130" style="fill:#fce4ec !important;stroke:#c2185b !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -15)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="30" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Regulating artificial general intelligence (AGI) through international law is im…</p></span></div></foreignObject></g></g><g transform="translate(377.125, 741)" id="flowchart-T5-5" class="node default proNode"><rect height="75" width="260" y="-37.5" x="-130" style="fill:#e3f2fd !important;stroke:#1976d2 !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -22.5)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="45" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Artificial general intelligence (AGI) development should be regulated by interna…</p></span></div></foreignObject></g></g><g transform="translate(604.875, 882.5)" id="flowchart-T6-6" class="node default conNode"><rect height="60" width="260" y="-30" x="-130" style="fill:#fce4ec !important;stroke:#c2185b !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -15)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="30" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Implementing international law to regulate artificial general intelligence (AGI)…</p></span></div></foreignObject></g></g><g transform="translate(841.82421875, 1016.5)" id="flowchart-T7-7" class="node default proNode"><rect height="60" width="260" y="-30" x="-130" style="fill:#e3f2fd !important;stroke:#1976d2 !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -15)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="30" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Regulating artificial general intelligence (AGI) through international law is es…</p></span></div></foreignObject></g></g><g transform="translate(796.59765625, 1150.5)" id="flowchart-T8-8" class="node default conNode"><rect height="60" width="260" y="-30" x="-130" style="fill:#fce4ec !important;stroke:#c2185b !important;stroke-width:2px !important" class="basic label-container"/><g transform="translate(-100, -15)" style="color:#000 !important;font-size:10px !important" class="label"><rect/><foreignObject height="30" width="200"><div xmlns="http://www.w3.org/1999/xhtml" style="color: rgb(0, 0, 0) !important; font-size: 10px !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel" style="color:#000 !important;font-size:10px !important"><p>Implementing international law to regulate artificial general intelligence (AGI)…</p></span></div></foreignObject></g></g></g></g></g></svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Debate data will be injected here
+        const debateData =
+{
+  "topic": "",
+  "turns": [
+    {
+      "round": 1,
+      "agent": "pro",
+      "stance": "Artificial general intelligence development should be regulated by international law to ensure safety, ethical standards, and equitable benefits.",
+      "response": "Artificial general intelligence (AGI) development should be regulated by international law to ensure safety, ethical standards, and equitable benefits. The European Union's AI Act, effective August 2024, exemplifies a comprehensive framework that categorizes AI systems by risk levels and imposes corresponding obligations, setting a global benchmark for AI regulation. ([reuters.com](https://www.reuters.com/world/europe/eu-countries-back-landmark-artificial-intelligence-rules-2024-05-21/?utm_source=openai)) Additionally, the Framework Convention on Artificial Intelligence, signed by over 50 countries in September 2024, underscores a collective commitment to align AI development with human rights and democratic values. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Framework_Convention_on_Artificial_Intelligence?utm_source=openai)) These initiatives highlight the necessity of international cooperation to mitigate risks such as misinformation and algorithmic bias, ensuring that AGI advancements benefit all of humanity.",
+      "supports": [],
+      "attacks": [],
+      "research_used": true,
+      "research_queries": [
+        "international regulation of artificial general intelligence"
+      ],
+      "citations": [
+        {
+          "id": "turn0news15",
+          "url": "https://www.reuters.com/world/europe/eu-countries-back-landmark-artificial-intelligence-rules-2024-05-21/",
+          "title": "Europe sets benchmark for rest of the world with landmark AI laws",
+          "snippet": "Europe's landmark AI Act, set to become effective next month, represents the world's most comprehensive approach to artificial intelligence regulation."
+        },
+        {
+          "id": "turn0search21",
+          "url": "https://en.wikipedia.org/wiki/Framework_Convention_on_Artificial_Intelligence",
+          "title": "Framework Convention on Artificial Intelligence",
+          "snippet": "The Framework Convention on Artificial Intelligence and Human Rights, Democracy and the Rule of Law is an international treaty on artificial intelligence."
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "agent": "con",
+      "stance": "International law should not regulate artificial general intelligence development due to enforcement challenges and potential innovation stifling.",
+      "response": "Implementing international law to regulate artificial general intelligence (AGI) development presents significant challenges that could impede innovation and prove ineffective. The rapid pace of AI advancement often outstrips the ability of international legal frameworks to adapt, leading to regulations that may quickly become obsolete. ([forbes.com](https://www.forbes.com/councils/forbestechcouncil/2024/11/12/ai-regulation-global-governance-and-challenges/?utm_source=openai)) Additionally, the global nature of AI development complicates jurisdictional authority, making enforcement of international agreements difficult. ([statuteonline.com](https://statuteonline.com/international-law-on-ai/?utm_source=openai)) Furthermore, imposing stringent international regulations could stifle innovation by creating bureaucratic hurdles that deter research and development efforts. ([forbes.com](https://www.forbes.com/councils/forbestechcouncil/2024/11/12/ai-regulation-global-governance-and-challenges/?utm_source=openai)) Therefore, rather than relying on international law, a more flexible, collaborative approach involving industry stakeholders and national governments may be more effective in addressing the challenges posed by AGI development.",
+      "supports": [],
+      "attacks": [
+        1
+      ],
+      "research_used": true,
+      "research_queries": [
+        "challenges of international regulation of artificial general intelligence",
+        "impact of international AI regulation on innovation"
+      ],
+      "citations": [
+        {
+          "id": "turn0search0",
+          "url": "https://www.forbes.com/councils/forbestechcouncil/2024/11/12/ai-regulation-global-governance-and-challenges/",
+          "title": "AI Regulation, Global Governance And Challenges",
+          "snippet": "The fast acceleration of AI innovation makes it difficult for government regulations to predict or enact a comprehensive framework of regulations."
+        },
+        {
+          "id": "turn0search5",
+          "url": "https://statuteonline.com/international-law-on-ai/",
+          "title": "Exploring International Law on AI: Challenges and Opportunities",
+          "snippet": "The global nature of artificial intelligence technology complicates the determination of which nation’s laws apply in various scenarios, leading to potential conflicts between different legal frameworks."
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "agent": "pro",
+      "stance": "Artificial general intelligence development should be regulated by international law to ensure global safety and ethical standards.",
+      "response": "Artificial general intelligence (AGI) development should be regulated by international law to ensure global safety and ethical standards. Existing international agreements, such as the International Civil Aviation Organization (ICAO) and the Financial Action Task Force (FATF), demonstrate that effective global regulatory regimes are feasible even in areas involving national security and economic competitiveness. ([ai-safety-atlas.com](https://ai-safety-atlas.com/chapters/04/06/?utm_source=openai)) These frameworks provide valuable models for establishing enforceable international standards for AGI development. Additionally, the European Union's AI Act, which introduces a risk-based approach to categorizing AI systems, exemplifies a comprehensive regulatory framework that could serve as a benchmark for global AI governance. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Regulation_of_artificial_intelligence?utm_source=openai)) Implementing similar international regulations for AGI would help mitigate risks associated with its development and deployment, ensuring that advancements in AGI benefit humanity as a whole.",
+      "supports": [
+        1
+      ],
+      "attacks": [
+        2
+      ],
+      "research_used": true,
+      "research_queries": [
+        "international regulatory frameworks for AGI",
+        "examples of effective international technology regulations"
+      ],
+      "citations": [
+        {
+          "id": "turn0search8",
+          "url": "https://ai-safety-atlas.com/chapters/04/06/",
+          "title": "4.6 - International Governance - AI Safety Atlas",
+          "snippet": "Existing international agreements, such as the International Civil Aviation Organization (ICAO) and the Financial Action Task Force (FATF), demonstrate that effective global regulatory regimes are feasible even in areas involving national security and economic competitiveness."
+        },
+        {
+          "id": "turn0search14",
+          "url": "https://en.wikipedia.org/wiki/Regulation_of_artificial_intelligence",
+          "title": "Regulation of artificial intelligence",
+          "snippet": "The European Union's AI Act introduces a risk-based approach to categorizing AI systems, exemplifying a comprehensive regulatory framework that could serve as a benchmark for global AI governance."
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "agent": "con",
+      "stance": "International law should not regulate AGI development due to lack of enforceability and nation-state divergence.",
+      "response": "Regulating artificial general intelligence (AGI) through international law is impractical because there is no global enforcement authority to ensure compliance, and countries have sharply diverging interests and priorities regarding AI technology. Attempts at international agreements on emerging technology often result in vague compromises that are difficult to implement, as seen with previous global treaties on cybersecurity and arms control. Moreover, national governments are likely to prioritize their own economic and security interests, undermining any binding international rules and encouraging covert or unregulated AGI development outside of collaborative frameworks. A more pragmatic solution would involve flexible, adaptive national guidelines and voluntary industry-led initiatives tailored to local contexts rather than imposing slow-moving, one-size-fits-all international laws.",
+      "supports": [
+        2
+      ],
+      "attacks": [
+        3
+      ],
+      "research_used": true,
+      "research_queries": [
+        "failures of international technology regulation",
+        "challenges enforcing international law on AGI"
+      ],
+      "citations": [
+        {
+          "id": "turn4search0",
+          "url": "https://www.brookings.edu/articles/the-challenges-of-international-cooperation-on-ai-policy/",
+          "title": "The challenges of international cooperation on AI policy",
+          "snippet": "Countries have competing priorities and no supranational enforcement mechanism exists, making it unlikely that global standards would be both robust and enforced."
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "agent": "pro",
+      "stance": "Artificial general intelligence development should be regulated by international law to prevent existential risks and ensure equitable global benefits.",
+      "response": "Artificial general intelligence (AGI) development should be regulated by international law to prevent existential risks and ensure equitable global benefits. The United Nations has emphasized the \"irrefutable\" need for global AI regulation, highlighting that ungoverned AI could exacerbate inequalities and pose significant threats to human rights and security. ([news.un.org](https://news.un.org/en/story/2024/09/1154541?utm_source=openai)) Without international oversight, AGI could lead to an AI arms race, where nations prioritize rapid development over safety, increasing the risk of unintended and potentially catastrophic consequences. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Existential_risk_from_artificial_intelligence?utm_source=openai)) Establishing a global regulatory framework would promote responsible AGI development, ensuring that advancements benefit all of humanity while mitigating potential harms.",
+      "supports": [
+        1,
+        3
+      ],
+      "attacks": [
+        4
+      ],
+      "research_used": true,
+      "research_queries": [
+        "existential risks of unregulated AGI",
+        "UN recommendations on AI regulation"
+      ],
+      "citations": [
+        {
+          "id": "turn0search1",
+          "url": "https://news.un.org/en/story/2024/09/1154541",
+          "title": "\u0018Irrefutable\u0019 need for global regulation of AI: UN experts",
+          "snippet": "The United Nations has emphasized the \"irrefutable\" need for global AI regulation, highlighting that ungoverned AI could exacerbate inequalities and pose significant threats to human rights and security."
+        },
+        {
+          "id": "turn0search22",
+          "url": "https://en.wikipedia.org/wiki/Existential_risk_from_artificial_intelligence",
+          "title": "Existential risk from artificial intelligence",
+          "snippet": "Without international oversight, AGI could lead to an AI arms race, where nations prioritize rapid development over safety, increasing the risk of unintended and potentially catastrophic consequences."
+        }
+      ]
+    },
+    {
+      "round": 6,
+      "agent": "con",
+      "stance": "International law should not regulate artificial general intelligence development due to historical failures and enforcement challenges.",
+      "response": "Implementing international law to regulate artificial general intelligence (AGI) development is impractical due to historical failures in technology governance and significant enforcement challenges. Previous attempts at international regulation, such as the International Telecommunications Union's efforts to govern internet infrastructure, have been undermined by the dominance of private corporations and national interests, leading to ineffective oversight. ([link.springer.com](https://link.springer.com/article/10.1007/s10978-023-09362-5?utm_source=openai)) Additionally, the lack of a global enforcement authority and divergent national priorities make it difficult to establish and implement binding international agreements on emerging technologies. ([link.springer.com](https://link.springer.com/article/10.1007/s40647-025-00445-4?utm_source=openai)) These factors suggest that international regulation of AGI would likely be ineffective and could hinder innovation. A more effective approach would involve flexible, adaptive national guidelines and voluntary industry-led initiatives tailored to local contexts.",
+      "supports": [
+        2,
+        4
+      ],
+      "attacks": [
+        5
+      ],
+      "research_used": true,
+      "research_queries": [
+        "historical failures of international technology regulation",
+        "challenges enforcing international law on AGI"
+      ],
+      "citations": [
+        {
+          "id": "turn0search1",
+          "url": "https://link.springer.com/article/10.1007/s10978-023-09362-5",
+          "title": "Communications Infrastructure, Technological Solutionism and the International Legal Imagination",
+          "snippet": "The international legal imagination as regards communications and technology was in many ways limited from the beginning by its reliance on private actors and their economic ambitions."
+        },
+        {
+          "id": "turn0search0",
+          "url": "https://link.springer.com/article/10.1007/s40647-025-00445-4",
+          "title": "Governing High-Risk Technologies in a Fragmented World: Geopolitical Tensions, Regulatory Gaps, and Institutional Barriers to Global Cooperation",
+          "snippet": "The rapid advancement and global proliferation of emerging technologies have created significant uncertainties and challenges regarding their long-term implications."
+        }
+      ]
+    },
+    {
+      "round": 7,
+      "agent": "pro",
+      "stance": "Artificial general intelligence development should be regulated by international law to ensure global safety, security, and fair distribution of benefits.",
+      "response": "Regulating artificial general intelligence (AGI) through international law is essential for managing risks that transcend borders, including the potential misuse of AGI, unintended catastrophic consequences, and the escalation of global AI arms races. The United Nations and G7 countries have both called for binding international AI governance frameworks, stressing the urgent need for coordinated action to safeguard human rights, promote transparency, and ensure that technological advances benefit all societies, not just technologically advanced nations. As AGI could fundamentally reshape economies and national security, only a globally binding legal system can provide accountability, harmonized ethical standards, and transparent mechanisms to address cross-border challenges—preventing regulatory fragmentation and reducing the likelihood of an unregulated AGI \"race to the bottom.\"",
+      "supports": [
+        1,
+        3,
+        5
+      ],
+      "attacks": [
+        2,
+        4,
+        6
+      ],
+      "research_used": true,
+      "research_queries": [
+        "G7 international law artificial intelligence",
+        "United Nations international AI governance recommendations"
+      ],
+      "citations": [
+        {
+          "id": "turn7search0",
+          "url": "https://news.un.org/en/story/2024/09/1154541",
+          "title": "‘Irrefutable’ need for global regulation of AI: UN experts",
+          "snippet": "The United Nations and other global bodies have underscored the urgent need for robust, coordinated international action to address the societal risks posed by advanced artificial intelligence technologies."
+        },
+        {
+          "id": "turn7search1",
+          "url": "https://www.reuters.com/world/g7-leaders-call-stronger-global-ai-governance-2024-05-23/",
+          "title": "G7 leaders call for stronger global AI governance",
+          "snippet": "G7 leaders have called for binding international regulatory frameworks to ensure the security, transparency, and equitable distribution of benefits from advanced AI systems."
+        }
+      ]
+    },
+    {
+      "round": 8,
+      "agent": "con",
+      "stance": "International law should not regulate artificial general intelligence development due to historical inefficacy in governing emerging technologies and enforcement challenges.",
+      "response": "Implementing international law to regulate artificial general intelligence (AGI) development is impractical due to historical inefficacy in governing emerging technologies and significant enforcement challenges. Previous attempts at international regulation, such as the Outer Space Treaty, have failed to address rapid technological advancements and the increasing involvement of private entities, leading to regulatory gaps and weak enforcement mechanisms. ([nyujilp.org](https://nyujilp.org/houston-we-have-a-problem-international-laws-inability-to-regulate-space-exploration/?utm_source=openai)) Additionally, the decentralized and borderless nature of cyberspace has rendered international law ineffective in preventing cyber attacks, as existing frameworks struggle with issues of attribution and jurisdiction. ([weforum.org](https://www.weforum.org/agenda/2019/02/why-international-law-is-failing-to-keep-pace-with-technology-in-preventing-cyber-attacks/?utm_source=openai)) These examples highlight the difficulties in establishing and enforcing international regulations for rapidly evolving technologies. Therefore, a more effective approach would involve flexible, adaptive national guidelines and voluntary industry-led initiatives tailored to local contexts, rather than imposing slow-moving, one-size-fits-all international laws.",
+      "supports": [
+        2,
+        4,
+        6
+      ],
+      "attacks": [
+        1,
+        3,
+        5,
+        7
+      ],
+      "research_used": true,
+      "research_queries": [
+        "failures of international law in regulating emerging technologies",
+        "challenges in enforcing international regulations on AGI"
+      ],
+      "citations": [
+        {
+          "id": "turn0search0",
+          "url": "https://nyujilp.org/houston-we-have-a-problem-international-laws-inability-to-regulate-space-exploration/",
+          "title": "Houston, We Have a Problem: International Law’s Inability to Regulate Space Exploration",
+          "snippet": "The Outer Space Treaty does not address fundamental questions and lacks clarity, leading to regulatory challenges."
+        },
+        {
+          "id": "turn0search3",
+          "url": "https://www.weforum.org/agenda/2019/02/why-international-law-is-failing-to-keep-pace-with-technology-in-preventing-cyber-attacks/",
+          "title": "International law cannot keep up with cyber-criminals",
+          "snippet": "Existing international law frameworks fail to provide timely or effective legal remedies for cyber attacks."
+        }
+      ]
+    }
+  ]
+}
+        ;
+
+        // Summary data will be injected here
+        const summaryData =
+{
+  "winning_side": "pro",
+  "strongest_point": "\"AGI could fundamentally reshape economies and national security, only a globally binding legal system can provide accountability, harmonized ethical standards, and transparent mechanisms to address cross-border challenges—preventing regulatory fragmentation and reducing the likelihood of an unregulated AGI 'race to the bottom.'\"",
+  "weakest_point": "\"A more effective approach would involve flexible, adaptive national guidelines and voluntary industry-led initiatives tailored to local contexts, rather than imposing slow-moving, one-size-fits-all international laws.\"",
+  "contradictions": [
+    "Pro cites the effectiveness of international organizations (e.g., ICAO, FATF) as models for AGI regulation, while Con argues that historical international legal regimes (e.g., telecom, space, cybersecurity) failed to effectively govern emerging technologies.",
+    "Pro claims that only international law can mitigate AI arms race risks and ensure equitable distribution, but Con counters that fragmentation and national interests make enforceable global AI law impractical."
+  ],
+  "verdict": "While both sides are well researched, the 'pro' side currently has a stronger position. Pro substantiates the global necessity for international regulation of AGI with precedents (like ICAO and FATF), contemporary legal frameworks (EU AI Act, Framework Convention), and endorsements by authoritative bodies (United Nations, G7) highlighting existential risks and the dangers of regulatory fragmentation. Con's argument about the impracticality and historical inefficacy of international law is well-established, but insufficient to refute the demonstrated global risks and the moral obligations articulated by prominent global institutions. The weaknesses in enforcement acknowledged by pro are outweighed by the argument that local or voluntary initiatives are inadequate for a technology with cross-border and existential implications. Therefore, pro is ahead, though the debate highlights unresolved challenges in implementation.",
+  "sources_audited": [
+    "reuters.com OK",
+    "en.wikipedia.org OK",
+    "forbes.com OK",
+    "statuteonline.com usually OK",
+    "ai-safety-atlas.com credible",
+    "news.un.org OK",
+    "brookings.edu OK",
+    "link.springer.com OK",
+    "nyujilp.org (legal academic) OK",
+    "weforum.org OK"
+  ]
+}
+        ;
+
+        // Populate the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set topic - extract from debate data
+            const topicElement = document.getElementById('topic-text');
+            let topic = '';
+
+            // Try to get topic from the JSON topic field first
+            if (debateData.topic && debateData.topic.trim() !== '') {
+                topic = debateData.topic;
+            }
+            // If no topic field, extract from the first turn's stance
+            else if (debateData.turns && debateData.turns.length > 0 && debateData.turns[0].stance) {
+                topic = debateData.turns[0].stance.trim();
+            }
+            // Fallback to placeholder that will be replaced by shell script
+            else {
+                topic = 'Nations should phase out nuclear energy within 20 years.';
+            }
+
+            topicElement.textContent = topic;
+
+            // Populate turns
+            const turnsContainer = document.getElementById('turns-container');
+            debateData.turns.forEach((turn, index) => {
+                const turnDiv = document.createElement('div');
+                turnDiv.className = `turn turn-${turn.agent}`;
+
+                const relationships = [];
+                if (turn.attacks && turn.attacks.length > 0) {
+                    turn.attacks.forEach(attackedTurn => {
+                        relationships.push(`<span class="relationship attacks">⚔️ Attacks Turn ${attackedTurn + 1}</span>`);
+                    });
+                }
+                if (turn.supports && turn.supports.length > 0) {
+                    turn.supports.forEach(supportedTurn => {
+                        relationships.push(`<span class="relationship supports">🤝 Supports Turn ${supportedTurn + 1}</span>`);
+                    });
+                }
+
+                // Post-process citations: convert any format to numbered citations
+                let processedResponse = turn.response;
+                let allCitations = [];
+
+                // Extract inline citations from text: [text](url) or ([text](url))
+                const inlineLinkRegex = /\(?(\[([^\]]+)\]\(([^)]+)\))\)?/g;
+                let match;
+                const inlineMatches = [];
+
+                while ((match = inlineLinkRegex.exec(turn.response)) !== null) {
+                    const fullMatch = match[1]; // [text](url) part
+                    const linkText = match[2];  // text inside brackets
+                    const url = match[3];       // url inside parentheses
+
+                    inlineMatches.push({
+                        fullMatch: match[0], // includes potential outer parentheses
+                        linkMatch: fullMatch,
+                        text: linkText,
+                        url: url,
+                        source: 'inline'
+                    });
+
+                    // Check if we have a better title in structured citations
+                    let betterTitle = linkText;
+                    if (turn.citations) {
+                        // Remove query parameters for URL matching
+                        const cleanUrl = url.split('?')[0];
+                        const structuredCitation = turn.citations.find(c =>
+                            c.url === url || c.url === cleanUrl || c.url.split('?')[0] === cleanUrl
+                        );
+                        if (structuredCitation && structuredCitation.title && structuredCitation.title !== structuredCitation.url) {
+                            betterTitle = structuredCitation.title;
+                        }
+                    }
+
+                    // Add to citations list with best available title
+                    allCitations.push({
+                        url: url,
+                        title: betterTitle,
+                        source: 'inline'
+                    });
+                }
+
+                // Replace inline citations with numbered references
+                for (const inlineMatch of inlineMatches) {
+                    const citationIndex = allCitations.findIndex(c => c.url === inlineMatch.url);
+                    const citationNumber = citationIndex + 1;
+
+                    // Replace the inline citation with numbered link
+                    const replacement = `<a href="${inlineMatch.url}" target="_blank" class="citation-link">[${citationNumber}]</a>`;
+                    processedResponse = processedResponse.replace(inlineMatch.fullMatch, replacement);
+                }
+
+                // Also handle any existing numbered citations [1], [2], etc.
+                allCitations.forEach((citation, index) => {
+                    const citationNumber = index + 1;
+                    const numberRegex = new RegExp(`\\[${citationNumber}\\](?![^<]*>)`, 'g');
+                    processedResponse = processedResponse.replace(numberRegex,
+                        `<a href="${citation.url}" target="_blank" class="citation-link">[${citationNumber}]</a>`);
+                });
+
+                // Generate citations HTML
+                const citations = allCitations.map((citation, index) => {
+                    const citationNumber = index + 1;
+                    return `<div class="citation"><span class="citation-number">[${citationNumber}]</span> <a href="${citation.url}" target="_blank">${citation.title}</a></div>`;
+                }).join('');
+
+                turnDiv.innerHTML = `
+                    <div class="turn-header">
+                        <span>${turn.agent.toUpperCase()}</span>
+                        <span class="turn-id">Turn ${index + 1}</span>
+                    </div>
+                    <div class="turn-content">
+                        <div class="stance">${turn.stance}</div>
+                        <div class="argument">${processedResponse}</div>
+                        ${citations ? `
+                            <div class="citations">
+                                <h4>📚 Citations</h4>
+                                ${citations}
+                            </div>
+                        ` : ''}
+                        ${relationships.length > 0 ? `
+                            <div class="relationships">
+                                <h4>🔗 Argument Relationships</h4>
+                                ${relationships.join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                turnsContainer.appendChild(turnDiv);
+            });
+
+            // Populate summary if available
+            if (summaryData) {
+                const summaryContainer = document.getElementById('summary-container');
+                summaryContainer.innerHTML =
+                    '<h2>🏆 Debate Results</h2>' +
+                    '<div class="winner winner-' + summaryData.winning_side.toLowerCase() + '">' +
+                        '🥇 Winner: ' + summaryData.winning_side.toUpperCase() +
+                    '</div>' +
+                    '<div class="strongest-point">' +
+                        '<h3>💪 Strongest Argument</h3>' +
+                        '<p>' + summaryData.strongest_point + '</p>' +
+                    '</div>' +
+                    '<div class="verdict">' +
+                        '<h3>📋 Judge\'s Reasoning</h3>' +
+                        '<p>' + summaryData.verdict + '</p>' +
+                    '</div>';
+            } else {
+                document.getElementById('summary-container').style.display = 'none';
+            }
+
+            // Embed SVG if available
+            const svgContainer = document.getElementById('svg-container');
+            // SVG content will be injected here by the shell script
+        });
+    </script>
+</body>
+</html>

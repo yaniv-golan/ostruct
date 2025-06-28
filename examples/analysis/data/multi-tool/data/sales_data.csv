@@ -1,0 +1,17 @@
+date,product_id,product_name,category,quantity,unit_price,total_amount,customer_id,region,sales_rep
+2024-01-15,P001,Laptop Pro,Electronics,2,1299.99,2599.98,C001,North,John Smith
+2024-01-16,P002,Wireless Mouse,Electronics,5,29.99,149.95,C002,South,Jane Doe
+2024-01-17,P003,Office Chair,Furniture,1,299.99,299.99,C003,East,Bob Johnson
+2024-01-18,P001,Laptop Pro,Electronics,1,1299.99,1299.99,C004,West,Alice Brown
+2024-01-19,P004,Standing Desk,Furniture,1,599.99,599.99,C005,North,John Smith
+2024-01-20,P005,Keyboard,Electronics,3,79.99,239.97,C006,South,Jane Doe
+2024-01-21,P002,Wireless Mouse,Electronics,2,29.99,59.98,C007,East,Bob Johnson
+2024-01-22,P006,Monitor,Electronics,1,249.99,249.99,C008,West,Alice Brown
+2024-01-23,P003,Office Chair,Furniture,2,299.99,599.98,C009,North,John Smith
+2024-01-24,P007,Tablet,Electronics,1,399.99,399.99,C010,South,Jane Doe
+2024-01-25,P008,Headphones,Electronics,4,89.99,359.96,C011,East,Bob Johnson
+2024-01-26,P004,Standing Desk,Furniture,1,599.99,599.99,C012,West,Alice Brown
+2024-01-27,P009,Webcam,Electronics,2,69.99,139.98,C013,North,John Smith
+2024-01-28,P010,Printer,Electronics,1,199.99,199.99,C014,South,Jane Doe
+2024-01-29,P001,Laptop Pro,Electronics,1,1299.99,1299.99,C015,East,Bob Johnson
+2024-01-30,P011,Desk Lamp,Furniture,3,49.99,149.97,C016,West,Alice Brown

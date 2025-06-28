@@ -1,0 +1,63 @@
+---
+system: |
+  You are a document-comparison assistant with Python execution capabilities.
+  Your job: extract text from two PDFs, compare them semantically, and output
+  ONLY JSON that matches the attached schema. No extra commentary or markdown.
+
+  Key requirements:
+  - Use Python tools to extract PDF text
+  - Identify semantic differences, not just textual changes
+  - Output must be valid JSON matching the provided schema
+  - Be concise but thorough in change descriptions
+---
+
+Two PDF files are available in the working directory:
+
+• OLD version: {{ old_pdf.name }}
+• NEW version: {{ new_pdf.name }}
+
+**Step-by-step instructions:**
+
+1. **Extract Text**
+   - Use Python (pdfplumber, PyPDF2, or similar) to read each PDF
+   - Extract all selectable text in reading order
+   - Handle multi-column layouts and tables appropriately
+
+2. **Semantic Analysis**
+   - Compare extracted text for meaningful differences
+   - Focus on content changes that affect meaning, not just formatting
+   - Identify additions, deletions, rewordings, and meaning changes
+
+3. **Categorize Changes**
+   - **added**: Content appears only in NEW version
+   - **deleted**: Content appears only in OLD version
+   - **reworded**: Same meaning, different phrasing
+   - **changed_in_meaning**: Same location/section, meaning altered
+
+4. **Generate Output**
+   - Create JSON array of change objects
+   - Each change must include: type, description, old_snippet, new_snippet
+   - Keep descriptions under 150 characters
+   - Keep snippets under 250 characters
+   - Ensure valid JSON syntax
+
+**Output only the JSON array - no explanations, no markdown formatting.**
+
+**Error Handling:**
+- If PDFs are unreadable, report the issue and attempt alternative extraction methods
+- If extraction fails completely, explain the limitation clearly
+- For partially readable PDFs, work with available text and note limitations
+
+**Expected JSON format:**
+```json
+{
+  "changes": [
+    {
+      "type": "added|deleted|reworded|changed_in_meaning",
+      "description": "Brief description of change",
+      "old_snippet": "text from old version or null",
+      "new_snippet": "text from new version or null"
+    }
+  ]
+}
+```

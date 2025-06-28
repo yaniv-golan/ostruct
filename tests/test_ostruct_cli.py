@@ -104,7 +104,8 @@ class TestCLIArgumentParsing:
         # Create test files
         fs.create_file(f"{TEST_BASE_DIR}/test.txt", contents="test content")
         fs.create_file(
-            f"{TEST_BASE_DIR}/template.j2", contents="Template: {{ test_txt }}"
+            f"{TEST_BASE_DIR}/template.j2",
+            contents="Template: {{ test.content }}",
         )
         schema_content = {
             "schema": {
@@ -127,7 +128,8 @@ class TestCLIArgumentParsing:
                 "run",
                 "template.j2",
                 "schema.json",
-                "-ft",
+                "--file",
+                "test",
                 "test.txt",
                 "--dry-run",
             ],
@@ -150,7 +152,7 @@ class TestFileHandling:
                 from ostruct.cli.security import SecurityManager
 
                 security_manager = SecurityManager(
-                    base_dir=os.path.dirname(f.name)
+                    base_dir=os.path.dirname(f.name), allow_temp_paths=True
                 )
                 file_info = FileInfo(f.name, security_manager)
                 assert file_info.name == os.path.basename(f.name)
@@ -204,7 +206,7 @@ class TestTemplateProcessing:
                 from ostruct.cli.security import SecurityManager
 
                 security_manager = SecurityManager(
-                    base_dir=os.path.dirname(f.name)
+                    base_dir=os.path.dirname(f.name), allow_temp_paths=True
                 )
                 template_content = "File: {{ file_var.content }}"
                 file_info = FileInfo(f.name, security_manager)

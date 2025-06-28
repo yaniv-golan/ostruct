@@ -1,0 +1,135 @@
+# Analysis Report
+
+## User Information
+Hello {{ user_name | title }}!
+
+## Data Processing
+{% for item in items %}
+  {% if loop.first %}
+Processing {{ items | length }} items:
+  {% endif %}
+  - Item {{ loop.index }}: {{ item.name | upper }} ({{ item.type | lower }})
+  {% if item.status == "active" %}
+    Status: ✅ Active
+  {% else %}
+    Status: ❌ Inactive
+  {% endif %}
+{% endfor %}
+
+## Configuration
+{% if config %}
+Settings:
+  - Debug: {{ config.debug }}
+  - Level: {{ config.level | default("info") | upper }}
+  - Max Results: {{ config.max_results | default(10) }}
+  - Enabled Features: {{ config.features | join(", ") if config.features else "None" }}
+{% endif %}
+
+## Data Summary Table
+{% if items %}
+| Product | Type | Status | Price |
+|---------|------|--------|-------|
+{% for item in items %}
+| {{ item.name | truncate(20) }} | {{ item.type | capitalize }} | {{ item.status | upper }} | ${{ item.price | default(0) | round(2) }} |
+{% endfor %}
+
+**Active Items**: {{ items | selectattr("status", "equalto", "active") | list | length }}
+**Total Value**: ${{ items | sum(attribute='price') | default(0) | round(2) }}
+**Average Price**: ${{ (items | sum(attribute='price') / (items | length)) | round(2) if items else 0 }}
+{% endif %}
+
+## Results Summary
+{
+  "total_processed": {{ items | length }},
+  "active_items": {{ items | selectattr("status", "equalto", "active") | list | length }},
+  "inactive_items": {{ items | rejectattr("status", "equalto", "active") | list | length }},
+  "user": "{{ user_name | escape }}",
+  "timestamp": "{{ timestamp | default(now()) }}",
+  "debug_enabled": {{ config.debug if config else false }},
+  "config_summary": "{{ config | tojson | truncate(100) if config else 'null' }}",
+  "items_by_type": {{ items | groupby('type') | list | tojson if items else '[]' }},
+  "price_range": {
+    "min": {{ items | map(attribute='price') | min | default(0) }},
+    "max": {{ items | map(attribute='price') | max | default(0) }}
+  }
+}
+
+# Template Analysis Demo
+
+This template demonstrates various ostruct features and potential issues for analysis.
+
+## Basic Template Structure
+Project: {{ project_name | default("Unnamed Project") }}
+Version: {{ version | default("1.0.0") }}
+Author: {{ author_info.name | default("Unknown Author") }}
+
+## ostruct Filter Examples
+
+### Text Processing
+Title: {{ project_name | title }}
+Description: {{ description | default("No description provided") | truncate(100) }}
+Summary: {{ summary | upper }}
+Notes: {{ notes | lower | capitalize }}
+
+### Data Processing
+Total Items: {{ items | length }}
+Item Names: {{ items | map(attribute='name') | join(', ') }}
+Scores: {{ scores | sum }} (total), {{ scores | min }}-{{ scores | max }} (range)
+Average: {{ (scores | sum / scores | length) | round(2) }}
+
+### Advanced Operations
+Categories: {{ categories | groupby('type') | list }}
+Config: {{ config | tojson }}
+Safe HTML: {{ user_input | escape }}
+
+## ostruct-Specific Functions
+
+### Safe Data Access
+{# Using safe_get instead of risky direct access #}
+User Email: {{ safe_get(user_data, 'contact.email', 'No email provided') }}
+Nested Config: {{ safe_get(config, 'database.settings.timeout', 30) }}
+API Key: {{ safe_get(secrets, 'api.openai.key', 'NOT_SET') }}
+
+### File References
+{# Using file_ref for safe file access - requires files attached via CLI #}
+{# Example CLI: --file app-config config.yaml --dir source-code src/ --file user-docs docs/guide.md #}
+Main Config: {{ file_ref('app-config') }}
+Source Code: {{ file_ref('source-code') }}
+Documentation: {{ file_ref('user-docs') }}
+
+## Potential Issues for Analysis
+
+### Missing Defaults (will cause errors)
+Undefined Variable: {{ missing_variable }}
+Risky Access: {{ data.nested.missing.key }}
+
+### Performance Issues
+{% for item in large_dataset %}
+  {% for subitem in item.subitems %}
+    Expensive Operation: {{ subitem | some_expensive_filter }}
+  {% endfor %}
+{% endfor %}
+
+### Security Concerns
+Unescaped Input: {{ user_provided_html }}
+Direct Execution: {{ dangerous_command }}
+
+### Syntax Issues
+Unclosed Tag: {% if condition %}
+Malformed Expression: {{ invalid..syntax }}
+
+## Complex Logic
+{% set calculated_value = (base_value * multiplier) + offset %}
+{% if calculated_value > threshold %}
+  Status: High Priority
+  {% if urgency_level == "critical" %}
+    Action: Immediate Response Required
+  {% endif %}
+{% else %}
+  Status: Normal
+{% endif %}
+
+## Template Metadata
+Generated: {{ timestamp | default("Unknown") }}
+Template Version: 2.0.0
+Features Used: filters, safe_get, file_ref, conditionals, loops

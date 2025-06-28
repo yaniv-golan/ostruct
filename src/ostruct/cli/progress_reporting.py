@@ -47,17 +47,17 @@ class ProcessingResult:
 class EnhancedProgressReporter:
     """Enhanced progress reporter with user-friendly language and transparency."""
 
-    def __init__(self, verbose: bool = False, progress_level: str = "basic"):
+    def __init__(self, verbose: bool = False, progress: str = "basic"):
         """Initialize the progress reporter.
 
         Args:
             verbose: Enable verbose logging output
-            progress_level: Progress level (none, basic, detailed)
+            progress: Progress level (none, basic, detailed)
         """
         self.verbose = verbose
-        self.progress_level = progress_level
-        self.should_report = progress_level != "none"
-        self.detailed = progress_level == "detailed" or verbose
+        self.progress = progress
+        self.should_report = progress != "none"
+        self.detailed = progress == "detailed" or verbose
 
     def report_phase(self, phase_name: str, emoji: str = "⚙️") -> None:
         """Report the start of a major processing phase.
@@ -68,27 +68,6 @@ class EnhancedProgressReporter:
         """
         if self.should_report:
             click.echo(f"{emoji} {phase_name}...", err=True)
-
-    def report_optimization(self, optimizations: List[str]) -> None:
-        """Report template optimization results with user-friendly language.
-
-        Args:
-            optimizations: List of optimization transformations applied
-        """
-        if not self.should_report or not optimizations:
-            return
-
-        if self.detailed:
-            click.echo("🔧 Template optimization:", err=True)
-            for optimization in optimizations:
-                # Convert technical language to user-friendly descriptions
-                user_friendly = self._humanize_optimization(optimization)
-                click.echo(f"  → {user_friendly}", err=True)
-        else:
-            click.echo(
-                f"🔧 Optimized template for better AI performance ({len(optimizations)} improvements)",
-                err=True,
-            )
 
     def report_file_routing(
         self,
@@ -322,33 +301,6 @@ class EnhancedProgressReporter:
                 else:
                     click.echo("✅ Validation passed", err=True)
 
-    def _humanize_optimization(self, technical_message: str) -> str:
-        """Convert technical optimization messages to user-friendly language.
-
-        Args:
-            technical_message: Technical optimization message
-
-        Returns:
-            User-friendly description of the optimization
-        """
-        # Convert technical messages to user-friendly descriptions
-        if (
-            "moved" in technical_message.lower()
-            and "appendix" in technical_message.lower()
-        ):
-            file_name = technical_message.split("Moved ")[-1].split(
-                " to appendix"
-            )[0]
-            return f"Moved large file '{file_name}' to organized appendix"
-        elif "built structured appendix" in technical_message.lower():
-            return "Organized file content into structured appendix for better AI processing"
-        elif "moved directory" in technical_message.lower():
-            return technical_message.replace(
-                "Moved directory", "Organized directory"
-            )
-        else:
-            return technical_message
-
 
 # Global progress reporter instance
 _progress_reporter: Optional[EnhancedProgressReporter] = None
@@ -367,16 +319,16 @@ def get_progress_reporter() -> EnhancedProgressReporter:
 
 
 def configure_progress_reporter(
-    verbose: bool = False, progress_level: str = "basic"
+    verbose: bool = False, progress: str = "basic"
 ) -> None:
     """Configure the global progress reporter.
 
     Args:
         verbose: Enable verbose logging output
-        progress_level: Progress level (none, basic, detailed)
+        progress: Progress level (none, basic, detailed)
     """
     global _progress_reporter
-    _progress_reporter = EnhancedProgressReporter(verbose, progress_level)
+    _progress_reporter = EnhancedProgressReporter(verbose, progress)
 
 
 def report_phase(phase_name: str, emoji: str = "⚙️") -> None:

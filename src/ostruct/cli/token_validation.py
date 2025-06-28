@@ -184,19 +184,36 @@ class TokenLimitValidator:
 
             for file_path, tokens in oversized_files:
                 file_name = Path(file_path).name
+                file_extension = Path(file_path).suffix.lower()
 
-                if self._is_data_file(file_path):
-                    error_msg += f"   📊 Data file: ostruct -fc {file_name} <template> <schema>\n"
-                    error_msg += f"       (Moves {file_name} to Code Interpreter for data processing)\n\n"
-                elif self._is_document_file(file_path):
-                    error_msg += f"   📄 Document: ostruct -fs {file_name} <template> <schema>\n"
-                    error_msg += f"       (Moves {file_name} to File Search for semantic retrieval)\n\n"
-                elif self._is_code_file(file_path):
-                    error_msg += f"   💻 Code file: ostruct -fc {file_name} <template> <schema>\n"
-                    error_msg += f"       (Moves {file_name} to Code Interpreter for analysis)\n\n"
+                if file_extension in [
+                    ".csv",
+                    ".json",
+                    ".xml",
+                    ".yaml",
+                    ".yml",
+                ]:
+                    error_msg += f"   📊 Data file: ostruct --file ci:data {file_name} <template> <schema>\n"
+                elif file_extension in [
+                    ".pdf",
+                    ".txt",
+                    ".md",
+                    ".doc",
+                    ".docx",
+                ]:
+                    error_msg += f"   📄 Document: ostruct --file fs:docs {file_name} <template> <schema>\n"
+                elif file_extension in [
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".java",
+                    ".cpp",
+                    ".c",
+                ]:
+                    error_msg += f"   💻 Code file: ostruct --file ci:code {file_name} <template> <schema>\n"
                 else:
-                    error_msg += f"   📁 Large file: ostruct -fc {file_name} OR -fs {file_name} <template> <schema>\n"
-                    error_msg += "       (Choose based on usage: -fc for processing, -fs for retrieval)\n\n"
+                    error_msg += f"   📁 Large file: ostruct --file ci:data {file_name} OR --file fs:docs {file_name} <template> <schema>\n"
+                    error_msg += "       (Choose based on usage: ci for processing, fs for retrieval)\n\n"
 
                 error_msg += (
                     f"       Size: {tokens:,} tokens ({file_path})\n\n"
@@ -256,11 +273,14 @@ class TokenLimitValidator:
     def _get_recommended_flags(self, file_path: str) -> List[str]:
         """Get recommended CLI flags for file routing."""
         if self._is_data_file(file_path) or self._is_code_file(file_path):
-            return ["-fc", "--file-for code-interpreter"]
+            return ["--file ci:data", "--file ci:code"]
         elif self._is_document_file(file_path):
-            return ["-fs", "--file-for file-search"]
+            return ["--file fs:docs", "--file fs:knowledge"]
         else:
-            return ["-fc", "-fs"]  # Both options for unknown files
+            return [
+                "--file ci:data",
+                "--file fs:docs",
+            ]  # Both options for unknown files
 
 
 def validate_token_limits(

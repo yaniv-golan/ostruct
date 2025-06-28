@@ -4,8 +4,8 @@ class OstructCli < Formula
 
   desc "CLI for OpenAI Structured Output with Multi-Tool Integration"
   homepage "https://github.com/yaniv-golan/ostruct"
-  url "https://github.com/yaniv-golan/ostruct/archive/refs/tags/v0.8.9.tar.gz"
-  sha256 "..." # This will be updated upon release
+  url "https://github.com/yaniv-golan/ostruct/archive/refs/tags/v1.0.0.tar.gz"
+  sha256 "PLACEHOLDER_SHA256" # Will be updated automatically during release
   license "MIT"
 
   head "https://github.com/yaniv-golan/ostruct.git", branch: "main"

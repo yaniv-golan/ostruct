@@ -8,6 +8,8 @@ from typing import Any, Dict, Optional, Union
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from .constants import DefaultConfig, DefaultSecurity
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,14 +42,10 @@ class ToolsConfig(BaseModel):
     """Configuration for tool-specific settings."""
 
     code_interpreter: Dict[str, Any] = Field(
-        default_factory=lambda: {
-            "auto_download": True,
-            "output_directory": "./output",
-            "download_strategy": "single_pass",  # "single_pass" | "two_pass_sentinel"
-        }
+        default_factory=lambda: DefaultConfig.CODE_INTERPRETER.copy()
     )
     file_search: Dict[str, Any] = Field(
-        default_factory=lambda: {"max_results": 10}
+        default_factory=lambda: DefaultConfig.FILE_SEARCH.copy()
     )
     web_search: WebSearchToolConfig = Field(
         default_factory=WebSearchToolConfig
@@ -57,30 +55,33 @@ class ToolsConfig(BaseModel):
 class ModelsConfig(BaseModel):
     """Configuration for model settings."""
 
-    default: str = "gpt-4o"
+    default: str = DefaultConfig.DEFAULT_MODEL
 
 
 class OperationConfig(BaseModel):
     """Configuration for operation settings."""
 
-    timeout_minutes: int = 60
-    retry_attempts: int = 3
-    require_approval: str = "never"
+    timeout_minutes: int = DefaultConfig.OPERATION_TIMEOUT_MINUTES
+    retry_attempts: int = DefaultConfig.OPERATION_RETRY_ATTEMPTS
+    require_approval: str = DefaultConfig.OPERATION_REQUIRE_APPROVAL
 
     @field_validator("require_approval")
     @classmethod
     def validate_approval_setting(cls, v: str) -> str:
-        valid_values = ["never", "always", "expensive"]
-        if v not in valid_values:
-            raise ValueError(f"require_approval must be one of {valid_values}")
+        if v not in DefaultSecurity.VALID_APPROVAL_SETTINGS:
+            raise ValueError(
+                f"require_approval must be one of {DefaultSecurity.VALID_APPROVAL_SETTINGS}"
+            )
         return v
 
 
 class LimitsConfig(BaseModel):
     """Configuration for cost and operation limits."""
 
-    max_cost_per_run: float = 10.00
-    warn_expensive_operations: bool = True
+    max_cost_per_run: float = DefaultConfig.LIMITS_MAX_COST_PER_RUN
+    warn_expensive_operations: bool = (
+        DefaultConfig.LIMITS_WARN_EXPENSIVE_OPERATIONS
+    )
 
 
 class OstructConfig(BaseModel):
@@ -173,12 +174,12 @@ class OstructConfig(BaseModel):
         # MCP server URLs from environment
         mcp_config = config_data.setdefault("mcp", {})
 
-        # Look for MCP_* environment variables
+        # Look for OSTRUCT_MCP_URL_* environment variables
         for key, value in os.environ.items():
-            if key.startswith("MCP_") and key.endswith("_URL"):
+            if key.startswith("OSTRUCT_MCP_URL_"):
                 server_name = key[
-                    4:-4
-                ].lower()  # Remove MCP_ prefix and _URL suffix
+                    16:
+                ].lower()  # Remove OSTRUCT_MCP_URL_ prefix
                 mcp_config[server_name] = value
 
         # Built-in MCP server shortcuts
@@ -189,7 +190,7 @@ class OstructConfig(BaseModel):
 
         for name, url in builtin_servers.items():
             if name not in mcp_config:
-                env_key = f"MCP_{name.upper()}_URL"
+                env_key = f"OSTRUCT_MCP_URL_{name}"
                 if os.getenv(env_key):
                     mcp_config[name] = os.getenv(env_key)
 
@@ -251,7 +252,7 @@ models:
 tools:
   code_interpreter:
     auto_download: true
-    output_directory: "./output"
+    output_directory: "./downloads"
 
   file_search:
     max_results: 10
@@ -287,7 +288,7 @@ limits:
 
 # Environment Variables for Secrets:
 # OPENAI_API_KEY - Your OpenAI API key
-# MCP_<NAME>_URL - URL for custom MCP servers (e.g., MCP_STRIPE_URL)
+# OSTRUCT_MCP_URL_<name> - URL for custom MCP servers (e.g., OSTRUCT_MCP_URL_stripe)
 """
 
 

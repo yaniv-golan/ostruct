@@ -16,7 +16,7 @@ class TestOstructConfig:
         """Test default configuration values."""
         config = OstructConfig()
 
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
         assert config.tools.code_interpreter["auto_download"] is True
         assert config.tools.file_search["max_results"] == 10
         assert config.operation.timeout_minutes == 60
@@ -63,7 +63,7 @@ class TestOstructConfig:
     def test_load_nonexistent_file(self):
         """Test loading from nonexistent file returns defaults."""
         config = OstructConfig.load("nonexistent.yaml")
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
 
     @pytest.mark.no_fs
     def test_invalid_yaml_file(self, tmp_path):
@@ -74,9 +74,11 @@ class TestOstructConfig:
 
         # Should return defaults when YAML is invalid
         config = OstructConfig.load(config_file)
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
 
-    @patch.dict(os.environ, {"MCP_STRIPE_URL": "https://custom.stripe.com"})
+    @patch.dict(
+        os.environ, {"OSTRUCT_MCP_URL_stripe": "https://custom.stripe.com"}
+    )
     def test_environment_variable_override(self):
         """Test environment variable overrides."""
         # Test the _apply_env_overrides method directly to avoid filesystem issues
@@ -86,7 +88,9 @@ class TestOstructConfig:
         assert "mcp" in result
         assert result["mcp"].get("stripe") == "https://custom.stripe.com"
 
-    @patch.dict(os.environ, {"MCP_CUSTOM_URL": "https://custom.mcp.com"})
+    @patch.dict(
+        os.environ, {"OSTRUCT_MCP_URL_custom": "https://custom.mcp.com"}
+    )
     def test_mcp_environment_variables(self):
         """Test MCP environment variable processing."""
         # Test the _apply_env_overrides method directly to avoid filesystem issues
@@ -100,7 +104,7 @@ class TestOstructConfig:
         """Test configuration getter methods."""
         config = OstructConfig()
 
-        assert config.get_model_default() == "gpt-4o"
+        assert config.get_model_default() == "gpt-4.1"
         assert isinstance(config.get_mcp_servers(), dict)
         assert isinstance(config.get_code_interpreter_config(), dict)
         assert isinstance(config.get_file_search_config(), dict)
@@ -201,7 +205,7 @@ class TestGetConfig:
         """Test that get_config returns a valid instance."""
         config = get_config()
         assert isinstance(config, OstructConfig)
-        assert config.models.default == "gpt-4o"
+        assert config.models.default == "gpt-4.1"
 
 
 class TestConfigurationIntegration:

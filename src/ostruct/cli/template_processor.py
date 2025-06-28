@@ -3,14 +3,14 @@
 import json
 import logging
 import re
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import click
 import jinja2
 import yaml
 
+from .constants import DefaultConfig
 from .errors import (
     DirectoryNotFoundError,
     DuplicateFileMappingError,
@@ -23,101 +23,44 @@ from .errors import (
     VariableNameError,
 )
 from .explicit_file_processor import ProcessingResult
-from .file_info import FileRoutingIntent
-from .file_utils import FileInfoList, collect_files
+from .file_utils import FileInfoList
 from .path_utils import validate_path_mapping
 from .security import SecurityManager
-from .template_optimizer import (
-    is_optimization_beneficial,
-    optimize_template_for_llm,
+from .template_debug import (
+    TDCap,
+    is_capacity_active,
+    td_log_if_active,
+    td_log_preview,
+    td_log_vars,
 )
 from .template_utils import render_template
 from .types import CLIParams
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+DEFAULT_SYSTEM_PROMPT = DefaultConfig.TEMPLATE["system_prompt"]
 
 
 def _render_template_with_debug(
     template_content: str,
     context: Dict[str, Any],
     env: jinja2.Environment,
-    no_optimization: bool = False,
-    show_optimization_diff: bool = False,
-    show_optimization_steps: bool = False,
-    optimization_step_detail: str = "summary",
+    debug_capacities: Optional[Set[TDCap]] = None,
 ) -> str:
-    """Render template with optimization debugging support.
+    """Render template with debugging support.
 
     Args:
         template_content: Template content to render
         context: Template context variables
         env: Jinja2 environment
-        no_optimization: Skip optimization entirely
-        show_optimization_diff: Show before/after optimization comparison
-        show_optimization_steps: Show detailed optimization step tracking
-        optimization_step_detail: Level of detail for optimization steps
+        debug_capacities: Set of active debug capacities (unused but kept for compatibility)
 
     Returns:
         Rendered template string
     """
-    from .template_debug import show_optimization_diff as show_diff
-
-    if no_optimization:
-        # Skip optimization entirely - render directly
-        template = env.from_string(template_content)
-        return template.render(**context)
-
-    # Handle optimization debugging (diff and/or steps)
-    if show_optimization_diff or show_optimization_steps:
-        # Check if optimization would be beneficial
-        if is_optimization_beneficial(template_content):
-            # Create step tracker if step tracking is enabled
-            step_tracker = None
-            if show_optimization_steps:
-                from .template_debug import OptimizationStepTracker
-
-                step_tracker = OptimizationStepTracker(enabled=True)
-
-            # Get optimization result with optional step tracking
-            optimization_result = optimize_template_for_llm(
-                template_content, step_tracker
-            )
-
-            if optimization_result.has_optimizations:
-                # Show the diff if requested
-                if show_optimization_diff:
-                    show_diff(
-                        template_content,
-                        optimization_result.optimized_template,
-                    )
-
-                # Show optimization steps if requested
-                if show_optimization_steps and step_tracker:
-                    if optimization_step_detail == "detailed":
-                        step_tracker.show_detailed_steps()
-                    else:
-                        step_tracker.show_step_summary()
-
-                # Render the optimized version
-                template = env.from_string(
-                    optimization_result.optimized_template
-                )
-                return template.render(**context)
-
-        # No optimization was applied, show that too
-        if show_optimization_diff:
-            show_diff(template_content, template_content)
-        if show_optimization_steps:
-            from .template_debug import (
-                show_optimization_steps as show_steps_func,
-            )
-
-            show_steps_func([], optimization_step_detail)
-
-    # Fall back to standard rendering (which includes optimization)
-    return render_template(template_content, context, env)
+    # Simple template rendering without optimization
+    template = env.from_string(template_content)
+    return template.render(**context)
 
 
 def process_system_prompt(
@@ -128,7 +71,7 @@ def process_system_prompt(
     env: jinja2.Environment,
     ignore_task_sysprompt: bool = False,
     template_path: Optional[str] = None,
-) -> str:
+) -> Tuple[str, bool]:
     """Process system prompt from various sources.
 
     Args:
@@ -141,7 +84,7 @@ def process_system_prompt(
         template_path: Optional path to template file for include_system resolution
 
     Returns:
-        The final system prompt string
+        Tuple of (final system prompt string, template_has_system_prompt)
 
     Raises:
         SystemPromptError: If the system prompt cannot be loaded or rendered
@@ -156,6 +99,27 @@ def process_system_prompt(
 
     # CLI system prompt takes precedence and stops further processing
     if system_prompt_file is not None:
+        # Check for conflict with YAML frontmatter system_prompt and warn
+        template_has_system_prompt = False
+        if task_template.startswith("---\n"):
+            end = task_template.find("\n---\n", 4)
+            if end != -1:
+                frontmatter = task_template[4:end]
+                try:
+                    metadata = yaml.safe_load(frontmatter)
+                    if (
+                        isinstance(metadata, dict)
+                        and "system_prompt" in metadata
+                    ):
+                        template_has_system_prompt = True
+                        logger.warning(
+                            "Template has YAML frontmatter with 'system_prompt' field, but --sys-file was also provided. "
+                            "Using --sys-file and ignoring YAML frontmatter system_prompt."
+                        )
+                except yaml.YAMLError:
+                    # If YAML is invalid, we'll catch it later in template processing
+                    pass
+
         try:
             name, path = validate_path_mapping(
                 f"system_prompt={system_prompt_file}"
@@ -174,6 +138,9 @@ def process_system_prompt(
             base_prompt = template.render(**template_context).strip()
         except jinja2.TemplateError as e:
             raise SystemPromptError(f"Error rendering system prompt: {e}")
+
+        # Return the warning information along with the prompt
+        return base_prompt, template_has_system_prompt
 
     elif system_prompt is not None:
         try:
@@ -289,7 +256,7 @@ def process_system_prompt(
 
         base_prompt += ci_download_instructions
 
-    return base_prompt
+    return base_prompt, False
 
 
 def validate_task_template(
@@ -362,133 +329,63 @@ async def process_templates(
     env: jinja2.Environment,
     template_path: Optional[str] = None,
 ) -> Tuple[str, str]:
-    """Process system prompt and user prompt templates.
+    """Process system and user prompt templates.
 
     Args:
-        args: Command line arguments
-        task_template: Validated task template
-        template_context: Template context dictionary
-        env: Jinja2 environment
+        args: CLI parameters
+        task_template: Task template content
+        template_context: Template context variables
+        env: Jinja2 environment with file reference support already configured
+        template_path: Path to template file (for debugging)
 
     Returns:
         Tuple of (system_prompt, user_prompt)
 
     Raises:
-        CLIError: For template processing errors
+        TemplateError: If template processing fails
+        ValidationError: If template validation fails
     """
-    logger.debug("=== Template Processing Phase ===")
+    # Show original template content if PRE_EXPAND capacity is active
+    td_log_if_active(TDCap.PRE_EXPAND, "--- original template content ---")
+    td_log_if_active(TDCap.PRE_EXPAND, task_template)
+    td_log_if_active(TDCap.PRE_EXPAND, "--- end original template ---")
 
-    # Add template debugging if enabled
+    # Check for debug mode
     debug_enabled = args.get("debug", False)
-    debug_templates_enabled = args.get("debug_templates", False)
-    show_context = args.get("show_context", False)
-    show_context_detailed = args.get("show_context_detailed", False)
-    show_pre_optimization = args.get("show_pre_optimization", False)
-    show_optimization_diff = args.get("show_optimization_diff", False)
-    no_optimization = args.get("no_optimization", False)
-    show_optimization_steps = args.get("show_optimization_steps", False)
-    optimization_step_detail = args.get("optimization_step_detail", "summary")
-
     debugger = None
-    if debug_enabled or debug_templates_enabled:
-        from .template_debug import (
-            TemplateDebugger,
-            log_template_expansion,
-            show_file_content_expansions,
-        )
 
-        # Initialize template debugger
-        debugger = TemplateDebugger(enabled=True)
+    if debug_enabled or is_capacity_active(TDCap.POST_EXPAND):
+        from .template_debug import TemplateDebugger
 
-        # Log template context
-        show_file_content_expansions(template_context)
+        debugger = TemplateDebugger()
 
-        # Log raw template before expansion
-        logger.debug("Raw task template:")
-        logger.debug(task_template)
-
-        # Log initial template state
-        debugger.log_expansion_step(
-            "Initial template loaded",
-            "",
-            task_template,
-            {"template_path": template_path},
-        )
-
-    # Show context inspection if requested
-    if show_context or show_context_detailed:
-        from .template_debug import (
-            display_context_detailed,
-            display_context_summary,
-        )
-
-        if show_context_detailed:
-            display_context_detailed(template_context)
-        elif show_context:
-            display_context_summary(template_context)
-
-        # Check for undefined variables if context inspection is enabled
-        from .template_debug import detect_undefined_variables
-
-        undefined_vars = detect_undefined_variables(
-            task_template, template_context
-        )
-        if undefined_vars:
-            click.echo(
-                f"⚠️  Potentially undefined variables: {', '.join(undefined_vars)}",
-                err=True,
-            )
-            click.echo(
-                f"   Available variables: {', '.join(sorted(template_context.keys()))}",
-                err=True,
-            )
-
-    system_prompt = process_system_prompt(
+    # System prompt processing
+    system_prompt, _ = process_system_prompt(
         task_template,
         args.get("system_prompt"),
         args.get("system_prompt_file"),
         template_context,
         env,
-        args.get("ignore_task_sysprompt", False),
-        template_path,
+        ignore_task_sysprompt=args.get("ignore_task_sysprompt", False),
+        template_path=template_path,
     )
 
-    # Log system prompt processing step
-    if debugger:
-        debugger.log_expansion_step(
-            "System prompt processed",
-            task_template,
-            system_prompt,
-            {
-                "system_prompt_source": (
-                    "task_template"
-                    if not args.get("system_prompt")
-                    else "custom"
-                )
-            },
-        )
+    # Render user prompt template
+    user_prompt = render_template(task_template, template_context, env)
 
-    # Handle pre-optimization template display
-    if show_pre_optimization:
-        from .template_debug import show_pre_optimization_template
+    # Generate XML appendix for referenced files if alias manager is available
+    alias_manager = args.get("_alias_manager")
+    if alias_manager:
+        from .template_filters import AliasManager, XMLAppendixBuilder
 
-        show_pre_optimization_template(task_template)
+        # Type assertion since we know this is an AliasManager
+        assert isinstance(alias_manager, AliasManager)
+        appendix_builder = XMLAppendixBuilder(alias_manager)
+        appendix_content = appendix_builder.build_appendix()
 
-        # Handle optimization debugging with custom rendering
-    if no_optimization or show_optimization_diff or show_optimization_steps:
-        # We need custom handling for optimization debugging
-        user_prompt = _render_template_with_debug(
-            task_template,
-            template_context,
-            env,
-            no_optimization=bool(no_optimization),
-            show_optimization_diff=bool(show_optimization_diff),
-            show_optimization_steps=bool(show_optimization_steps),
-            optimization_step_detail=str(optimization_step_detail),
-        )
-    else:
-        # Standard rendering with optimization
-        user_prompt = render_template(task_template, template_context, env)
+        # Append XML content if any aliases were referenced
+        if appendix_content:
+            user_prompt = user_prompt + "\n\n" + appendix_content
 
     # Log user prompt rendering step
     if debugger:
@@ -499,16 +396,23 @@ async def process_templates(
             template_context,
         )
 
+    # Add post-expand logging
+    td_log_if_active(TDCap.POST_EXPAND, "--- prompt 1/2 (system) ---")
+    td_log_if_active(TDCap.POST_EXPAND, system_prompt)
+    td_log_if_active(TDCap.POST_EXPAND, "--- prompt 2/2 (user) ---")
+    td_log_if_active(TDCap.POST_EXPAND, user_prompt)
+
     # Log template expansion if debug enabled
-    if debug_enabled or debug_templates_enabled:
+    if debug_enabled or is_capacity_active(TDCap.STEPS):
         from .template_debug import log_template_expansion
 
-        log_template_expansion(
-            template_content=task_template,
-            context=template_context,
-            expanded=user_prompt,
-            template_file=template_path,
-        )
+        if debug_enabled:
+            log_template_expansion(
+                template_content=task_template,
+                context=template_context,
+                expanded=user_prompt,
+                template_file=template_path,
+            )
 
         # Show expansion summary and detailed steps
         if debugger:
@@ -615,78 +519,6 @@ def collect_json_variables(args: CLIParams) -> Dict[str, Any]:
     return variables
 
 
-def collect_template_files(
-    args: CLIParams,
-    security_manager: SecurityManager,
-) -> Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]]:
-    """Collect files from command line arguments.
-
-    Args:
-        args: Command line arguments
-        security_manager: Security manager for path validation
-
-    Returns:
-        Dictionary mapping variable names to file info objects
-
-    Raises:
-        PathSecurityError: If any file paths violate security constraints
-        ValueError: If file mappings are invalid or files cannot be accessed
-    """
-    try:
-        # Get files, directories, and patterns from args - they are already tuples from Click's nargs=2
-        files = list(
-            args.get("files", [])
-        )  # List of (name, path) tuples from Click
-        dirs = args.get("dir", [])  # List of (name, dir) tuples from Click
-        patterns = args.get(
-            "patterns", []
-        )  # List of (name, pattern) tuples from Click
-
-        # Collect files from directories and patterns
-        dir_files = collect_files(
-            file_mappings=cast(List[Tuple[str, Union[str, Path]]], files),
-            dir_mappings=cast(List[Tuple[str, Union[str, Path]]], dirs),
-            pattern_mappings=cast(
-                List[Tuple[str, Union[str, Path]]], patterns
-            ),
-            dir_recursive=args.get("recursive", False),
-            security_manager=security_manager,
-            routing_type="template",  # Indicate these are primarily for template access
-        )
-
-        # Combine results
-        return cast(
-            Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
-            dir_files,
-        )
-
-    except Exception as e:
-        # Check for nested security errors
-        if hasattr(e, "__cause__") and hasattr(e.__cause__, "__class__"):
-            if "SecurityError" in str(e.__cause__.__class__) and isinstance(
-                e.__cause__, BaseException
-            ):
-                raise e.__cause__
-            if "PathSecurityError" in str(
-                e.__cause__.__class__
-            ) and isinstance(e.__cause__, BaseException):
-                raise e.__cause__
-        # Check if this is a wrapped security error
-        if isinstance(e.__cause__, PathSecurityError):
-            raise e.__cause__
-        # Don't wrap InvalidJSONError
-        if isinstance(e, InvalidJSONError):
-            raise
-        # Don't wrap DuplicateFileMappingError
-        if isinstance(e, DuplicateFileMappingError):
-            raise
-        # Catch broader exceptions and re-raise
-        logger.error(
-            "Error collecting template files: %s", str(e), exc_info=True
-        )
-        raise
-
-
 def extract_template_file_paths(template_context: Dict[str, Any]) -> List[str]:
     """Extract actual file paths from template context for token validation.
 
@@ -746,6 +578,89 @@ def create_template_context(
     return context
 
 
+def _build_tool_context(
+    args: CLIParams, routing_result: ProcessingResult
+) -> Dict[str, Any]:
+    """Build tool-related context variables.
+
+    Args:
+        args: Command line arguments
+        routing_result: File routing result
+
+    Returns:
+        Dictionary with tool enablement and configuration context
+    """
+    from .config import OstructConfig
+
+    context: Dict[str, Any] = {}
+
+    # Load configuration
+    config_path = args.get("config")
+    config = OstructConfig.load(config_path)  # type: ignore[arg-type]
+
+    # Universal tool toggle overrides
+    enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
+    disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
+
+    # Web search configuration
+    web_search_config = config.get_web_search_config()
+
+    if "web-search" in enabled_tools:
+        web_search_enabled = True
+    elif "web-search" in disabled_tools:
+        web_search_enabled = False
+    else:
+        web_search_enabled = web_search_config.enable_by_default
+
+    context["web_search_enabled"] = web_search_enabled
+
+    # Code interpreter configuration
+    ci_enabled_by_routing = "code-interpreter" in routing_result.enabled_tools
+
+    if "code-interpreter" in enabled_tools:
+        code_interpreter_enabled = True
+    elif "code-interpreter" in disabled_tools:
+        code_interpreter_enabled = False
+    else:
+        code_interpreter_enabled = ci_enabled_by_routing
+
+    context["code_interpreter_enabled"] = code_interpreter_enabled
+
+    # Add CI config if enabled
+    if code_interpreter_enabled:
+        ci_config = config.get_code_interpreter_config()
+        context["auto_download_enabled"] = ci_config.get("auto_download", True)
+
+        # Handle feature flags for CI config
+        effective_ci_config = dict(ci_config)
+        enabled_features = args.get("enabled_features", [])
+        disabled_features = args.get("disabled_features", [])
+
+        if enabled_features or disabled_features:
+            try:
+                from .click_options import parse_feature_flags
+
+                parsed_flags = parse_feature_flags(
+                    tuple(enabled_features), tuple(disabled_features)
+                )
+                ci_hack_flag = parsed_flags.get("ci-download-hack")
+                if ci_hack_flag == "on":
+                    effective_ci_config["download_strategy"] = (
+                        "two_pass_sentinel"
+                    )
+                elif ci_hack_flag == "off":
+                    effective_ci_config["download_strategy"] = "single_pass"
+            except Exception as e:
+                logger.warning(f"Failed to parse feature flags: {e}")
+
+        context["code_interpreter_config"] = effective_ci_config
+    else:
+        context["auto_download_enabled"] = False
+        context["code_interpreter_config"] = {}
+
+    return context
+
+
 def _generate_template_variable_name(file_path: str) -> str:
     """Generate a template variable name from a file path.
 
@@ -796,393 +711,99 @@ async def create_template_context_from_routing(
         ValueError: If file mappings are invalid or files cannot be accessed
     """
     try:
-        # Get files from routing result - include ALL routed files in template context
-        template_files = routing_result.validated_files.get("template", [])
-        code_interpreter_files = routing_result.validated_files.get(
-            "code-interpreter", []
+        # Template context creation from new attachment system (T3.1)
+        logger.debug("Creating template context from new attachment system")
+
+        from .attachment_processor import (
+            AttachmentProcessor,
+            ProcessedAttachments,
+            _extract_attachments_from_args,
+            _has_new_attachment_syntax,
         )
-        file_search_files = routing_result.validated_files.get(
-            "file-search", []
+        from .attachment_template_bridge import (
+            build_template_context_from_attachments,
         )
 
-        # Intent mapping is implemented directly in the file categorization logic below
-        # This ensures files from different CLI flags get the correct routing intent
+        # Check if we have new attachment syntax
+        if _has_new_attachment_syntax(args):
+            # Re-process attachments for template context creation
+            # This ensures we have the full ProcessedAttachments structure
+            processor = AttachmentProcessor(security_manager)
+            attachments = _extract_attachments_from_args(args)
+            processed_attachments = processor.process_attachments(attachments)
+        else:
+            # No attachments specified - create empty processed attachments
+            processed_attachments = ProcessedAttachments()
 
-        # Process files by intent groups instead of lumping them all together
-        files_dict = {}
-
-        # Group files by their intent
-        files_by_intent: Dict[FileRoutingIntent, List[Tuple[str, str]]] = {
-            FileRoutingIntent.TEMPLATE_ONLY: [],
-            FileRoutingIntent.CODE_INTERPRETER: [],
-            FileRoutingIntent.FILE_SEARCH: [],
-        }
-
-        dirs_by_intent: Dict[FileRoutingIntent, List[Tuple[str, str]]] = {
-            FileRoutingIntent.TEMPLATE_ONLY: [],
-            FileRoutingIntent.CODE_INTERPRETER: [],
-            FileRoutingIntent.FILE_SEARCH: [],
-        }
-
-        # Track processed files to avoid duplicates between CLI args and routing result
-        seen_files: Set[str] = set()
-
-        # Categorize files by their source and assign appropriate intent
-        # Template files from CLI args
-        template_file_paths = args.get("template_files", [])
-        for template_file_path in template_file_paths:
-            if isinstance(template_file_path, (str, Path)):
-                file_name = _generate_template_variable_name(
-                    str(template_file_path)
-                )
-                file_path_str = str(template_file_path)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        # Template file aliases from CLI args
-        template_file_aliases = args.get("template_file_aliases", [])
-        for name_path_tuple in template_file_aliases:
-            if (
-                isinstance(name_path_tuple, tuple)
-                and len(name_path_tuple) == 2
-            ):
-                custom_name, file_path_raw = name_path_tuple
-                file_path_str = str(file_path_raw)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
-                        (str(custom_name), file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        # Code interpreter files from CLI args
-        code_interpreter_file_paths = args.get("code_interpreter_files", [])
-        for ci_file_path in code_interpreter_file_paths:
-            if isinstance(ci_file_path, (str, Path)):
-                file_name = _generate_template_variable_name(str(ci_file_path))
-                file_path_str = str(ci_file_path)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        # Code interpreter file aliases from CLI args
-        code_interpreter_file_aliases = args.get(
-            "code_interpreter_file_aliases", []
-        )
-        for name_path_tuple in code_interpreter_file_aliases:
-            if (
-                isinstance(name_path_tuple, tuple)
-                and len(name_path_tuple) == 2
-            ):
-                custom_name, file_path_raw = name_path_tuple
-                file_path_str = str(file_path_raw)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
-                        (str(custom_name), file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        # File search files from CLI args
-        file_search_file_paths = args.get("file_search_files", [])
-        for fs_file_path in file_search_file_paths:
-            if isinstance(fs_file_path, (str, Path)):
-                file_name = _generate_template_variable_name(str(fs_file_path))
-                file_path_str = str(fs_file_path)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        # File search file aliases from CLI args
-        file_search_file_aliases = args.get("file_search_file_aliases", [])
-        for name_path_tuple in file_search_file_aliases:
-            if (
-                isinstance(name_path_tuple, tuple)
-                and len(name_path_tuple) == 2
-            ):
-                custom_name, file_path_raw = name_path_tuple
-                file_path_str = str(file_path_raw)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
-                        (str(custom_name), file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        # Process files from routing result and map to their proper intents
-        # Only add files that haven't been processed from CLI args
-        for template_file_item in template_files:
-            if isinstance(template_file_item, (str, Path)):
-                file_name = _generate_template_variable_name(
-                    str(template_file_item)
-                )
-                file_path_str = str(template_file_item)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-            elif (
-                isinstance(template_file_item, tuple)
-                and len(template_file_item) == 2
-            ):
-                _, template_file_path = template_file_item
-                file_path_str = str(template_file_path)
-                file_name = _generate_template_variable_name(file_path_str)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        for ci_file_item in code_interpreter_files:
-            if isinstance(ci_file_item, (str, Path)):
-                file_name = _generate_template_variable_name(str(ci_file_item))
-                file_path_str = str(ci_file_item)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-            elif isinstance(ci_file_item, tuple) and len(ci_file_item) == 2:
-                _, ci_file_path = ci_file_item
-                file_path_str = str(ci_file_path)
-                file_name = _generate_template_variable_name(file_path_str)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        for fs_file_item in file_search_files:
-            if isinstance(fs_file_item, (str, Path)):
-                file_name = _generate_template_variable_name(str(fs_file_item))
-                file_path_str = str(fs_file_item)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-            elif isinstance(fs_file_item, tuple) and len(fs_file_item) == 2:
-                _, fs_file_path = fs_file_item
-                file_path_str = str(fs_file_path)
-                file_name = _generate_template_variable_name(file_path_str)
-                if file_path_str not in seen_files:
-                    files_by_intent[FileRoutingIntent.FILE_SEARCH].append(
-                        (file_name, file_path_str)
-                    )
-                    seen_files.add(file_path_str)
-
-        # Categorize directories by their intent
-        routing = routing_result.routing
-        for alias_name, dir_path in routing.template_dir_aliases:
-            dirs_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
-                (alias_name, str(dir_path))
-            )
-        for alias_name, dir_path in routing.code_interpreter_dir_aliases:
-            dirs_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
-                (alias_name, str(dir_path))
-            )
-        for alias_name, dir_path in routing.file_search_dir_aliases:
-            dirs_by_intent[FileRoutingIntent.FILE_SEARCH].append(
-                (alias_name, str(dir_path))
-            )
-
-        # Auto-naming directories from CLI args
-        template_dirs = args.get("template_dirs", [])
-        for dir_path in template_dirs:
-            dir_name = _generate_template_variable_name(str(dir_path))
-            dirs_by_intent[FileRoutingIntent.TEMPLATE_ONLY].append(
-                (dir_name, str(dir_path))
-            )
-
-        code_interpreter_dirs = args.get("code_interpreter_dirs", [])
-        for dir_path in code_interpreter_dirs:
-            dir_name = _generate_template_variable_name(str(dir_path))
-            dirs_by_intent[FileRoutingIntent.CODE_INTERPRETER].append(
-                (dir_name, str(dir_path))
-            )
-
-        file_search_dirs = args.get("file_search_dirs", [])
-        for dir_path in file_search_dirs:
-            dir_name = _generate_template_variable_name(str(dir_path))
-            dirs_by_intent[FileRoutingIntent.FILE_SEARCH].append(
-                (dir_name, str(dir_path))
-            )
-
-        # Process files by intent groups with appropriate routing_intent
-        for intent, file_mappings in files_by_intent.items():
-            if file_mappings or dirs_by_intent[intent]:
-                intent_files_dict = collect_files(
-                    file_mappings=cast(
-                        List[Tuple[str, Union[str, Path]]], file_mappings
-                    ),
-                    dir_mappings=cast(
-                        List[Tuple[str, Union[str, Path]]],
-                        dirs_by_intent[intent],
-                    ),
-                    dir_recursive=args.get("recursive", False),
-                    security_manager=security_manager,
-                    routing_type="template",  # Keep routing_type for template context accessibility
-                    routing_intent=intent,  # Use intent for warning logic
-                )
-                files_dict.update(intent_files_dict)
-
-        # Handle legacy files and directories separately to preserve variable names
-        legacy_files = args.get("files", [])
-        legacy_dirs = args.get("dir", [])
-        legacy_patterns = args.get("patterns", [])
-
-        if legacy_files or legacy_dirs or legacy_patterns:
-            legacy_files_dict = collect_files(
-                file_mappings=cast(
-                    List[Tuple[str, Union[str, Path]]], legacy_files
-                ),
-                dir_mappings=cast(
-                    List[Tuple[str, Union[str, Path]]], legacy_dirs
-                ),
-                pattern_mappings=cast(
-                    List[Tuple[str, Union[str, Path]]], legacy_patterns
-                ),
-                dir_recursive=args.get("recursive", False),
-                security_manager=security_manager,
-                routing_type="template",  # Legacy flags are considered template-only
-                routing_intent=FileRoutingIntent.TEMPLATE_ONLY,  # Legacy files use template-only intent
-            )
-            # Merge legacy results into the main template context
-            files_dict.update(legacy_files_dict)
+        # Build base context from variables
+        base_context = {}
 
         # Collect simple variables
         variables = collect_simple_variables(args)
+        base_context.update(variables)
 
         # Collect JSON variables
         json_variables = collect_json_variables(args)
+        base_context.update(json_variables)
 
-        # Get stdin content if available
+        # Add standard context variables
+        import sys
+
         stdin_content = None
         try:
             if not sys.stdin.isatty():
                 stdin_content = sys.stdin.read()
         except (OSError, IOError):
-            # Skip stdin if it can't be read
             pass
 
-        context = create_template_context(
-            files=cast(
-                Dict[str, Union[FileInfoList, str, List[str], Dict[str, str]]],
-                files_dict,
-            ),
-            variables=variables,
-            json_variables=json_variables,
-            security_manager=security_manager,
-            stdin_content=stdin_content,
-        )
+        if stdin_content is not None:
+            base_context["stdin"] = stdin_content
 
         # Add current model to context
-        context["current_model"] = args["model"]
+        base_context["current_model"] = args["model"]
 
-        # Add web search enabled flag to context
-        # Use the same logic as runner.py for consistency
-        web_search_from_cli = args.get("web_search", False)
-        no_web_search_from_cli = args.get("no_web_search", False)
+        # Add tool enablement flags
+        base_context.update(_build_tool_context(args, routing_result))
 
-        # Load configuration to check defaults
-        from .config import OstructConfig
-
-        config_path = cast(Union[str, Path, None], args.get("config"))
-        config = OstructConfig.load(config_path)
-        web_search_config = config.get_web_search_config()
-
-        # Apply universal tool toggle overrides (Step 3: Config override hook)
-        enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
-        disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
-
-        # Determine if web search should be enabled
-        if "web-search" in enabled_tools:
-            # Universal --enable-tool web-search takes highest precedence
-            web_search_enabled = True
-        elif "web-search" in disabled_tools:
-            # Universal --disable-tool web-search takes highest precedence
-            web_search_enabled = False
-        elif web_search_from_cli:
-            # Explicit --web-search flag takes precedence
-            web_search_enabled = True
-        elif no_web_search_from_cli:
-            # Explicit --no-web-search flag disables
-            web_search_enabled = False
-        else:
-            # Use config default
-            web_search_enabled = web_search_config.enable_by_default
-
-        context["web_search_enabled"] = web_search_enabled
-
-        # Add Code Interpreter context variables
-        # Check if Code Interpreter is enabled by looking for CI files or tools
-        ci_enabled_by_routing = bool(
-            args.get("code_interpreter_files")
-            or args.get("code_interpreter_file_aliases")
-            or args.get("code_interpreter_dirs")
-            or args.get("code_interpreter_dir_aliases")
-            or args.get("code_interpreter", False)
+        # Build attachment-based context
+        # In dry-run mode, use strict mode to fail fast on binary file errors
+        strict_mode = args.get("dry_run", False)
+        context = build_template_context_from_attachments(
+            processed_attachments,
+            security_manager,
+            base_context,
+            strict_mode=strict_mode,
         )
 
-        # Apply universal tool toggle overrides for code-interpreter
-        if "code-interpreter" in enabled_tools:
-            # Universal --enable-tool takes highest precedence
-            code_interpreter_enabled = True
-        elif "code-interpreter" in disabled_tools:
-            # Universal --disable-tool takes highest precedence
-            code_interpreter_enabled = False
-        else:
-            # Fall back to routing-based enablement
-            code_interpreter_enabled = ci_enabled_by_routing
-        context["code_interpreter_enabled"] = code_interpreter_enabled
+        # Add debugging support for new attachment system
+        debug_enabled = args.get("debug", False)
 
-        # Add auto_download setting from configuration
-        if code_interpreter_enabled:
-            ci_config = config.get_code_interpreter_config()
-            context["auto_download_enabled"] = ci_config.get(
-                "auto_download", True
+        if (
+            debug_enabled
+            or is_capacity_active(TDCap.VARS)
+            or is_capacity_active(TDCap.PREVIEW)
+        ):
+            from .attachment_template_bridge import AttachmentTemplateContext
+
+            context_builder = AttachmentTemplateContext(security_manager)
+            context_builder.debug_attachment_context(
+                context,
+                processed_attachments,
+                show_detailed=(
+                    debug_enabled or is_capacity_active(TDCap.PREVIEW)
+                ),
             )
 
-            # Determine effective download strategy (config + feature flags)
-            effective_ci_config = dict(
-                ci_config
-            )  # Copy to avoid modifying original
-            enabled_features = args.get("enabled_features", [])
-            disabled_features = args.get("disabled_features", [])
+        # Add proper template debug capacity logging with prefixes
+        if is_capacity_active(TDCap.VARS):
+            td_log_vars(context)
 
-            if enabled_features or disabled_features:
-                try:
-                    from .click_options import parse_feature_flags
+        if is_capacity_active(TDCap.PREVIEW):
+            td_log_preview(context)
 
-                    parsed_flags = parse_feature_flags(
-                        tuple(enabled_features), tuple(disabled_features)
-                    )
-                    ci_hack_flag = parsed_flags.get("ci-download-hack")
-                    if ci_hack_flag == "on":
-                        effective_ci_config["download_strategy"] = (
-                            "two_pass_sentinel"
-                        )
-                    elif ci_hack_flag == "off":
-                        effective_ci_config["download_strategy"] = (
-                            "single_pass"
-                        )
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to parse feature flags in template processor: {e}"
-                    )
-
-            # Add the effective CI config for template processing
-            context["code_interpreter_config"] = effective_ci_config
-        else:
-            context["auto_download_enabled"] = False
-            context["code_interpreter_config"] = {}
-
+        logger.debug(
+            f"Built attachment-based template context with {len(context)} variables"
+        )
         return context
 
     except PathSecurityError:

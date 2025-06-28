@@ -489,7 +489,7 @@ class TestCLICore:
                 "run",
                 "task.txt",
                 "schema.json",
-                "--allowed-dir-file",
+                "--allow-list",
                 "allowed_dirs.txt",
                 "--dry-run",
             ],
@@ -605,7 +605,7 @@ class TestCLICore:
         assert result.exit_code == 0
         output = result.output
         assert "version" in output.lower()
-        assert "cli" in output.lower()
+        assert "ostruct" in output.lower()
 
     def test_missing_required_args(self, cli_runner: CliTestRunner) -> None:
         """Test error handling for missing required arguments."""
@@ -852,10 +852,10 @@ class TestCLIPreExecution:
                 "run",
                 f"{TEST_BASE_DIR}/task.txt",
                 f"{TEST_BASE_DIR}/schema.json",
-                "-d",
+                "--dir",
                 "files",
                 f"{TEST_BASE_DIR}/test_dir",
-                "-R",
+                "--recursive",
                 "--dry-run",
             ],
         )

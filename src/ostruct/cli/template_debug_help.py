@@ -3,160 +3,251 @@
 This module provides comprehensive help and examples for template debugging features.
 """
 
-import click
-
-TEMPLATE_DEBUG_HELP = """
-🐛 Template Debugging Quick Reference
-
-BASIC DEBUGGING:
-  --debug                     🐛 Enable all debug output (verbose logging + template expansion)
-  --show-templates           📝 Show expanded templates only (clean output)
-  --show-context             📋 Show template variables summary
-  --show-context-detailed    📋 Show detailed variable context with content preview
-  --debug-templates          🔍 Enable step-by-step template expansion analysis
-
-OPTIMIZATION DEBUGGING:
-  --show-pre-optimization    🔧 Show template before optimization
-  --show-optimization-diff   🔄 Show optimization changes (before/after comparison)
-  --show-optimization-steps  🔧 Show detailed optimization step tracking
-  --optimization-step-detail [summary|detailed]  📊 Control step detail level
-  --no-optimization          ⚡ Skip optimization entirely for debugging
-
-PERFORMANCE ANALYSIS:
-  --profile-template         ⏱️  Show template performance breakdown (future)
-  --analyze-optimization     📊 Show optimization impact analysis (future)
-
-INTERACTIVE DEBUGGING:
-  ostruct debug template.j2 schema.json --debug-shell  🎯 Interactive debug shell (future)
-
-EXAMPLES:
-
-🔍 Basic Template Debugging:
-  # Show everything (most verbose)
-  ostruct run template.j2 schema.json --debug -ft config.yaml
-
-  # Just template content (clean output)
-  ostruct run template.j2 schema.json --show-templates -ft config.yaml
-
-  # Show template variables and context
-  ostruct run template.j2 schema.json --show-context -ft config.yaml
-
-🔧 Optimization Debugging:
-  # See template before optimization
-  ostruct run template.j2 schema.json --show-pre-optimization -ft config.yaml
-
-  # See what optimization changed
-  ostruct run template.j2 schema.json --show-optimization-diff -ft config.yaml
-
-  # See step-by-step optimization process
-  ostruct run template.j2 schema.json --show-optimization-steps -ft config.yaml
-
-  # Detailed optimization steps with full diffs
-  ostruct run template.j2 schema.json --show-optimization-steps --optimization-step-detail detailed -ft config.yaml
-
-  # Skip optimization entirely
-  ostruct run template.j2 schema.json --no-optimization -ft config.yaml
-
-🎯 Combined Debugging:
-  # Show both optimization diff and steps
-  ostruct run template.j2 schema.json --show-optimization-diff --show-optimization-steps -ft config.yaml
-
-  # Full debugging with context and optimization
-  ostruct run template.j2 schema.json --debug --show-context --show-optimization-diff -ft config.yaml
-
-🚨 Troubleshooting Common Issues:
-
-❌ Undefined Variable Errors:
-  Problem: UndefinedError: 'variable_name' is undefined
-  Solution: Use --show-context to see available variables
-  Example: ostruct run template.j2 schema.json --show-context -ft config.yaml
-
-❌ Template Not Expanding:
-  Problem: Template appears unchanged in output
-  Solution: Use --show-templates to see expansion
-  Example: ostruct run template.j2 schema.json --show-templates -ft config.yaml
-
-❌ Optimization Breaking Template:
-  Problem: Template works without optimization but fails with it
-  Solution: Use --show-optimization-diff to see changes
-  Example: ostruct run template.j2 schema.json --show-optimization-diff -ft config.yaml
-
-❌ Performance Issues:
-  Problem: Template rendering is slow
-  Solution: Use --show-optimization-steps to see bottlenecks
-  Example: ostruct run template.j2 schema.json --show-optimization-steps -ft config.yaml
-
-💡 Pro Tips:
-  • Use --dry-run with debugging flags to avoid API calls
-  • Combine multiple debug flags for comprehensive analysis
-  • Start with --show-templates for basic template issues
-  • Use --debug for full diagnostic information
-  • Use --show-context when variables are undefined
-  • Use optimization debugging when templates work but optimization fails
-
-📚 For more information, see: docs/template_debugging.md
-"""
+from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
+from rich.text import Text
 
 
 def show_template_debug_help() -> None:
-    """Display comprehensive template debugging help."""
-    click.echo(TEMPLATE_DEBUG_HELP, err=True)
+    """Display comprehensive template debugging help with rich formatting."""
+    console = Console(stderr=True)
+
+    # Main title
+    title = Text(
+        "🐛 Template Debugging Quick Reference", style="bold bright_blue"
+    )
+    console.print(title)
+    console.print()
+
+    # Basic debugging section
+    basic_content = """[bold bright_blue]--debug[/bold bright_blue]                     🐛 Enable all debug output (verbose logging + template expansion)
+[bold bright_blue]--template-debug[/bold bright_blue] CAPACITIES 📝 Enable specific debugging capacities (see CAPACITIES below)"""
+
+    basic_panel = Panel(
+        basic_content,
+        title="[bold]Basic Debugging[/bold]",
+        border_style="blue",
+        padding=(1, 2),
+    )
+    console.print(basic_panel)
+
+    # Capacities section
+    capacities_content = """[bold cyan]pre-expand[/bold cyan]                 📋 Show template variables before expansion
+[bold cyan]vars[/bold cyan]                       📊 Show template variable types and names
+[bold cyan]preview[/bold cyan]                    👁️  Show preview of variable content
+[bold cyan]steps[/bold cyan]                      🔄 Show step-by-step template expansion
+[bold cyan]post-expand[/bold cyan]                📝 Show expanded templates after processing"""
+
+    capacities_panel = Panel(
+        capacities_content,
+        title="[bold]Available Capacities[/bold]",
+        border_style="cyan",
+        padding=(1, 2),
+    )
+    console.print(capacities_panel)
+
+    # Examples section
+    console.print(Text("🔍 Examples", style="bold bright_green"))
+    console.print()
+
+    # Basic debugging examples
+    basic_examples = [
+        (
+            "Show everything (most verbose)",
+            "ostruct run template.j2 schema.json --debug --file config config.yaml",
+        ),
+        (
+            "Just template content (clean)",
+            "ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml",
+        ),
+        (
+            "Show variables and context",
+            "ostruct run template.j2 schema.json --template-debug vars,preview --file config config.yaml",
+        ),
+        (
+            "Step-by-step expansion",
+            "ostruct run template.j2 schema.json --template-debug steps --file config config.yaml",
+        ),
+    ]
+
+    for desc, cmd in basic_examples:
+        console.print(f"[dim]# {desc}[/dim]")
+        syntax = Syntax(
+            cmd, "bash", theme="monokai", background_color="default"
+        )
+        console.print(syntax)
+        console.print()
+
+    # Combined debugging example
+    console.print("[dim]# Full debugging with context[/dim]")
+    combined_cmd = "ostruct run template.j2 schema.json --debug --template-debug vars,preview,post-expand --file config config.yaml"
+    syntax = Syntax(
+        combined_cmd, "bash", theme="monokai", background_color="default"
+    )
+    console.print(syntax)
+    console.print()
+
+    # Troubleshooting section
+    troubleshooting_title = Text(
+        "🚨 Troubleshooting Common Issues", style="bold red"
+    )
+    console.print(troubleshooting_title)
+    console.print()
+
+    # Create troubleshooting panels
+    issues = [
+        {
+            "title": "❌ Undefined Variable Errors",
+            "problem": "UndefinedError: 'variable_name' is undefined",
+            "solution": "Use --template-debug vars,preview to see available variables",
+            "example": "ostruct run template.j2 schema.json --template-debug vars,preview --file config config.yaml",
+        },
+        {
+            "title": "❌ Template Not Expanding",
+            "problem": "Template appears unchanged in output",
+            "solution": "Use --template-debug post-expand to see expansion",
+            "example": "ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml",
+        },
+        {
+            "title": "❌ Performance Issues",
+            "problem": "Template rendering is slow",
+            "solution": "Use --template-debug steps to see processing bottlenecks",
+            "example": "ostruct run template.j2 schema.json --template-debug steps --file config config.yaml",
+        },
+    ]
+
+    for issue in issues:
+        content = f"""[bold red]Problem:[/bold red] {issue["problem"]}
+[bold green]Solution:[/bold green] {issue["solution"]}
+[bold blue]Example:[/bold blue]
+[dim cyan]{issue["example"]}[/dim cyan]"""
+
+        panel = Panel(
+            content,
+            title=f"[bold]{issue['title']}[/bold]",
+            border_style="red",
+            padding=(1, 2),
+        )
+        console.print(panel)
+        console.print()
+
+    # Pro tips section
+    tips_content = """• Use [bold cyan]--dry-run[/bold cyan] with debugging flags to avoid API calls
+• Combine multiple debug capacities: [bold cyan]--template-debug vars,preview,post-expand[/bold cyan]
+• Start with [bold cyan]--template-debug post-expand[/bold cyan] for basic template issues
+• Use [bold cyan]--debug[/bold cyan] for full diagnostic information
+• Use [bold cyan]--template-debug vars,preview[/bold cyan] when variables are undefined"""
+
+    tips_panel = Panel(
+        tips_content,
+        title="[bold]💡 Pro Tips[/bold]",
+        border_style="yellow",
+        padding=(1, 2),
+    )
+    console.print(tips_panel)
+
+    # Footer
+    console.print()
+    footer = Text(
+        "📚 For more information, see: docs/template_debugging.md",
+        style="dim italic",
+    )
+    console.print(footer)
 
 
 def show_quick_debug_tips() -> None:
-    """Show quick debugging tips for common issues."""
-    quick_tips = """
-🚀 Quick Debug Tips:
+    """Show quick debugging tips for common issues with rich formatting."""
+    console = Console(stderr=True)
 
-Template not working? Try:
-  1. ostruct run template.j2 schema.json --show-templates --dry-run
-  2. ostruct run template.j2 schema.json --show-context --dry-run
-  3. ostruct run template.j2 schema.json --debug --dry-run
+    title = Text("🚀 Quick Debug Tips", style="bold bright_green")
+    console.print(title)
+    console.print()
 
-Optimization issues? Try:
-  1. ostruct run template.j2 schema.json --show-optimization-diff --dry-run
-  2. ostruct run template.j2 schema.json --no-optimization --dry-run
+    content = """[bold]Template not working? Try:[/bold]
+  1. [cyan]ostruct run template.j2 schema.json --template-debug post-expand --dry-run[/cyan]
+  2. [cyan]ostruct run template.j2 schema.json --template-debug vars,preview --dry-run[/cyan]
+  3. [cyan]ostruct run template.j2 schema.json --debug --dry-run[/cyan]
 
-For full help: ostruct run --help-debug
-"""
-    click.echo(quick_tips, err=True)
+[bold]Performance issues? Try:[/bold]
+  1. [cyan]ostruct run template.j2 schema.json --template-debug steps --dry-run[/cyan]
+
+[dim]For full help: ostruct run --help-debug[/dim]"""
+
+    panel = Panel(content, border_style="green", padding=(1, 2))
+    console.print(panel)
 
 
 def show_debug_examples() -> None:
-    """Show practical debugging examples."""
-    examples = """
-🎯 Template Debugging Examples:
+    """Show practical debugging examples with rich formatting."""
+    console = Console(stderr=True)
 
-📝 Basic Template Issues:
-  # Check if template expands correctly
-  ostruct run my_template.j2 schema.json --show-templates --dry-run -ft config.yaml
+    title = Text("🎯 Template Debugging Examples", style="bold bright_blue")
+    console.print(title)
+    console.print()
 
-  # See what variables are available
-  ostruct run my_template.j2 schema.json --show-context --dry-run -ft config.yaml
+    examples = [
+        {
+            "title": "📝 Basic Template Issues",
+            "commands": [
+                (
+                    "Check if template expands correctly",
+                    "ostruct run my_template.j2 schema.json --template-debug post-expand --dry-run --file config config.yaml",
+                ),
+                (
+                    "See what variables are available",
+                    "ostruct run my_template.j2 schema.json --template-debug vars,preview --dry-run --file config config.yaml",
+                ),
+                (
+                    "Full debug output",
+                    "ostruct run my_template.j2 schema.json --debug --dry-run --file config config.yaml",
+                ),
+            ],
+        },
+        {
+            "title": "🔧 Performance Issues",
+            "commands": [
+                (
+                    "Track template processing steps",
+                    "ostruct run my_template.j2 schema.json --template-debug steps --dry-run --file config config.yaml",
+                )
+            ],
+        },
+    ]
 
-  # Full debug output
-  ostruct run my_template.j2 schema.json --debug --dry-run -ft config.yaml
+    for example in examples:
+        console.print(Text(str(example["title"]), style="bold bright_blue"))
+        console.print()
 
-🔧 Optimization Issues:
-  # See what optimization does to your template
-  ostruct run my_template.j2 schema.json --show-optimization-diff --dry-run -ft config.yaml
+        for desc, cmd in example["commands"]:
+            console.print(f"[dim]# {desc}[/dim]")
+            syntax = Syntax(
+                cmd, "bash", theme="monokai", background_color="default"
+            )
+            console.print(syntax)
+            console.print()
 
-  # Track each optimization step
-  ostruct run my_template.j2 schema.json --show-optimization-steps --dry-run -ft config.yaml
+    # Advanced example
+    console.print(Text("🔍 Advanced Debugging", style="bold bright_blue"))
+    console.print()
+    console.print("[dim]# Combine multiple debug features[/dim]")
 
-  # Bypass optimization entirely
-  ostruct run my_template.j2 schema.json --no-optimization --dry-run -ft config.yaml
-
-🔍 Advanced Debugging:
-  # Combine multiple debug features
-  ostruct run my_template.j2 schema.json \\
+    advanced_cmd = """ostruct run my_template.j2 schema.json \\
     --debug \\
-    --show-context \\
-    --show-optimization-diff \\
-    --show-optimization-steps \\
+    --template-debug vars,preview,post-expand,steps \\
     --dry-run \\
-    -ft config.yaml
+    --file config config.yaml"""
 
-💡 Remember: Always use --dry-run when debugging to avoid API calls!
-"""
-    click.echo(examples, err=True)
+    syntax = Syntax(
+        advanced_cmd, "bash", theme="monokai", background_color="default"
+    )
+    console.print(syntax)
+    console.print()
+
+    # Reminder
+    reminder = Panel(
+        "[bold yellow]💡 Remember: Always use --dry-run when debugging to avoid API calls![/bold yellow]",
+        border_style="yellow",
+        padding=(0, 2),
+    )
+    console.print(reminder)

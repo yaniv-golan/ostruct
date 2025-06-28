@@ -1,0 +1,46 @@
+🔗 Attachment-Based Template Context Debug:
+============================================================
+📎 Attachment Summary:
+  data: file → code-interpreter
+    Path: /Users/yaniv/Documents/code/ostruct/examples/tools/code-interpreter-basics/data/test_tiny.csv
+
+📝 Template Variables Created:
+  Attachment aliases:
+    data: file test_tiny.csv (112 bytes)
+  Utility variables:
+    _attachments: dict
+    file_count: 1
+    files: FileInfoList
+    has_files: True
+  System configuration variables:
+    auto_download_enabled: True
+    code_interpreter_config: dict
+    code_interpreter_enabled: True
+    current_model: str
+    web_search_enabled: False
+
+📊 File Statistics:
+  Total files: 1
+  Template files: 0
+  Code interpreter files: 0
+  File search files: 0
+
+📄 File Details:
+  1. data/test_tiny.csv (code_interpreter)
+============================================================
+🔍 Execution Plan
+
+🕐 Generated: 2025-06-27 08:13:15
+📄 Template: ✅ templates/main.j2
+📋 Schema: ✅ schemas/main.json
+🤖 Model: gpt-4o
+🛠️  Tools: code_interpreter
+
+📎 Attachments (1):
+   ✅ data → code-interpreter: data/test_tiny.csv
+
+--- DEBUG TOOL STATES ---
+web_search_enabled: bool (False)
+code_interpreter_enabled: bool (True)
+
+Dry run completed successfully

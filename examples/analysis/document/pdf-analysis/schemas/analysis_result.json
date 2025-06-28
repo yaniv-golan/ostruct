@@ -1,0 +1,203 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "document_summary": {
+            "type": "object",
+            "properties": {
+                "total_documents": {
+                    "type": "integer"
+                },
+                "document_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "overall_assessment": {
+                    "type": "string"
+                },
+                "key_themes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "total_documents",
+                "overall_assessment"
+            ]
+        },
+        "individual_documents": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "document_name": {
+                        "type": "string"
+                    },
+                    "document_type": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "key_information": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "structure_analysis": {
+                        "type": "string"
+                    },
+                    "quality_assessment": {
+                        "type": "object",
+                        "properties": {
+                            "clarity": {
+                                "type": "string"
+                            },
+                            "completeness": {
+                                "type": "string"
+                            },
+                            "consistency": {
+                                "type": "string"
+                            },
+                            "overall_score": {
+                                "type": "number",
+                                "minimum": 1,
+                                "maximum": 10
+                            }
+                        }
+                    }
+                },
+                "required": [
+                    "document_name",
+                    "summary",
+                    "key_information"
+                ]
+            }
+        },
+        "cross_document_analysis": {
+            "type": "object",
+            "properties": {
+                "common_themes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "inconsistencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gaps_identified": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "relationships": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "key_insights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "insight": {
+                        "type": "string"
+                    },
+                    "importance": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "medium",
+                            "low"
+                        ]
+                    },
+                    "supporting_evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "implications": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "insight",
+                    "importance"
+                ]
+            }
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "recommendation": {
+                        "type": "string"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "medium",
+                            "low"
+                        ]
+                    },
+                    "rationale": {
+                        "type": "string"
+                    },
+                    "implementation_notes": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "recommendation",
+                    "priority",
+                    "rationale"
+                ]
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "analysis_date": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "total_words": {
+                    "type": "integer"
+                },
+                "analysis_duration": {
+                    "type": "string"
+                },
+                "confidence_level": {
+                    "type": "string",
+                    "enum": [
+                        "high",
+                        "medium",
+                        "low"
+                    ]
+                }
+            }
+        }
+    },
+    "required": [
+        "document_summary",
+        "individual_documents",
+        "key_insights",
+        "recommendations"
+    ]
+}

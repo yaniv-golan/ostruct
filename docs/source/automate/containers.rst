@@ -22,7 +22,7 @@ Run ostruct directly in a container:
      -v $(pwd):/workspace \
      -w /workspace \
      python:3.11-slim \
-     bash -c "pip install ostruct-cli && ostruct run template.j2 schema.json -ft data.txt"
+     bash -c "pip install ostruct-cli && ostruct run template.j2 schema.json --file config data.txt"
 
    # With specific Python version
    docker run --rm \
@@ -32,7 +32,7 @@ Run ostruct directly in a container:
      -v $(pwd)/data:/data:ro \
      -v $(pwd)/output:/output \
      python:3.11-slim \
-     bash -c "pip install ostruct-cli && ostruct run /templates/analysis.j2 /schemas/result.json -ft /data/input.csv --output-file /output/results.json"
+     bash -c "pip install ostruct-cli && ostruct run /templates/analysis.j2 /schemas/result.json --file config /data/input.csv --output-file /output/results.json"
 
 Creating Custom Docker Images
 =============================
@@ -95,8 +95,8 @@ Production Dockerfile
    RUN groupadd -r ostruct && useradd -r -g ostruct ostruct
 
    # Create directories with proper permissions
-   RUN mkdir -p /app/templates /app/schemas /app/data /app/output \
-       && chown -R ostruct:ostruct /app
+   RUN mkdir --dir /app/templates /app/schemas --pattern /app/templates /app/data /app/output \
+       && chown --recursive ostruct:ostruct /app
 
    USER ostruct
    WORKDIR /app
@@ -166,7 +166,7 @@ Basic Docker Compose
          - ./templates:/app/templates:ro
          - ./schemas:/app/schemas:ro
          - ./output:/app/output
-       command: run /app/templates/analysis.j2 /app/schemas/result.json -ft /app/data/input.csv --output-file /app/output/results.json
+       command: run /app/templates/analysis.j2 /app/schemas/result.json --file config /app/data/input.csv --output-file /app/output/results.json
 
    # Usage:
    # docker-compose up
@@ -189,7 +189,7 @@ Analysis Pipeline with Services
          - ./pipeline/templates:/app/templates:ro
          - ./pipeline/schemas:/app/schemas:ro
          - ./pipeline/intermediate:/app/output
-       command: run /app/templates/data_prep.j2 /app/schemas/prep_result.json -fc /app/data/raw.csv --output-file /app/output/prepared.json
+       command: run /app/templates/data_prep.j2 /app/schemas/prep_result.json --file ci:data /app/data/raw.csv --output-file /app/output/prepared.json
 
      # Security analysis
      security-scan:
@@ -204,7 +204,7 @@ Analysis Pipeline with Services
          - ./pipeline/schemas:/app/schemas:ro
          - ./pipeline/intermediate:/app/intermediate:ro
          - ./pipeline/results:/app/output
-       command: run /app/templates/security.j2 /app/schemas/security.json -dc /app/src/ -ft /app/intermediate/prepared.json --output-file /app/output/security_report.json
+       command: run /app/templates/security.j2 /app/schemas/security.json --dir ci:data /app/src/ --file config /app/intermediate/prepared.json --output-file /app/output/security_report.json
 
      # Final report generation
      report-gen:
@@ -218,7 +218,7 @@ Analysis Pipeline with Services
          - ./pipeline/schemas:/app/schemas:ro
          - ./pipeline/results:/app/results:ro
          - ./pipeline/final:/app/output
-       command: run /app/templates/final_report.j2 /app/schemas/report.json -ft /app/results/security_report.json --output-file /app/output/final_report.json
+       command: run /app/templates/final_report.j2 /app/schemas/report.json --file config /app/results/security_report.json --output-file /app/output/final_report.json
 
    # Usage:
    # docker-compose up --build
@@ -245,7 +245,7 @@ Scheduled Analysis with Cron
          - /var/run/docker.sock:/var/run/docker.sock:ro
        command: >
          bash -c "
-           echo '${ANALYSIS_SCHEDULE} ostruct run /app/templates/daily.j2 /app/schemas/daily.json -dc /app/data/ --output-file /app/output/daily-$(date +%Y%m%d).json' | crontab - &&
+           echo '${ANALYSIS_SCHEDULE} ostruct run /app/templates/daily.j2 /app/schemas/daily.json --dir ci:data /app/data/ --output-file /app/output/daily-$(date +%Y%m%d).json' | crontab - &&
            crond -f
          "
        restart: unless-stopped
@@ -563,8 +563,8 @@ Security Hardening
        ostruct-cli==0.8.0
 
    # Set up secure directory structure
-   RUN mkdir -p /app/{templates,schemas,data,output} && \
-       chown -R ostruct:ostruct /app && \
+   RUN mkdir --dir /app/{templates,schemas,data,output} && --pattern /app/{templates,schemas,data,output} \
+       chown --recursive ostruct:ostruct /app && \
        chmod 755 /app && \
        chmod 700 /app/output
 
@@ -911,7 +911,7 @@ Common Container Issues
    ls -la /app
 
    # Fix: Ensure proper ownership in Dockerfile
-   RUN chown -R ostruct:ostruct /app
+   RUN chown --recursive ostruct:ostruct /app
 
 **API Key Issues:**
 
@@ -932,7 +932,7 @@ Common Container Issues
 
    # Fix: Check host directory permissions
    chmod 755 $(pwd)
-   chown -R 1000:1000 $(pwd)
+   chown --recursive 1000:1000 $(pwd)
 
 **Resource Constraints:**
 

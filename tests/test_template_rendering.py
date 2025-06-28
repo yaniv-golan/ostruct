@@ -18,7 +18,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 
 def test_create_jinja_env() -> None:
     """Test creation of Jinja2 environment with custom filters and globals."""
-    env = create_jinja_env()
+    env, _ = create_jinja_env()
 
     # Test that environment is properly configured
     assert isinstance(env, Environment)

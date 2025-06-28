@@ -4,8 +4,10 @@ import copy
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, Union
+from urllib.parse import urlparse
 
 from openai import AsyncOpenAI, OpenAIError
 from openai_model_registry import ModelRegistry
@@ -14,11 +16,7 @@ from pydantic import BaseModel
 from .code_interpreter import CodeInterpreterManager
 from .config import OstructConfig
 from .cost_estimation import calculate_cost_estimate, format_cost_breakdown
-from .errors import (
-    APIErrorMapper,
-    CLIError,
-    SchemaValidationError,
-)
+from .errors import APIErrorMapper, CLIError, SchemaValidationError
 from .exit_codes import ExitCode
 from .explicit_file_processor import ProcessingResult
 from .file_search import FileSearchManager
@@ -257,8 +255,15 @@ async def process_code_interpreter_configuration(
     config = OstructConfig.load(config_path)
     ci_config = config.get_code_interpreter_config()
 
+    # Apply CLI parameter overrides to config
+    effective_ci_config = dict(ci_config)  # Make a copy
+
+    # Override duplicate_outputs if CLI flag is provided
+    if args.get("ci_duplicate_outputs") is not None:
+        effective_ci_config["duplicate_outputs"] = args["ci_duplicate_outputs"]
+
     # Create Code Interpreter manager
-    manager = CodeInterpreterManager(client, ci_config)
+    manager = CodeInterpreterManager(client, effective_ci_config)
 
     # Validate files before upload
     validation_errors = manager.validate_files_for_upload(files_to_upload)
@@ -372,11 +377,9 @@ async def process_file_search_configuration(
 
     try:
         # Get configuration parameters
-        vector_store_name = args.get(
-            "file_search_vector_store_name", "ostruct_search"
-        )
-        retry_count = args.get("file_search_retry_count", 3)
-        timeout = args.get("file_search_timeout", 60.0)
+        vector_store_name = args.get("fs_store_name", "ostruct_search")
+        retry_count = args.get("fs_retries", 3)
+        timeout = args.get("fs_timeout", 60.0)
 
         # Create vector store with retry logic
         logger.debug(
@@ -560,8 +563,44 @@ async def create_structured_output(
                 data, markdown_text = split_json_and_text(content)
             except ValueError:
                 # Fallback to original parsing for non-fenced JSON
-                data = json.loads(content.strip())
-                markdown_text = ""
+                try:
+                    data = json.loads(content.strip())
+                    markdown_text = ""
+                except json.JSONDecodeError as json_error:
+                    # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
+                    # OpenAI's Code Interpreter can append commentary after valid JSON when using strict schemas,
+                    # causing json.loads() to fail. This is a known intermittent issue documented in OpenAI forums.
+                    # We extract the JSON portion and warn the user that the workaround was applied.
+                    if tools and any(
+                        tool.get("type") == "code_interpreter"
+                        for tool in tools
+                    ):
+                        logger.debug(
+                            "Code Interpreter detected with JSON parsing failure, attempting defensive parsing"
+                        )
+
+                        # Try to extract JSON from the beginning of the response
+                        json_match = re.search(
+                            r"\{.*?\}", content.strip(), re.DOTALL
+                        )
+                        if json_match:
+                            try:
+                                data = json.loads(json_match.group(0))
+                                markdown_text = ""
+                                logger.warning(
+                                    "Code Interpreter added extra content after JSON. "
+                                    "Extracted JSON successfully using defensive parsing. "
+                                    "This is a known intermittent issue with OpenAI's API."
+                                )
+                            except json.JSONDecodeError:
+                                # Even defensive parsing failed, re-raise original error
+                                raise json_error
+                        else:
+                            # No JSON pattern found, re-raise original error
+                            raise json_error
+                    else:
+                        # Not using Code Interpreter, re-raise original error
+                        raise json_error
 
             validated = output_schema.model_validate(data)
 
@@ -586,6 +625,10 @@ async def create_structured_output(
             mapped_error = APIErrorMapper.map_openai_error(e)
             logger.error(f"OpenAI API error mapped: {mapped_error}")
             raise mapped_error
+
+        # Re-raise already-mapped CLIError types (like SchemaValidationError)
+        if isinstance(e, CLIError):
+            raise
 
         # Handle special schema array error with detailed guidance
         if "Invalid schema for response_format" in str(
@@ -709,10 +752,12 @@ async def _execute_two_pass_sentinel(
     if code_interpreter_info and code_interpreter_info.get("manager"):
         cm = code_interpreter_info["manager"]
         # Use output directory from config, fallback to args, then default
+        from .constants import DefaultPaths
+
         download_dir = (
             ci_config.get("output_directory")
-            or args.get("code_interpreter_download_dir")
-            or "./downloads"
+            or args.get("ci_download_dir")
+            or DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR
         )
         logger.debug(f"Downloading files to: {download_dir}")
         downloaded_files = await cm.download_generated_files(
@@ -760,8 +805,34 @@ async def _execute_two_pass_sentinel(
             data_final, markdown_text = split_json_and_text(content)
         except ValueError:
             # Fallback to original parsing for non-fenced JSON
-            data_final = json.loads(content.strip())
-            markdown_text = ""
+            try:
+                data_final = json.loads(content.strip())
+                markdown_text = ""
+            except json.JSONDecodeError as json_error:
+                # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
+                # In two-pass mode, the second pass should be clean, but apply defensive parsing
+                # as a safety net in case the issue still occurs.
+                logger.debug(
+                    "JSON parsing failure in two-pass mode, attempting defensive parsing"
+                )
+
+                # Try to extract JSON from the beginning of the response
+                json_match = re.search(r"\{.*?\}", content.strip(), re.DOTALL)
+                if json_match:
+                    try:
+                        data_final = json.loads(json_match.group(0))
+                        markdown_text = ""
+                        logger.warning(
+                            "Two-pass mode: Extra content found after JSON in structured response. "
+                            "Extracted JSON successfully using defensive parsing. "
+                            "This should not happen in pass 2 - please report this issue."
+                        )
+                    except json.JSONDecodeError:
+                        # Even defensive parsing failed, re-raise original error
+                        raise json_error
+                else:
+                    # No JSON pattern found, re-raise original error
+                    raise json_error
 
         validated = output_model.model_validate(data_final)
 
@@ -917,6 +988,42 @@ async def execute_model(
         enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
         disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
 
+        # Initialize shared upload manager for multi-tool file sharing (T3.2)
+        shared_upload_manager = None
+
+        # Check if we have new attachment system with multi-tool attachments
+        from .attachment_processor import (
+            _extract_attachments_from_args,
+            _has_new_attachment_syntax,
+        )
+
+        if _has_new_attachment_syntax(args):
+            logger.debug(
+                "Initializing shared upload manager for new attachment system"
+            )
+            from .attachment_processor import AttachmentProcessor
+            from .upload_manager import SharedUploadManager
+            from .validators import validate_security_manager
+
+            shared_upload_manager = SharedUploadManager(client)
+
+            # Get security manager for file validation
+            security_manager = validate_security_manager(
+                base_dir=args.get("base_dir"),
+                allowed_dirs=args.get("allowed_dirs"),
+                allowed_dir_file=args.get("allowed_dir_file"),
+            )
+
+            # Process and register attachments
+            processor = AttachmentProcessor(security_manager)
+            attachments = _extract_attachments_from_args(args)
+            processed_attachments = processor.process_attachments(attachments)
+
+            # Register all attachments with the shared manager
+            shared_upload_manager.register_attachments(processed_attachments)
+
+            logger.debug("Registered attachments with shared upload manager")
+
         # Process MCP configuration if provided
         # Apply universal tool toggle overrides for mcp
         mcp_enabled_by_config = services.is_configured("mcp")
@@ -973,51 +1080,86 @@ async def execute_model(
             # Fall back to routing-based enablement
             ci_should_enable = bool(ci_enabled_by_routing)
 
-        if ci_should_enable and routing_result_typed:
-            code_interpreter_files = routing_result_typed.validated_files.get(
-                "code-interpreter", []
-            )
-            if code_interpreter_files:
-                # Override args with routed files for Code Interpreter processing
-                ci_args = dict(args)
-                ci_args["code_interpreter_files"] = code_interpreter_files
-                ci_args["code_interpreter_dirs"] = (
-                    []
-                )  # Files already expanded from dirs
-                ci_args["code_interpreter"] = (
-                    True  # Enable for service container
+        if ci_should_enable:
+            code_interpreter_manager = None
+            file_ids = []
+
+            if shared_upload_manager:
+                # Use shared upload manager for new attachment system
+                logger.debug(
+                    "Using shared upload manager for Code Interpreter"
+                )
+                from .code_interpreter import CodeInterpreterManager
+
+                code_interpreter_manager = CodeInterpreterManager(
+                    client, upload_manager=shared_upload_manager
                 )
 
-                # Create temporary service container with updated args
-                ci_services = ServiceContainer(client, ci_args)  # type: ignore[arg-type]
-                code_interpreter_manager = (
-                    await ci_services.get_code_interpreter_manager()
+                # Get file IDs from shared manager
+                file_ids = (
+                    await code_interpreter_manager.get_files_from_shared_manager()
                 )
-                if code_interpreter_manager:
-                    # Get the uploaded file IDs from the manager
-                    if (
-                        hasattr(code_interpreter_manager, "uploaded_file_ids")
-                        and code_interpreter_manager.uploaded_file_ids
-                    ):
-                        file_ids = code_interpreter_manager.uploaded_file_ids
-                        # Cast to concrete CodeInterpreterManager to access build_tool_config
-                        concrete_ci_manager = code_interpreter_manager
-                        if hasattr(concrete_ci_manager, "build_tool_config"):
-                            ci_tool_config = (
-                                concrete_ci_manager.build_tool_config(file_ids)
+                logger.debug(
+                    f"Got {len(file_ids)} file IDs from shared manager for CI"
+                )
+
+            elif routing_result_typed:
+                # Legacy routing system - process individual files
+                code_interpreter_files = (
+                    routing_result_typed.validated_files.get(
+                        "code-interpreter", []
+                    )
+                )
+                if code_interpreter_files:
+                    # Override args with routed files for Code Interpreter processing
+                    ci_args = dict(args)
+                    ci_args["code_interpreter_files"] = code_interpreter_files
+                    ci_args["code_interpreter_dirs"] = (
+                        []
+                    )  # Files already expanded from dirs
+                    ci_args["code_interpreter"] = (
+                        True  # Enable for service container
+                    )
+
+                    # Create temporary service container with updated args
+                    ci_services = ServiceContainer(client, ci_args)  # type: ignore[arg-type]
+                    code_interpreter_manager_protocol = (
+                        await ci_services.get_code_interpreter_manager()
+                    )
+                    # Cast to the concrete type we know we're getting
+                    ci_manager: Optional[CodeInterpreterManager] = None
+                    if code_interpreter_manager_protocol:
+                        from .code_interpreter import CodeInterpreterManager
+
+                        ci_manager = code_interpreter_manager_protocol  # type: ignore[assignment]
+                    if ci_manager:
+                        # Get the uploaded file IDs from the manager
+                        if (
+                            hasattr(ci_manager, "uploaded_file_ids")
+                            and ci_manager.uploaded_file_ids
+                        ):
+                            file_ids = ci_manager.uploaded_file_ids
+                        else:
+                            logger.warning(
+                                "Code Interpreter manager has no uploaded file IDs"
                             )
-                            logger.debug(
-                                f"Code Interpreter tool config: {ci_tool_config}"
-                            )
-                            code_interpreter_info = {
-                                "manager": code_interpreter_manager,
-                                "tool_config": ci_tool_config,
-                            }
-                            tools.append(ci_tool_config)
-                    else:
-                        logger.warning(
-                            "Code Interpreter manager has no uploaded file IDs"
-                        )
+
+            # Build tool configuration if we have a manager and files
+            if code_interpreter_manager and file_ids:
+                # Cast to concrete CodeInterpreterManager to access build_tool_config
+                concrete_ci_manager = code_interpreter_manager
+                if hasattr(concrete_ci_manager, "build_tool_config"):
+                    ci_tool_config = concrete_ci_manager.build_tool_config(
+                        file_ids
+                    )
+                    logger.debug(
+                        f"Code Interpreter tool config: {ci_tool_config}"
+                    )
+                    code_interpreter_info = {
+                        "manager": code_interpreter_manager,
+                        "tool_config": ci_tool_config,
+                    }
+                    tools.append(ci_tool_config)
 
         # Process File Search configuration if enabled
         # Apply universal tool toggle overrides for file-search
@@ -1042,61 +1184,86 @@ async def execute_model(
             # Fall back to routing-based enablement
             fs_should_enable = bool(fs_enabled_by_routing)
 
-        if fs_should_enable and routing_result_typed:
-            file_search_files = routing_result_typed.validated_files.get(
-                "file-search", []
-            )
-            if file_search_files:
-                # Override args with routed files for File Search processing
-                fs_args = dict(args)
-                fs_args["file_search_files"] = file_search_files
-                fs_args["file_search_dirs"] = (
-                    []
-                )  # Files already expanded from dirs
-                fs_args["file_search"] = True  # Enable for service container
+        if fs_should_enable:
+            file_search_manager = None
+            vector_store_id = None
 
-                # Create temporary service container with updated args
-                fs_services = ServiceContainer(client, fs_args)  # type: ignore[arg-type]
-                file_search_manager = (
-                    await fs_services.get_file_search_manager()
+            if shared_upload_manager:
+                # Use shared upload manager for new attachment system
+                logger.debug("Using shared upload manager for File Search")
+                from .file_search import FileSearchManager
+
+                file_search_manager = FileSearchManager(
+                    client, upload_manager=shared_upload_manager
                 )
-                if file_search_manager:
-                    # Get the vector store ID from the manager's created vector stores
-                    # The most recent one should be the one we need
-                    if (
-                        hasattr(file_search_manager, "created_vector_stores")
-                        and file_search_manager.created_vector_stores
-                    ):
-                        vector_store_id = (
-                            file_search_manager.created_vector_stores[-1]
-                        )
-                        # Cast to concrete FileSearchManager to access build_tool_config
-                        concrete_fs_manager = file_search_manager
-                        if hasattr(concrete_fs_manager, "build_tool_config"):
-                            fs_tool_config = (
-                                concrete_fs_manager.build_tool_config(
-                                    vector_store_id
-                                )
+
+                # Create vector store with files from shared manager
+                vector_store_id = await file_search_manager.create_vector_store_from_shared_manager(
+                    "ostruct_vector_store"
+                )
+                logger.debug(
+                    f"Created vector store {vector_store_id} from shared manager"
+                )
+
+            elif routing_result_typed:
+                # Legacy routing system - process individual files
+                file_search_files = routing_result_typed.validated_files.get(
+                    "file-search", []
+                )
+                if file_search_files:
+                    # Override args with routed files for File Search processing
+                    fs_args = dict(args)
+                    fs_args["file_search_files"] = file_search_files
+                    fs_args["file_search_dirs"] = (
+                        []
+                    )  # Files already expanded from dirs
+                    fs_args["file_search"] = (
+                        True  # Enable for service container
+                    )
+
+                    # Create temporary service container with updated args
+                    fs_services = ServiceContainer(client, fs_args)  # type: ignore[arg-type]
+                    file_search_manager_protocol = (
+                        await fs_services.get_file_search_manager()
+                    )
+                    # Cast to the concrete type we know we're getting
+                    fs_manager: Optional[FileSearchManager] = None
+                    if file_search_manager_protocol:
+                        from .file_search import FileSearchManager
+
+                        fs_manager = file_search_manager_protocol  # type: ignore[assignment]
+                    if fs_manager:
+                        # Get the vector store ID from the manager's created vector stores
+                        # The most recent one should be the one we need
+                        if (
+                            hasattr(fs_manager, "created_vector_stores")
+                            and fs_manager.created_vector_stores
+                        ):
+                            vector_store_id = fs_manager.created_vector_stores[
+                                -1
+                            ]
+                        else:
+                            logger.warning(
+                                "File Search manager has no created vector stores"
                             )
-                            logger.debug(
-                                f"File Search tool config: {fs_tool_config}"
-                            )
-                            file_search_info = {
-                                "manager": file_search_manager,
-                                "tool_config": fs_tool_config,
-                            }
-                            tools.append(fs_tool_config)
-                    else:
-                        logger.warning(
-                            "File Search manager has no created vector stores"
-                        )
+
+            # Build tool configuration if we have a manager and vector store
+            if file_search_manager and vector_store_id:
+                # Cast to concrete FileSearchManager to access build_tool_config
+                concrete_fs_manager = file_search_manager
+                if hasattr(concrete_fs_manager, "build_tool_config"):
+                    fs_tool_config = concrete_fs_manager.build_tool_config(
+                        vector_store_id
+                    )
+                    logger.debug(f"File Search tool config: {fs_tool_config}")
+                    file_search_info = {
+                        "manager": file_search_manager,
+                        "tool_config": fs_tool_config,
+                    }
+                    tools.append(fs_tool_config)
 
         # Process Web Search configuration if enabled
-        # Check CLI flags first, then fall back to config defaults
-        web_search_from_cli = args.get("web_search", False)
-        no_web_search_from_cli = args.get("no_web_search", False)
-
-        # Load configuration to check defaults
+        # Apply universal tool toggle overrides for web-search
         from typing import cast
 
         config_path = cast(Union[str, Path, None], args.get("config"))
@@ -1113,12 +1280,6 @@ async def execute_model(
             # Universal --disable-tool web-search takes highest precedence
             web_search_enabled = False
             logger.debug("Web search disabled via --disable-tool")
-        elif web_search_from_cli:
-            # Explicit --web-search flag takes precedence
-            web_search_enabled = True
-        elif no_web_search_from_cli:
-            # Explicit --no-web-search flag disables
-            web_search_enabled = False
         else:
             # Use config default
             web_search_enabled = web_search_config.enable_by_default
@@ -1138,7 +1299,8 @@ async def execute_model(
 
             # Check for Azure OpenAI endpoint guard-rail
             api_base = os.getenv("OPENAI_API_BASE", "")
-            if "azure.com" in api_base.lower():
+            hostname = urlparse(api_base).hostname or ""
+            if hostname.endswith("azure.com"):
                 logger.warning(
                     "Web search is not currently supported or may be unreliable with Azure OpenAI endpoints and has been disabled."
                 )
@@ -1147,40 +1309,37 @@ async def execute_model(
                     "type": "web_search_preview"
                 }
 
-                # Add user_location if provided via CLI or config
-                user_country = args.get("user_country")
-                user_city = args.get("user_city")
-                user_region = args.get("user_region")
+                # Get user location from CLI args or config
+                ws_country = args.get("ws_country")
+                ws_city = args.get("ws_city")
+                ws_region = args.get("ws_region")
 
-                # Fall back to config if not provided via CLI
+                # Use config defaults if CLI args not provided
                 if (
-                    not any([user_country, user_city, user_region])
+                    not any([ws_country, ws_city, ws_region])
                     and web_search_config.user_location
                 ):
-                    user_country = web_search_config.user_location.country
-                    user_city = web_search_config.user_location.city
-                    user_region = web_search_config.user_location.region
+                    ws_country = web_search_config.user_location.country
+                    ws_city = web_search_config.user_location.city
+                    ws_region = web_search_config.user_location.region
 
-                if user_country or user_city or user_region:
+                if ws_country or ws_city or ws_region:
                     user_location: Dict[str, Any] = {"type": "approximate"}
-                    if user_country:
-                        user_location["country"] = user_country
-                    if user_city:
-                        user_location["city"] = user_city
-                    if user_region:
-                        user_location["region"] = user_region
-
+                    if ws_country:
+                        user_location["country"] = ws_country
+                    if ws_city:
+                        user_location["city"] = ws_city
+                    if ws_region:
+                        user_location["region"] = ws_region
                     web_tool_config["user_location"] = user_location
 
-                # Add search_context_size if provided via CLI or config
-                search_context_size = (
-                    args.get("search_context_size")
+                # Add ws_context_size if provided via CLI or config
+                ws_context_size = (
+                    args.get("ws_context_size")
                     or web_search_config.search_context_size
                 )
-                if search_context_size:
-                    web_tool_config["search_context_size"] = (
-                        search_context_size
-                    )
+                if ws_context_size:
+                    web_tool_config["search_context_size"] = ws_context_size
 
                 tools.append(web_tool_config)
                 logger.debug(f"Web Search tool config: {web_tool_config}")
@@ -1286,8 +1445,11 @@ async def execute_model(
                     api_response = getattr(last_response, "_api_response")
                     # Responses API has 'output' attribute, not 'messages'
                     if hasattr(api_response, "output"):
+                        from .constants import DefaultPaths
+
                         download_dir = args.get(
-                            "code_interpreter_download_dir", "./downloads"
+                            "ci_download_dir",
+                            DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR,
                         )
                         manager = code_interpreter_info["manager"]
 
@@ -1366,14 +1528,15 @@ async def execute_model(
     ) as e:
         logger.error("API error: %s", str(e))
         raise CLIError(str(e), exit_code=ExitCode.API_ERROR)
+    except CLIError:
+        # Re-raise CLIError types (like SchemaValidationError) without wrapping
+        raise
     except Exception as e:
         logger.exception("Unexpected error during execution")
         raise CLIError(str(e), exit_code=ExitCode.UNKNOWN_ERROR)
     finally:
         # Clean up Code Interpreter files if requested
-        if code_interpreter_info and args.get(
-            "code_interpreter_cleanup", True
-        ):
+        if code_interpreter_info and args.get("ci_cleanup", True):
             try:
                 manager = code_interpreter_info["manager"]
                 # Type ignore since we know this is a CodeInterpreterManager
@@ -1385,7 +1548,7 @@ async def execute_model(
                 )
 
         # Clean up File Search resources if requested
-        if file_search_info and args.get("file_search_cleanup", True):
+        if file_search_info and args.get("fs_cleanup", True):
             try:
                 manager = file_search_info["manager"]
                 # Type ignore since we know this is a FileSearchManager
@@ -1424,21 +1587,15 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
 
         configure_debug_logging(
             verbose=bool(args.get("verbose", False)),
-            debug=bool(args.get("debug", False))
-            or bool(args.get("debug_templates", False)),
+            debug=bool(args.get("debug", False)),
         )
 
-        # 0a. Handle Debug Help Request
-        if args.get("help_debug", False):
-            from .template_debug_help import show_template_debug_help
-
-            show_template_debug_help()
-            return ExitCode.SUCCESS
+        # 0a. Help Debug Request is now handled by callback in click_options.py
 
         # 0. Configure Progress Reporting
         configure_progress_reporter(
             verbose=args.get("verbose", False),
-            progress_level=args.get("progress_level", "basic"),
+            progress=args.get("progress", "basic"),
         )
         progress_reporter = get_progress_reporter()
 
@@ -1527,20 +1684,6 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
                 token_limit=128000,  # Default fallback
             )
 
-        # 3a. Web Search Compatibility Validation
-        if args.get("web_search", False) and not args.get(
-            "no_web_search", False
-        ):
-            from .model_validation import validate_web_search_compatibility
-
-            compatibility_warning = validate_web_search_compatibility(
-                args["model"], True
-            )
-            if compatibility_warning:
-                logger.warning(compatibility_warning)
-                # For production usage, consider making this an error instead of warning
-                # raise CLIError(compatibility_warning, exit_code=ExitCode.VALIDATION_ERROR)
-
         # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):
             report_success(
@@ -1576,16 +1719,16 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             show_template_content(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                show_templates=bool(args.get("show_templates", False)),
-                debug=bool(args.get("debug", False))
-                or bool(args.get("debug_templates", False)),
+                debug=bool(args.get("debug", False)),
             )
 
             # Legacy verbose support for backward compatibility
+            from .template_debug import TDCap, is_capacity_active
+
             if (
                 args.get("verbose", False)
                 and not args.get("debug", False)
-                and not args.get("show_templates", False)
+                and not is_capacity_active(TDCap.POST_EXPAND)
             ):
                 logger.info("\nSystem Prompt:")
                 logger.info("-" * 40)
@@ -1677,23 +1820,87 @@ class OstructRunner:
         Returns:
             Dictionary containing configuration information
         """
+        # Check for new attachment system
+        has_new_attachments = self._has_new_attachment_syntax()
+
+        if has_new_attachments:
+            attachment_summary = self._get_attachment_summary()
+            return {
+                "model": self.args.get("model"),
+                "dry_run": self.args.get("dry_run", False),
+                "verbose": self.args.get("verbose", False),
+                "mcp_servers": len(self.args.get("mcp_servers", [])),
+                "attachment_system": "new",
+                "attachments": attachment_summary,
+                "template_source": (
+                    "file" if self.args.get("task_file") else "string"
+                ),
+                "schema_source": (
+                    "file" if self.args.get("schema_file") else "inline"
+                ),
+            }
+        else:
+            # Legacy configuration summary
+            return {
+                "model": self.args.get("model"),
+                "dry_run": self.args.get("dry_run", False),
+                "verbose": self.args.get("verbose", False),
+                "mcp_servers": len(self.args.get("mcp_servers", [])),
+                "attachment_system": "legacy",
+                "code_interpreter_enabled": bool(
+                    self.args.get("code_interpreter_files")
+                    or self.args.get("code_interpreter_dirs")
+                ),
+                "file_search_enabled": bool(
+                    self.args.get("file_search_files")
+                    or self.args.get("file_search_dirs")
+                ),
+                "template_source": (
+                    "file" if self.args.get("task_file") else "string"
+                ),
+                "schema_source": (
+                    "file" if self.args.get("schema_file") else "inline"
+                ),
+            }
+
+    def _has_new_attachment_syntax(self) -> bool:
+        """Check if CLI args contain new attachment syntax.
+
+        Returns:
+            True if new attachment syntax is present
+        """
+        new_syntax_keys = ["attaches", "dirs", "collects"]
+        return any(self.args.get(key) for key in new_syntax_keys)
+
+    def _get_attachment_summary(self) -> Dict[str, Any]:
+        """Get summary of new-style attachments.
+
+        Returns:
+            Dictionary containing attachment summary
+        """
+        total_attachments = 0
+        targets_used = set()
+
+        for key in ["attaches", "dirs", "collects"]:
+            attachments = self.args.get(key, [])
+            if isinstance(attachments, list):
+                total_attachments += len(attachments)
+
+                for attachment in attachments:
+                    if isinstance(attachment, dict):
+                        targets = attachment.get("targets", [])
+                        if isinstance(targets, list):
+                            targets_used.update(targets)
+
+        # Helper function to safely get list length
+        def safe_len(key: str) -> int:
+            value = self.args.get(key, [])
+            return len(value) if isinstance(value, list) else 0
+
         return {
-            "model": self.args.get("model"),
-            "dry_run": self.args.get("dry_run", False),
-            "verbose": self.args.get("verbose", False),
-            "mcp_servers": len(self.args.get("mcp_servers", [])),
-            "code_interpreter_enabled": bool(
-                self.args.get("code_interpreter_files")
-                or self.args.get("code_interpreter_dirs")
-            ),
-            "file_search_enabled": bool(
-                self.args.get("file_search_files")
-                or self.args.get("file_search_dirs")
-            ),
-            "template_source": (
-                "file" if self.args.get("task_file") else "string"
-            ),
-            "schema_source": (
-                "file" if self.args.get("schema_file") else "inline"
-            ),
+            "total_attachments": total_attachments,
+            "targets_used": list(targets_used),
+            "attach_count": safe_len("attaches"),
+            "dir_count": safe_len("dirs"),
+            "collect_count": safe_len("collects"),
         }

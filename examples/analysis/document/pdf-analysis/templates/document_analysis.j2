@@ -1,0 +1,36 @@
+You are a document analysis expert tasked with analyzing the provided documents and extracting key insights.
+
+## Documents to Analyze
+
+{% if documents %}
+{% for doc in documents %}
+**Document {{ loop.index }}**: {{ doc.name }}
+Content:
+```
+{{ doc.content }}
+```
+
+{% endfor %}
+{% else %}
+No documents provided for analysis.
+{% endif %}
+
+## Analysis Instructions
+
+Please provide a comprehensive analysis of the provided documents including:
+
+1. **Document Summary**: Brief overview of each document's purpose and content
+2. **Key Information**: Extract the most important facts, figures, and insights
+3. **Document Structure**: Analyze the organization and formatting of the content
+4. **Content Quality**: Assess clarity, completeness, and consistency
+5. **Recommendations**: Suggest improvements or next steps based on the analysis
+
+## Analysis Requirements
+
+- Focus on factual content extraction
+- Identify any inconsistencies or gaps
+- Highlight important dates, numbers, and references
+- Assess the overall quality and usefulness of the documents
+- Provide actionable insights and recommendations
+
+Please structure your analysis according to the provided JSON schema.

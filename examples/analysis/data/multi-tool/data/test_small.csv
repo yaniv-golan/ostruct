@@ -1,0 +1,5 @@
+date,product_id,product_name,category,quantity,unit_price,total_amount,customer_id,region,sales_rep
+2024-01-15,P001,Laptop Pro,Electronics,2,1299.99,2599.98,C001,North,John Smith
+2024-01-16,P002,Wireless Mouse,Electronics,5,29.99,149.95,C002,South,Jane Doe
+2024-01-17,P003,Office Chair,Furniture,1,299.99,299.99,C003,East,Bob Johnson
+2024-01-18,P001,Laptop Pro,Electronics,1,1299.99,1299.99,C004,West,Alice Brown

@@ -252,7 +252,20 @@ class PathSecurityError(SecurityErrorBase):
 class TaskTemplateError(CLIError):
     """Base class for task template-related errors."""
 
-    pass
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        exit_code: int = ExitCode.VALIDATION_ERROR,
+    ) -> None:
+        """Initialize task template error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+            exit_code: Exit code (defaults to VALIDATION_ERROR)
+        """
+        super().__init__(message, context=context, exit_code=exit_code)
 
 
 class TaskTemplateSyntaxError(TaskTemplateError):
@@ -285,7 +298,22 @@ class TaskTemplateVariableError(TaskTemplateError):
 class TemplateValidationError(TaskTemplateError):
     """Raised when template validation fails."""
 
-    pass
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize template validation error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+        """
+        super().__init__(
+            message,
+            context=context,
+            exit_code=ExitCode.VALIDATION_ERROR,
+        )
 
 
 class SystemPromptError(TaskTemplateError):
@@ -576,7 +604,7 @@ class APIErrorMapper:
         ):
             return PromptTooLargeError(
                 f"Prompt exceeds model context window (128,000 token limit). "
-                f"Tip: Use explicit file routing (-fc for code, -fs for docs, -ft for config). "
+                f"Tip: Use explicit file routing (--file ci:data for code, --file fs:docs for docs, --file config for config). "
                 f"Original error: {error}"
             )
 
@@ -645,7 +673,7 @@ class APIErrorMapper:
             if "upload" in error_msg or "vector_store" in error_msg:
                 return FileSearchUploadError(
                     f"File Search upload failed: {error}. "
-                    f"This can be intermittent - retry with --file-search-retry-count option."
+                    f"This can be intermittent - retry with --fs-retries option."
                 )
             return FileSearchError(f"File Search error: {error}")
 
@@ -748,7 +776,17 @@ def handle_error(e: Exception) -> None:
         msg = f"Model creation error: {str(e)}"
         exit_code = ExitCode.SCHEMA_ERROR
     elif isinstance(e, click.UsageError):
-        msg = f"Usage error: {str(e)}"
+        error_msg = str(e)
+
+        # Enhance usage error messages with helpful guidance
+        if "Missing parameter" in error_msg:
+            if "task_template" in error_msg:
+                msg = f"Usage error: {error_msg}\n\nTry 'ostruct run --help' for usage information, 'ostruct --quick-ref' for examples, or 'ostruct run --help-debug' for troubleshooting help."
+            else:
+                msg = f"Usage error: {error_msg}\n\nTry 'ostruct run --help' for usage information or 'ostruct --quick-ref' for examples."
+        else:
+            msg = f"Usage error: {error_msg}"
+
         exit_code = ExitCode.USAGE_ERROR
     elif isinstance(e, SchemaFileError):
         msg = str(e)  # Use existing __str__ formatting
@@ -815,3 +853,135 @@ __all__ = [
     "InvalidResponseFormatError",
     "handle_error",
 ]
+
+# Download-specific error classes for Task 3
+
+
+class DownloadError(CLIError):
+    """Base class for download-related errors."""
+
+    def __init__(
+        self,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        exit_code: int = ExitCode.API_ERROR,
+    ) -> None:
+        """Initialize download error.
+
+        Args:
+            message: Error message
+            context: Additional error context
+            exit_code: Exit code for the error
+        """
+        super().__init__(message, context=context, exit_code=exit_code)
+
+
+class DownloadPermissionError(DownloadError):
+    """Raised when download fails due to permission issues."""
+
+    def __init__(
+        self,
+        directory: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize permission error.
+
+        Args:
+            directory: Directory that caused the permission error
+            context: Additional error context
+        """
+        context = context or {}
+        context.update(
+            {
+                "directory": directory,
+                "details": "Unable to write to the specified download directory",
+                "troubleshooting": [
+                    f"Check write permissions for directory: {directory}",
+                    "Verify the directory exists and is accessible",
+                    "Try using a different download directory with --ci-download-dir",
+                    "Check if the parent directory exists and is writable",
+                    "Ensure sufficient disk space is available",
+                ],
+            }
+        )
+
+        message = f"Permission denied when writing to download directory: {directory}"
+        super().__init__(
+            message, context=context, exit_code=ExitCode.FILE_ERROR
+        )
+
+
+class DownloadNetworkError(DownloadError):
+    """Raised when download fails due to network issues."""
+
+    def __init__(
+        self,
+        file_id: str,
+        original_error: Optional[Exception] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize network error.
+
+        Args:
+            file_id: File ID that failed to download
+            original_error: Original exception that caused the failure
+            context: Additional error context
+        """
+        context = context or {}
+        context.update(
+            {
+                "file_id": file_id,
+                "details": "Network error occurred while downloading file from OpenAI",
+                "troubleshooting": [
+                    "Check your internet connection",
+                    "Verify OpenAI API is accessible",
+                    "Try the download again in a few moments",
+                    "Check if your API key has the necessary permissions",
+                    "Ensure the file ID is valid and not expired",
+                ],
+            }
+        )
+
+        if original_error:
+            context["original_error"] = str(original_error)
+
+        message = f"Network error downloading file {file_id}"
+        if original_error:
+            message += f": {original_error}"
+
+        super().__init__(message, context=context)
+
+
+class DownloadFileNotFoundError(DownloadError):
+    """Raised when a file to download is not found."""
+
+    def __init__(
+        self,
+        file_id: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize file not found error.
+
+        Args:
+            file_id: File ID that was not found
+            context: Additional error context
+        """
+        context = context or {}
+        context.update(
+            {
+                "file_id": file_id,
+                "details": "The requested file was not found or is no longer available",
+                "troubleshooting": [
+                    "Verify the file ID is correct",
+                    "Check if the file was generated in this session",
+                    "Ensure the Code Interpreter execution completed successfully",
+                    "Try running the analysis again to regenerate the file",
+                    "Check if the file has expired (files have limited lifetime)",
+                ],
+            }
+        )
+
+        message = f"File not found for download: {file_id}"
+        super().__init__(
+            message, context=context, exit_code=ExitCode.FILE_ERROR
+        )

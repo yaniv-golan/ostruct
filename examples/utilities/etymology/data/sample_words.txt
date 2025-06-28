@@ -1,0 +1,3 @@
+automobile
+microscope
+telescope

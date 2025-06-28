@@ -6,42 +6,65 @@ This section provides a comprehensive guide to the examples available in the ost
 .. note::
    All examples are located in the ``examples/`` directory of the ostruct repository and include complete, runnable code with sample data.
 
-Schema Creation Tool
-====================
+Development Tools
+=================
 
-Before diving into specific examples, we strongly recommend using the **Meta-Schema Generator** to create schemas for your ostruct prompts.
+Before diving into specific examples, familiarize yourself with the development tools that can help you create better ostruct workflows.
 
-Meta-Schema Generator
----------------------
+Schema Generator
+----------------
 
-The meta-schema generator automatically creates and validates JSON schemas for your ostruct prompt templates, ensuring compatibility with OpenAI's Structured Outputs feature.
+The Schema Generator meta-tool automatically creates and validates JSON schemas for your ostruct templates, ensuring compatibility with OpenAI's Structured Outputs feature.
 
-**Location**: ``examples/meta-schema-generator/``
+**Location**: ``tools/schema-generator/``
 
 **Quick Start**:
 
 .. code-block:: bash
 
    # Generate schema for your template
-   examples/meta-schema-generator/scripts/generate_and_validate_schema.sh my_template.j2
+   tools/schema-generator/run.sh my_template.j2
 
-   # Save to file
-   examples/meta-schema-generator/scripts/generate_and_validate_schema.sh -o schema.json my_template.j2
+   # Save to specific file
+   tools/schema-generator/run.sh -o schema.json my_template.j2
 
 **Key Features**:
 
 - **Automated schema generation** from template analysis
 - **OpenAI Structured Outputs compliance** checking
 - **Iterative refinement** based on validation feedback
-- **Best practices enforcement** for schema quality
+- **Quality assessment** with confidence scores
 
-**When to Use**:
+Template Analyzer
+------------------
 
-- Creating schemas for new ostruct prompts
-- Validating existing schemas for compliance
-- Learning proper schema structure through examples
+The Template Analyzer meta-tool performs comprehensive analysis of your templates and schemas for issues, optimization opportunities, and best practices compliance.
 
-See the Meta-Schema Generator README in ``examples/meta-schema-generator/README.md`` for detailed usage instructions.
+**Location**: ``tools/template-analyzer/``
+
+**Quick Start**:
+
+.. code-block:: bash
+
+   # Analyze template and schema
+   tools/template-analyzer/run.sh my_template.j2 my_schema.json
+
+   # Analyze template only
+   tools/template-analyzer/run.sh my_template.j2
+
+**Key Features**:
+
+- **Comprehensive analysis**: Syntax, security, performance, best practices
+- **OpenAI compliance checking**: Real-time validation against current requirements
+- **Interactive HTML reports**: Professional reports with filtering and recommendations
+- **ostruct optimization**: Specialized analysis of ostruct-specific functions
+
+**When to Use Development Tools**:
+
+- Creating schemas for new ostruct templates
+- Debugging template issues and optimization
+- Ensuring OpenAI Structured Outputs compliance
+- Code review and quality assurance processes
 
 Available Examples
 ==================
@@ -104,7 +127,7 @@ Automated code review with security, style, and performance analysis.
 
    cd examples/code-quality/code-review
    ostruct run prompts/task.j2 schemas/code_review.json \
-     -ft code examples/basic/app.py \
+     --file code examples/basic/app.py \
      --sys-file prompts/system.txt
 
 Testing Examples
@@ -142,7 +165,7 @@ Three-approach automated security vulnerability scanning with comprehensive test
 
    # Recommended: Code Interpreter approach
    ostruct run prompts/code_interpreter.j2 schemas/scan_result.json \
-     --fca code examples/basic/app.py \
+     --file ci:code examples/basic/app.py \
      --sys-file prompts/system.txt
 
 Data Analysis Examples
@@ -214,8 +237,8 @@ The repository also includes several other examples in development:
 
    cd examples/config-validation
    ostruct run prompts/task.j2 schemas/validation_result.json \
-     --fta dev_config examples/basic/dev.yaml \
-     --fta prod_config examples/basic/prod.yaml
+     --file dev_config examples/basic/dev.yaml \
+     --file prod_config examples/basic/prod.yaml
 
 **Proto Validator** (``schema-validation/proto-validator/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -258,7 +281,7 @@ Automated documentation example testing with File Search integration for compreh
 
    # Basic documentation analysis
    ostruct run prompts/extract_examples.j2 schemas/example_task_list.schema.json \
-     -ds test_data/sample_project/ \
+     --dir fs:docs test_data/sample_project/ \
      -V project_name="MyProject" \
      -V project_type="CLI"
 
@@ -405,7 +428,7 @@ Use ``--dry-run`` to estimate costs before running:
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json -ft file.txt --dry-run
+   ostruct run template.j2 schema.json --file config file.txt --dry-run
 
 Contributing Examples
 =====================

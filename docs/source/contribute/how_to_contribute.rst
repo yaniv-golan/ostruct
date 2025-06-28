@@ -65,7 +65,7 @@ When reporting bugs, include:
    A clear description of what went wrong.
 
    **Steps to Reproduce**
-   1. Run command: `ostruct run template.j2 schema.json -fc file.py`
+   1. Run command: `ostruct run template.j2 schema.json --file ci:data file.py`
    2. Observe error message
    3. See unexpected behavior
 

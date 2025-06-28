@@ -269,7 +269,7 @@ class TestDirectoryAliases:
         self.processor = ExplicitFileProcessor(self.security_manager)
 
     def test_dta_template_alias_parsing(self):
-        """Test --dta creates stable template variable."""
+        """Test --dir creates stable template variable."""
         args = {
             "template_dir_aliases": [
                 ("app_config", "/test/settings"),
@@ -284,7 +284,7 @@ class TestDirectoryAliases:
         assert ("source_code", "/test/src") in routing.template_dir_aliases
 
     def test_dca_code_interpreter_alias_parsing(self):
-        """Test --dca for Code Interpreter routing."""
+        """Test --dir ci:for Code Interpreter routing."""
         args = {
             "code_interpreter_dir_aliases": [
                 ("training_data", "/test/datasets"),
@@ -305,7 +305,7 @@ class TestDirectoryAliases:
         ) in routing.code_interpreter_dir_aliases
 
     def test_dsa_file_search_alias_parsing(self):
-        """Test --dsa for File Search routing."""
+        """Test --dir fs:for File Search routing."""
         args = {
             "file_search_dir_aliases": [
                 ("knowledge_base", "/test/docs"),

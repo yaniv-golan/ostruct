@@ -28,12 +28,16 @@ repos:
 -   repo: local
     hooks:
     -   id: mypy
-        name: mypy
-        entry: poetry run mypy --no-incremental --config-file pyproject.toml
+        name: mypy (poetry)
+        entry: poetry run mypy src
         language: system
-        types: [python]
-        exclude: ^(docs/|examples/)
-        require_serial: true
-        # This ensures mypy reads config from pyproject.toml
+        # Do not pass filenames to mypy, we are checking the whole src folder
         pass_filenames: false
-        args: ["src/ostruct", "tests"]
+        types: [python]
+
+    -   id: sphinx-linkcheck
+        name: sphinx linkcheck
+        entry: bash -c 'cd docs && poetry run sphinx-build -b linkcheck source build/linkcheck'
+        language: system
+        files: ^docs/
+        pass_filenames: false

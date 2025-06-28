@@ -1,7 +1,7 @@
 """Type definitions for ostruct CLI."""
 
 from pathlib import Path
-from typing import List, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 # Import FileRoutingResult from validators
 FileRoutingResult = List[Tuple[Optional[str], Union[str, Path]]]
@@ -32,7 +32,6 @@ class CLIParams(TypedDict, total=False):
     timeout: float
     output_file: Optional[str]
     dry_run: bool
-    no_progress: bool
     api_key: Optional[str]
     verbose: bool
     show_model_schema: bool
@@ -43,24 +42,30 @@ class CLIParams(TypedDict, total=False):
     frequency_penalty: Optional[float]
     presence_penalty: Optional[float]
     reasoning_effort: Optional[str]
-    progress_level: str
+    progress: str
     task_file: Optional[str]
     task: Optional[str]
     schema_file: str
     mcp_servers: List[str]
+
+    # New attachment system (T3.0)
+    attaches: List[Dict[str, Any]]  # --attach specifications
+    dirs: List[Dict[str, Any]]  # --dir specifications
+    collects: List[Dict[str, Any]]  # --collect specifications
     mcp_allowed_tools: List[str]
     mcp_require_approval: str
     mcp_headers: Optional[str]
     code_interpreter_files: FileRoutingResult  # Fixed: was List[str]
     code_interpreter_dirs: List[str]
-    code_interpreter_download_dir: str
-    code_interpreter_cleanup: bool
+    ci_download_dir: str
+    ci_duplicate_outputs: Optional[str]
+    ci_cleanup: bool
     file_search_files: FileRoutingResult  # Fixed: was List[str]
     file_search_dirs: List[str]
-    file_search_vector_store_name: str
-    file_search_cleanup: bool
-    file_search_retry_count: int
-    file_search_timeout: float
+    fs_store_name: str
+    fs_cleanup: bool
+    fs_retries: int
+    fs_timeout: float
     template_files: FileRoutingResult  # Fixed: was List[str]
     template_dirs: List[str]
     template_file_aliases: List[
@@ -75,17 +80,8 @@ class CLIParams(TypedDict, total=False):
     tool_files: List[
         Tuple[str, str]
     ]  # List of (tool, path) tuples from --file-for
-    web_search: bool
     debug: bool
-    show_templates: bool
-    debug_templates: bool
-    show_context: bool
-    show_context_detailed: bool
-    show_pre_optimization: bool
-    show_optimization_diff: bool
-    no_optimization: bool
-    show_optimization_steps: bool
-    optimization_step_detail: str
+
     help_debug: bool
     enabled_features: List[str]  # List of feature names to enable
     disabled_features: List[str]  # List of feature names to disable

@@ -14,13 +14,9 @@ Small, focused tests for individual functions or components.
 
 Tests that verify components work together correctly.
 
-- `validate-install-script.sh` - Validates installation script functionality
-
 ### `docker/` - Containerized Tests
 
 Tests that run in isolated Docker environments.
-
-- `test-install.sh` - Tests installation in fresh container environment
 
 ## Running Tests
 
@@ -31,10 +27,12 @@ Tests that run in isolated Docker environments.
 ./scripts/test/unit/test-version-compare.sh
 
 # Run integration tests
-./scripts/test/integration/validate-install-script.sh
+# (No integration tests currently available)
 
 # Run Docker tests
-./scripts/test/docker/test-install.sh
+# (No Docker tests currently available)
+
+# (No example validation currently available)
 ```
 
 ### All Tests
@@ -62,7 +60,7 @@ find scripts/test -name "*.sh" -executable -exec {} \;
 **Speed**: Medium (1-10 seconds)
 **Dependencies**: May require system tools
 
-**Example**: Validating installation script logic without actual installation
+**Example**: Testing component interactions and workflows
 
 ### Docker Tests (`docker/`)
 
@@ -71,7 +69,7 @@ find scripts/test -name "*.sh" -executable -exec {} \;
 **Speed**: Slow (30+ seconds)
 **Dependencies**: Docker runtime
 
-**Example**: Complete installation test in fresh container
+**Example**: Testing in isolated environments
 
 ## Test Standards
 

@@ -91,7 +91,7 @@ def test_file_info_property_protection(
 @pytest.mark.error_test
 def test_file_info_directory_traversal(
     fs: FakeFilesystem,
-    security_manager: MockSecurityManager,
+    strict_security_manager: MockSecurityManager,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that security check correctly blocks directory traversal attempts.
@@ -110,7 +110,7 @@ def test_file_info_directory_traversal(
     # Test directory traversal - should raise PathSecurityError
     with pytest.raises(PathSecurityError) as exc_info:
         FileInfo.from_path(
-            "/outside/test.txt", security_manager=security_manager
+            "/outside/test.txt", security_manager=strict_security_manager
         )
 
     # Verify error details
@@ -129,6 +129,7 @@ def test_file_info_directory_traversal(
 def test_file_info_missing_file(
     fs: FakeFilesystem,
     security_manager: MockSecurityManager,
+    strict_security_manager: MockSecurityManager,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that accessing a non-existent file raises appropriate error.
@@ -155,7 +156,7 @@ def test_file_info_missing_file(
     fs.create_file("/outside/test.txt", contents="test")
     with pytest.raises(PathSecurityError) as security_exc:
         FileInfo.from_path(
-            "/outside/test.txt", security_manager=security_manager
+            "/outside/test.txt", security_manager=strict_security_manager
         )
 
     assert "Access denied" in str(security_exc.value)
@@ -295,6 +296,7 @@ def test_collect_files(
 def test_collect_files_errors(
     fs: FakeFilesystem,
     security_manager: MockSecurityManager,
+    strict_security_manager: MockSecurityManager,
 ) -> None:
     """Test error handling in file collection.
 
@@ -325,7 +327,7 @@ def test_collect_files_errors(
     with pytest.raises(PathSecurityError) as security_exc4:
         collect_files(
             file_mappings=[("test", "/outside/test.txt")],
-            security_manager=security_manager,
+            security_manager=strict_security_manager,
         )
     assert "Access denied" in str(security_exc4.value)
 
@@ -352,7 +354,7 @@ def test_file_info_stats_loading(
 @pytest.mark.error_test
 def test_file_info_stats_security(
     fs: FakeFilesystem,
-    security_manager: MockSecurityManager,
+    strict_security_manager: MockSecurityManager,
 ) -> None:
     """Test security checks when loading file stats.
 
@@ -367,7 +369,7 @@ def test_file_info_stats_security(
     # Test accessing file outside base directory
     with pytest.raises(PathSecurityError) as exc_info:
         FileInfo.from_path(
-            "/outside/test.txt", security_manager=security_manager
+            "/outside/test.txt", security_manager=strict_security_manager
         )
 
     assert "Access denied:" in str(exc_info.value)
@@ -405,6 +407,7 @@ def test_file_info_missing_file_stats(
 def test_file_info_content_errors(
     fs: FakeFilesystem,
     security_manager: MockSecurityManager,
+    strict_security_manager: MockSecurityManager,
 ) -> None:
     """Test error handling in content loading.
 
@@ -427,7 +430,7 @@ def test_file_info_content_errors(
     fs.create_file("/outside/test.txt", contents="test")
     with pytest.raises(PathSecurityError) as security_exc:
         FileInfo.from_path(
-            "/outside/test.txt", security_manager=security_manager
+            "/outside/test.txt", security_manager=strict_security_manager
         )
 
     assert "Access denied" in str(security_exc.value)
@@ -442,7 +445,7 @@ def test_file_info_content_errors(
 def test_security_error_single_message(
     caplog: pytest.LogCaptureFixture,
     fs: FakeFilesystem,
-    security_manager: MockSecurityManager,
+    strict_security_manager: MockSecurityManager,
 ) -> None:
     """Test that security errors are logged only once with complete information.
 
@@ -464,7 +467,7 @@ def test_security_error_single_message(
     # Attempt to access file outside allowed directory
     with pytest.raises(PathSecurityError) as exc_info:
         FileInfo.from_path(
-            "/outside/test.txt", security_manager=security_manager
+            "/outside/test.txt", security_manager=strict_security_manager
         )
 
     assert "Access denied:" in str(exc_info.value)
@@ -480,7 +483,7 @@ def test_security_error_single_message(
 def test_security_error_with_allowed_dirs(
     caplog: pytest.LogCaptureFixture,
     fs: FakeFilesystem,
-    security_manager: MockSecurityManager,
+    strict_security_manager: MockSecurityManager,
 ) -> None:
     """Test that security error message includes allowed directories.
 
@@ -496,12 +499,12 @@ def test_security_error_with_allowed_dirs(
     caplog.set_level(logging.ERROR)
 
     # Add allowed directory to security manager
-    security_manager.add_allowed_directory("/test_workspace/allowed")
+    strict_security_manager.add_allowed_directory("/test_workspace/allowed")
 
     # Attempt to access file with allowed directories specified
     with pytest.raises(PathSecurityError) as exc_info:
         FileInfo.from_path(
-            "/outside/test.txt", security_manager=security_manager
+            "/outside/test.txt", security_manager=strict_security_manager
         )
 
     assert "Access denied:" in str(exc_info.value)

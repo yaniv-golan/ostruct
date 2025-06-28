@@ -5,7 +5,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 from .errors import FileReadError, OstructFileNotFoundError, PathSecurityError
 from .security import SecurityManager
@@ -18,9 +18,9 @@ class FileRoutingIntent(Enum):
     to provide appropriate warnings and optimizations.
     """
 
-    TEMPLATE_ONLY = "template_only"  # -ft, --fta, legacy -f, -d
-    CODE_INTERPRETER = "code_interpreter"  # -fc, --fca
-    FILE_SEARCH = "file_search"  # -fs, --fsa
+    TEMPLATE_ONLY = "template_only"  # --file [alias] (template access only)
+    CODE_INTERPRETER = "code_interpreter"  # --file ci:[alias]
+    FILE_SEARCH = "file_search"  # --file fs:[alias]
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,8 @@ class FileInfo:
     """Represents a file with metadata and content.
 
     This class provides access to file metadata (path, size, etc.) and content,
-    with caching support for efficient access.
+    with caching support for efficient access. Implements the file-sequence protocol
+    by being iterable (yields itself) while maintaining scalar access to properties.
 
     Args:
         path: Path to the file
@@ -76,6 +77,19 @@ class FileInfo:
         self.__mtime: Optional[float] = None
         self.routing_type = routing_type
         self.routing_intent = routing_intent
+
+        # TSES v2.0 fields for alias tracking
+        self.parent_alias: Optional[str] = (
+            None  # CLI alias this file came from
+        )
+        self.relative_path: Optional[str] = (
+            None  # Path relative to attachment root
+        )
+        self.base_path: Optional[str] = None  # Base path of attachment
+        self.from_collection: bool = False  # Whether file came from --collect
+        self.attachment_type: str = (
+            "file"  # Original attachment type: "file", "dir", or "collection"
+        )
 
         logger.debug(
             "Creating FileInfo for path: %s, routing_type: %s",
@@ -149,6 +163,39 @@ class FileInfo:
                 f"Permission denied: {os.path.basename(str(path))}"
             ) from e
 
+    def __iter__(self) -> Iterator["FileInfo"]:
+        """Make FileInfo iterable by yielding itself.
+
+        This implements the file-sequence protocol, allowing single files
+        to be treated uniformly with file collections in templates.
+
+        Returns:
+            Iterator that yields this FileInfo instance
+        """
+        yield self
+
+    @property
+    def first(self) -> "FileInfo":
+        """Get the first file in the sequence (itself for single files).
+
+        This provides a uniform interface with FileInfoList.first,
+        allowing templates to use .first regardless of whether they're
+        dealing with a single file or a collection.
+
+        Returns:
+            This FileInfo instance
+        """
+        return self
+
+    @property
+    def is_collection(self) -> bool:
+        """Indicate whether this is a collection of files.
+
+        Returns:
+            False, since FileInfo represents a single file
+        """
+        return False
+
     @property
     def path(self) -> str:
         """Get the path relative to security manager's base directory.
@@ -181,13 +228,18 @@ class FileInfo:
         try:
             return str(abs_path.relative_to(base_dir))
         except ValueError:
-            # Path is outside base_dir, check if it's in allowed directories
-            if self.__security_manager.is_path_allowed(abs_path):
-                logger.debug(
-                    "Path outside base_dir but allowed, returning absolute path: %s",
-                    abs_path,
-                )
-                return str(abs_path)
+            # Path is outside base_dir, check if it's allowed by enhanced security model
+            try:
+                if self.__security_manager.is_path_allowed_enhanced(abs_path):
+                    logger.debug(
+                        "Path outside base_dir but allowed, returning absolute path: %s",
+                        abs_path,
+                    )
+                    return str(abs_path)
+            except Exception:
+                # In strict mode, is_path_allowed_enhanced() raises exceptions
+                # If we reach this except block, the path is not allowed
+                pass
 
             # Should never reach here if SecurityManager validation was done properly
             logger.error(
@@ -196,7 +248,7 @@ class FileInfo:
                 base_dir,
             )
             raise ValueError(
-                f"Path {abs_path} must be within base directory {base_dir}"
+                f"Path {abs_path} is not within base directory {base_dir}"
             )
 
     @path.setter
@@ -302,7 +354,7 @@ class FileInfo:
                 f"File '{self.path}' ({self.size / 1024:.1f}KB) was routed for template-only access "
                 f"but its .content is being accessed. This will include the entire file content "
                 f"in the prompt sent to the AI. For large files intended for analysis or search, "
-                f"consider using -fc (Code Interpreter) or -fs (File Search) to optimize token usage, "
+                f"consider using --file ci:data (Code Interpreter) or --file fs:docs (File Search) to optimize token usage, "
                 f"cost, and avoid exceeding model context limits."
             )
 
@@ -433,6 +485,11 @@ class FileInfo:
         security_manager: SecurityManager,
         routing_type: Optional[str] = None,
         routing_intent: Optional[FileRoutingIntent] = None,
+        parent_alias: Optional[str] = None,
+        relative_path: Optional[str] = None,
+        base_path: Optional[str] = None,
+        from_collection: bool = False,
+        attachment_type: str = "file",
     ) -> "FileInfo":
         """Create FileInfo instance from path.
 
@@ -441,6 +498,11 @@ class FileInfo:
             security_manager: Security manager for path validation
             routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
             routing_intent: The intended use of the file in the pipeline
+            parent_alias: CLI alias this file came from (for TSES)
+            relative_path: Path relative to attachment root (for TSES)
+            base_path: Base path of attachment (for TSES)
+            from_collection: Whether file came from --collect (for TSES)
+            attachment_type: Original attachment type: "file", "dir", or "collection" (for TSES)
 
         Returns:
             FileInfo instance
@@ -449,12 +511,21 @@ class FileInfo:
             FileNotFoundError: If file does not exist
             PathSecurityError: If path is not allowed
         """
-        return cls(
+        file_info = cls(
             path,
             security_manager,
             routing_type=routing_type,
             routing_intent=routing_intent,
         )
+
+        # Set TSES fields
+        file_info.parent_alias = parent_alias
+        file_info.relative_path = relative_path
+        file_info.base_path = base_path
+        file_info.from_collection = from_collection
+        file_info.attachment_type = attachment_type
+
+        return file_info
 
     def __str__(self) -> str:
         """String representation showing path."""
@@ -477,6 +548,17 @@ class FileInfo:
         # Allow setting routing_type and routing_intent if they're not already set (i.e., during __init__)
         if name in ("routing_type", "routing_intent") and not hasattr(
             self, name
+        ):
+            object.__setattr__(self, name, value)
+            return
+
+        # Allow setting TSES fields
+        if name in (
+            "parent_alias",
+            "relative_path",
+            "base_path",
+            "from_collection",
+            "attachment_type",
         ):
             object.__setattr__(self, name, value)
             return

@@ -9,7 +9,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import click
 import jinja2
 
+from .constants import DefaultPaths
 from .errors import (
+    CLIError,
     DirectoryNotFoundError,
     InvalidJSONError,
     SchemaFileError,
@@ -17,7 +19,7 @@ from .errors import (
     VariableNameError,
     VariableValueError,
 )
-from .explicit_file_processor import ExplicitFileProcessor
+from .exit_codes import ExitCode
 from .security import SecurityManager
 from .template_env import create_jinja_env
 from .template_processor import (
@@ -34,35 +36,6 @@ logger = logging.getLogger(__name__)
 FileRoutingResult = List[Tuple[Optional[str], Union[str, Path]]]
 
 
-def validate_name_path_pair(
-    ctx: click.Context,
-    param: click.Parameter,
-    value: List[Tuple[str, Union[str, Path]]],
-) -> List[Tuple[str, Union[str, Path]]]:
-    """Validate name/path pairs for files and directories.
-
-    Args:
-        ctx: Click context
-        param: Click parameter
-        value: List of (name, path) tuples
-
-    Returns:
-        List of validated (name, Path) tuples
-
-    Raises:
-        click.BadParameter: If validation fails
-    """
-    if not value:
-        return value
-
-    result: List[Tuple[str, Union[str, Path]]] = []
-    for name, path in value:
-        if not name.isidentifier():
-            raise click.BadParameter(f"Invalid variable name: {name}")
-        result.append((name, Path(path)))
-    return result
-
-
 def validate_file_routing_spec(
     ctx: click.Context,
     param: click.Parameter,
@@ -70,23 +43,23 @@ def validate_file_routing_spec(
 ) -> FileRoutingResult:
     """Validate file routing specifications supporting multiple syntaxes.
 
-    Supports two syntaxes currently:
-    - Simple path: -ft config.yaml (auto-generates variable name)
-    - Equals syntax: -ft code_file=src/main.py (custom variable name)
+        Supports two syntaxes currently:
+        - Simple path: --file config.yaml (auto-generates variable name)
+    - Equals syntax: --file code_file=src/main.py (custom variable name)
 
-    Note: Two-argument syntax (-ft name path) requires special handling at the CLI level
-    and is not supported in this validator due to Click's argument processing.
+    Note: Two-argument syntax (--file name path) requires special handling at the CLI level
+        and is not supported in this validator due to Click's argument processing.
 
-    Args:
-        ctx: Click context
-        param: Click parameter
-        value: List of file specifications from multiple options
+        Args:
+            ctx: Click context
+            param: Click parameter
+            value: List of file specifications from multiple options
 
-    Returns:
-        List of (variable_name, path) tuples where variable_name=None means auto-generate
+        Returns:
+            List of (variable_name, path) tuples where variable_name=None means auto-generate
 
-    Raises:
-        click.BadParameter: If validation fails
+        Raises:
+            click.BadParameter: If validation fails
     """
     if not value:
         return []
@@ -95,7 +68,7 @@ def validate_file_routing_spec(
 
     for spec in value:
         if "=" in spec:
-            # Equals syntax: -ft code_file=src/main.py
+            # Equals syntax: --file code_file=src/main.py
             if spec.count("=") != 1:
                 raise click.BadParameter(
                     f"Invalid format '{spec}'. Use name=path or just path."
@@ -113,7 +86,7 @@ def validate_file_routing_spec(
                 raise click.BadParameter(f"File not found: {path}")
             result.append((name, Path(path)))
         else:
-            # Simple path: -ft config.yaml
+            # Simple path: --file config.yaml
             path = spec.strip()
             if not path:
                 raise click.BadParameter("Empty file path")
@@ -193,7 +166,7 @@ def validate_json_variable(
 
         if "=" not in var:
             raise InvalidJSONError(
-                f"JSON variable must be in format name='{'json':\"value\"}': {var}"
+                f'JSON variable must be in format name={{"json":"value"}}: {var}'
             )
         name, json_str = var.split("=", 1)
         name = name.strip()
@@ -389,6 +362,9 @@ def validate_security_manager(
     base_dir: Optional[str] = None,
     allowed_dirs: Optional[List[str]] = None,
     allowed_dir_file: Optional[str] = None,
+    allow_files: Optional[List[str]] = None,
+    allow_lists: Optional[List[str]] = None,
+    security_mode: str = "warn",
 ) -> SecurityManager:
     """Validate and create security manager.
 
@@ -396,6 +372,9 @@ def validate_security_manager(
         base_dir: Base directory for file access. Defaults to current working directory.
         allowed_dirs: Optional list of additional allowed directories
         allowed_dir_file: Optional file containing allowed directories
+        allow_files: Optional list of individual files to allow (tracked by inode)
+        allow_lists: Optional list of allow-list files to load
+        security_mode: Path security mode (permissive/warn/strict)
 
     Returns:
         Configured SecurityManager instance
@@ -408,8 +387,22 @@ def validate_security_manager(
     if base_dir is None:
         base_dir = os.getcwd()
 
-    # Create security manager with base directory
-    security_manager = SecurityManager(base_dir)
+    # Parse security mode
+    from .security.types import PathSecurity
+
+    # Ensure security_mode is not None (safety check)
+    if security_mode is None:
+        security_mode = "warn"
+
+    try:
+        parsed_security_mode = PathSecurity(security_mode.lower())
+    except ValueError:
+        parsed_security_mode = PathSecurity.WARN
+
+    # Create security manager with base directory and security mode
+    security_manager = SecurityManager(
+        base_dir, security_mode=parsed_security_mode
+    )
 
     # Add explicitly allowed directories
     if allowed_dirs:
@@ -429,7 +422,112 @@ def validate_security_manager(
                 f"Failed to read allowed directories file: {e}"
             )
 
+    # Configure enhanced security features (allow_files and allow_lists)
+    if allow_files or allow_lists:
+        security_manager.configure_security_mode(
+            mode=parsed_security_mode,
+            allow_files=allow_files,
+            allow_lists=allow_lists,
+        )
+
     return security_manager
+
+
+def validate_download_configuration(args: CLIParams) -> None:
+    """Validate download configuration without creating directories.
+
+    This function validates that the download directory can be written to
+    when Code Interpreter is being used, without actually creating the directory.
+
+    Args:
+        args: CLI parameters
+
+    Raises:
+        CLIError: If download directory validation fails
+    """
+    logger.debug("=== Download Directory Validation ===")
+
+    # Check if Code Interpreter is being used
+    routing_result = args.get("_routing_result")
+    logger.debug(f"Routing result: {routing_result}")
+
+    if not routing_result or not hasattr(routing_result, "enabled_tools"):
+        logger.debug(
+            "No routing result available, skipping download validation"
+        )
+        return  # No routing result available, skip validation
+
+    logger.debug(f"Enabled tools: {routing_result.enabled_tools}")
+
+    if "code-interpreter" not in routing_result.enabled_tools:
+        logger.debug(
+            "Code Interpreter not being used, skipping download validation"
+        )
+        return  # Code Interpreter not being used, skip validation
+
+    # Get resolved download directory using same logic as runner.py
+    from typing import Union, cast
+
+    from .config import OstructConfig
+
+    config_path = cast(Union[str, Path, None], args.get("config"))
+    config = OstructConfig.load(config_path)
+    ci_config = config.get_code_interpreter_config()
+
+    download_dir = (
+        args.get("ci_download_dir")  # CLI flag has highest priority
+        or ci_config.get("output_directory")  # Config file is second
+        or DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR  # Default is last
+    )
+
+    logger.debug(f"Validating download directory: {download_dir}")
+
+    # Convert to Path object
+    download_path = Path(download_dir)
+
+    # Validate parent directory exists and is writable
+    parent_dir = download_path.parent
+    if not parent_dir.exists():
+        raise CLIError(
+            f"Parent directory does not exist: {parent_dir}\n"
+            f"💡 Try:\n"
+            f"  • Create parent directory: mkdir -p {parent_dir}\n"
+            f"  • Use different directory: --ci-download-dir ./my-downloads\n"
+            f"  • Check current directory: pwd",
+            exit_code=ExitCode.USAGE_ERROR,
+        )
+
+    if not os.access(parent_dir, os.W_OK):
+        raise CLIError(
+            f"No write permission to parent directory: {parent_dir}\n"
+            f"💡 Try:\n"
+            f"  • Check directory permissions: ls -la {parent_dir}\n"
+            f"  • Fix permissions: chmod u+w {parent_dir}\n"
+            f"  • Use different directory: --ci-download-dir ./my-downloads",
+            exit_code=ExitCode.USAGE_ERROR,
+        )
+
+    # Check if download directory exists and is writable (if it exists)
+    if download_path.exists():
+        if not download_path.is_dir():
+            raise CLIError(
+                f"Download path exists but is not a directory: {download_path}\n"
+                f"💡 Try:\n"
+                f"  • Remove the file: rm {download_path}\n"
+                f"  • Use different directory: --ci-download-dir ./my-downloads",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+        if not os.access(download_path, os.W_OK):
+            raise CLIError(
+                f"No write permission to download directory: {download_path}\n"
+                f"💡 Try:\n"
+                f"  • Fix permissions: chmod u+w {download_path}\n"
+                f"  • Use different directory: --ci-download-dir ./my-downloads",
+                exit_code=ExitCode.USAGE_ERROR,
+            )
+
+    logger.debug(f"Download directory validation passed: {download_dir}")
 
 
 async def validate_inputs(
@@ -461,16 +559,37 @@ async def validate_inputs(
         SchemaValidationError: When schema is invalid
     """
     logger.debug("=== Input Validation Phase ===")
+    logger.debug(f"validate_inputs called with args keys: {list(args.keys())}")
     security_manager = validate_security_manager(
         base_dir=args.get("base_dir"),
-        allowed_dirs=args.get("allowed_dirs"),
+        allowed_dirs=args.get("allow_dir"),  # type: ignore[arg-type]
         allowed_dir_file=args.get("allowed_dir_file"),
+        allow_files=args.get("allow_file"),  # type: ignore[arg-type]
+        allow_lists=args.get("allow_list"),  # type: ignore[arg-type]
+        security_mode=args.get("path_security", "warn"),  # type: ignore[arg-type]
     )
 
-    # Process explicit file routing (T2.4)
-    logger.debug("Processing explicit file routing")
-    file_processor = ExplicitFileProcessor(security_manager)
-    routing_result = await file_processor.process_file_routing(args)  # type: ignore[arg-type]
+    # Process file routing using new attachment system only (T3.0)
+    logger.debug("Processing file routing with new attachment system")
+
+    from .attachment_processor import process_new_attachments
+
+    routing_result = process_new_attachments(args, security_manager)
+
+    # The new system is mandatory - no fallback to legacy file routing
+    if routing_result is None:
+        # Create empty routing result if no attachments specified
+        from .explicit_file_processor import ExplicitRouting, ProcessingResult
+
+        routing_result = ProcessingResult(
+            routing=ExplicitRouting(),
+            enabled_tools=set(),
+            validated_files={},
+            auto_enabled_feedback=None,
+        )
+        logger.debug("No attachments specified - created empty routing result")
+    else:
+        logger.debug("Processed new attachment system")
 
     # Display auto-enablement feedback to user
     if routing_result.auto_enabled_feedback:
@@ -478,6 +597,11 @@ async def validate_inputs(
 
     # Store routing result in args for use by tool processors
     args["_routing_result"] = routing_result  # type: ignore[typeddict-unknown-key]
+
+    # Validate download directory configuration (after routing is processed)
+    logger.debug("About to call validate_download_configuration")
+    validate_download_configuration(args)
+    logger.debug("Finished validate_download_configuration")
 
     task_template = validate_task_template(
         args.get("task"), args.get("task_file")
@@ -501,7 +625,27 @@ async def validate_inputs(
     template_context = await create_template_context_from_routing(
         args, security_manager, routing_result
     )
-    env = create_jinja_env()
+
+    # Extract files from template context for file reference support
+    files = []
+    for key, value in template_context.items():
+        if hasattr(value, "__iter__") and not isinstance(value, (str, dict)):
+            # Check if this is a list of FileInfo objects
+            try:
+                for item in value:
+                    if hasattr(
+                        item, "parent_alias"
+                    ):  # FileInfo with TSES fields
+                        files.append(item)
+            except (TypeError, AttributeError):
+                continue
+
+    # Create environment with file reference support
+    env, alias_manager = create_jinja_env(files=files)
+
+    # Store alias manager in args for use by template processor if it has any aliases
+    if alias_manager.aliases:
+        args["_alias_manager"] = alias_manager  # type: ignore[typeddict-unknown-key]
 
     return (
         security_manager,
@@ -511,3 +655,60 @@ async def validate_inputs(
         env,
         args.get("task_file"),
     )
+
+
+def parse_file_path_spec(
+    ctx: click.Context,
+    param: click.Parameter,
+    value: str,
+) -> Optional[Tuple[Optional[str], str]]:
+    """Parse file path specification with optional alias.
+
+    Supports multiple formats:
+    - Simple path: --file config.yaml (auto-generates variable name)
+    - Equals syntax: --file code_file=src/main.py (custom variable name)
+
+    Note: Two-argument syntax (--file name path) requires special handling at the CLI level
+    and is not processed by this validator.
+
+    Args:
+        ctx: Click context
+        param: Click parameter
+        value: Raw value from CLI
+
+    Returns:
+        Tuple of (alias, path) or None if value is None
+
+    Raises:
+        click.BadParameter: If the format is invalid
+    """
+    if not value:
+        return None
+
+    if "=" in value:
+        # Equals syntax: --file code_file=src/main.py
+        if value.count("=") != 1:
+            raise click.BadParameter(
+                f"Invalid format '{value}'. Use name=path or just path."
+            )
+        name, path = value.split("=", 1)
+        if not name.strip():
+            raise click.BadParameter(f"Empty variable name in '{value}'")
+        if not path.strip():
+            raise click.BadParameter(f"Empty path in '{value}'")
+        name = name.strip()
+        path = path.strip()
+        if not name.isidentifier():
+            raise click.BadParameter(f"Invalid variable name: {name}")
+        if not Path(path).exists():
+            raise click.BadParameter(f"File not found: {path}")
+        return (name, path)
+    else:
+        # Simple path: --file config.yaml
+        path = value.strip()
+        if not path:
+            raise click.BadParameter("Empty file path")
+        if not Path(path).exists():
+            raise click.BadParameter(f"File not found: {path}")
+        # Mark as auto-name with None, will be processed later
+        return (None, path)

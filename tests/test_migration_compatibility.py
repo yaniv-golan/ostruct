@@ -48,14 +48,14 @@ class TestBackwardCompatibility:
         # Change to test base directory
         os.chdir(TEST_BASE_DIR)
 
-        # Test legacy command format
+        # Test modern command format
         result = cli_runner.invoke(
             create_cli(),
             [
                 "run",
                 "task.j2",
                 "schema.json",
-                "-f",
+                "--file",
                 "input",
                 "input.txt",
                 "--dry-run",
@@ -119,7 +119,7 @@ class TestBackwardCompatibility:
                 var_args.extend(["-V", "items=item1,item2,item3"])
 
             if "file.content" in template:
-                var_args.extend(["-f", "file", "test_file.txt"])
+                var_args.extend(["--file", "file", "test_file.txt"])
 
             result = cli_runner.invoke(
                 create_cli(),
@@ -357,9 +357,11 @@ class TestToolAutoEnablement:
                 "run",
                 "task.j2",
                 "schema.json",
-                "-fc",
+                "--file",
+                "ci:script",
                 "script.py",  # Route file to code interpreter (auto-enables tool)
-                "-fc",
+                "--file",
+                "ci:app",
                 "app.js",
                 "-V",
                 "code_files=test_files",  # Provide template variable
@@ -369,7 +371,7 @@ class TestToolAutoEnablement:
 
         assert result.exit_code == 0
         # Verify code interpreter was auto-enabled due to file routing
-        assert "auto-enabled tools: code-interpreter" in result.output
+        assert "🛠️  Tools: code_interpreter" in result.output
 
     @patch("ostruct.cli.file_search.FileSearchManager")
     def test_auto_file_search_detection(
@@ -420,9 +422,11 @@ class TestToolAutoEnablement:
                 "run",
                 "task.j2",
                 "schema.json",
-                "-fs",
+                "--file",
+                "fs:doc1",
                 "doc_1.txt",  # Route file to file search (auto-enables tool)
-                "-fs",
+                "--file",
+                "fs:manual",
                 "manual.pdf",
                 "-V",
                 "search_results=test_results",  # Provide template variable
@@ -432,7 +436,7 @@ class TestToolAutoEnablement:
 
         assert result.exit_code == 0
         # Verify file search was auto-enabled due to file routing
-        assert "auto-enabled tools: file-search" in result.output
+        assert "🛠️  Tools: file_search" in result.output
 
     @patch("ostruct.cli.mcp_integration.MCPServerManager")
     def test_auto_mcp_detection(

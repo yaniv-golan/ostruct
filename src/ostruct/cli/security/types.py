@@ -1,8 +1,23 @@
 """Security type definitions and protocols."""
 
+import enum
 from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import List, Protocol, Union
+
+
+class PathSecurity(enum.Enum):
+    """Path security enforcement modes for file access control.
+
+    This enum defines three levels of path security enforcement:
+    - PERMISSIVE: Allow all paths without restriction
+    - WARN: Allow all paths but log warnings for potentially unsafe access
+    - STRICT: Only allow explicitly permitted paths (via directory or inode allowlists)
+    """
+
+    PERMISSIVE = "permissive"  # Allow all paths
+    WARN = "warn"  # Allow with warnings
+    STRICT = "strict"  # Only allow explicitly permitted paths
 
 
 class SecurityManagerProtocol(Protocol):

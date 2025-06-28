@@ -5,6 +5,219 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-06-22
+
+### Added
+
+- **Enhanced Code Interpreter Download System**: Comprehensive improvements to file download reliability and user experience:
+  - **Duplicate File Handling**: New `--ci-duplicate-outputs` CLI option and `duplicate_outputs` config setting with three strategies: `overwrite` (default), `rename` (generates unique names like file_1.txt), and `skip` (ignores existing files)
+  - **Early Validation**: Download directory permissions and configuration validated during dry-run and startup, catching issues before API calls
+  - **Improved Error Handling**: Specific error classes (`DownloadPermissionError`, `DownloadNetworkError`, `DownloadFileNotFoundError`) with actionable troubleshooting guidance
+  - **Enhanced Dry-Run Coverage**: Download configuration validation included in execution plans with directory status and permission checks
+
+- **Centralized Configuration System**: Streamlined configuration management with consistent defaults and improved maintainability:
+  - **Default Model Update**: Changed default model from `gpt-4o` to `gpt-4.1` for enhanced reasoning capabilities and larger context windows
+  - **Unified Constants**: Centralized all default values, paths, and configuration options in a single location for consistency
+  - **Enhanced Configuration Options**: Added support for new Code Interpreter features including duplicate handling and output validation
+  - **Improved Developer Experience**: Better type definitions and IDE support for configuration management
+
+- **Reorganized Examples Library**: Complete restructuring of examples for better discoverability and learning progression:
+  - **Categorical Organization**: Examples now organized into logical categories - analysis/, automation/, debugging/, integration/, security/, tools/, and utilities/
+  - **Focused Learning Path**: Each category provides a clear progression from basic to advanced usage patterns
+  - **Reduced Maintenance Overhead**: Consolidated overlapping examples and removed outdated patterns that don't align with current best practices
+  - **Better Tool Integration**: Examples now demonstrate proper multi-tool usage with Code Interpreter, File Search, Web Search, and MCP servers
+  - **Improved Documentation**: Each example category includes clear README files with usage guidance and learning objectives
+
+- **Enhanced Template System**: Improved template processing with better file handling and user experience:
+  - **Advanced Template Filters**: New filters for better file reference handling and data processing in templates
+  - **Improved Error Handling**: Better error messages and debugging support for template development
+  - **Enhanced Integration**: Seamless integration between template system and new download/file handling features
+  - **Rich CLI Output**: Improved formatting and visual presentation of CLI output and help text
+
+- **Development Tools and Build System**: Streamlined development workflow with new tools and simplified build processes:
+  - **Schema Generator Tool**: New development tool for automatically generating JSON schemas from templates, reducing manual schema creation effort
+  - **Template Analyzer Tool**: Advanced template analysis tool for debugging complex templates and understanding template behavior
+  - **Simplified Build Process**: Removed complex build scripts in favor of standard Python packaging, making the project easier to contribute to
+  - **Enhanced Documentation**: Updated documentation to reflect current best practices and removed outdated installation methods
+
+- **File Reference System**: Introduced `file_ref("alias")` function for clean, structured file references in templates. Files are automatically organized into XML appendices, eliminating the need for manual file content loops in templates. Works seamlessly with existing `--dir`, `--file`, and `--collect` attachments.
+
+- **Enhanced Template Debugging**: Comprehensive template debugging system with granular capacity control:
+  - Consolidated 8 overlapping debug flags into single `--template-debug` (`-t`) flag
+  - Capacity-based debugging: `vars`, `preview`, `steps`, `optimization`, `pre-expand`, `post-expand`, `optimization-steps`
+  - Consistent output prefixes (`[VARS]`, `[TPL]`, `[OPTIM]`, `[STEP]`, `[PRE]`, `[PREVIEW]`, `[OPTIM-STEP]`) for easy parsing
+  - Improved template expansion tracking and variable inspection
+  - Usage: `-t vars,preview` for specific capacities, `-t all` or bare `-t` for complete debugging
+
+- **Safe Nested Access**: Added `safe_get()` function for safe nested attribute access in templates, preventing errors when accessing potentially undefined nested properties. Replaces verbose conditional boilerplate with clean single-line calls.
+
+- **Dynamic Model Validation**: Enhanced model selection with real-time validation against OpenAI's model registry, ensuring compatibility and providing helpful error messages for unsupported models.
+
+- **Enhanced Examples Testing Infrastructure**: Comprehensive automated testing system for all examples:
+  - **Auto-Discovery**: Automatically discovers and tests all examples following EXAMPLES_STANDARD.md specification
+  - **Dual Testing Modes**: Fast dry-run validation (no API calls) and live API testing with `@pytest.mark.live` for cost control
+  - **Structure Validation**: Ensures examples follow standard structure (README.md, templates/, schemas/, run.sh with standard_runner.sh)
+  - **CI/CD Integration**: Seamlessly integrates into pytest test suite for continuous validation of 9+ examples across analysis, tools, integration, security, and utilities categories
+  - **Cross-Platform Compatibility**: Works with pyfakefs and handles subprocess calls reliably across different development environments
+
+- **Comprehensive Examples**: Added extensive example collection demonstrating real-world usage patterns:
+  - File reference examples with security audit, code review, and data analysis templates
+  - Multi-tool integration examples showing file routing to different services
+  - Template debugging examples with various complexity levels
+  - Updated existing examples to demonstrate new `file_ref()` patterns
+
+- **Experimental --help-json Flag**: Added experimental JSON help output for programmatic CLI integration:
+  - **Hidden Flag**: `--help-json` flag available but hidden from help output (not ready for public use)
+  - **Structured Output**: Outputs complete command help in JSON format for tools and automation
+  - **Dynamic Model Information**: Includes real-time model registry metadata and validation details
+  - **Attachment System Documentation**: Comprehensive JSON documentation of file routing targets and syntax
+  - **Note**: JSON format designed for eventual public API but subject to (and will) change
+
+- **Enhanced CLI Help System**: Integrated rich-click for beautiful, modern CLI help output with:
+  - Color-coded help text with professional styling and organized option groups
+  - Rich-formatted panels with borders and visual separation for better readability
+  - Structured option grouping (Template Data, Model Configuration, File Attachment, Tool Integration, etc.)
+  - Enhanced error messages with improved formatting and user guidance
+  - Terminal UI automatically adapts to terminal capabilities
+
+- **Quick Reference System**: Added `--quick-ref` flag for instant access to common usage patterns and examples:
+  - Rich-formatted quick reference with visual panels and syntax highlighting
+  - Comprehensive file attachment examples showing all routing targets
+  - Multi-tool integration patterns with real command examples
+  - Environment variable reference with clear categorization
+  - Replaces the previous `ostruct quick-ref` command with integrated help flag
+
+### Changed
+
+- **Progress Options Simplification**: Merged `--no-progress` and `--progress-level` flags into a single `--progress [none|basic|detailed]` option for a cleaner, more intuitive CLI interface. This eliminates redundancy and follows standard CLI patterns where a single option controls related functionality.
+
+- **Simplified CLI Syntax**: Updated all examples and documentation to use thes simplified attachment system with explicit file routing (`--file ci:`, `--dir fs:`, etc.) instead of legacy flags.
+
+- **Comprehensive Error Categorization System**: Revolutionary error handling with intelligent categorization and solutions:
+  - **13 Specific Error Categories**: FILE_FORMAT_ERROR, API_KEY_ERROR, SCHEMA_ERROR, TEMPLATE_ERROR, and 9 others for precise problem identification
+  - **Actionable Solutions**: Each error provides primary and alternative solutions with corrected command examples
+  - **Context-Aware Messaging**: Errors include relevant context (file paths, line numbers, configuration details) for faster troubleshooting
+  - **Exit Code Mapping**: Consistent exit codes (USAGE_ERROR=2, DATA_ERROR=3, VALIDATION_ERROR=4, etc.) for reliable automation integration
+
+- **Enhanced CLI Reference with Better Examples**: Comprehensive improvements to CLI documentation and error handling:
+  - **Dynamic Model Validation**: Real-time validation against OpenAI model registry with helpful suggestions for invalid models
+  - **Rich Error Messages**: Clean, user-friendly error display without technical stack traces for common issues
+  - **Better Template Error Messages**: Proper variable name extraction from Jinja2 errors with actionable feedback
+  - **Improved Schema Validation**: Enhanced schema validation feedback with specific guidance for common issues
+
+- **Documentation Overhaul**: Complete documentation update including:
+  - Comprehensive file reference system guide with usage examples
+  - Template debugging documentation with capacity explanations
+  - Updated CLI reference with all new options and examples
+  - Template structure guide for advanced template authoring
+  - Examples showing both manual file access and automatic `file_ref()` approaches
+
+- **Streamlined Installation**: Removed complex installation script in favor of standard methods (pipx, Homebrew, Docker), with automated Homebrew formula updates on release.
+
+- **MCP Environment Variables**: Changed MCP environment variable pattern from `MCP_<NAME>_URL` to `OSTRUCT_MCP_URL_<name>` for consistency with other ostruct environment variables (e.g., `OSTRUCT_MCP_URL_stripe` instead of `MCP_STRIPE_URL`). This provides better namespace isolation and follows the established `OSTRUCT_*` pattern used by other environment variables like `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`.
+
+- **YAML Frontmatter Configuration Updates**: Clarified configuration requirements for template frontmatter:
+  - **Model and Temperature Restriction**: Model and temperature parameters must be specified via CLI flags (`--model gpt-4.1 --temperature 0.7`) and are not supported in YAML frontmatter
+  - **System Prompt Support**: YAML frontmatter continues to support `system_prompt` and `include_system` configuration options
+  - **Documentation Updates**: Updated all template documentation to reflect CLI-only requirement for model parameters
+  - **Conflict Detection**: Added warning when both YAML frontmatter system_prompt and `--sys-file` are provided, with CLI taking precedence
+
+- **Template Environment Variables**: Renamed template-specific environment variables for clarity:
+  - `OSTRUCT_MAX_FILE_SIZE` → `OSTRUCT_TEMPLATE_FILE_LIMIT` (controls individual file size limits for template access)
+  - `OSTRUCT_MAX_TOTAL_SIZE` → `OSTRUCT_TEMPLATE_TOTAL_LIMIT` (controls total file size limits for template processing)
+  - `OSTRUCT_PREVIEW_LIMIT` → `OSTRUCT_TEMPLATE_PREVIEW_LIMIT` (controls template debugging preview character limits)
+
+  These variables only affect template file access (via `--file alias path`) and do not impact Code Interpreter (`--file ci:`) or File Search (`--file fs:`) file routing. The new names clearly indicate their template-specific scope.
+
+### Fixed
+
+- **Configuration and Test Reliability**: Resolved critical configuration and testing issues that were causing failures in CI/CD environments:
+  - **Default Model Alignment**: Fixed test suite to properly expect `gpt-4.1` as the default model, ensuring consistency between code and tests
+  - **Import and Type Safety**: Resolved duplicate import issues and type annotation problems that were causing runtime errors
+  - **Cross-Environment Compatibility**: Improved test reliability across different development environments by removing dependencies on external tools like poetry where not available
+  - **Error Handling**: Enhanced error handling with proper exit codes and user-friendly error messages
+
+- **Template Rendering**: Fixed template environment creation and validation issues that were causing mypy errors and rendering failures.
+
+- **File Processing**: Resolved issues with file routing and processing, including proper handling of large files and elimination of inappropriate warnings for Code Interpreter and File Search usage.
+
+- **Code Interpreter Downloads**: Significantly improved reliability of file downloads from Code Interpreter with robust fallback mechanisms and proper API integration.
+
+- **Security Enhancements**: Multiple security improvements including:
+  - Robust Azure endpoint validation using proper hostname parsing
+  - Enhanced MCP response sanitization
+  - Improved symlink security validation with resolved path checks
+  - Better path traversal protection
+
+- **CLI Consistency**: Updated argument handling throughout examples and scripts to use consistent simplified syntax, replacing deprecated flags like `--fta`, `--fca`, `-dc`, `-R` with current equivalents.
+
+### Removed
+
+- **Template Optimization System**: Completely removed the automatic template optimization system (1,104 lines of code) that had functional overlap with the new `file_ref()` mechanism. This includes:
+  - Deleted `template_optimizer.py` module entirely
+  - Removed `--no-optimization` CLI flag and related parameters
+  - Eliminated automatic template content reorganization and appendix generation
+  - Removed optimization-related debug capacities (`optimization`, `optimization-steps`)
+  - Cleaned up optimization progress reporting and help text
+  - Updated template debugging system to remove optimization-specific functions
+  - The explicit `file_ref()` system provides cleaner, more predictable template organization
+
+- **Legacy Flags**: Removed deprecated `--web-search` and `--no-web-search` flags in favor of universal `--enable-tool` and `--disable-tool` flags.
+
+- **Streaming Support**: Removed unnecessary streaming support from OpenAI API calls to improve model compatibility (especially o3/o1 models) and reduce code complexity while maintaining identical user experience.
+
+- **Placeholder Files**: Cleaned up dummy/placeholder files from examples that were causing build issues without providing value.
+
+- **Quick Reference Command**: Removed `ostruct quick-ref` command in favor of the new `--quick-ref` flag, which provides the same functionality with enhanced rich formatting and better integration with the main CLI help system.
+
+### Security
+
+- **Enhanced Validation**: Strengthened security across multiple areas:
+  - Improved Azure endpoint validation to prevent false positives
+  - Enhanced MCP server response sanitization
+  - Better symlink resolution and path validation
+  - Robust dependency installation with proper error handling
+
+### Migration Notes
+
+For a comprehensive migration guide with examples and automated migration scripts, see [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md).
+
+- **Template Optimization**: The automatic template optimization system has been removed. Users should migrate to the explicit `file_ref()` system:
+  - Templates that relied on automatic optimization should now use `file_ref("alias")` for structured file references
+  - The `--no-optimization` flag is no longer available (and no longer needed)
+  - Template debugging capacities `optimization` and `optimization-steps` have been removed
+
+- **File References**: Users can now choose between two approaches:
+  - `file_ref("alias")` for automatic XML appendix generation (recommended for most use cases)
+  - Direct file access with `{{ alias.content }}` for custom formatting needs
+
+- **Template Debugging**: Replace old debug flags with new capacity-based system:
+  - Old: `--debug-template --show-vars --show-preview`
+  - New: `-t vars,preview` or `-t all`
+
+- **CLI Syntax**: Update to simplified attachment syntax if still using legacy flags:
+  - Old: `--fta alias file.txt`
+  - New: `--file alias file.txt`
+
+- **MCP Environment Variables**: Update your environment variable names:
+  - Old: `MCP_STRIPE_URL=https://mcp.stripe.com`
+  - New: `OSTRUCT_MCP_URL_stripe=https://mcp.stripe.com`
+  - Old: `MCP_CUSTOM_URL=https://my-server.com`
+  - New: `OSTRUCT_MCP_URL_custom=https://my-server.com`
+
+- **Template Environment Variables**: Update template-specific environment variable names:
+  - `OSTRUCT_MAX_FILE_SIZE` → `OSTRUCT_TEMPLATE_FILE_LIMIT`
+  - `OSTRUCT_MAX_TOTAL_SIZE` → `OSTRUCT_TEMPLATE_TOTAL_LIMIT`
+  - `OSTRUCT_PREVIEW_LIMIT` → `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`
+
+  These variables control template file processing limits and do not affect Code Interpreter or File Search operations.
+
+- **Quick Reference Access**: The `ostruct quick-ref` command has been replaced with the `--quick-ref` flag:
+  - Old: `ostruct quick-ref`
+  - New: `ostruct --quick-ref`
+
+  The new flag provides the same reference information with enhanced rich formatting and better visual organization.
+
 ## [0.8.9] - 2025-06-12
 
 ### Added
@@ -187,7 +400,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Configuration System**:
   - Introduced a YAML-based configuration file (default: `ostruct.yaml` in the current directory or `~/.ostruct/config.yaml`, or a path specified by `--config`) for persistent settings related to models, tools, operational parameters, and cost limits.
-  - Implemented direct loading of specific environment variables (e.g., `OPENAI_API_KEY`, `MCP_<NAME>_URL`) within the configuration system. Generic `${ENV_VAR}` style substitution within the YAML is not supported.
+  - Implemented direct loading of specific environment variables (e.g., `OPENAI_API_KEY`, `OSTRUCT_MCP_URL_<name>`) within the configuration system. Generic `${ENV_VAR}` style substitution within the YAML is not supported.
   - New CLI option: `--config` to specify a custom configuration file path.
 
 - **Progress Reporting**:

@@ -58,10 +58,10 @@ tools:
 
 ```bash
 # Enable two-pass mode for this run
-ostruct run template.j2 schema.json -fc data.csv --enable-feature ci-download-hack
+ostruct run template.j2 schema.json --attach ci:data data.csv --enable-feature ci-download-hack
 
 # Force single-pass mode (disable workaround)
-ostruct run template.j2 schema.json -fc data.csv --disable-feature ci-download-hack
+ostruct run template.j2 schema.json --attach ci:data data.csv --disable-feature ci-download-hack
 ```
 
 ## 🛠 **Technical Implementation Details**
@@ -283,7 +283,7 @@ async def download_generated_files(self, response, output_path: Path) -> List[st
 
 ```bash
 # Test configuration
-ostruct run template.j2 schema.json --config two_pass_config.yaml -fc dummy.txt --verbose
+ostruct run template.j2 schema.json --config two_pass_config.yaml --attach ci:data dummy.txt --verbose
 
 # Results:
 # ✅ Two-pass mode correctly detected from config

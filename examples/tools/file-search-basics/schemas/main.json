@@ -1,0 +1,123 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "File Search Q&A Result",
+    "description": "Schema for validating document analysis output from File Search",
+    "type": "object",
+    "properties": {
+        "answers": {
+            "type": "array",
+            "description": "Array of question-answer pairs with citations",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "The question being answered"
+                    },
+                    "answer": {
+                        "type": "string",
+                        "description": "Detailed answer based on document content"
+                    },
+                    "citations": {
+                        "type": "array",
+                        "description": "List of documents referenced for this answer",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 0
+                    },
+                    "confidence": {
+                        "type": "string",
+                        "description": "Confidence level in the answer accuracy",
+                        "enum": [
+                            "high",
+                            "medium",
+                            "low"
+                        ]
+                    },
+                    "details": {
+                        "type": "array",
+                        "description": "Detailed breakdown of sub-questions and answers",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "sub_question": {
+                                    "type": "string"
+                                },
+                                "sub_answer": {
+                                    "type": "string"
+                                },
+                                "source": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "sub_question",
+                                "sub_answer"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "question",
+                    "answer",
+                    "citations",
+                    "confidence"
+                ],
+                "additionalProperties": true
+            },
+            "minItems": 1
+        },
+        "document_summary": {
+            "type": "object",
+            "description": "Summary of the analyzed documents",
+            "properties": {
+                "total_documents": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "document_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "coverage_assessment": {
+                    "type": "string",
+                    "description": "Assessment of how well documents covered the questions"
+                }
+            },
+            "additionalProperties": true
+        },
+        "analysis_metadata": {
+            "type": "object",
+            "description": "Metadata about the analysis process",
+            "properties": {
+                "questions_answered": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "incomplete_answers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "search_quality": {
+                    "type": "string",
+                    "enum": [
+                        "excellent",
+                        "good",
+                        "fair",
+                        "poor"
+                    ]
+                }
+            },
+            "additionalProperties": true
+        }
+    },
+    "required": [
+        "answers"
+    ],
+    "additionalProperties": true
+}

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Analysis Report</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header .subtitle {
+            margin: 15px 0 0 0;
+            opacity: 0.8;
+            font-size: 1em;
+        }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .summary-card .label {
+            color: #666;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 0.5px;
+        }
+        .card-total .number { color: #333; }
+        .card-errors .number { color: #dc3545; }
+        .card-warnings .number { color: #ffc107; }
+        .card-optimizations .number { color: #28a745; }
+
+        .analysis-content {
+            padding: 30px;
+        }
+        .analysis-summary {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #2196f3;
+        }
+        .analysis-summary h2 {
+            margin: 0 0 15px 0;
+            color: #1565c0;
+        }
+        .analysis-summary p {
+            margin: 0;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .issues-section {
+            margin-top: 30px;
+        }
+        .issues-section h2 {
+            margin: 0 0 20px 0;
+            color: #333;
+        }
+        .filter-buttons {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+        .filter-btn:hover {
+            background: #f8f9fa;
+        }
+        .filter-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .filter-btn.severity-error { border-color: #dc3545; }
+        .filter-btn.severity-error.active { background: #dc3545; }
+        .filter-btn.severity-warning { border-color: #ffc107; }
+        .filter-btn.severity-warning.active { background: #ffc107; color: #000; }
+        .filter-btn.severity-optimization { border-color: #28a745; }
+        .filter-btn.severity-optimization.active { background: #28a745; }
+
+        .issue {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        .issue:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .issue-header {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+        }
+        .issue-severity {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .severity-error {
+            background: #fee;
+            color: #dc3545;
+            border: 1px solid #f5c6cb;
+        }
+        .severity-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .severity-optimization {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .issue-category {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            background: #e9ecef;
+            color: #495057;
+        }
+        .issue-title {
+            flex-grow: 1;
+            font-weight: 500;
+            color: #333;
+        }
+        .issue-location {
+            color: #666;
+            font-size: 0.9em;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        .expand-icon {
+            color: #666;
+            transition: transform 0.2s;
+        }
+        .issue.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+        .issue-details {
+            padding: 0 20px 20px 20px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+        .issue.expanded .issue-details {
+            display: block;
+        }
+        .issue-description {
+            margin-bottom: 15px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .issue-recommendation {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #28a745;
+        }
+        .issue-recommendation h4 {
+            margin: 0 0 10px 0;
+            color: #155724;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .issue-recommendation p {
+            margin: 0;
+            color: #333;
+        }
+        .no-issues {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Template Analysis Report</h1>
+            <p class="subtitle">Comprehensive analysis of ostruct templates and schemas</p>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card card-total">
+                <div class="number" id="total-issues">0</div>
+                <div class="label">Total Issues</div>
+            </div>
+            <div class="summary-card card-errors">
+                <div class="number" id="critical-errors">0</div>
+                <div class="label">Critical Errors</div>
+            </div>
+            <div class="summary-card card-warnings">
+                <div class="number" id="warnings">0</div>
+                <div class="label">Warnings</div>
+            </div>
+            <div class="summary-card card-optimizations">
+                <div class="number" id="optimizations">0</div>
+                <div class="label">Optimizations</div>
+            </div>
+        </div>
+
+        <div class="analysis-content">
+            <div class="analysis-summary">
+                <h2>📋 Analysis Summary</h2>
+                <p id="analysis-summary-text">Loading analysis...</p>
+            </div>
+
+            <div class="issues-section">
+                <h2>🔧 Issues & Recommendations</h2>
+
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All Issues</button>
+                    <button class="filter-btn severity-error" data-filter="error">Errors</button>
+                    <button class="filter-btn severity-warning" data-filter="warning">Warnings</button>
+                    <button class="filter-btn severity-optimization" data-filter="optimization">Optimizations</button>
+                    <button class="filter-btn" data-filter="syntax">Syntax</button>
+                    <button class="filter-btn" data-filter="security">Security</button>
+                    <button class="filter-btn" data-filter="performance">Performance</button>
+                    <button class="filter-btn" data-filter="openai_compatibility">OpenAI</button>
+                </div>
+
+                <div id="issues-container">
+                    <!-- Issues will be populated by JavaScript -->
+                </div>
+
+                <div id="no-issues" class="no-issues hidden">
+                    <h3>🎉 No issues found!</h3>
+                    <p>Your template and schema look great.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Analysis data will be injected here
+        const analysisData =
+{
+  "analysis_summary": "The provided schema is mostly valid as a standard JSON Schema, but it is not compliant with OpenAI structured outputs requirements and does not leverage some ostruct best practices for documentation and type safety. Specific issues include missing required fields (all fields must be required for OpenAI compatibility), additionalProperties is set to true (must be false), missing descriptions for most fields, timestamp is typed as a plain string (could be more explicit or documented), and the presence of a field (extra_field) not used in a template may indicate maintainability issues. Optimization opportunities exist for improving clarity and compliance.",
+  "total_issues": 6,
+  "critical_errors": 2,
+  "warnings": 2,
+  "optimizations": 2,
+  "issues": [
+    {
+      "severity": "Critical",
+      "category": "OpenAI Structured Outputs Compliance",
+      "description": "Not all properties are in the required list, but OpenAI requires all object properties to be required.",
+      "location": "required, properties",
+      "recommendation": "Add all properties under 'properties' to the 'required' array to ensure full compliance with OpenAI output requirements."
+    },
+    {
+      "severity": "Critical",
+      "category": "OpenAI Structured Outputs Compliance",
+      "description": "'additionalProperties' is set to true, but must be false for OpenAI compatibility.",
+      "location": "additionalProperties",
+      "recommendation": "Change 'additionalProperties' to false to restrict to only explicitly defined fields."
+    },
+    {
+      "severity": "Warning",
+      "category": "Documentation",
+      "description": "Most properties are missing 'description' fields, making the schema less self-documenting and harder to maintain.",
+      "location": "properties",
+      "recommendation": "Add 'description' to each property for clarity and maintainability."
+    },
+    {
+      "severity": "Warning",
+      "category": "Type Definitions",
+      "description": "'timestamp' is a free string. If a format is expected, consider documentation. However, do not use the 'format' keyword as it is not supported by OpenAI structured outputs.",
+      "location": "properties.timestamp",
+      "recommendation": "Document the intended use or structure of this string, e.g., ISO8601 date, in the 'description' field."
+    },
+    {
+      "severity": "Optimization",
+      "category": "Maintainability",
+      "description": "'extra_field' is present in the schema but described as unused in the template, which may cause confusion or errors.",
+      "location": "properties.extra_field",
+      "recommendation": "Remove unused fields from the schema unless they are planned for future use and adequately documented."
+    },
+    {
+      "severity": "Optimization",
+      "category": "Best Practices",
+      "description": "Schema could leverage object composition or enums for fields with limited valid values (none found here, but always consider for future extensibility).",
+      "location": "properties",
+      "recommendation": "Use enums and better typing for fields with limited valid values and consider nested schemas or object composition to keep schema maintainable for future growth."
+    }
+  ]
+}
+        ;
+
+        // Populate the page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!analysisData) {
+                document.body.innerHTML = '<div style="text-align: center; padding: 40px;"><h1>❌ No analysis data found</h1></div>';
+                return;
+            }
+
+            // Populate summary cards
+            document.getElementById('total-issues').textContent = analysisData.total_issues || 0;
+            document.getElementById('critical-errors').textContent = analysisData.critical_errors || 0;
+            document.getElementById('warnings').textContent = analysisData.warnings || 0;
+            document.getElementById('optimizations').textContent = analysisData.optimizations || 0;
+
+            // Populate analysis summary
+            document.getElementById('analysis-summary-text').textContent = analysisData.analysis_summary || 'No summary available';
+
+            // Populate issues
+            const issuesContainer = document.getElementById('issues-container');
+            const noIssuesDiv = document.getElementById('no-issues');
+
+            if (!analysisData.issues || analysisData.issues.length === 0) {
+                noIssuesDiv.classList.remove('hidden');
+                return;
+            }
+
+            analysisData.issues.forEach((issue, index) => {
+                const issueDiv = document.createElement('div');
+                issueDiv.className = `issue issue-${issue.severity} category-${issue.category}`;
+                issueDiv.setAttribute('data-severity', issue.severity);
+                issueDiv.setAttribute('data-category', issue.category);
+
+                issueDiv.innerHTML = `
+                    <div class="issue-header" onclick="toggleIssue(${index})">
+                        <span class="issue-severity severity-${issue.severity}">${issue.severity}</span>
+                        <span class="issue-category">${issue.category.replace('_', ' ')}</span>
+                        <span class="issue-title">${issue.description}</span>
+                        <span class="issue-location">${issue.location}</span>
+                        <span class="expand-icon">▶</span>
+                    </div>
+                    <div class="issue-details">
+                        <div class="issue-description">
+                            ${issue.description}
+                        </div>
+                        <div class="issue-recommendation">
+                            <h4>💡 Recommendation</h4>
+                            <p>${issue.recommendation}</p>
+                        </div>
+                    </div>
+                `;
+
+                issuesContainer.appendChild(issueDiv);
+            });
+
+            // Set up filtering
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Update active button
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    // Filter issues
+                    const filter = button.getAttribute('data-filter');
+                    const issues = document.querySelectorAll('.issue');
+
+                    issues.forEach(issue => {
+                        if (filter === 'all') {
+                            issue.classList.remove('hidden');
+                        } else if (filter === 'error' || filter === 'warning' || filter === 'optimization') {
+                            if (issue.getAttribute('data-severity') === filter) {
+                                issue.classList.remove('hidden');
+                            } else {
+                                issue.classList.add('hidden');
+                            }
+                        } else {
+                            if (issue.getAttribute('data-category') === filter) {
+                                issue.classList.remove('hidden');
+                            } else {
+                                issue.classList.add('hidden');
+                            }
+                        }
+                    });
+                });
+            });
+        });
+
+        function toggleIssue(index) {
+            const issues = document.querySelectorAll('.issue');
+            const issue = issues[index];
+            issue.classList.toggle('expanded');
+        }
+    </script>
+</body>
+</html>

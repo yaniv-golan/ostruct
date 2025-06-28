@@ -1,0 +1,125 @@
+{
+    "type": "object",
+    "properties": {
+        "topic": {
+            "type": "string",
+            "description": "The debate topic being discussed"
+        },
+        "rounds": {
+            "type": "integer",
+            "description": "Number of debate rounds completed"
+        },
+        "pro_arguments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "argument": {
+                        "type": "string",
+                        "description": "The pro-side argument"
+                    },
+                    "evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Supporting evidence for the argument"
+                    },
+                    "strength": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "description": "Argument strength rating (1-10)"
+                    }
+                },
+                "required": [
+                    "argument",
+                    "evidence",
+                    "strength"
+                ]
+            }
+        },
+        "con_arguments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "argument": {
+                        "type": "string",
+                        "description": "The con-side argument"
+                    },
+                    "evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Supporting evidence for the argument"
+                    },
+                    "strength": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "description": "Argument strength rating (1-10)"
+                    }
+                },
+                "required": [
+                    "argument",
+                    "evidence",
+                    "strength"
+                ]
+            }
+        },
+        "analysis": {
+            "type": "object",
+            "properties": {
+                "evidence_quality": {
+                    "type": "string",
+                    "enum": [
+                        "excellent",
+                        "good",
+                        "fair",
+                        "poor"
+                    ],
+                    "description": "Overall quality of evidence presented"
+                },
+                "logical_consistency": {
+                    "type": "string",
+                    "enum": [
+                        "highly_consistent",
+                        "mostly_consistent",
+                        "somewhat_consistent",
+                        "inconsistent"
+                    ],
+                    "description": "Logical consistency of arguments"
+                },
+                "debate_quality": {
+                    "type": "string",
+                    "enum": [
+                        "excellent",
+                        "good",
+                        "fair",
+                        "poor"
+                    ],
+                    "description": "Overall quality of the debate"
+                }
+            },
+            "required": [
+                "evidence_quality",
+                "logical_consistency",
+                "debate_quality"
+            ]
+        },
+        "summary": {
+            "type": "string",
+            "description": "Overall summary of the debate and key insights"
+        }
+    },
+    "required": [
+        "topic",
+        "rounds",
+        "pro_arguments",
+        "con_arguments",
+        "analysis",
+        "summary"
+    ]
+}

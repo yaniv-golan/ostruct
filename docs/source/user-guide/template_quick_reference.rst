@@ -1,7 +1,7 @@
 ostruct Template Quick Reference
 =================================
 
-This quick reference provides a concise summary of ostruct's most commonly used template features. For comprehensive documentation, see the :doc:`ostruct_template_scripting_guide`.
+This quick reference provides a concise summary of ostruct's most commonly used template features. For comprehensive documentation, see the :doc:`template_authoring`.
 
 Template Structure
 ==================
@@ -10,11 +10,12 @@ Template Structure
 
    ---
    system_prompt: You are an expert assistant.
-   model: gpt-4o
-   temperature: 0.7
    ---
 
    # Template content with {{ variables }} and {% logic %}
+
+.. note::
+   **Model and Temperature**: Use CLI flags ``--model gpt-4o --temperature 0.7`` instead of frontmatter.
 
 Essential Syntax
 ================
@@ -52,22 +53,22 @@ File Variables
 File Routing Flags
 ------------------
 
-.. list-table::
+.. list-table:: File Routing Quick Reference
    :header-rows: 1
-   :widths: 15 25 60
+   :widths: 20 30 50
 
    * - Flag
      - Purpose
-     - Example
-   * - ``-ft``
-     - Template-only
-     - ``-ft config.yaml`` → ``config_yaml`` variable
-   * - ``-fc``
-     - Code Interpreter
-     - ``-fc data.csv`` → ``data_csv`` variable
-   * - ``-fs``
-     - File Search
-     - ``-fs docs.pdf`` → ``docs_pdf`` variable
+     - Template Variable
+   * - ``--file``
+     - Template access only
+     - ``filename`` variable
+   * - ``--file ci:data``
+     - Code Interpreter upload
+     - ``data`` variable with analysis context
+   * - ``--file fs:docs``
+     - File Search upload
+     - ``docs`` variable with search context
 
 Custom Variable Names
 ---------------------
@@ -75,10 +76,10 @@ Custom Variable Names
 .. code-block:: bash
 
    # Auto-naming
-   -ft config.yaml                    # → config_yaml
+   --file config config.yaml                    # → config_yaml
 
    # Custom naming
-   --fta app_config config.yaml       # → app_config
+   --file app_config config.yaml       # → app_config
 
 File Content Access
 -------------------
@@ -299,13 +300,13 @@ Basic Usage
 .. code-block:: bash
 
    # Simple file processing
-   ostruct run template.j2 schema.json -ft config.yaml
+   ostruct run template.j2 schema.json --file config config.yaml
 
    # Multiple files with custom names
-   ostruct run template.j2 schema.json --fta config config.yaml --fta data data.csv
+   ostruct run template.j2 schema.json --file config config.yaml --file data data.csv
 
    # Directory processing
-   ostruct run template.j2 schema.json -dc source_code/
+   ostruct run template.j2 schema.json --dir ci:data source_code/
 
 Multi-Tool Integration
 ----------------------
@@ -313,7 +314,7 @@ Multi-Tool Integration
 .. code-block:: bash
 
    # Code analysis with execution
-   ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf
+   ostruct run analysis.j2 schema.json --file ci:data data.csv --file fs:docs docs.pdf
 
    # With web search
    ostruct run research.j2 schema.json --enable-tool web-search -V topic="AI trends"
@@ -331,7 +332,7 @@ Variables and Configuration
    # With system prompt
    ostruct run template.j2 schema.json \
      --sys-prompt "You are an expert analyst" \
-     -ft data.txt
+     --file config data.txt
 
 Debugging
 ---------
@@ -339,16 +340,16 @@ Debugging
 .. code-block:: bash
 
    # Show available variables
-   ostruct run template.j2 schema.json --show-context -ft config.yaml
+   ostruct run template.j2 schema.json --template-debug vars --file config config.yaml
 
    # Dry run to test template
-   ostruct run template.j2 schema.json --dry-run -ft config.yaml
+   ostruct run template.j2 schema.json --dry-run --file config config.yaml
 
    # Debug template expansion
-   ostruct run template.j2 schema.json --show-templates -ft config.yaml
+   ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml
 
 .. seealso::
 
-   - :doc:`ostruct_template_scripting_guide` - Complete templating guide
+   - :doc:`template_authoring` - Complete templating guide
    - :doc:`cli_reference` - Full CLI documentation
    - :doc:`examples` - Practical examples and use cases

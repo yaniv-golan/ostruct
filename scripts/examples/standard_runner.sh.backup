@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Standard runner library for ostruct examples
+# Provides common functionality to reduce boilerplate in example run.sh scripts
+
+# ── Defaults (can be overridden before sourcing) ──
+DEFAULT_MODEL="${DEFAULT_MODEL:-gpt-4o-mini}"
+REQUIRES_JQ="${REQUIRES_JQ:-false}"
+REQUIRES_MERMAID="${REQUIRES_MERMAID:-false}"
+
+# ── Internal variables ──
+MODEL="$DEFAULT_MODEL"
+DRY=""
+MODE="full"
+VERBOSE=false
+
+# ── Helper imports based on requirements ──
+if [[ "$REQUIRES_JQ" == "true" ]]; then
+  source "$ROOT/scripts/ensure_jq.sh" || { echo "❌ jq required but not available"; exit 1; }
+fi
+
+if [[ "$REQUIRES_MERMAID" == "true" ]]; then
+  source "$ROOT/scripts/ensure_mermaid.sh" || { echo "❌ Mermaid CLI required but not available"; exit 1; }
+fi
+
+# ── Helper functions ──
+
+# Wrapper for ostruct run that automatically adds model and dry-run flags
+run_ostruct() {
+  ostruct run "$@" -m "$MODEL" $DRY
+}
+
+# Validate all templates in templates/ directory
+validate_all_templates() {
+  echo "🧪 Validating all templates..."
+  local template schema
+  for template in templates/*.j2; do
+    if [[ -f "$template" ]]; then
+      schema="schemas/$(basename "$template" .j2).json"
+      if [[ -f "$schema" ]]; then
+        echo "🔹 Validating $(basename "$template")"
+        run_ostruct "$template" "$schema" --dry-run
+      else
+        echo "⚠️ No schema found for $template (expected $schema)"
+      fi
+    fi
+  done
+  echo "✅ Template validation completed"
+}
+
+# Parse standard arguments plus custom ones
+parse_args() {
+  local custom_parser="$1"
+  shift
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --model)         MODEL="$2"; shift 2;;
+      --dry-run)       DRY="--dry-run"; shift;;
+      --test-dry-run)  MODE="test-dry"; DRY="--dry-run"; shift;;
+      --test-live)     MODE="test-live"; shift;;
+      --verbose)       VERBOSE=true; shift;;
+      *)
+        # Try custom parser
+        if [[ -n "$custom_parser" ]]; then
+          local handled=false
+          # Execute custom parser in current context
+          eval "$custom_parser" && handled=true
+          if [[ "$handled" != "true" ]]; then
+            echo "❌ Unknown argument: $1"
+            exit 1
+          fi
+        else
+          echo "❌ Unknown argument: $1"
+          exit 1
+        fi
+        ;;
+    esac
+  done
+
+  # ── Verbose mode setup ──
+  if $VERBOSE; then
+    set -x
+    DRY="$DRY --debug --progress-max"
+  fi
+}
+
+# Execute the example based on mode
+execute_mode() {
+  if declare -f run_example > /dev/null; then
+    run_example
+  else
+    echo "❌ run_example() function not defined"
+    exit 1
+  fi
+}
+
+# Simple argument parsing for examples with no custom args
+parse_standard_args() {
+  parse_args "" "$@"
+}

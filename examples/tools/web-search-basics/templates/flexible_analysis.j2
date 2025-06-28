@@ -1,0 +1,60 @@
+# Flexible Research Analysis
+
+**Research Depth**: {{ safe_get('depth', 'comprehensive') }}
+
+## Research Instructions
+
+{% if web_search_enabled %}
+{# Note to AI: Web search is available. Please use it to find current information about {{ topic }}. #}
+Research the latest developments in {{ topic }} using web search. Focus on information from the last {{ safe_get('timeframe', '30 days') }} and cite all sources used in the 'sources' field.
+{% else %}
+{# Note to AI: Web search is not available. Use your training data and note any limitations. #}
+Analyze {{ topic }} based on available training data. Please note the knowledge cutoff date and any limitations in your analysis due to potentially outdated information.
+{% endif %}
+
+## Analysis Requirements
+
+**Topic**: {{ topic }}
+**Analysis Depth**: {{ safe_get('depth', 'comprehensive') }}
+**Focus Areas**: {{ safe_get('focus_areas', ['general analysis']) | join(', ') }}
+
+### Research Objectives
+
+1. **Current Information**: Search for information from the last {{ safe_get('timeframe', '30 days') }}
+2. **Authoritative Sources**: Prioritize .gov, .edu, and established institutions
+3. **Multiple Perspectives**: Include diverse viewpoints and expert opinions
+4. **Recent Developments**: Focus on latest trends, changes, and updates
+
+### Analysis Structure
+
+Provide your analysis in the following sections:
+
+1. **Executive Summary**
+   - Key findings and main insights
+   - Current status and recent changes
+   - Critical trends and implications
+
+2. **Detailed Analysis**
+   - In-depth examination of key aspects
+   - Supporting evidence and data
+   - Expert opinions and perspectives
+
+3. **Recent Developments**
+   - Latest news and updates
+   - Emerging trends and patterns
+   - Future implications and projections
+
+4. **Sources and Citations**
+   - Complete source list with URLs
+   - Source credibility assessment
+   - Publication dates and relevance
+
+## Output Requirements
+
+{% if web_search_enabled %}
+**Web Search Available**: Use web search to gather current information. Include at least 3-5 reliable sources.
+{% else %}
+**No Web Search**: Clearly indicate knowledge cutoff limitations and potential outdated information.
+{% endif %}
+
+Provide a {{ safe_get('depth', 'comprehensive') }} analysis that clearly distinguishes between verified facts and informed opinions. Structure your response according to the provided schema.

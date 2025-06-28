@@ -71,7 +71,7 @@ Return your analysis in this exact format:
 1. **Check template format**:
 
    ```bash
-   ostruct run template.j2 schema.json --debug --show-templates
+   ostruct run template.j2 schema.json --debug --template-debug post-expand
    ```
 
    Verify the template instructs fenced JSON + markdown link
@@ -99,6 +99,31 @@ Return your analysis in this exact format:
 - **Wrong link format** → Use `[name](sandbox:/mnt/data/name)`
 - **Model doesn't follow instructions** → Try different model (GPT-4o-mini works well)
 
+#### File Conflict Resolution
+
+**Files being overwritten?**
+
+Use the `--ci-duplicate-outputs` flag to control behavior:
+
+```bash
+# Generate unique names for duplicate files
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs rename
+
+# Skip files that already exist
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs skip
+
+# Overwrite existing files (default)
+ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs overwrite
+```
+
+Or configure permanently in `ostruct.yaml`:
+
+```yaml
+tools:
+  code_interpreter:
+    duplicate_outputs: "rename"  # overwrite|rename|skip
+```
+
 ## Quick Diagnostic Checklist
 
 When encountering template issues, follow this checklist:
@@ -123,7 +148,7 @@ When encountering template issues, follow this checklist:
 #### 1. Check Template Syntax
 
 ```bash
-ostruct run template.j2 schema.json --debug-templates -f config.yaml
+ostruct run template.j2 schema.json --template-debug steps --file config config.yaml
 ```
 
 **Look for**:
@@ -135,7 +160,7 @@ ostruct run template.j2 schema.json --debug-templates -f config.yaml
 #### 2. Verify Template Content
 
 ```bash
-ostruct run template.j2 schema.json --show-templates -f config.yaml
+ostruct run template.j2 schema.json --template-debug post-expand --file config config.yaml
 ```
 
 **Expected**: Should show expanded template content, not raw template.
@@ -143,7 +168,7 @@ ostruct run template.j2 schema.json --show-templates -f config.yaml
 #### 3. Check Debug Output
 
 ```bash
-ostruct run template.j2 schema.json --debug -f config.yaml
+ostruct run template.j2 schema.json --debug --file config config.yaml
 ```
 
 **Look for**:
@@ -157,7 +182,7 @@ ostruct run template.j2 schema.json --debug -f config.yaml
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | No expansion | Invalid Jinja2 syntax | Fix template syntax errors |
-| Partial expansion | Mixed valid/invalid syntax | Use `--debug-templates` to find errors |
+| Partial expansion | Mixed valid/invalid syntax | Use `--template-debug steps` to find errors |
 | Wrong output | Template logic errors | Review conditionals and loops |
 
 ## Undefined Variable Errors
@@ -173,7 +198,7 @@ UndefinedError: 'variable_name' is undefined
 #### 1. List Available Variables
 
 ```bash
-ostruct run template.j2 schema.json --show-context -f config.yaml
+ostruct run template.j2 schema.json --template-debug vars --file config config.yaml
 ```
 
 **Check**:
@@ -185,7 +210,7 @@ ostruct run template.j2 schema.json --show-context -f config.yaml
 #### 2. Detailed Variable Inspection
 
 ```bash
-ostruct run template.j2 schema.json --show-context-detailed -f config.yaml
+ostruct run template.j2 schema.json --template-debug vars,preview --file config config.yaml
 ```
 
 **Look for**:
@@ -197,7 +222,7 @@ ostruct run template.j2 schema.json --show-context-detailed -f config.yaml
 #### 3. Debug File Loading
 
 ```bash
-ostruct run template.j2 schema.json --debug -f config.yaml
+ostruct run template.j2 schema.json --debug --file config config.yaml
 ```
 
 **Check logs for**:
@@ -218,16 +243,16 @@ ostruct run template.j2 schema.json --debug -f config.yaml
 {{ config_file.content }}
 ```
 
-**Debug**: Use `--show-context` to see actual variable names.
+**Debug**: Use `--template-debug vars` to see actual variable names.
 
 #### Issue: Wrong File Routing
 
 ```bash
-# Wrong: Using generic -f flag
+# Wrong: Using generic -f flag (deprecated)
 ostruct run template.j2 schema.json -f config.yaml
 
-# Correct: Using file-to-attribute routing
-ostruct run template.j2 schema.json --fta config_file config.yaml
+# Correct: Using explicit file routing
+ostruct run template.j2 schema.json --file config_file config.yaml
 ```
 
 **Debug**: Check that file routing creates the expected variable name.
@@ -242,7 +267,7 @@ ostruct run template.j2 schema.json --fta config_file config.yaml
 {{ files | length }}
 ```
 
-**Debug**: Use `--show-context-detailed` to see available attributes.
+**Debug**: Use `--template-debug vars,preview` to see available attributes.
 
 #### Issue: Loop Variable Scope
 
@@ -282,7 +307,7 @@ Last file: {{ last_file.name if last_file }}
 {% endif %}
 ```
 
-**Debug**: Use `--debug-templates` to see parsing errors.
+**Debug**: Use `--template-debug steps` to see parsing errors.
 
 #### 2. Invalid Filter Syntax
 
@@ -329,7 +354,7 @@ Last file: {{ last_file.name if last_file }}
 1. **Use detailed template expansion**:
 
    ```bash
-   ostruct run template.j2 schema.json --debug-templates -f config.yaml
+   ostruct run template.j2 schema.json --template-debug steps --file config config.yaml
    ```
 
 2. **Check specific error messages** in the output
@@ -338,61 +363,40 @@ Last file: {{ last_file.name if last_file }}
 
 4. **Break down complex templates** into smaller parts for testing
 
-## Optimization Issues
+## File Content Display Issues
 
 ### Symptoms
 
-- Template works with `--no-optimization` but fails normally
-- Optimization changes break template logic
-- Unexpected content in optimized output
+- Template shows `FileInfoList(['filename'])` instead of file content
+- File content appears as object representation instead of actual content
 
 ### Diagnostic Steps
 
-#### 1. Compare Before/After Optimization
+#### 1. Check File Content Access
 
 ```bash
-ostruct run template.j2 schema.json --show-optimization-diff -f large_file.txt
+ostruct run template.j2 schema.json --template-debug vars,preview --file data file.txt
 ```
 
 **Look for**:
 
-- Unexpected variable changes
-- Content moved to appendix incorrectly
-- References that might be broken
+- How file variables are being accessed
+- Whether `.content` property is being used
+- File variable types and available properties
 
-#### 2. Track Optimization Steps
-
-```bash
-ostruct run template.j2 schema.json --show-optimization-steps -f large_file.txt
-```
-
-**Check each step for**:
-
-- Logical transformations
-- Content preservation
-- Reference accuracy
-
-#### 3. Test Without Optimization
+#### 2. Test Template Expansion
 
 ```bash
-ostruct run template.j2 schema.json --no-optimization -f large_file.txt
+ostruct run template.j2 schema.json --template-debug steps --file data file.txt
 ```
 
-**If this works**: The issue is in optimization logic.
+**Check for**:
 
-### Common Optimization Problems
+- Proper variable expansion
+- Template syntax errors
+- Variable access patterns
 
-#### Issue: Optimizer Breaking File References
-
-**Symptoms**: Template refers to moved content incorrectly.
-
-**Debug**:
-
-```bash
-ostruct run template.j2 schema.json --show-optimization-steps --optimization-step-detail detailed -f file.txt
-```
-
-**Solution**: Report as bug if optimizer generates invalid references.
+### Common File Content Problems
 
 #### Issue: FileInfoList Shows Instead of Content
 
@@ -405,13 +409,13 @@ ostruct run template.j2 schema.json --show-optimization-steps --optimization-ste
 - ✅ Correct: `{{ my_file.content }}`
 - ❌ Wrong: `{{ my_file }}`
 
-#### Issue: Content Moved Incorrectly
+#### Issue: File Variable Undefined
 
-**Symptoms**: File content appears in appendix when it shouldn't.
+**Symptoms**: Template fails with undefined variable errors.
 
-**Debug**: Check if file is actually large enough to warrant optimization.
+**Debug**: Check file routing and variable naming.
 
-**Solution**: Use explicit file routing or smaller files.
+**Solution**: Use proper file attachment flags and verify variable names.
 
 ## Performance Problems
 
@@ -426,28 +430,22 @@ ostruct run template.j2 schema.json --show-optimization-steps --optimization-ste
 #### 1. Profile Template Processing
 
 ```bash
-time ostruct run template.j2 schema.json --debug -f large_file.txt
+time ostruct run template.j2 schema.json --debug --file large large_file.txt
 ```
 
-#### 2. Check Optimization Impact
+#### 2. Test Template Complexity
 
 ```bash
-ostruct run template.j2 schema.json --show-optimization-diff -f large_file.txt
-```
-
-#### 3. Test Without Optimization
-
-```bash
-time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
+ostruct run template.j2 schema.json --template-debug steps --file large large_file.txt
 ```
 
 ### Performance Solutions
 
 #### Large Files
 
-- Use file routing (`--fta`, `--ftl`) instead of generic `-f`
-- Let optimization move large content to appendix
+- Use explicit file routing (`--file alias`, `--dir alias`) instead of generic `-f`
 - Consider breaking large files into smaller pieces
+- Use file content selectively (e.g., `{{ file.content | truncate(1000) }}`)
 
 #### Complex Templates
 
@@ -457,7 +455,7 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 
 #### Many Variables
 
-- Use `--show-context` to verify only needed variables are loaded
+- Use `--template-debug vars` to verify only needed variables are loaded
 - Remove unused file references
 - Use selective file loading
 
@@ -467,11 +465,11 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 
 | Error Message | Cause | Debug Command | Solution |
 |---------------|-------|---------------|----------|
-| `UndefinedError: 'var' is undefined` | Missing variable | `--show-context` | Add variable or fix typo |
-| `TemplateSyntaxError` | Invalid Jinja2 syntax | `--debug-templates` | Fix template syntax |
+| `UndefinedError: 'var' is undefined` | Missing variable | `--template-debug vars` | Add variable or fix typo |
+| `TemplateSyntaxError` | Invalid Jinja2 syntax | `--template-debug steps` | Fix template syntax |
 | `TemplateNotFound` | Missing template file | `--debug` | Check file path |
-| `FilterArgumentError` | Wrong filter usage | `--debug-templates` | Fix filter syntax |
-| `FileInfoList(['path'])` in output | Using `{{ var }}` instead of `{{ var.content }}` | `--debug-templates` | Use `.content` to access file content |
+| `FilterArgumentError` | Wrong filter usage | `--template-debug steps` | Fix filter syntax |
+| `FileInfoList(['path'])` in output | Using `{{ var }}` instead of `{{ var.content }}` | `--template-debug steps` | Use `.content` to access file content |
 
 ### File Loading Errors
 
@@ -479,14 +477,7 @@ time ostruct run template.j2 schema.json --no-optimization -f large_file.txt
 |---------------|-------|---------------|----------|
 | `FileNotFoundError` | Missing input file | `--debug` | Check file path |
 | `PermissionError` | No file access | `--debug` | Fix file permissions |
-| `UnicodeDecodeError` | Binary file as text | `--show-context-detailed` | Use correct file type |
-
-### Optimization Errors
-
-| Error Message | Cause | Debug Command | Solution |
-|---------------|-------|---------------|----------|
-| Invalid template after optimization | Optimizer bug | `--show-optimization-diff` | Use `--no-optimization`, report bug |
-| Missing content in output | Incorrect optimization | `--show-optimization-steps` | Check optimization logic |
+| `UnicodeDecodeError` | Binary file as text | `--template-debug vars,preview` | Use correct file type |
 
 ## Emergency Debugging Workflow
 
@@ -496,36 +487,36 @@ When nothing else works, follow this step-by-step process:
 
 ```bash
 # Minimal test
-ostruct run simple_template.j2 schema.json --fta test_var "hello world"
+ostruct run simple_template.j2 schema.json --attach test_var "hello world"
 ```
 
 ### 2. Add Complexity Gradually
 
 ```bash
 # Add one file
-ostruct run template.j2 schema.json --fta config config.yaml
+ostruct run template.j2 schema.json --attach config config.yaml
 
 # Add more files
-ostruct run template.j2 schema.json --fta config config.yaml --fta data data.json
+ostruct run template.j2 schema.json --attach config config.yaml --attach data data.json
 
 # Use full template
-ostruct run template.j2 schema.json -f config.yaml -f data.json
+ostruct run template.j2 schema.json --file config config.yaml --file data data.json
 ```
 
 ### 3. Enable Full Debugging
 
 ```bash
-ostruct run template.j2 schema.json --debug --show-context-detailed -f config.yaml
+ostruct run template.j2 schema.json --debug --template-debug vars,preview --file config config.yaml
 ```
 
-### 4. Test Optimization Separately
+### 4. Test Template Expansion
 
 ```bash
-# Without optimization
-ostruct run template.j2 schema.json --no-optimization -f config.yaml
+# Test template expansion steps
+ostruct run template.j2 schema.json --template-debug steps --file config config.yaml
 
-# With optimization tracking
-ostruct run template.j2 schema.json --show-optimization-steps -f config.yaml
+# Test with dry run
+ostruct run template.j2 schema.json --dry-run --template-debug post-expand --file config config.yaml
 ```
 
 ### 5. Get Help
@@ -545,7 +536,7 @@ If you've followed this troubleshooting guide and still have issues:
 1. **Gather debug information**:
 
    ```bash
-   ostruct run template.j2 schema.json --debug --show-context -f file.yaml > debug_output.txt 2>&1
+   ostruct run template.j2 schema.json --debug --template-debug vars --file config file.yaml > debug_output.txt 2>&1
    ```
 
 2. **Create minimal reproduction case**:

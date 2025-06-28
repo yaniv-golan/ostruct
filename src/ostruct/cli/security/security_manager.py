@@ -10,10 +10,11 @@ This module provides a high-level SecurityManager class that uses the other modu
 
 import logging
 import os
+import stat
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, List, Optional, Union
+from typing import Generator, List, Optional, Tuple, Union
 
 from ostruct.cli.errors import OstructFileNotFoundError
 
@@ -26,6 +27,7 @@ from .errors import (
 )
 from .normalization import normalize_path
 from .symlink_resolver import _resolve_symlink
+from .types import PathSecurity
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,7 @@ class SecurityManager:
         allowed_dirs: Optional[List[Union[str, Path]]] = None,
         allow_temp_paths: bool = False,
         max_symlink_depth: int = MAX_SYMLINK_DEPTH,
+        security_mode: PathSecurity = PathSecurity.WARN,
     ):
         """Initialize the SecurityManager.
 
@@ -74,6 +77,7 @@ class SecurityManager:
             allowed_dirs: Additional directories allowed for access.
             allow_temp_paths: Whether to allow temporary directory paths.
             max_symlink_depth: Maximum depth for symlink resolution.
+            security_mode: Path security enforcement mode (PERMISSIVE, WARN, or STRICT).
 
         Raises:
             DirectoryNotFoundError: If base_dir or any allowed directory doesn't exist.
@@ -98,18 +102,26 @@ class SecurityManager:
             normalize_path(tempfile.gettempdir()) if allow_temp_paths else None
         )
 
+        # Enhanced security features (T2.1)
+        self.security_mode = security_mode
+        self._allow_inodes: set[tuple[int, int]] = (
+            set()
+        )  # (device, inode) pairs
+
         logger.debug(
             "\n=== Initialized SecurityManager ===\n"
             "Base dir: %s\n"
             "Allowed dirs: %s\n"
             "Allow temp: %s\n"
             "Temp dir: %s\n"
-            "Max symlink depth: %d",
+            "Max symlink depth: %d\n"
+            "Security mode: %s",
             self._base_dir,
             self._allowed_dirs,
             self._allow_temp_paths,
             self._temp_dir,
             self._max_symlink_depth,
+            self.security_mode,
         )
 
     @property
@@ -139,6 +151,496 @@ class SecurityManager:
             )
         if norm_dir not in self._allowed_dirs:
             self._allowed_dirs.append(norm_dir)
+
+    def configure_security_mode(
+        self,
+        mode: PathSecurity,
+        allow_files: Optional[List[str]] = None,
+        allow_lists: Optional[List[str]] = None,
+    ) -> None:
+        """Configure enhanced security features while preserving existing functionality.
+
+        Args:
+            mode: Path security enforcement mode
+            allow_files: List of individual file paths to allow (tracked by inode)
+            allow_lists: List of allow-list files to load
+
+        Raises:
+            DirectoryNotFoundError: If any allow-list file doesn't exist
+            PathSecurityError: If there's an error processing allow lists
+        """
+        self.security_mode = mode
+        logger.debug("Configuring security mode: %s", mode)
+
+        # Process individual files by inode (new feature)
+        if allow_files:
+            for file_path in allow_files:
+                if not self.pin_file_by_inode(file_path):
+                    logger.warning(
+                        "Could not add file to allowlist: %s", file_path
+                    )
+
+        # Process allow lists (new feature)
+        if allow_lists:
+            for list_path in allow_lists:
+                self._load_allow_list(list_path)
+
+    def _load_allow_list(self, list_path: str) -> None:
+        """Load allowed paths from a file.
+
+        Args:
+            list_path: Path to the allow-list file
+
+        Raises:
+            DirectoryNotFoundError: If the allow-list file doesn't exist
+            PathSecurityError: If there's an error processing the file
+        """
+        try:
+            list_file = normalize_path(list_path)
+            if not list_file.exists():
+                raise DirectoryNotFoundError(
+                    f"Allow-list file not found: {list_path}",
+                    path=list_path,
+                )
+
+            with open(list_file, "r", encoding="utf-8") as f:
+                for line_num, line in enumerate(f, 1):
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue  # Skip empty lines and comments
+
+                    try:
+                        # Try to interpret as directory first
+                        path_obj = normalize_path(line)
+                        if path_obj.is_dir():
+                            self.add_allowed_directory(path_obj)
+                            logger.debug(
+                                "Added directory from allow-list: %s", line
+                            )
+                        elif path_obj.is_file():
+                            # Add as inode-tracked file using secure pinning
+                            if self.pin_file_by_inode(path_obj):
+                                logger.debug(
+                                    "Added file from allow-list: %s", line
+                                )
+                            else:
+                                logger.warning(
+                                    "Failed to pin file from allow-list: %s",
+                                    line,
+                                )
+                        else:
+                            logger.warning(
+                                "Path in allow-list does not exist: %s (line %d)",
+                                line,
+                                line_num,
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            "Error processing allow-list entry '%s' (line %d): %s",
+                            line,
+                            line_num,
+                            e,
+                        )
+
+        except OSError as e:
+            raise PathSecurityError(
+                f"Failed to read allow-list file: {e}",
+                path=list_path,
+                context={"reason": "allow_list_read_error"},
+            ) from e
+
+    def pin_file_by_inode(self, file_path: Union[str, Path]) -> bool:
+        """Pin a file to allowlist by its inode (survives moves/renames).
+
+        Uses O_NOFOLLOW for security on Unix systems to prevent symlink attacks.
+        Falls back to Windows-compatible approach when O_NOFOLLOW is unavailable.
+
+        Args:
+            file_path: Path to the file to pin
+
+        Returns:
+            True if file was successfully pinned, False otherwise
+        """
+        try:
+            path = normalize_path(file_path)
+
+            # Use O_NOFOLLOW to prevent symlink attacks during stat
+            # On Windows, O_NOFOLLOW is not supported, use alternative approach
+            if hasattr(os, "O_NOFOLLOW") and os.name != "nt":
+                # Unix-like systems: use O_NOFOLLOW for security
+                try:
+                    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                    try:
+                        st = os.fstat(fd)
+                        inode_id = self._get_file_identity(st)
+                        self._allow_inodes.add(inode_id)
+                        logger.debug(
+                            "Pinned file %s by inode %s (O_NOFOLLOW)",
+                            path,
+                            inode_id,
+                        )
+                        return True
+                    finally:
+                        os.close(fd)
+                except OSError as e:
+                    # Handle pyfakefs compatibility issues
+                    if (
+                        e.errno == 9
+                    ):  # EBADF - Bad file descriptor (common in fake filesystem)
+                        logger.debug(
+                            "Fake filesystem detected, falling back to lstat: %s",
+                            path,
+                        )
+                        # Fall through to Windows-style approach
+                    elif e.errno == 40:  # ELOOP - symlink loop
+                        logger.warning("Symlink loop detected: %s", path)
+                        return False
+                    elif e.errno == 20:  # ENOTDIR - symlink in path
+                        logger.warning("Symlink in path: %s", path)
+                        return False
+                    else:
+                        # For other errors, fall back to Windows approach rather than failing
+                        logger.debug(
+                            "O_NOFOLLOW failed with error %s, falling back to lstat: %s",
+                            e.errno,
+                            path,
+                        )
+
+            # Windows fallback (also used when O_NOFOLLOW fails in fake filesystem)
+            # Windows fallback: check for symlinks manually
+            st_before = os.lstat(path)
+            if stat.S_ISLNK(st_before.st_mode):
+                logger.warning(
+                    "Symlink detected, using resolved target: %s", path
+                )
+                # For symlinks, stat the resolved target
+                resolved = path.resolve()
+                st_after = os.stat(resolved)
+                inode_id = self._get_file_identity(st_after)
+            else:
+                # Regular file
+                inode_id = self._get_file_identity(st_before)
+
+            self._allow_inodes.add(inode_id)
+            logger.debug(
+                "Pinned file %s by inode %s (Windows)", path, inode_id
+            )
+            return True
+
+        except OSError as e:
+            logger.error("Cannot pin file %s: %s", file_path, e)
+            return False
+
+    def _get_file_identity(
+        self, stat_result: os.stat_result
+    ) -> Tuple[int, int]:
+        """Get platform-appropriate file identity.
+
+        Args:
+            stat_result: Result from os.stat() or os.fstat()
+
+        Returns:
+            Tuple of (device, inode) for file identity
+        """
+        # Windows: Python's stat_result may not have reliable st_ino
+        # Use combination of device + file index when available
+        if os.name == "nt":
+            # Windows fallback: use dev + (file_index or ino) + size + ctime
+            # This provides reasonable identity even with NTFS limitations
+            file_id = getattr(stat_result, "st_file_index", stat_result.st_ino)
+            # Include size and ctime for additional uniqueness on Windows
+            extended_id = hash(
+                (file_id, stat_result.st_size, stat_result.st_ctime_ns)
+            )
+            return (stat_result.st_dev, extended_id)
+        else:
+            # Unix-like: Use device and inode (standard approach)
+            return (stat_result.st_dev, stat_result.st_ino)
+
+    def is_file_allowed_by_inode(self, file_path: Union[str, Path]) -> bool:
+        """Check if file is allowed based on its inode.
+
+        For explicitly allowed files, allow path traversal to enable access
+        via alternative paths that resolve to the same file.
+
+        Args:
+            file_path: Path to check
+
+        Returns:
+            True if file is in the inode allowlist
+        """
+        try:
+            # First try normal normalization (blocks path traversal)
+            try:
+                path = normalize_path(file_path)
+            except PathSecurityError as e:
+                # If path traversal was blocked, try with traversal allowed
+                # This enables access to explicitly allowed files via alternative paths
+                if "Directory traversal not allowed" in str(e):
+                    path = normalize_path(file_path, allow_traversal=True)
+                else:
+                    # Other security errors (unsafe Unicode, etc.) are not bypassed
+                    return False
+
+            st = os.stat(path, follow_symlinks=False)
+            file_id = self._get_file_identity(st)
+            is_allowed = file_id in self._allow_inodes
+
+            if is_allowed:
+                logger.debug(
+                    "File allowed by inode: %s -> %s", file_path, file_id
+                )
+
+            return is_allowed
+        except OSError:
+            return False
+
+    def validate_symlink_target(self, symlink_path: Path) -> bool:
+        """Validate that symlink target is also allowed.
+
+        Args:
+            symlink_path: Path to the symlink to validate
+
+        Returns:
+            True if symlink target is allowed
+
+        Raises:
+            PathSecurityError: If target is not allowed and mode is STRICT
+        """
+        if not symlink_path.is_symlink():
+            return True  # Not a symlink
+
+        try:
+            target = symlink_path.resolve()
+
+            # Check if target is allowed by existing rules
+            if self.is_path_allowed_enhanced(target):
+                return True
+
+            # Handle security mode for disallowed targets
+            if self.security_mode == PathSecurity.STRICT:
+                raise PathSecurityError(
+                    f"Symlink target not allowed: {target}",
+                    path=str(symlink_path),
+                    context={
+                        "reason": "symlink_target_denied",
+                        "target": str(target),
+                        "security_mode": self.security_mode.value,
+                    },
+                )
+            elif self.security_mode == PathSecurity.WARN:
+                logger.warning(
+                    "Symlink target outside policy: %s -> %s",
+                    symlink_path,
+                    target,
+                )
+                return True
+            else:  # PERMISSIVE
+                return True
+
+        except OSError as e:
+            # Broken symlink or other error
+            if self.security_mode == PathSecurity.STRICT:
+                raise PathSecurityError(
+                    f"Cannot validate symlink target: {e}",
+                    path=str(symlink_path),
+                    context={
+                        "reason": "symlink_validation_error",
+                        "error": str(e),
+                    },
+                ) from e
+            else:
+                logger.warning(
+                    "Cannot validate symlink target %s: %s", symlink_path, e
+                )
+                return self.security_mode != PathSecurity.STRICT
+
+    def validate_file_access(
+        self, file_path: Union[str, Path], context: str = "file access"
+    ) -> Path:
+        """Main entry point for file access validation.
+
+        This method provides a unified interface for validating file access that:
+        1. Checks file existence
+        2. Applies enhanced security validation (directory + inode + mode)
+        3. Validates symlink targets when appropriate
+        4. Provides clear error messages with context
+
+        Args:
+            file_path: Path to the file to validate
+            context: Description of the access context for error messages
+
+        Returns:
+            Validated and resolved Path object
+
+        Raises:
+            OstructFileNotFoundError: If file doesn't exist
+            PathSecurityError: If file access is denied by security policy
+        """
+        logger.debug(
+            "Validating file access: %s (context: %s)", file_path, context
+        )
+
+        try:
+            # Normalize and resolve the path
+            resolved_path = normalize_path(file_path).resolve()
+        except PathSecurityError as e:
+            # If path traversal was blocked, check if file is explicitly allowed
+            if "Directory traversal not allowed" in str(e):
+                # Check if this file is allowed by inode (which handles traversal)
+                if self.is_file_allowed_by_inode(file_path):
+                    # Allow path traversal for explicitly allowed files
+                    resolved_path = normalize_path(
+                        file_path, allow_traversal=True
+                    ).resolve()
+                else:
+                    raise PathSecurityError(
+                        f"Failed to resolve path: {file_path}",
+                        path=str(file_path),
+                        context={
+                            "reason": "path_resolution_error",
+                            "error": str(e),
+                        },
+                    ) from e
+            else:
+                raise PathSecurityError(
+                    f"Failed to resolve path: {file_path}",
+                    path=str(file_path),
+                    context={
+                        "reason": "path_resolution_error",
+                        "error": str(e),
+                    },
+                ) from e
+        except Exception as e:
+            raise PathSecurityError(
+                f"Failed to resolve path: {file_path}",
+                path=str(file_path),
+                context={"reason": "path_resolution_error", "error": str(e)},
+            ) from e
+
+        # Check if file exists
+        if not resolved_path.exists():
+            raise OstructFileNotFoundError(f"File not found: {file_path}")
+
+        # Apply enhanced security validation on the resolved path
+        # For symlinks, this ensures we validate the target, not just the symlink itself
+        if not self.is_path_allowed_enhanced(resolved_path):
+            # is_path_allowed_enhanced() handles mode-specific behavior (warn vs strict)
+            # If we get here in STRICT mode, it means an exception was already raised
+            # In WARN/PERMISSIVE modes, we continue with a warning already logged
+            pass
+
+        # Additional symlink validation for enhanced security
+        if resolved_path.is_symlink():
+            self.validate_symlink_target(resolved_path)
+
+        logger.debug(
+            "File access validated: %s (context: %s)", resolved_path, context
+        )
+        return resolved_path
+
+    def validate_batch_access(
+        self,
+        paths: List[Union[str, Path]],
+        context: str = "batch access",
+    ) -> List[Path]:
+        """Validate multiple paths efficiently.
+
+        Args:
+            paths: List of paths to validate
+            context: Description of the access context
+
+        Returns:
+            List of validated Path objects
+
+        Raises:
+            PathSecurityError: If any path fails validation in STRICT mode
+        """
+        validated = []
+        errors = []
+
+        for path in paths:
+            try:
+                validated.append(self.validate_file_access(path, context))
+            except (OstructFileNotFoundError, PathSecurityError) as e:
+                error_msg = f"{path}: {e}"
+                errors.append(error_msg)
+                logger.debug("Batch validation error: %s", error_msg)
+
+        if errors:
+            if self.security_mode == PathSecurity.STRICT:
+                raise PathSecurityError(
+                    "Batch validation failed:\n" + "\n".join(errors),
+                    context={
+                        "reason": "batch_validation_failed",
+                        "errors": errors,
+                        "context": context,
+                    },
+                )
+            else:
+                # In WARN/PERMISSIVE modes, log errors but continue
+                for error in errors:
+                    logger.warning("Batch validation: %s", error)
+
+        logger.debug(
+            "Batch validation completed: %d/%d files validated (context: %s)",
+            len(validated),
+            len(paths),
+            context,
+        )
+        return validated
+
+    @contextmanager
+    def security_context(
+        self,
+        mode: PathSecurity,
+        additional_allows: Optional[List[str]] = None,
+    ) -> Generator[None, None, None]:
+        """Temporary security context for specific operations.
+
+        Args:
+            mode: Temporary security mode to use
+            additional_allows: Additional directories to temporarily allow
+
+        Yields:
+            None (context manager)
+
+        Example:
+            with manager.security_context(PathSecurity.PERMISSIVE):
+                # Temporarily allow all file access
+                result = manager.validate_file_access(sensitive_file)
+        """
+        # Save current state
+        old_mode = self.security_mode
+        old_dirs = self._allowed_dirs.copy()
+        old_inodes = self._allow_inodes.copy()
+
+        try:
+            # Apply temporary configuration
+            self.security_mode = mode
+            if additional_allows:
+                for path in additional_allows:
+                    try:
+                        self.add_allowed_directory(path)
+                        logger.debug("Temporarily added directory: %s", path)
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to add temporary directory %s: %s", path, e
+                        )
+
+            logger.debug(
+                "Entered security context: mode=%s, additional_dirs=%s",
+                mode,
+                additional_allows,
+            )
+            yield
+
+        finally:
+            # Restore original state
+            self.security_mode = old_mode
+            self._allowed_dirs = old_dirs
+            self._allow_inodes = old_inodes
+            logger.debug("Restored security context: mode=%s", old_mode)
 
     def is_temp_path(self, path: Union[str, Path]) -> bool:
         """Check if a path is in the system's temporary directory.
@@ -191,6 +693,50 @@ class SecurityManager:
 
         return False
 
+    def is_path_allowed_enhanced(self, path: Union[str, Path]) -> bool:
+        """Enhanced path validation with three-tier security model.
+
+        Precedence Rules (Reviewer feedback addressed):
+        1. Existing SecurityManager validation (directory allowlist) - highest precedence
+        2. Inode allowlist (--allow-file) - file-specific tracking
+        3. Security mode (permissive/warn/strict) - fallback behavior
+
+        Args:
+            path: The path to check
+
+        Returns:
+            True if the path is allowed; False otherwise
+
+        Raises:
+            PathSecurityError: If security mode is STRICT and path is not allowed
+        """
+        # Rule 1: Check inode allowlist first (handles path traversal to allowed files)
+        if self.is_file_allowed_by_inode(path):
+            return True
+
+        # Rule 2: Use existing SecurityManager validation (preserves current behavior)
+        # This requires successful path normalization
+        try:
+            resolved_path = normalize_path(path).resolve()
+            if self.is_path_allowed(path):
+                return True
+        except (PathSecurityError, OSError):
+            # If we can't normalize the path and it's not in inode allowlist,
+            # defer to security mode
+            resolved_path = None
+
+        # Rule 3: Apply security mode (NEW - three-tier model)
+        if self.security_mode == PathSecurity.PERMISSIVE:
+            logger.debug("Path allowed by permissive mode: %s", path)
+            return True
+        elif self.security_mode == PathSecurity.WARN:
+            logger.warning("PathOutsidePolicy: %s", resolved_path or path)
+            return True
+        else:  # STRICT
+            raise PathSecurityError(
+                f"Path not in allowlist: {resolved_path or path}"
+            )
+
     def validate_path(self, path: Union[str, Path]) -> Path:
         """Validate a path against security rules.
 
@@ -226,6 +772,10 @@ class SecurityManager:
                     self._allowed_dirs,
                 )
                 logger.debug("Resolved symlink to: %s", resolved)
+
+                # Additional symlink target validation for enhanced security
+                self.validate_symlink_target(norm_path)
+
                 return resolved
             except RuntimeError as e:
                 if "Symlink loop" in str(e):
@@ -354,21 +904,12 @@ class SecurityManager:
                     # Any other security errors propagate unchanged
                     raise
 
-            # For non-symlinks, check if the normalized path is allowed
-            if not self.is_path_allowed(norm_path):
-                logger.error(
-                    "Security violation: Path %s is outside allowed directories",
-                    path,
-                )
-                raise PathSecurityError(
-                    f"Access denied: {os.path.basename(str(path))} is outside base directory",
-                    path=str(path),
-                    context={
-                        "reason": SecurityErrorReasons.PATH_OUTSIDE_ALLOWED,
-                        "base_dir": str(self._base_dir),
-                        "allowed_dirs": [str(d) for d in self._allowed_dirs],
-                    },
-                )
+            # For non-symlinks, check if the normalized path is allowed using enhanced security
+            if not self.is_path_allowed_enhanced(norm_path):
+                # is_path_allowed_enhanced() handles mode-specific behavior (warn vs strict)
+                # If we get here in STRICT mode, it means an exception was already raised
+                # In WARN/PERMISSIVE modes, we continue with a warning already logged
+                pass
 
             # Only check existence after security validation
             if not norm_path.exists():

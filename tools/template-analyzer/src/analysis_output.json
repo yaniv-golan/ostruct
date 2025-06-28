@@ -1,0 +1,87 @@
+{
+    "type": "object",
+    "properties": {
+        "analysis_summary": {
+            "type": "string",
+            "description": "High-level summary of the analysis findings"
+        },
+        "total_issues": {
+            "type": "integer",
+            "description": "Total number of issues found"
+        },
+        "critical_errors": {
+            "type": "integer",
+            "description": "Number of critical errors that prevent execution"
+        },
+        "warnings": {
+            "type": "integer",
+            "description": "Number of warnings about potential problems"
+        },
+        "optimizations": {
+            "type": "integer",
+            "description": "Number of optimization opportunities identified"
+        },
+        "issues": {
+            "type": "array",
+            "description": "Detailed list of all issues found",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "error",
+                            "warning",
+                            "optimization"
+                        ],
+                        "description": "Severity level of the issue"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "syntax",
+                            "variables",
+                            "structure",
+                            "security",
+                            "performance",
+                            "best_practices",
+                            "schema_validity",
+                            "openai_compatibility",
+                            "cross_analysis"
+                        ],
+                        "description": "Category of the issue"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Clear description of the problem"
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "Where the issue occurs"
+                    },
+                    "recommendation": {
+                        "type": "string",
+                        "description": "How to fix or improve this issue"
+                    }
+                },
+                "required": [
+                    "severity",
+                    "category",
+                    "description",
+                    "location",
+                    "recommendation"
+                ],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": [
+        "analysis_summary",
+        "total_issues",
+        "critical_errors",
+        "warnings",
+        "optimizations",
+        "issues"
+    ],
+    "additionalProperties": false
+}

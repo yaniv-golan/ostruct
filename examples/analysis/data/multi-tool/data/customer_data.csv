@@ -1,0 +1,17 @@
+customer_id,name,email,phone,company,industry,registration_date,customer_type,credit_limit,region
+C001,Acme Corp,contact@acme.com,555-0101,Acme Corporation,Technology,2023-06-15,Enterprise,50000,North
+C002,TechStart Inc,info@techstart.com,555-0102,TechStart Inc,Software,2023-07-22,SMB,15000,South
+C003,Global Solutions,admin@globalsol.com,555-0103,Global Solutions Ltd,Consulting,2023-05-10,Enterprise,75000,East
+C004,Innovation Labs,hello@innovlabs.com,555-0104,Innovation Labs,Research,2023-08-03,SMB,20000,West
+C005,MegaCorp,procurement@megacorp.com,555-0105,MegaCorp Industries,Manufacturing,2023-04-18,Enterprise,100000,North
+C006,StartupXYZ,team@startupxyz.com,555-0106,StartupXYZ,FinTech,2023-09-12,SMB,10000,South
+C007,Enterprise Plus,contact@entplus.com,555-0107,Enterprise Plus,Healthcare,2023-03-25,Enterprise,60000,East
+C008,Digital Works,info@digitalworks.com,555-0108,Digital Works,Marketing,2023-10-05,SMB,25000,West
+C009,Future Tech,support@futuretech.com,555-0109,Future Tech Solutions,AI/ML,2023-02-14,Enterprise,80000,North
+C010,CloudFirst,admin@cloudfirst.com,555-0110,CloudFirst Systems,Cloud Services,2023-11-20,SMB,18000,South
+C011,DataCorp,sales@datacorp.com,555-0111,DataCorp Analytics,Data Science,2023-01-30,Enterprise,45000,East
+C012,SmartSys,contact@smartsys.com,555-0112,SmartSys Technologies,IoT,2023-12-08,SMB,22000,West
+C013,NextGen,info@nextgen.com,555-0113,NextGen Innovations,Blockchain,2023-06-28,Enterprise,55000,North
+C014,EcoSolutions,green@ecosolutions.com,555-0114,EcoSolutions Inc,Sustainability,2023-07-15,SMB,12000,South
+C015,RoboTech,robots@robotech.com,555-0115,RoboTech Industries,Robotics,2023-05-22,Enterprise,70000,East
+C016,QuickServe,fast@quickserve.com,555-0116,QuickServe Solutions,Logistics,2023-08-30,SMB,16000,West

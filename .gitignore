@@ -16,6 +16,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+
 lib64/
 parts/
 sdist/
@@ -46,6 +47,8 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -74,6 +77,9 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+# Sphinx documentation build artifacts
+docs/_build/
 
 # mypy
 .mypy_cache/
@@ -129,3 +135,7 @@ examples/multi-markdown-convertor/runs/
 examples/multi-markdown-convertor/
 examples/people-crm-demo/
 fix_rst_titles.py
+examples/code-quality/code-review/style_review.json
+examples/etymology/etymology_result.json
+old-examples/
+memory-bank/

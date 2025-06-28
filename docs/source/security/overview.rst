@@ -4,7 +4,13 @@ Security Overview
 Security is a fundamental aspect of ostruct's design. This guide covers API key management, file access control, data handling policies, and security best practices for production deployments.
 
 .. warning::
-   **Data Privacy**: When using Code Interpreter or File Search, files may be uploaded to external services, depending on the backend provider. Review your data sensitivity before processing confidential information.
+   **Data Privacy**: All content sent to ostruct may be transmitted to external AI services:
+
+   - **Template files** (``--file alias path``): Content is included in prompts sent to OpenAI
+   - **Code Interpreter files** (``--file ci:alias path``): Files are uploaded to OpenAI for execution
+   - **File Search files** (``--file fs:alias path``): Files are uploaded to OpenAI for vector search
+
+   Review your data sensitivity before processing confidential information with any tool routing option.
 
 .. note::
    For quick security configuration, see the :doc:`../user-guide/cli_reference` section on Path Security.
@@ -115,17 +121,17 @@ By default, ostruct restricts file access to the current working directory. Expa
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json -A /data -ft /data/config.yaml
+   ostruct run template.j2 schema.json --allow /data --file config /data/config.yaml
 
 **Multiple Directories:**
 
 .. code-block:: bash
 
    ostruct run template.j2 schema.json \
-     -A /data \
-     -A /configs \
-     -A /tmp/workspace \
-     -ft /data/input.csv
+     --allow /data \
+     --allow /configs \
+     --allow /tmp/workspace \
+     --file config /data/input.csv
 
 **From File:**
 
@@ -147,9 +153,9 @@ Set a base directory to restrict all relative path operations:
 
    # All relative paths resolve within /project
    ostruct run template.j2 schema.json \
-     --base-dir /project \
-     -ft config.yaml \
-     -ft data/input.csv
+     --path-security strict --allow /project \
+     --file config config.yaml \
+     --file config data/input.csv
 
 Security Validation Process
 ---------------------------
@@ -170,11 +176,11 @@ ostruct prevents common path traversal attacks:
 .. code-block:: bash
 
    # These are blocked by SecurityManager
-   ostruct run template.j2 schema.json -ft "../../../etc/passwd"
-   ostruct run template.j2 schema.json -ft "config/../../../sensitive.txt"
+   ostruct run template.j2 schema.json --file config "../../../etc/passwd"
+   ostruct run template.j2 schema.json --file config "config/../../../sensitive.txt"
 
    # Use allowed directories for legitimate access outside project
-   ostruct run template.j2 schema.json -A /etc -ft /etc/config.yaml
+   ostruct run template.j2 schema.json --allow /etc --file config /etc/config.yaml
 
 Data Upload and Tool Security
 =============================
@@ -241,7 +247,7 @@ Web Search Data Handling
 **Security considerations:**
 - **Avoid sensitive information in prompts** when using web search
 - Review template content for potentially sensitive keywords or data
-- Consider using ``--no-web-search`` for sensitive prompts
+- Consider using ``--disable-tool web-search`` for sensitive prompts
 - Be aware that search queries may be logged by search providers
 - Web search is automatically disabled for Azure OpenAI endpoints
 
@@ -257,40 +263,32 @@ Web search is always opt-in and requires explicit use of the ``--enable-tool web
 Template File Security
 ----------------------
 
-Template files (``-ft``, ``--fta``, ``-dt``) are **never uploaded** to external services:
+Template files (``--file alias path``) are processed differently than Code Interpreter and File Search files:
 
-- Files remain on your local system
-- Content is read and included in template rendering
-- No data leaves your environment for template-only files
-- Safe for configuration files and sensitive templates
+- Files remain on your local system (not uploaded as file objects)
+- Content is read locally and included in template rendering
+- **Template content is sent to OpenAI servers as part of the prompt text**
+- Consider data sensitivity when including file content in templates
 
 Tool Routing Security Matrix
 -----------------------------
 
-.. list-table::
+.. list-table:: File Routing Security Implications
    :header-rows: 1
-   :widths: 25 20 20 35
+   :widths: 20 30 50
 
-   * - File Routing
-     - Local Access
-     - Data Upload
-     - Use Cases
-   * - ``-ft`` (Template)
-     - ✅ Yes
-     - ❌ No
-     - Config files, sensitive data
-   * - ``-fc`` (Code Interpreter)
-     - ✅ Yes
-     - ⚠️ Yes
-     - Data analysis, computation
-   * - ``-fs`` (File Search)
-     - ✅ Yes
-     - ⚠️ Yes
-     - Document search, knowledge bases
-   * - ``--enable-tool web-search`` (Web Search)
-     - ❌ No
-     - ⚠️ Query Data
-     - Current information, research
+   * - Flag
+     - Security Level
+     - Data Handling
+   * - ``--file`` (Template)
+     - Medium Security
+     - Content sent in prompt to OpenAI
+   * - ``--file ci:`` (Code Interpreter)
+     - Medium Security
+     - Uploaded to OpenAI for execution
+   * - ``--file fs:`` (File Search)
+     - Medium Security
+     - Uploaded to OpenAI for vector search
 
 Cleanup and Data Retention
 ---------------------------
@@ -301,12 +299,12 @@ Enable cleanup to minimize data retention:
 
    # Enable cleanup (default: true)
    ostruct run template.j2 schema.json \
-     -fc data.csv \
-     --code-interpreter-cleanup
+     --file ci:data data.csv \
+     --ci-cleanup
 
    ostruct run template.j2 schema.json \
-     -fs docs.pdf \
-     --file-search-cleanup
+     --file fs:docs docs.pdf \
+     --fs-cleanup
 
 MCP Server Security
 ===================
@@ -396,10 +394,10 @@ Classify your data before processing:
 - Published research
 
 **Internal Data** ⚠️
-- Configuration files (review for secrets)
-- Development code (review for credentials)
-- Business documents (assess sensitivity)
-- Log files (may contain sensitive information)
+- Configuration files (review for secrets before including in templates)
+- Development code (review for credentials before including in templates)
+- Business documents (assess sensitivity before including in prompts)
+- Log files (may contain sensitive information - review before processing)
 
 **Confidential Data** ❌
 - Customer PII
@@ -500,12 +498,12 @@ Development Environment
    export OPENAI_API_KEY="sk-dev-..."
 
    ostruct run template.j2 schema.json \
-     --base-dir ./project \
-     -A ./test_data \
-     -ft config.yaml \
-     -fc test_data.csv \
-     --code-interpreter-cleanup \
-     --file-search-cleanup
+     --path-security strict --allow ./project \
+     --allow ./test_data \
+     --file config config.yaml \
+     --file ci:data test_data.csv \
+     --ci-cleanup \
+     --fs-cleanup
 
 Staging Environment
 -------------------
@@ -516,13 +514,13 @@ Staging Environment
    export OPENAI_API_KEY="sk-staging-..."
 
    ostruct run template.j2 schema.json \
-     --base-dir /app \
-     -A /app/data \
-     -A /app/configs \
+     --path-security strict --allow /app \
+     --allow /app/data \
+     --allow /app/configs \
      --allowed-dir-file /app/allowed_dirs.txt \
-     -ft configs/app.yaml \
-     --code-interpreter-cleanup \
-     --file-search-cleanup \
+     --file config configs/app.yaml \
+     --ci-cleanup \
+     --fs-cleanup \
      --verbose
 
 Production Environment
@@ -534,11 +532,11 @@ Production Environment
    export OPENAI_API_KEY="sk-prod-..."
 
    ostruct run template.j2 schema.json \
-     --base-dir /prod/app \
+     --path-security strict --allow /prod/app \
      --allowed-dir-file /prod/security/allowed_dirs.txt \
-     -ft configs/production.yaml \
-     --code-interpreter-cleanup \
-     --file-search-cleanup \
+     --file config configs/production.yaml \
+     --ci-cleanup \
+     --fs-cleanup \
      --timeout 300
 
 CI/CD Pipeline Security
@@ -553,12 +551,12 @@ CI/CD Pipeline Security
          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
        run: |
          ostruct run analysis.j2 schema.json \
-           --base-dir ${{ github.workspace }} \
-           -A ${{ github.workspace }}/data \
-           -ft config.yaml \
-           -fc data/metrics.csv \
-           --code-interpreter-cleanup \
-           --file-search-cleanup \
+           --path-security strict --allow ${{ github.workspace }} \
+           --allow ${{ github.workspace }}/data \
+           --file config config.yaml \
+           --file ci:data data/metrics.csv \
+           --ci-cleanup \
+           --fs-cleanup \
            --output-file results.json
 
 Security Resources

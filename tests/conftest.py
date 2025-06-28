@@ -278,7 +278,11 @@ def setup_test_fs(
     # Only create directories if the test uses fixtures that need them
     needs_dirs = any(
         name in request.fixturenames
-        for name in ["security_manager", "cli_runner"]
+        for name in [
+            "security_manager",
+            "strict_security_manager",
+            "cli_runner",
+        ]
     )
 
     if needs_dirs:
@@ -565,6 +569,23 @@ def security_manager(fs: FakeFilesystem) -> SecurityManager:
     return MockSecurityManager()
 
 
+@pytest.fixture
+def strict_security_manager(fs: FakeFilesystem) -> SecurityManager:
+    """Create a security manager for testing with STRICT mode.
+
+    Args:
+        fs: The pyfakefs fixture
+
+    Returns:
+        A SecurityManager instance configured for testing with STRICT security mode
+    """
+    from ostruct.cli.security.types import PathSecurity
+
+    sm = MockSecurityManager()
+    sm.security_mode = PathSecurity.STRICT
+    return sm
+
+
 @pytest.fixture(autouse=True)
 def patch_security_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch the SecurityManager class to use the mock version.
@@ -722,6 +743,20 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
                 ),
             }
 
+        @property
+        def models(self):
+            """Return list of available model names."""
+            return list(self._capabilities.keys())
+
+        @property
+        def config(self):
+            """Return mock config object with registry_path."""
+
+            class MockConfig:
+                registry_path = "/test/mock/registry/path/models.yml"
+
+            return MockConfig()
+
         def _create_mock_capabilities(
             self, model_name: str, context_window: int, max_output_tokens: int
         ) -> Any:
@@ -739,6 +774,7 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
                     self.context_window = context_window
                     self.max_output_tokens = max_output_tokens
                     self.supports_structured = True
+                    self.supports_structured_output = True
                     self.supports_streaming = True
                     self.supports_vision = False
                     self.supports_functions = True
@@ -869,6 +905,14 @@ def mock_model_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     try:
         monkeypatch.setattr(
             "ostruct.cli.model_validation.ModelRegistry", MockModelRegistry
+        )
+    except AttributeError:
+        pass
+
+    # Patch the direct import used in help_json.py
+    try:
+        monkeypatch.setattr(
+            "openai_model_registry.ModelRegistry", MockModelRegistry
         )
     except AttributeError:
         pass

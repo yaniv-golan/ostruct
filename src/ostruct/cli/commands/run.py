@@ -4,9 +4,10 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Any
+from pathlib import Path
+from typing import Any, Tuple
 
-import click
+import rich_click as click
 
 from ..click_options import all_options
 from ..config import OstructConfig
@@ -24,29 +25,12 @@ from ..types import CLIParams
 logger = logging.getLogger(__name__)
 
 
-def _emit_deprecation_warnings(params: CLIParams) -> None:
-    """Emit deprecation warnings for legacy tool-specific flags."""
-    import warnings
-
-    # Web Search flags
-    if params.get("web_search"):
-        warnings.warn(
-            "The --web-search flag is deprecated and will be removed in v0.9.0. "
-            "Use --enable-tool web-search instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-
-    if params.get("no_web_search"):
-        warnings.warn(
-            "The --no-web-search flag is deprecated and will be removed in v0.9.0. "
-            "Use --disable-tool web-search instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-
-
-@click.command()
+@click.command(
+    cls=click.RichCommand,
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+    },
+)
 @click.argument("task_template", type=click.Path(exists=True))
 @click.argument("schema_file", type=click.Path(exists=True))
 @all_options
@@ -57,50 +41,46 @@ def run(
     schema_file: str,
     **kwargs: Any,
 ) -> None:
-    """Run structured output generation with multi-tool integration.
+    """Transform unstructured inputs into structured JSON using OpenAI APIs, Jinja2 templates, and powerful tool integrations.
 
-    \b
-    📁 FILE ROUTING OPTIONS:
+    🚀 QUICK START
 
-    Template Access Only:
-      -ft, --file-for-template FILE     Files available in template only
-      -dt, --dir-for-template DIR       Directories for template access
+    ostruct run template.j2 schema.json -V name=value
 
-    Code Interpreter (execution & analysis):
-      -fc, --file-for-code-interpreter FILE    Upload files for code execution
-      -dc, --dir-for-code-interpreter DIR      Upload directories for analysis
+    📎 FILE ATTACHMENT
 
-    File Search (document retrieval):
-      -fs, --file-for-file-search FILE         Upload files for vector search
-      -ds, --dir-for-search DIR                Upload directories for search
+    --file data file.txt              Template access (default)
 
-    Advanced Routing:
-      --file-for TOOL PATH              Route files to specific tools
-                                        Example: --file-for code-interpreter data.json
+    --file ci:data data.csv           Code Interpreter upload
 
-    \b
-    🔧 TOOL INTEGRATION:
+    --file fs:docs manual.pdf         File Search upload
 
-    MCP Servers:
-      --mcp-server [LABEL@]URL          Connect to MCP server
-                                        Example: --mcp-server deepwiki@https://mcp.deepwiki.com/sse
+    🔧 TOOL INTEGRATION
 
-    \b
-    ⚡ EXAMPLES:
+    --enable-tool code-interpreter    Code execution & analysis
 
-    Basic usage:
-      ostruct run template.j2 schema.json -V name=value
+    --enable-tool file-search         Document search & retrieval
 
-    Multi-tool explicit routing:
-      ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf -ft config.yaml
+    --enable-tool web-search          Real-time web information
 
-    Legacy compatibility (still works):
-      ostruct run template.j2 schema.json -f config main.py -d src ./src
+    🔧 ENVIRONMENT VARIABLES
 
-    \b
-    Arguments:
-      TASK_TEMPLATE  Path to Jinja2 template file
-      SCHEMA_FILE    Path to JSON schema file defining output structure
+    ```text
+    Core API Configuration:
+    OPENAI_API_KEY                           OpenAI API authentication key
+    OPENAI_API_BASE                          Custom OpenAI API base URL
+
+    Template Processing Limits:
+    OSTRUCT_TEMPLATE_FILE_LIMIT              Max individual file size (default: 64KB)
+    OSTRUCT_TEMPLATE_TOTAL_LIMIT             Max total files size (default: 1MB)
+    OSTRUCT_TEMPLATE_PREVIEW_LIMIT           Template preview size limit (default: 4096)
+
+    System Behavior:
+    OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS   Disable model registry updates
+    OSTRUCT_MCP_URL_<name>                   Custom MCP server URLs
+    ```
+
+    See organized option groups below for complete functionality.
     """
     try:
         # Convert Click parameters to typed dict
@@ -113,9 +93,19 @@ def run(
         for k, v in kwargs.items():
             params[k] = v  # type: ignore[literal-required]
 
-        # Process tool toggle flags (Step 2: Conflict guard & normalisation)
-        from typing import Tuple
+        # UNIFIED GUIDELINES: Validate JSON flag combinations
+        if kwargs.get("dry_run_json") and not kwargs.get("dry_run"):
+            raise click.BadOptionUsage(
+                "--dry-run-json", "--dry-run-json requires --dry-run"
+            )
 
+        if kwargs.get("run_summary_json") and kwargs.get("dry_run"):
+            raise click.BadOptionUsage(
+                "--run-summary-json",
+                "--run-summary-json cannot be used with --dry-run",
+            )
+
+        # Process tool toggle flags (Step 2: Conflict guard & normalisation)
         enabled_tools_raw: Tuple[str, ...] = params.get("enabled_tools", ())  # type: ignore[assignment]
         disabled_tools_raw: Tuple[str, ...] = params.get("disabled_tools", ())  # type: ignore[assignment]
 
@@ -144,9 +134,6 @@ def run(
         params["_enabled_tools"] = enabled_tools  # type: ignore[typeddict-unknown-key]
         params["_disabled_tools"] = disabled_tools  # type: ignore[typeddict-unknown-key]
 
-        # Emit deprecation warnings for legacy tool-specific flags
-        _emit_deprecation_warnings(params)
-
         # Apply configuration defaults if values not explicitly provided
         # Check for command-level config option first, then group-level
         command_config = kwargs.get("config")
@@ -157,6 +144,246 @@ def run(
 
         if params.get("model") is None:
             params["model"] = config.get_model_default()
+
+        # UNIFIED GUIDELINES: Perform basic validation even in dry-run mode
+        if kwargs.get("dry_run"):
+            # Import validation functions
+            from ..attachment_processor import (
+                AttachmentSpec,
+                ProcessedAttachments,
+            )
+            from ..plan_assembly import PlanAssembler
+            from ..plan_printing import PlanPrinter
+            from ..validators import validate_inputs
+
+            # Variables to track validation state
+            validation_passed = True
+            template_warning = None
+            original_template_path = task_template
+
+            # Process attachments for the dry-run plan
+            processed_attachments = ProcessedAttachments()
+
+            # Process --file attachments
+            files = kwargs.get("attaches", [])
+            for file_spec in files:
+                spec = AttachmentSpec(
+                    alias=file_spec["alias"],
+                    path=file_spec["path"],
+                    targets=file_spec["targets"],
+                    recursive=file_spec.get("recursive", False),
+                    pattern=file_spec.get("pattern"),
+                )
+                processed_attachments.alias_map[spec.alias] = spec
+
+                # Route to appropriate lists based on targets
+                if "prompt" in spec.targets:
+                    processed_attachments.template_files.append(spec)
+                if "code-interpreter" in spec.targets or "ci" in spec.targets:
+                    processed_attachments.ci_files.append(spec)
+                if "file-search" in spec.targets or "fs" in spec.targets:
+                    processed_attachments.fs_files.append(spec)
+
+            # Process --dir attachments
+            dirs = kwargs.get("dirs", [])
+            for dir_spec in dirs:
+                spec = AttachmentSpec(
+                    alias=dir_spec["alias"],
+                    path=dir_spec["path"],
+                    targets=dir_spec["targets"],
+                    recursive=dir_spec.get("recursive", True),
+                    pattern=dir_spec.get("pattern"),
+                )
+                processed_attachments.alias_map[spec.alias] = spec
+
+                # Route to appropriate lists based on targets
+                if "prompt" in spec.targets:
+                    processed_attachments.template_dirs.append(spec)
+                if "code-interpreter" in spec.targets or "ci" in spec.targets:
+                    processed_attachments.ci_dirs.append(spec)
+                if "file-search" in spec.targets or "fs" in spec.targets:
+                    processed_attachments.fs_dirs.append(spec)
+
+            try:
+                # Perform the same input validation as live runs (async)
+                logger.debug("Performing dry-run validation")
+
+                # Run async validation
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    # Use the same params structure as the live run
+                    validation_result = loop.run_until_complete(
+                        validate_inputs(params)
+                    )
+                    # Extract components from the tuple
+                    (
+                        security_manager,
+                        validated_template,
+                        schema,
+                        template_context,
+                        env,
+                        template_path,
+                    ) = validation_result
+
+                    # Update task_template with validated content
+                    task_template = validated_template
+
+                    # Perform template rendering validation to catch binary file access errors
+                    logger.debug("Performing template rendering validation")
+                    from ..template_processor import process_templates
+
+                    system_prompt, user_prompt = loop.run_until_complete(
+                        process_templates(
+                            params,
+                            task_template,
+                            template_context,
+                            env,
+                            template_path,
+                        )
+                    )
+                    logger.debug("Template rendering validation passed")
+
+                    # Check for template warnings by processing system prompt
+                    from typing import cast
+
+                    from ..template_processor import process_system_prompt
+
+                    result = cast(
+                        Tuple[str, bool],
+                        process_system_prompt(
+                            task_template,
+                            params.get("system_prompt"),
+                            params.get("system_prompt_file"),
+                            template_context,
+                            env,
+                            params.get("ignore_task_sysprompt", False),
+                            template_path,
+                        ),
+                    )
+                    _system_prompt_check: str
+                    template_has_conflict: bool
+                    _system_prompt_check, template_has_conflict = result
+
+                    if template_has_conflict:
+                        template_warning = (
+                            "Template has YAML frontmatter with 'system_prompt' field, but --sys-file was also provided. "
+                            "Using --sys-file and ignoring YAML frontmatter system_prompt."
+                        )
+
+                finally:
+                    loop.close()
+
+            except Exception as e:
+                validation_passed = False
+                template_warning = str(e)
+                logger.error(f"Dry-run validation failed: {e}")
+
+                # For critical errors, exit immediately with proper error handling
+                if not isinstance(e, (ValueError, FileNotFoundError)):
+                    handle_error(e)
+                    if hasattr(e, "exit_code"):
+                        ctx.exit(int(e.exit_code))
+                    else:
+                        ctx.exit(1)
+
+            # Build plan with warning information
+            plan_kwargs = {
+                "allowed_paths": params.get("allowed_paths", []),
+                "cost_estimate": None,  # We don't have cost estimate in dry run
+                "template_warning": template_warning,
+                "original_template_path": original_template_path,
+                "validation_passed": validation_passed,
+            }
+
+            # Add enabled tools from routing result and explicit tool toggles
+            plan_enabled_tools: set[str] = set()
+
+            # Get tools from routing result (auto-enabled by file attachments)
+            routing_result = params.get("_routing_result")
+            if routing_result and hasattr(routing_result, "enabled_tools"):
+                plan_enabled_tools.update(routing_result.enabled_tools)
+
+            # Add explicitly enabled tools
+            explicit_enabled = params.get("_enabled_tools", set())
+            if isinstance(explicit_enabled, set):
+                plan_enabled_tools.update(explicit_enabled)
+
+            # Remove explicitly disabled tools
+            explicit_disabled = params.get("_disabled_tools", set())
+            if isinstance(explicit_disabled, set):
+                plan_enabled_tools -= explicit_disabled
+
+            if plan_enabled_tools:
+                plan_kwargs["enabled_tools"] = plan_enabled_tools
+
+            # Add CI configuration for download validation
+            if "code-interpreter" in plan_enabled_tools:
+                config_path = params.get("config")
+                config = OstructConfig.load(
+                    config_path
+                    if isinstance(config_path, (str, Path))
+                    else None
+                )
+                ci_config = config.get_code_interpreter_config()
+                plan_kwargs["ci_config"] = ci_config
+
+            plan = PlanAssembler.build_execution_plan(
+                processed_attachments=processed_attachments,
+                template_path=original_template_path,  # Use original path, not template content
+                schema_path=schema_file,
+                variables=ctx.obj.get("vars", {}) if ctx.obj else {},
+                security_mode=kwargs.get("path_security", "permissive"),
+                model=params.get("model", "gpt-4o"),
+                **plan_kwargs,
+            )
+
+            if kwargs.get("dry_run_json"):
+                # Output JSON to stdout
+                click.echo(json.dumps(plan, indent=2))
+            else:
+                # Output human-readable to stdout
+                PlanPrinter.human(plan)
+
+                # Add debug output for tool states if debug mode is enabled
+                if kwargs.get("debug"):
+                    click.echo("\n--- DEBUG TOOL STATES ---")
+                    debug_enabled_tools = cast(
+                        set[str], params.get("_enabled_tools", set())
+                    )
+                    debug_disabled_tools = cast(
+                        set[str], params.get("_disabled_tools", set())
+                    )
+
+                    # Check web search state
+                    web_search_enabled = "web-search" in debug_enabled_tools
+                    if "web-search" in debug_disabled_tools:
+                        web_search_enabled = False
+                    click.echo(
+                        f"web_search_enabled: bool ({web_search_enabled})"
+                    )
+
+                    # Check code interpreter state
+                    ci_enabled = "code-interpreter" in debug_enabled_tools
+                    if "code-interpreter" in debug_disabled_tools:
+                        ci_enabled = False
+                    # Also enable if CI attachments present
+                    if plan.get("tools", {}).get("code_interpreter", False):
+                        ci_enabled = True
+                    click.echo(
+                        f"code_interpreter_enabled: bool ({ci_enabled})"
+                    )
+
+                # Add completion message based on validation result
+                if validation_passed:
+                    click.echo("\nDry run completed successfully")
+                else:
+                    click.echo(
+                        "\nDry run completed with warnings - see template status above"
+                    )
+
+            # Exit with appropriate code
+            ctx.exit(0 if validation_passed else 1)
 
         # Run the async function synchronously
         loop = asyncio.new_event_loop()

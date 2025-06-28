@@ -7,9 +7,19 @@ and integrating code execution capabilities with the OpenAI Responses API.
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from openai import AsyncOpenAI
+
+from .errors import (
+    DownloadError,
+    DownloadFileNotFoundError,
+    DownloadNetworkError,
+    DownloadPermissionError,
+)
+
+if TYPE_CHECKING:
+    from .upload_manager import SharedUploadManager
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +28,22 @@ class CodeInterpreterManager:
     """Manager for Code Interpreter file uploads and tool integration."""
 
     def __init__(
-        self, client: AsyncOpenAI, config: Optional[Dict[str, Any]] = None
-    ):
+        self,
+        client: AsyncOpenAI,
+        config: Optional[Dict[str, Any]] = None,
+        upload_manager: Optional["SharedUploadManager"] = None,
+    ) -> None:
         """Initialize Code Interpreter manager.
 
         Args:
             client: AsyncOpenAI client instance
             config: Code interpreter configuration dict
+            upload_manager: Optional shared upload manager for deduplication
         """
         self.client = client
         self.uploaded_file_ids: List[str] = []
         self.config = config or {}
+        self.upload_manager = upload_manager
 
     async def upload_files_for_code_interpreter(
         self, files: List[str]
@@ -81,6 +96,32 @@ class CodeInterpreterManager:
 
         # Store for potential cleanup
         self.uploaded_file_ids.extend(file_ids)
+        return file_ids
+
+    async def get_files_from_shared_manager(self) -> List[str]:
+        """Get file IDs from shared upload manager for Code Interpreter.
+
+        Returns:
+            List of OpenAI file IDs for Code Interpreter use
+        """
+        if not self.upload_manager:
+            logger.warning("No shared upload manager available")
+            return []
+
+        # Trigger upload processing for code-interpreter tool
+        await self.upload_manager.upload_for_tool("code-interpreter")
+
+        # Get the uploaded file IDs
+        file_ids = list(
+            self.upload_manager.get_files_for_tool("code-interpreter")
+        )
+
+        # Track for cleanup
+        self.uploaded_file_ids.extend(file_ids)
+
+        logger.debug(
+            f"Retrieved {len(file_ids)} file IDs from shared manager for CI"
+        )
         return file_ids
 
     def build_tool_config(self, file_ids: List[str]) -> dict:
@@ -187,7 +228,14 @@ class CodeInterpreterManager:
 
         # Ensure output directory exists
         output_path = Path(output_dir)
-        output_path.mkdir(exist_ok=True)
+        try:
+            output_path.mkdir(exist_ok=True)
+        except PermissionError as e:
+            raise DownloadPermissionError(str(output_path)) from e
+        except OSError as e:
+            raise DownloadError(
+                f"Failed to create download directory: {e}"
+            ) from e
 
         # Collect file annotations using new method
         annotations = self._collect_file_annotations(response)
@@ -292,20 +340,155 @@ class CodeInterpreterManager:
                     )
                     file_content = file_content_resp.read()
 
-                # Save to local file
+                # Handle file naming conflicts
                 local_path = output_path / filename
-                with open(local_path, "wb") as f:
-                    f.write(file_content)
+                resolved_path = self._handle_file_conflict(local_path)
 
-                downloaded_paths.append(str(local_path))
-                logger.info(f"Downloaded generated file: {local_path}")
+                if resolved_path is None:
+                    # Skip this file according to conflict resolution strategy
+                    logger.info(f"Skipping existing file: {local_path}")
+                    continue
 
+                # Save to resolved local file path
+                try:
+                    with open(resolved_path, "wb") as f:
+                        f.write(file_content)
+                except PermissionError as e:
+                    raise DownloadPermissionError(
+                        str(resolved_path.parent)
+                    ) from e
+                except OSError as e:
+                    raise DownloadError(
+                        f"Failed to write file {resolved_path}: {e}"
+                    ) from e
+
+                # Validate the downloaded file
+                self._validate_downloaded_file(resolved_path)
+
+                downloaded_paths.append(str(resolved_path))
+                logger.info(f"Downloaded generated file: {resolved_path}")
+
+            except DownloadError:
+                # Re-raise download-specific errors without modification
+                raise
+            except FileNotFoundError as e:
+                raise DownloadFileNotFoundError(file_id) from e
             except Exception as e:
-                logger.error(f"Failed to download file {file_id}: {e}")
-                # Continue with other files instead of raising
-                continue
+                # Check if it's a network-related error
+                if any(
+                    keyword in str(e).lower()
+                    for keyword in ["network", "connection", "timeout", "http"]
+                ):
+                    raise DownloadNetworkError(
+                        file_id, original_error=e
+                    ) from e
+                else:
+                    logger.error(f"Failed to download file {file_id}: {e}")
+                    # Continue with other files instead of raising
+                    continue
 
         return downloaded_paths
+
+    def _handle_file_conflict(self, local_path: Path) -> Optional[Path]:
+        """Handle file naming conflicts based on configuration.
+
+        Args:
+            local_path: The original path where file would be saved
+
+        Returns:
+            Resolved path where file should be saved, or None to skip
+        """
+        if not local_path.exists():
+            return local_path
+
+        strategy = self.config.get("duplicate_outputs", "overwrite")
+
+        if strategy == "overwrite":
+            logger.info(f"Overwriting existing file: {local_path}")
+            return local_path
+
+        elif strategy == "rename":
+            # Generate unique name: file.txt -> file_1.txt, file_2.txt, etc.
+            counter = 1
+            stem = local_path.stem
+            suffix = local_path.suffix
+            parent = local_path.parent
+
+            while True:
+                new_path = parent / f"{stem}_{counter}{suffix}"
+                if not new_path.exists():
+                    logger.info(f"File exists, using: {new_path}")
+                    return new_path
+                counter += 1
+
+        elif strategy == "skip":
+            logger.info(f"File exists, skipping: {local_path}")
+            return None  # Signal to skip this file
+
+        # Default to overwrite for unknown strategies
+        logger.warning(
+            f"Unknown duplicate_outputs strategy '{strategy}', defaulting to overwrite"
+        )
+        return local_path
+
+    def _validate_downloaded_file(self, file_path: Path) -> None:
+        """Perform basic validation of downloaded files.
+
+        Args:
+            file_path: Path to the downloaded file
+
+        Note:
+            This only logs warnings, it does not block downloads.
+        """
+        validation_level = self.config.get("output_validation", "basic")
+
+        if validation_level == "off":
+            return
+
+        try:
+            # Check file size (prevent huge files)
+            size = file_path.stat().st_size
+            size_mb = size / (1024 * 1024)
+
+            if size_mb > 100:  # 100MB limit
+                logger.warning(
+                    f"Large file downloaded: {file_path} ({size_mb:.1f}MB)"
+                )
+
+            # Check for potentially dangerous file types
+            dangerous_extensions = {
+                ".exe",
+                ".bat",
+                ".sh",
+                ".cmd",
+                ".com",
+                ".scr",
+                ".vbs",
+                ".js",
+            }
+            if file_path.suffix.lower() in dangerous_extensions:
+                logger.warning(
+                    f"Potentially dangerous file type downloaded: {file_path} "
+                    f"(extension: {file_path.suffix})"
+                )
+
+            # In strict mode, perform additional checks
+            if validation_level == "strict":
+                # Check for hidden files
+                if file_path.name.startswith("."):
+                    logger.warning(f"Hidden file downloaded: {file_path}")
+
+                # Check for files with multiple extensions (potential masquerading)
+                parts = file_path.name.split(".")
+                if len(parts) > 2:
+                    logger.warning(
+                        f"File with multiple extensions downloaded: {file_path} "
+                        f"(could be masquerading)"
+                    )
+
+        except Exception as e:
+            logger.debug(f"Error during file validation: {e}")
+            # Don't fail downloads due to validation errors
 
     def _extract_filename_from_message(self, msg: Any) -> str:
         """Extract filename from message content if available.

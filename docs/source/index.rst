@@ -9,6 +9,7 @@ Key Features
 - **Schema-First Approach**: Define your output structure using JSON Schema (validation is always performed automatically)
 - **Template-Based Input**: Use Jinja2 templates with support for YAML frontmatter, system prompts, and shared system prompt includes
 - **Multi-Tool Integration**: Native support for Code Interpreter, File Search, Web Search, and MCP servers
+- **Development Tools**: Built-in meta-tools for schema generation and template analysis
 - **File Processing**: Handle single files, multiple files, or entire directories with thread-safe operations
 - **Cross-Platform**: Robust support for Windows, macOS, and Linux with consistent path handling
 - **Security-Focused**: Safe file access with explicit directory permissions and enhanced error handling
@@ -61,7 +62,7 @@ Quick Start
    .. code-block:: bash
 
       ostruct run task.j2 schema.json \
-        --fta content input.txt \
+        --file content input.txt \
         -m gpt-4o
 
 Documentation
@@ -73,12 +74,11 @@ Documentation
 
    user-guide/introduction
    user-guide/quickstart
-   user-guide/ostruct_template_scripting_guide
-   user-guide/prompt_scripting_guide
+   user-guide/template_authoring
    user-guide/template_quick_reference
    user-guide/examples
    user-guide/cli_reference
-   user-guide/template_authoring
+   user-guide/template_structure
 
 .. toctree::
    :maxdepth: 2
@@ -100,6 +100,7 @@ Documentation
    :caption: 🛠️ Contributing:
 
    contribute/setting_up
+   contribute/environment-consistency
    contribute/style_guide
    contribute/how_to_contribute
 
@@ -153,6 +154,9 @@ You can configure logging behavior through:
    - ``OSTRUCT_LOG_LEVEL``: Set the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
    - ``OSTRUCT_LOG_DIR``: Override the default log directory
    - ``OSTRUCT_LOG_FORMAT``: Customize the log message format
+   - ``OSTRUCT_TEMPLATE_FILE_LIMIT``: Max individual file size for template access (default: 65536 bytes)
+   - ``OSTRUCT_TEMPLATE_TOTAL_LIMIT``: Max total file size for template processing (default: 1048576 bytes)
+   - ``OSTRUCT_TEMPLATE_PREVIEW_LIMIT``: Max characters in template debug previews (default: 4096)
 
 Example:
 
@@ -183,26 +187,20 @@ The CLI revolves around a single subcommand called ``run``. Basic usage:
 File & Directory Routing
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Template Access (Local Only)**:
+**File Attachment System**:
 
-- ``-ft, --file-for-template FILE``: Files available in template only (auto-naming)
-- ``--fta, --file-for-template-alias NAME PATH``: Files for template with custom aliases
-- ``-dt, --dir-for-template DIR``: Directories for template access (auto-naming)
-- ``--dta, --dir-for-template-alias NAME PATH``: Directories for template with custom aliases
+- ``--file [targets:]alias path``: Attach file with explicit tool targeting
+- ``--dir [targets:]alias path``: Attach directory with explicit tool targeting
+- ``--collect [targets:]alias @filelist``: Attach file collection from list
 
-**Code Interpreter (Execution & Analysis)**:
+**Targets**: ``prompt`` (template-only, default), ``ci`` (code-interpreter), ``fs`` (file-search)
 
-- ``-fc, --file-for-code-interpreter FILE``: Upload files for code execution (auto-naming)
-- ``--fca, --file-for-code-interpreter-alias NAME PATH``: Files for code execution with custom aliases
-- ``-dc, --dir-for-code-interpreter DIR``: Upload directories for analysis (auto-naming)
-- ``--dca, --dir-for-code-interpreter-alias NAME PATH``: Directories for code execution with custom aliases
+**Examples**:
 
-**File Search (Document Retrieval)**:
-
-- ``-fs, --file-for-search FILE``: Upload files for semantic vector search (auto-naming)
-- ``--fsa, --file-for-search-alias NAME PATH``: Files for search with custom aliases
-- ``-ds, --dir-for-search DIR``: Upload directories for semantic search (auto-naming)
-- ``--dsa, --dir-for-search-alias NAME PATH``: Directories for search with custom aliases
+- ``--file config settings.yaml``: Template access only
+- ``--file ci:data analysis.csv``: Upload to Code Interpreter
+- ``--file fs:docs manual.pdf``: Upload to File Search
+- ``--file ci,fs:shared data.json``: Multi-tool routing
 
 **Advanced Routing**:
 
@@ -216,8 +214,8 @@ File & Directory Routing
 
 **Security & Path Control**:
 
-- ``-R, --recursive``: Process directories and patterns recursively
-- ``--base-dir DIR``: Base directory for resolving relative paths
+- ``--recursive, --recursive``: Process directories and patterns recursively
+- ``--path-security strict --allow DIR``: Base directory for resolving relative paths
 - ``-A, --allow DIR``: Add an allowed directory for security (repeatable)
 - ``--allowed-dir-file FILE``: File containing allowed directory paths
 
@@ -234,10 +232,10 @@ Multi-Tool Integration
 
 - ``--enable-tool web-search``: Enable OpenAI web search tool for up-to-date information
 - ``--disable-tool web-search``: Explicitly disable web search
-- ``--search-context-size [low|medium|high]``: Control content retrieval amount
-- ``--user-country TEXT``: Specify user country for geographically tailored results
-- ``--user-region TEXT``: Specify user region/state for search results
-- ``--user-city TEXT``: Specify user city for search results
+- ``--ws-context-size [low|medium|high]``: Control content retrieval amount
+- ``--ws-country TEXT``: Specify user country for geographically tailored results
+- ``--ws-region TEXT``: Specify user region/state for search results
+- ``--ws-city TEXT``: Specify user city for search results
 
 **MCP Servers**:
 
@@ -248,15 +246,15 @@ Multi-Tool Integration
 
 **Code Interpreter Options**:
 
-- ``--code-interpreter-cleanup``: Clean up uploaded files after execution (default: True)
-- ``--code-interpreter-download-dir DIR``: Directory to save generated files
+- ``--ci-cleanup``: Clean up uploaded files after execution (default: True)
+- ``--ci-download-dir DIR``: Directory to save generated files
 
 **File Search Options**:
 
-- ``--file-search-cleanup``: Clean up uploaded files and vector stores (default: True)
-- ``--file-search-vector-store-name TEXT``: Name for the vector store
-- ``--file-search-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
-- ``--file-search-retry-count INT``: Number of retry attempts (default: 3)
+- ``--fs-cleanup``: Clean up uploaded files and vector stores (default: True)
+- ``--fs-store-name TEXT``: Name for the vector store
+- ``--fs-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
+- ``--fs-retries INT``: Number of retry attempts (default: 3)
 
 Model Parameters
 ~~~~~~~~~~~~~~~~
@@ -264,7 +262,7 @@ Model Parameters
 - ``-m, --model TEXT``: OpenAI model (supported: gpt-4o, o1, o3-mini) (default: gpt-4o)
 - ``--temperature FLOAT``: Sampling temperature (0.0-2.0)
 - ``--max-output-tokens INT``: Maximum output tokens
-- ``--top-p FLOAT``: Top-p sampling parameter (0.0-1.0)
+- ``--top--dir FLOAT``: Top-p --pattern FLOAT``: sampling parameter (0.0-1.0)
 - ``--frequency-penalty FLOAT``: Frequency penalty (-2.0-2.0)
 - ``--presence-penalty FLOAT``: Presence penalty (-2.0-2.0)
 - ``--reasoning-effort [low|medium|high]``: Control model reasoning effort
@@ -294,25 +292,18 @@ Debug & Progress
 
 **Progress Control**:
 
-- ``--progress-level [none|basic|detailed]``: Set progress reporting level (default: basic)
-- ``--no-progress``: Disable all progress indicators
+- ``--progress [none|basic|detailed]``: Control progress display (default: basic)
 - ``--verbose``: Enable verbose logging
 
 **Template Debugging**:
 
-- ``--debug-templates``: Enable detailed template expansion debugging
-- ``--show-templates``: Show expanded templates before sending to API
-- ``--show-context``: Show template variable context summary
-- ``--show-context-detailed``: Show detailed template variable context
-- ``--help-debug``: Show comprehensive template debugging help
+- ``--template-debug steps``: Enable detailed template expansion debugging
+- ``--template-debug post-expand``: Show expanded templates before sending to API
+- ``--template-debug vars``: Show template variable context summary
+- ``--template-debug vars,preview``: Show detailed template variable context
+- ``--help``: Show comprehensive CLI help including debugging options
 
-**Optimization Debugging**:
 
-- ``--no-optimization``: Skip template optimization entirely
-- ``--show-optimization-diff``: Show template optimization changes
-- ``--show-optimization-steps``: Show detailed optimization step tracking
-- ``--optimization-step-detail [summary|detailed]``: Level of optimization detail
-- ``--show-pre-optimization``: Show template content before optimization
 
 **Validation & Schema**:
 

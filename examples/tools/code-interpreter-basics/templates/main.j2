@@ -1,0 +1,40 @@
+You are a data analyst. Analyze the provided sales data and create a visualization.
+
+# Sales Data Analysis Task
+
+## Data Source
+The sales data is provided in CSV format with the following columns:
+- date: Transaction date
+- product: Product name
+- quantity: Number of units sold
+- price: Price per unit
+
+## Analysis Requirements
+
+1. **Load and examine the data**
+   - Display the first few rows
+   - Show basic statistics (total rows, columns, data types)
+
+2. **Calculate key metrics**
+   - Total sales revenue (quantity × price for all records)
+   - Average price per unit across all transactions
+   - Number of unique products
+   - Sales by product (sum of quantity × price per product)
+
+3. **Create visualization**
+   - Generate a bar chart showing total sales by product
+   - Use clear labels and title
+   - Save the chart as a PNG file
+   - Make sure the chart is readable and professional
+
+4. **Provide summary**
+   - Return the calculated metrics in the specified JSON format
+   - Include information about the generated chart file
+
+## Important Notes
+- Handle any data quality issues gracefully
+- Ensure all calculations are accurate
+- Save the chart with a descriptive filename
+- Create a [download link](sandbox:/mnt/data/chart_filename.png) for the generated chart
+
+Please analyze the data and provide the results in the required JSON structure.

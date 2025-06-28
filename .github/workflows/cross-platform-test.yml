@@ -1,0 +1,198 @@
+name: Cross-Platform Installation Tests
+
+on:
+  push:
+    branches: [main, 'release/*']
+    tags: ['v*', 'v*-rc*']
+  pull_request:
+    branches: [main, 'release/*']
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  build_package:
+    name: Build Package for Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Build package
+        run: poetry build
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/*
+
+  test_installation_matrix:
+    name: Test Installation - ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    needs: build_package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist
+
+      - name: Create clean virtual environment (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          python -m venv test_env
+          source test_env/bin/activate
+          pip install --upgrade pip
+          echo "VIRTUAL_ENV_ACTIVATED=test_env/bin/activate" >> $GITHUB_ENV
+
+      - name: Create clean virtual environment (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python -m venv test_env
+          test_env\Scripts\activate
+          python -m pip install --upgrade pip
+          echo "VIRTUAL_ENV_ACTIVATED=test_env\Scripts\activate" >> $env:GITHUB_ENV
+
+      - name: Install ostruct from wheel (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source test_env/bin/activate
+          pip install dist/*.whl
+
+      - name: Install ostruct from wheel (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          test_env\Scripts\activate
+          python -m pip install (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+        shell: pwsh
+
+      - name: Test basic functionality (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source test_env/bin/activate
+          echo "Testing ostruct --help..."
+          ostruct --help
+          echo "Testing ostruct --version..."
+          ostruct --version
+          echo "Testing dry-run functionality..."
+          echo '{"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}' > test_schema.json
+          echo 'Test: {{ "hello from ${{ matrix.os }}" }}' > test_template.j2
+          ostruct run test_template.j2 test_schema.json --dry-run
+
+      - name: Test basic functionality (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          test_env\Scripts\activate
+          Write-Host "Testing ostruct --help..."
+          ostruct --help
+          Write-Host "Testing ostruct --version..."
+          ostruct --version
+          Write-Host "Testing dry-run functionality..."
+          '{"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}' | Out-File -FilePath test_schema.json -Encoding utf8
+          'Test: {{ "hello from ${{ matrix.os }}" }}' | Out-File -FilePath test_template.j2 -Encoding utf8
+          ostruct run test_template.j2 test_schema.json --dry-run
+        shell: pwsh
+
+      - name: Test package manager installation (pipx) - Unix only
+        if: runner.os != 'Windows'
+        run: |
+          # Test pipx installation (Unix only for now)
+          pip install pipx
+          pipx install dist/*.whl
+          # Use the installed binary directly since pipx run has package name issues
+          ~/.local/bin/ostruct --help || ostruct --help
+          ~/.local/bin/ostruct --version || ostruct --version
+
+  test_docker_environments:
+    name: Test Docker Environments
+    needs: build_package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist
+
+      - name: Run Docker environment tests
+        run: |
+          chmod +x scripts/docker/test-docker-environments.sh
+          ./scripts/docker/test-docker-environments.sh
+
+  test_upgrade_path:
+    name: Test Upgrade Path
+    needs: build_package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist
+
+      - name: Install current stable version (if available)
+        run: |
+          # Try to install the current stable version from PyPI
+          pip install ostruct-cli || echo "No stable version available yet"
+          ostruct --version || echo "No current version installed"
+
+      - name: Upgrade to test version
+        run: |
+          pip install --upgrade dist/*.whl
+          echo "Upgraded to: $(ostruct --version)"
+
+      - name: Test functionality after upgrade
+        run: |
+          ostruct --help
+          echo '{"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}' > test_schema.json
+          echo 'Upgrade test: {{ "success" }}' > test_template.j2
+          ostruct run test_template.j2 test_schema.json --dry-run
+
+  summary:
+    name: Cross-Platform Test Summary
+    needs: [test_installation_matrix, test_docker_environments, test_upgrade_path]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          echo "Cross-platform installation tests completed"
+          echo "Matrix tests: ${{ needs.test_installation_matrix.result }}"
+          echo "Docker tests: ${{ needs.test_docker_environments.result }}"
+          echo "Upgrade tests: ${{ needs.test_upgrade_path.result }}"
+
+          if [[ "${{ needs.test_installation_matrix.result }}" == "success" &&
+                "${{ needs.test_docker_environments.result }}" == "success" &&
+                "${{ needs.test_upgrade_path.result }}" == "success" ]]; then
+            echo "✅ All cross-platform tests passed!"
+          else
+            echo "❌ Some cross-platform tests failed"
+            exit 1
+          fi

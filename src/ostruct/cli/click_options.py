@@ -5,7 +5,8 @@ We isolate this code here and provide proper type annotations for Click's
 decorator-based API.
 """
 
-from typing import Any, Callable, TypeVar, Union, cast
+import logging
+from typing import Any, Callable, List, TypeVar, Union, cast
 
 import click
 from click import Command
@@ -16,17 +17,132 @@ from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
     SystemPromptError,
     TaskTemplateVariableError,
 )
-from ostruct.cli.validators import (
-    validate_json_variable,
-    validate_name_path_pair,
-    validate_variable,
-)
+from ostruct.cli.validators import validate_json_variable, validate_variable
+
+from .constants import DefaultPaths
+from .help_json import print_command_help_json as print_help_json
 
 P = ParamSpec("P")
 R = TypeVar("R")
 F = TypeVar("F", bound=Callable[..., Any])
 CommandDecorator = Callable[[F], Command]
 DecoratedCommand = Union[Command, Callable[..., Any]]
+
+logger = logging.getLogger(__name__)
+
+
+def _handle_help_debug(
+    ctx: click.Context, param: click.Parameter, value: bool
+) -> None:
+    """Handle --help-debug flag by showing debug help and exiting."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    from .template_debug_help import show_template_debug_help
+
+    show_template_debug_help()
+    ctx.exit()
+
+
+def get_available_models() -> List[str]:
+    """Get list of available models from registry that support structured output.
+
+    Returns:
+        Sorted list of model names that support structured output
+
+    Note:
+        Registry handles its own caching internally.
+        Falls back to basic model list if registry fails.
+    """
+    try:
+        from openai_model_registry import ModelRegistry
+
+        registry = ModelRegistry.get_instance()
+        all_models = list(registry.models)
+
+        # Filter to only models that support structured output
+        supported_models = []
+        for model in all_models:
+            try:
+                capabilities = registry.get_capabilities(model)
+                if getattr(capabilities, "supports_structured_output", True):
+                    supported_models.append(model)
+            except Exception:
+                continue
+
+        return (
+            sorted(supported_models)
+            if supported_models
+            else _get_fallback_models()
+        )
+
+    except Exception as e:
+        logger.debug(f"Failed to load models from registry: {e}")
+        return _get_fallback_models()
+
+
+def _get_fallback_models() -> List[str]:
+    """Fallback model list when registry is unavailable."""
+    return ["gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3-mini"]
+
+
+class ModelChoice(click.Choice):
+    """Custom Choice type with better error messages and help display for models."""
+
+    def convert(
+        self,
+        value: Any,
+        param: click.Parameter | None,
+        ctx: click.Context | None,
+    ) -> str:
+        try:
+            return super().convert(value, param, ctx)
+        except click.BadParameter:
+            choices_list = list(self.choices)
+            available = ", ".join(choices_list[:5])
+            more_count = len(choices_list) - 5
+            more_text = f" (and {more_count} more)" if more_count > 0 else ""
+
+            raise click.BadParameter(
+                f"Invalid model '{value}'. Available models: {available}{more_text}.\n"
+                f"Run 'ostruct list-models' to see all {len(choices_list)} available models."
+            )
+
+    def shell_complete(
+        self, ctx: click.Context, param: click.Parameter, incomplete: str
+    ) -> list:
+        """Provide shell completion for model names."""
+        from click.shell_completion import CompletionItem
+
+        return [
+            CompletionItem(choice)
+            for choice in self.choices
+            if choice.startswith(incomplete)
+        ]
+
+    def get_metavar(
+        self, param: click.Parameter, ctx: click.Context | None = None
+    ) -> str:
+        """Override metavar to show simple model info instead of complex list."""
+        choices_list = list(self.choices)
+
+        # Simple, clean display
+        return f"[{len(choices_list)} models available - run 'ostruct list-models' for full list]"
+
+
+def create_model_choice() -> ModelChoice:
+    """Create a ModelChoice object for model selection with error handling."""
+    try:
+        models = get_available_models()
+        if not models:
+            raise ValueError("No models available")
+        return ModelChoice(models, case_sensitive=True)
+    except Exception as e:
+        logger.warning(f"Failed to load dynamic model list: {e}")
+        logger.warning("Falling back to basic model validation")
+
+        fallback_models = _get_fallback_models()
+        return ModelChoice(fallback_models, case_sensitive=True)
 
 
 def parse_feature_flags(
@@ -79,347 +195,113 @@ def parse_feature_flags(
     return parsed
 
 
+# Helper functions moved to help_json.py for unified help system
+
+
 def debug_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add debug-related CLI options."""
-    # Initial conversion to Command if needed
+    """Add debug-related CLI options (now consolidated into debug_progress_options)."""
+    # All debug options have been moved to debug_progress_options for better grouping
+    # This function is kept for backward compatibility but does nothing
     cmd: Any = f if isinstance(f, Command) else f
-
-    # Add options without redundant casts
-    cmd = click.option(
-        "--show-model-schema",
-        is_flag=True,
-        help="Show generated Pydantic model schema",
-    )(cmd)
-
-    cmd = click.option(
-        "--debug-validation",
-        is_flag=True,
-        help="Show detailed validation errors",
-    )(cmd)
-
-    cmd = click.option(
-        "--debug",
-        is_flag=True,
-        help="🐛 Enable debug-level logging including template expansion",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-templates",
-        is_flag=True,
-        help="📝 Show expanded templates before sending to API",
-    )(cmd)
-
-    cmd = click.option(
-        "--debug-templates",
-        is_flag=True,
-        help="🔍 Enable detailed template expansion debugging with step-by-step analysis",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-context",
-        is_flag=True,
-        help="📋 Show template variable context summary",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-context-detailed",
-        is_flag=True,
-        help="📋 Show detailed template variable context with content preview",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-pre-optimization",
-        is_flag=True,
-        help="🔧 Show template content before optimization is applied",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-optimization-diff",
-        is_flag=True,
-        help="🔄 Show template optimization changes (before/after comparison)",
-    )(cmd)
-
-    cmd = click.option(
-        "--no-optimization",
-        is_flag=True,
-        help="⚡ Skip template optimization entirely for debugging",
-    )(cmd)
-
-    cmd = click.option(
-        "--show-optimization-steps",
-        is_flag=True,
-        help="🔧 Show detailed optimization step tracking with before/after changes",
-    )(cmd)
-
-    cmd = click.option(
-        "--optimization-step-detail",
-        type=click.Choice(["summary", "detailed"]),
-        default="summary",
-        help="📊 Level of optimization step detail (summary shows overview, detailed shows full diffs)",
-    )(cmd)
-
-    cmd = click.option(
-        "--help-debug",
-        is_flag=True,
-        help="📚 Show comprehensive template debugging help and examples",
-    )(cmd)
-
-    # Final cast to Command for return type
     return cast(Command, cmd)
 
 
-def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add file-related CLI options."""
-    cmd: Any = f if isinstance(f, Command) else f
-
-    cmd = click.option(
-        "-f",
-        "--file",
-        "files",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""[LEGACY] Associate a file with a variable name for template access only.
-        The file will be available in your template as the specified variable.
-        For explicit tool routing, use -ft, -fc, or -fs instead.
-        Example: -f code main.py -f test test_main.py""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "-d",
-        "--dir",
-        "dir",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <DIR>",
-        callback=validate_name_path_pair,
-        help="""[LEGACY] Associate a directory with a variable name for template access only.
-        All files in the directory will be available in your template. Use -R for recursive scanning.
-        For explicit tool routing, use -dt, -dc, or -ds instead.
-        Example: -d src ./src""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # Template files with auto-naming ONLY (single argument)
-    cmd = click.option(
-        "-ft",
-        "--file-for-template",
-        "template_files",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""📄 [TEMPLATE] Files for template access only (auto-naming). These files will be available
-        in your template but will not be uploaded to any tools. Use for configuration files,
-        small data files, or any content you want to reference in templates.
-        Format: -ft path (auto-generates variable name from filename).
-        Access file content: {{ variable.content }} (not just {{ variable }})
-        Example: -ft config.yaml → config_yaml variable, use {{ config_yaml.content }}""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    # Template files with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--fta",
-        "--file-for-template-alias",
-        "template_file_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📄 [TEMPLATE] Files for template with custom aliases. Use this for reusable
-        templates where you need stable variable names independent of file paths.
-        Format: --fta name path (supports tab completion for paths).
-        Access file content: {{ name.content }} (not just {{ name }})
-        Example: --fta config_data config.yaml → use {{ config_data.content }}""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "-dt",
-        "--dir-for-template",
-        "template_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📁 [TEMPLATE] Directories for template access only (auto-naming). All files will be available
-        in your template but will not be uploaded to any tools. Use for project configurations,
-        reference data, or any directory content you want accessible in templates.
-        Format: -dt path (auto-generates variable name from directory name).
-        Example: -dt ./config -dt ./data""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # Template directories with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--dta",
-        "--dir-for-template-alias",
-        "template_dir_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📁 [TEMPLATE] Directories for template with custom aliases. Use this for reusable
-        templates where you need stable variable names independent of directory paths.
-        Format: --dta name path (supports tab completion for paths).
-        Example: --dta config_data ./settings --dta source_code ./src""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "--file-for",
-        "tool_files",
-        nargs=2,
-        multiple=True,
-        metavar="TOOL PATH",
-        help="""🔄 [ADVANCED] Route files to specific tools. Use this for precise control
-        over which tools receive which files. Supports tab completion for both tool names
-        and file paths.
-        Format: --file-for TOOL PATH
-        Examples:
-          --file-for code-interpreter analysis.py
-          --file-for file-search docs.pdf
-          --file-for template config.yaml""",
-    )(cmd)
-
-    cmd = click.option(
-        "-p",
-        "--pattern",
-        "patterns",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATTERN>",
-        help="""[LEGACY] Associate a glob pattern with a variable name. Matching files will be
-        available in your template. Use -R for recursive matching.
-        Example: -p logs '*.log'""",
-    )(cmd)
-
-    cmd = click.option(
-        "-R",
-        "--recursive",
-        is_flag=True,
-        help="Process directories and patterns recursively",
-    )(cmd)
-
-    cmd = click.option(
-        "--base-dir",
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""Base directory for resolving relative paths. All file operations will be
-        relative to this directory. Defaults to current directory.""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "-A",
-        "--allow",
-        "allowed_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""Add an allowed directory for security. Files must be within allowed
-        directories. Can be specified multiple times.""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "--allowed-dir-file",
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""File containing allowed directory paths, one per line. Lines starting
-        with # are treated as comments.""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    return cast(Command, cmd)
-
-
-def variable_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add variable-related CLI options."""
-    cmd: Any = f if isinstance(f, Command) else f
-
-    cmd = click.option(
-        "-V",
-        "--var",
-        "var",
-        multiple=True,
-        metavar="name=value",
-        callback=validate_variable,
-        help="""🏷️  [VARIABLES] Define a simple string variable for template substitution.
+def variable_options(cmd: Callable[..., Any]) -> Callable[..., Any]:
+    """Add variable-related options to a command."""
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "-J",
+            "--json-var",
+            "json_var",
+            multiple=True,
+            metavar='name=\'{"json":"value"}\'',
+            callback=validate_json_variable,
+            help="""📋 [VARIABLES] Define a JSON variable for complex data structures.
+            JSON variables are parsed and available in templates as structured objects.
+            Format: name='{"key":"value"}'
+            Example: -J config='{"env":"prod","debug":true}'""",
+        ),
+        click.option(
+            "-V",
+            "--var",
+            "var",
+            multiple=True,
+            metavar="name=value",
+            callback=validate_variable,
+            help="""🏷️  [VARIABLES] Define a simple string variable for template substitution.
         Variables are available in your template as {{ variable_name }}.
         Format: name=value
         Example: -V debug=true -V env=prod""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "-J",
-        "--json-var",
-        "json_var",
-        multiple=True,
-        metavar='name=\'{"json":"value"}\'',
-        callback=validate_json_variable,
-        help="""📋 [VARIABLES] Define a JSON variable for complex data structures.
-        JSON variables are parsed and available in templates as structured objects.
-        Format: name='{"key":"value"}'
-        Example: -J config='{"env":"prod","debug":true}'""",
-    )(cmd)
-
-    return cast(Command, cmd)
+    return cast(Callable[..., Any], cmd)
 
 
 def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add model-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "-m",
-        "--model",
-        default="gpt-4o",
-        show_default=True,
-        help="""OpenAI model to use. Must support structured output.
-        Supported models:
-        - gpt-4o (128k context window)
-        - o1 (200k context window)
-        - o3-mini (200k context window)""",
-    )(cmd)
+    # Create model choice with enhanced error handling
+    model_choice = create_model_choice()
 
-    cmd = click.option(
-        "--temperature",
-        type=click.FloatRange(0.0, 2.0),
-        help="""Sampling temperature. Controls randomness in the output.
-        Range: 0.0 to 2.0. Lower values are more focused.""",
-    )(cmd)
+    # Ensure default is in the list
+    default_model = "gpt-4o"
+    choices_list = list(model_choice.choices)
+    if default_model not in choices_list and choices_list:
+        default_model = choices_list[0]
 
-    cmd = click.option(
-        "--max-output-tokens",
-        type=click.IntRange(1, None),
-        help="""Maximum number of tokens in the output.
-        Higher values allow longer responses but cost more.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--top-p",
-        type=click.FloatRange(0.0, 1.0),
-        help="""Top-p (nucleus) sampling parameter. Controls diversity.
-        Range: 0.0 to 1.0. Lower values are more focused.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--frequency-penalty",
-        type=click.FloatRange(-2.0, 2.0),
-        help="""Frequency penalty for text generation.
-        Range: -2.0 to 2.0. Positive values reduce repetition.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--presence-penalty",
-        type=click.FloatRange(-2.0, 2.0),
-        help="""Presence penalty for text generation.
-        Range: -2.0 to 2.0. Positive values encourage new topics.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--reasoning-effort",
-        type=click.Choice(["low", "medium", "high"]),
-        help="""Control reasoning effort (if supported by model).
-        Higher values may improve output quality but take longer.""",
-    )(cmd)
+    # Apply Model Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--reasoning-effort",
+            type=click.Choice(["low", "medium", "high"]),
+            help="""Control reasoning effort (if supported by model).
+            Higher values may improve output quality but take longer.""",
+        ),
+        click.option(
+            "--presence-penalty",
+            type=click.FloatRange(-2.0, 2.0),
+            help="""Presence penalty for text generation.
+            Range: -2.0 to 2.0. Positive values encourage new topics.""",
+        ),
+        click.option(
+            "--frequency-penalty",
+            type=click.FloatRange(-2.0, 2.0),
+            help="""Frequency penalty for text generation.
+            Range: -2.0 to 2.0. Positive values reduce repetition.""",
+        ),
+        click.option(
+            "--top-p",
+            type=click.FloatRange(0.0, 1.0),
+            help="""Top-p (nucleus) sampling parameter. Controls diversity.
+            Range: 0.0 to 1.0. Lower values are more focused.""",
+        ),
+        click.option(
+            "--max-output-tokens",
+            type=click.IntRange(1, None),
+            help="""Maximum number of tokens in the output.
+            Higher values allow longer responses but cost more.""",
+        ),
+        click.option(
+            "--temperature",
+            type=click.FloatRange(0.0, 2.0),
+            help="""Sampling temperature. Controls randomness in the output.
+            Range: 0.0 to 2.0. Lower values are more focused.""",
+        ),
+        click.option(
+            "-m",
+            "--model",
+            type=model_choice,
+            default=default_model,
+            show_default=True,
+            help="OpenAI model to use. Must support structured output. Run 'ostruct list-models' for complete list.",
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -428,28 +310,33 @@ def system_prompt_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add system prompt related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--sys-prompt",
-        "system_prompt",
-        help="""Provide system prompt directly. This sets the initial context
-        for the model. Example: --sys-prompt "You are a code reviewer." """,
-    )(cmd)
-
-    cmd = click.option(
-        "--sys-file",
-        "system_prompt_file",
-        type=click.Path(exists=True, dir_okay=False),
-        help="""Load system prompt from file. The file should contain the prompt text.
+    # Apply System Prompt Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--ignore-task-sysprompt",
+            is_flag=True,
+            help="""Ignore system prompt in task template. By default, system prompts
+            in template frontmatter are used.""",
+        ),
+        click.option(
+            "--sys-file",
+            "system_prompt_file",
+            type=click.Path(exists=True, dir_okay=False),
+            help="""Load system prompt from file. The file should contain the prompt text.
         Example: --sys-file prompts/code_review.txt""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "--ignore-task-sysprompt",
-        is_flag=True,
-        help="""Ignore system prompt in task template. By default, system prompts
-        in template frontmatter are used.""",
-    )(cmd)
+            shell_complete=click.Path(
+                exists=True, file_okay=True, dir_okay=False
+            ),
+        ),
+        click.option(
+            "--sys-prompt",
+            "system_prompt",
+            help="""Provide system prompt directly. This sets the initial context
+            for the model. Example: --sys-prompt "You are a code reviewer.\"""",
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -458,20 +345,36 @@ def output_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add output-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--output-file",
-        type=click.Path(dir_okay=False),
-        help="""Write output to file instead of stdout.
-        Example: --output-file result.json""",
-        shell_complete=click.Path(file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "--dry-run",
-        is_flag=True,
-        help="""Validate and render but skip API call. Useful for testing
-        template rendering and validation.""",
-    )(cmd)
+    # Apply Output and Execution Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--run-summary-json",
+            is_flag=True,
+            help="""Output run summary as JSON to stderr (cannot be used with --dry-run).
+            Provides machine-readable execution summary after live runs.""",
+        ),
+        click.option(
+            "--dry-run-json",
+            is_flag=True,
+            help="""Output execution plan as JSON (requires --dry-run).
+        Outputs structured execution plan to stdout for programmatic consumption.""",
+        ),
+        click.option(
+            "--dry-run",
+            is_flag=True,
+            help="""Validate and render but skip API call. Useful for testing
+            template rendering and validation.""",
+        ),
+        click.option(
+            "--output-file",
+            type=click.Path(dir_okay=False),
+            help="""Write output to file instead of stdout.
+            Example: --output-file result.json""",
+            shell_complete=click.Path(file_okay=True, dir_okay=False),
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -480,26 +383,28 @@ def api_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add API-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--config",
-        type=click.Path(exists=True),
-        help="Configuration file path (default: ostruct.yaml)",
-    )(cmd)
-
-    cmd = click.option(
-        "--api-key",
-        help="""OpenAI API key. If not provided, uses OPENAI_API_KEY
-        environment variable.""",
-    )(cmd)
-
-    # API timeout for OpenAI calls
-    cmd = click.option(
-        "--timeout",
-        type=click.FloatRange(1.0, None),
-        default=60.0,
-        show_default=True,
-        help="Timeout in seconds for OpenAI API calls.",
-    )(cmd)
+    # Apply Configuration and API Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--timeout",
+            type=click.FloatRange(1.0, None),
+            default=60.0,
+            show_default=True,
+            help="Timeout in seconds for OpenAI API calls.",
+        ),
+        click.option(
+            "--api-key",
+            help="""OpenAI API key. If not provided, uses OPENAI_API_KEY
+            environment variable.""",
+        ),
+        click.option(
+            "--config",
+            type=click.Path(exists=True),
+            help="Configuration file path (default: ostruct.yaml)",
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
@@ -508,246 +413,159 @@ def mcp_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add MCP (Model Context Protocol) server CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--mcp-server",
-        "mcp_servers",
-        multiple=True,
-        help="""🔌 [MCP] Connect to Model Context Protocol server for extended capabilities.
+    # Apply MCP Server Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--mcp-headers",
+            help="""JSON string of headers for MCP servers.
+            Example: --mcp-headers '{"Authorization": "Bearer token"}'""",
+        ),
+        click.option(
+            "--mcp-require-approval",
+            type=click.Choice(["always", "never"]),
+            default="never",
+            show_default=True,
+            help="""Approval level for MCP tool usage. CLI usage requires 'never'.""",
+        ),
+        click.option(
+            "--mcp-allowed-tools",
+            "mcp_allowed_tools",
+            multiple=True,
+            help="""Allowed tools per server. Format: server_label:tool1,tool2
+            Example: --mcp-allowed-tools deepwiki:search,summary""",
+        ),
+        click.option(
+            "--mcp-server",
+            "mcp_servers",
+            multiple=True,
+            help="""🔌 [MCP] Connect to Model Context Protocol server for extended capabilities.
         MCP servers provide additional tools like web search, databases, APIs, etc.
         Format: [label@]url
         Example: --mcp-server deepwiki@https://mcp.deepwiki.com/sse""",
-    )(cmd)
-
-    cmd = click.option(
-        "--mcp-allowed-tools",
-        "mcp_allowed_tools",
-        multiple=True,
-        help="""Allowed tools per server. Format: server_label:tool1,tool2
-        Example: --mcp-allowed-tools deepwiki:search,summary""",
-    )(cmd)
-
-    cmd = click.option(
-        "--mcp-require-approval",
-        type=click.Choice(["always", "never"]),
-        default="never",
-        show_default=True,
-        help="""Approval level for MCP tool usage. CLI usage requires 'never'.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--mcp-headers",
-        help="""JSON string of headers for MCP servers.
-        Example: --mcp-headers '{"Authorization": "Bearer token"}'""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
     return cast(Command, cmd)
 
 
-def code_interpreter_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add Code Interpreter CLI options."""
+def feature_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add feature flag and configuration options (without legacy file routing)."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    # Code interpreter files with auto-naming ONLY (single argument)
-    cmd = click.option(
-        "-fc",
-        "--file-for-code-interpreter",
-        "code_interpreter_files",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""💻 [CODE INTERPRETER] Files to upload for code execution and analysis (auto-naming).
-        Perfect for data files (CSV, JSON), code files (Python, R), or any files that
-        need computational processing. Files are uploaded to an isolated execution environment.
-        Format: -fc path (auto-generates variable name from filename).
-        Example: -fc data.csv → data_csv variable, -fc analysis.py → analysis_py variable""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
+    # Apply Code Interpreter Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--ci-cleanup",
+            is_flag=True,
+            default=True,
+            show_default=True,
+            help="""🤖 [CODE INTERPRETER] Clean up uploaded files after execution to save storage quota.""",
+        ),
+        click.option(
+            "--ci-duplicate-outputs",
+            type=click.Choice(["overwrite", "rename", "skip"]),
+            default=None,  # Will use config default or fallback to "overwrite"
+            show_default="overwrite",
+            help="""🤖 [CODE INTERPRETER] Handle duplicate output file names.
+        'overwrite' replaces existing files (default),
+        'rename' creates unique names (file_1.txt, file_2.txt),
+        'skip' ignores files that already exist.
+        Example: --ci-duplicate-outputs rename""",
+        ),
+        click.option(
+            "--ci-download-dir",
+            type=click.Path(file_okay=False, dir_okay=True),
+            default=None,  # Will use config default or fallback in runner.py
+            show_default=DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR,
+            help="""🤖 [CODE INTERPRETER] Directory to save files generated by Code Interpreter.
+        Example: --ci-download-dir ./results""",
+            shell_complete=click.Path(file_okay=False, dir_okay=True),
+        ),
+    ):
+        cmd = deco(cmd)
 
-    # Code interpreter files with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--fca",
-        "--file-for-code-interpreter-alias",
-        "code_interpreter_file_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""💻 [CODE INTERPRETER] Files for code execution with custom aliases.
-        Format: --fca name path (supports tab completion for paths).
-        Example: --fca dataset src/data.csv --fca script analysis.py""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
-    cmd = click.option(
-        "-dc",
-        "--dir-for-code-interpreter",
-        "code_interpreter_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📂 [CODE INTERPRETER] Directories to upload for code execution (auto-naming). All files
-        in the directory will be uploaded to the execution environment. Use for datasets,
-        code repositories, or any directory that needs computational processing.
-        Format: -dc path (auto-generates variable name from directory name).
-        Example: -dc ./data -dc ./scripts""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # Code interpreter directories with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--dca",
-        "--dir-for-code-interpreter-alias",
-        "code_interpreter_dir_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📂 [CODE INTERPRETER] Directories for code execution with custom aliases.
-        Format: --dca name path (supports tab completion for paths).
-        Example: --dca dataset ./data --dca source_code ./src""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "--code-interpreter-download-dir",
-        type=click.Path(file_okay=False, dir_okay=True),
-        default="./downloads",
-        show_default=True,
-        help="""Directory to save files generated by Code Interpreter.
-        Example: --code-interpreter-download-dir ./results""",
-        shell_complete=click.Path(file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "--code-interpreter-cleanup",
-        is_flag=True,
-        default=True,
-        show_default=True,
-        help="""Clean up uploaded files after execution to save storage quota.""",
-    )(cmd)
-
-    # Feature flags for experimental features
-    cmd = click.option(
-        "--enable-feature",
-        "enabled_features",
-        multiple=True,
-        metavar="<FEATURE>",
-        help="""🔧 [EXPERIMENTAL] Enable experimental features.
+    # Apply Experimental Features Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--disable-feature",
+            "disabled_features",
+            multiple=True,
+            metavar="<FEATURE>",
+            help="""🔧 [EXPERIMENTAL] Disable experimental features.
+            Available features:
+            • ci-download-hack - Force single-pass mode for Code Interpreter downloads.
+              Overrides config file setting.
+            Example: --disable-feature ci-download-hack""",
+        ),
+        click.option(
+            "--enable-feature",
+            "enabled_features",
+            multiple=True,
+            metavar="<FEATURE>",
+            help="""🔧 [EXPERIMENTAL] Enable experimental features.
         Available features:
         • ci-download-hack - Enable two-pass sentinel mode for reliable Code Interpreter
           file downloads with structured output. Overrides config file setting.
         Example: --enable-feature ci-download-hack""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--disable-feature",
-        "disabled_features",
-        multiple=True,
-        metavar="<FEATURE>",
-        help="""🔧 [EXPERIMENTAL] Disable experimental features.
-        Available features:
-        • ci-download-hack - Force single-pass mode for Code Interpreter downloads.
-          Overrides config file setting.
-        Example: --disable-feature ci-download-hack""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
 
-def file_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Add File Search CLI options."""
+def file_search_config_options(
+    f: Union[Command, Callable[..., Any]],
+) -> Command:
+    """Add File Search configuration options (without legacy file routing)."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    # File search files with auto-naming ONLY (single argument)
-    cmd = click.option(
-        "-fs",
-        "--file-for-search",
-        "file_search_files",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
-        help="""🔍 [FILE SEARCH] Files to upload for semantic vector search (auto-naming). Perfect for
-        documents (PDF, TXT, MD), manuals, knowledge bases, or any text content you want to
-        search through. Files are processed into a searchable vector store.
-        Format: -fs path (auto-generates variable name from filename).
-        Example: -fs docs.pdf → docs_pdf variable, -fs manual.txt → manual_txt variable""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
+    # Apply File Search Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--fs-timeout",
+            type=float,
+            default=60.0,
+            help="""📁 [FILE SEARCH] Timeout in seconds for vector store indexing operations.
+            Increase for large file uploads.""",
+        ),
+        click.option(
+            "--fs-retries",
+            type=int,
+            default=3,
+            help="""📁 [FILE SEARCH] Number of retry attempts for file search operations.
+            Increase for unreliable network connections.""",
+        ),
+        click.option(
+            "--fs-cleanup",
+            is_flag=True,
+            default=True,
+            help="""📁 [FILE SEARCH] Clean up uploaded files and vector stores after use.
+            Disable with --no-fs-cleanup to keep files for debugging.""",
+        ),
+        click.option(
+            "--fs-store-name",
+            type=str,
+            default="ostruct_search",
+            help="""📁 [FILE SEARCH] Name for the vector store used for file search.
+        Example: --fs-store-name project_docs""",
+        ),
+    ):
+        cmd = deco(cmd)
 
-    # File search files with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--fsa",
-        "--file-for-search-alias",
-        "file_search_file_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""🔍 [FILE SEARCH] Files for search with custom aliases.
-        Format: --fsa name path (supports tab completion for paths).
-        Example: --fsa manual src/docs.pdf --fsa knowledge base.txt""",
-        shell_complete=click.Path(exists=True, file_okay=True, dir_okay=False),
-    )(cmd)
-
-    cmd = click.option(
-        "-ds",
-        "--dir-for-search",
-        "file_search_dirs",
-        multiple=True,
-        type=click.Path(exists=True, file_okay=False, dir_okay=True),
-        help="""📁 [FILE SEARCH] Directories to upload for semantic search (auto-naming). All files in the
-        directory will be processed into a searchable vector store. Use for documentation
-        directories, knowledge bases, or any collection of searchable documents.
-        Format: -ds path (auto-generates variable name from directory name).
-        Example: -ds ./docs -ds ./manuals""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    # File search directories with two-argument alias syntax (explicit naming)
-    cmd = click.option(
-        "--dsa",
-        "--dir-for-search-alias",
-        "file_search_dir_aliases",
-        multiple=True,
-        nargs=2,
-        metavar="<NAME> <PATH>",
-        callback=validate_name_path_pair,
-        help="""📁 [FILE SEARCH] Directories for search with custom aliases.
-        Format: --dsa name path (supports tab completion for paths).
-        Example: --dsa documentation ./docs --dsa knowledge_base ./manuals""",
-        shell_complete=click.Path(exists=True, file_okay=False, dir_okay=True),
-    )(cmd)
-
-    cmd = click.option(
-        "--file-search-vector-store-name",
-        default="ostruct_search",
-        show_default=True,
-        help="""Name for the vector store created for File Search.
-        Example: --file-search-vector-store-name project_docs""",
-    )(cmd)
-
-    cmd = click.option(
-        "--file-search-cleanup",
-        is_flag=True,
-        default=True,
-        show_default=True,
-        help="""Clean up uploaded files and vector stores after execution.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--file-search-retry-count",
-        type=click.IntRange(1, 10),
-        default=3,
-        show_default=True,
-        help="""Number of retry attempts for File Search operations.
-        Higher values improve reliability for intermittent failures.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--file-search-timeout",
-        type=click.FloatRange(10.0, 300.0),
-        default=60.0,
-        show_default=True,
-        help="""Timeout in seconds for vector store indexing.
-        Typically instant but may take longer for large files.""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
@@ -756,51 +574,38 @@ def web_search_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add Web Search CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--web-search",
-        is_flag=True,
-        help="""🌐 [WEB SEARCH] Enable OpenAI web search tool for up-to-date information.
-        Allows the model to search the web for current events, recent updates, and real-time data.
-        Note: Search queries may be sent to external services via OpenAI.
-
-        ⚠️  DEPRECATED: Use --enable-tool web-search instead. Will be removed in v0.9.0.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--no-web-search",
-        is_flag=True,
-        help="""Explicitly disable web search even if enabled by default in configuration.
-
-        ⚠️  DEPRECATED: Use --disable-tool web-search instead. Will be removed in v0.9.0.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--user-country",
-        type=str,
-        help="""🌐 [WEB SEARCH] Specify user country for geographically tailored search results.
-        Used to improve search relevance by location (e.g., 'US', 'UK', 'Germany').""",
-    )(cmd)
-
-    cmd = click.option(
-        "--user-city",
-        type=str,
-        help="""🌐 [WEB SEARCH] Specify user city for geographically tailored search results.
+    # Apply Web Search Configuration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--ws-context-size",
+            type=click.Choice(["low", "medium", "high"]),
+            help="""🌐 [WEB SEARCH] Control the amount of content retrieved from search results.
+            'low' = brief snippets, 'medium' = balanced content, 'high' = comprehensive content.""",
+        ),
+        click.option(
+            "--ws-region",
+            type=str,
+            help="""🌐 [WEB SEARCH] Specify user region/state for geographically tailored search results.
+            Used to improve search relevance by location (e.g., 'California', 'Texas').""",
+        ),
+        click.option(
+            "--ws-city",
+            type=str,
+            help="""🌐 [WEB SEARCH] Specify user city for geographically tailored search results.
         Used to improve search relevance by location (e.g., 'San Francisco', 'London').""",
-    )(cmd)
+        ),
+        click.option(
+            "--ws-country",
+            type=str,
+            help="""🌐 [WEB SEARCH] Specify user country for geographically tailored search results.
+            Used to improve search relevance by location (e.g., 'US', 'UK', 'Germany').""",
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--user-region",
-        type=str,
-        help="""🌐 [WEB SEARCH] Specify user region/state for geographically tailored search results.
-        Used to improve search relevance by location (e.g., 'California', 'Bavaria').""",
-    )(cmd)
-
-    cmd = click.option(
-        "--search-context-size",
-        type=click.Choice(["low", "medium", "high"]),
-        help="""🌐 [WEB SEARCH] Control the amount of content retrieved from web pages.
-        'low' retrieves minimal content, 'high' retrieves comprehensive content. Default: medium.""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
@@ -809,73 +614,351 @@ def tool_toggle_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add universal tool toggle CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
-    cmd = click.option(
-        "--enable-tool",
-        "enabled_tools",
-        multiple=True,
-        metavar="<TOOL>",
-        help="""🔧 [TOOL TOGGLES] Enable a tool for this run (repeatable).
+    # Apply Tool Integration Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--disable-tool",
+            "disabled_tools",
+            multiple=True,
+            metavar="<TOOL>",
+            help="""🔧 [TOOL TOGGLES] Disable a tool for this run (repeatable).
+            Overrides configuration file and implicit activation.
+            Available tools: code-interpreter, file-search, web-search, mcp
+            Example: --disable-tool web-search --disable-tool mcp""",
+        ),
+        click.option(
+            "--enable-tool",
+            "enabled_tools",
+            multiple=True,
+            metavar="<TOOL>",
+            help="""🔧 [TOOL TOGGLES] Enable a tool for this run (repeatable).
         Overrides configuration file and implicit activation.
         Available tools: code-interpreter, file-search, web-search, mcp
         Example: --enable-tool code-interpreter --enable-tool web-search""",
-    )(cmd)
+        ),
+    ):
+        cmd = deco(cmd)
 
-    cmd = click.option(
-        "--disable-tool",
-        "disabled_tools",
-        multiple=True,
-        metavar="<TOOL>",
-        help="""🔧 [TOOL TOGGLES] Disable a tool for this run (repeatable).
-        Overrides configuration file and implicit activation.
-        Available tools: code-interpreter, file-search, web-search, mcp
-        Example: --disable-tool web-search --disable-tool mcp""",
-    )(cmd)
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
 
     return cast(Command, cmd)
 
 
 def debug_progress_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add debugging and progress CLI options."""
+    # Import the new infrastructure for template debug
+    from .template_debug import parse_td
+
+    cmd: Any = f if isinstance(f, Command) else f
+
+    # Apply Debug and Development Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--help-debug",
+            is_flag=True,
+            is_eager=True,
+            expose_value=False,
+            callback=lambda ctx, param, value: _handle_help_debug(
+                ctx, param, value
+            ),
+            help="📚 Show comprehensive template debugging help and examples",
+        ),
+        click.option(
+            "--debug",
+            is_flag=True,
+            help="🐛 Enable debug-level logging including template expansion",
+        ),
+        click.option(
+            "--debug-validation",
+            is_flag=True,
+            help="Show detailed validation errors",
+        ),
+        click.option(
+            "--show-model-schema",
+            is_flag=True,
+            help="Show generated Pydantic model schema",
+        ),
+        click.option(
+            "-t",
+            "--template-debug",
+            metavar="CAPACITIES",
+            default=None,
+            is_flag=False,
+            flag_value="all",
+            expose_value=False,
+            callback=lambda ctx, p, v: (
+                ctx.obj.setdefault("_template_debug_caps", parse_td(v))
+                if ctx.obj is not None and v is not None
+                else None
+            ),
+            help="🔍 Debug prompt-template expansion. "
+            "Capacities: pre-expand,vars,preview,steps,post-expand "
+            "(comma list or 'all'). Use -t CAPACITIES or bare -t for all capacities.",
+        ),
+        click.option("--verbose", is_flag=True, help="Enable verbose logging"),
+        click.option(
+            "--progress",
+            type=click.Choice(["none", "basic", "detailed"]),
+            default="basic",
+            show_default=True,
+            help="""Control progress display. 'none' disables progress indicators,
+            'basic' shows key steps, 'detailed' shows all operations.""",
+        ),
+    ):
+        cmd = deco(cmd)
+
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
+
+    return cast(Command, cmd)
+
+
+def security_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add path security and allowlist CLI options."""
+    cmd: Any = f if isinstance(f, Command) else f
+
+    # Apply Security and Path Control Options using click-option-group
+    # Apply options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--allow-list",
+            "allow_list",
+            multiple=True,
+            type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+            help="📋 Allow paths from file list for strict/warn mode (repeatable)",
+        ),
+        click.option(
+            "--allow-file",
+            "allow_file",
+            multiple=True,
+            type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+            help="📄 Allow specific file for strict/warn mode (repeatable)",
+        ),
+        click.option(
+            "--allow",
+            "allow_dir",
+            multiple=True,
+            type=click.Path(exists=True, file_okay=False),
+            help="🗂️  Allow directory for strict/warn mode (repeatable)",
+        ),
+        click.option(
+            "-S",
+            "--path-security",
+            type=click.Choice(
+                ["permissive", "warn", "strict"], case_sensitive=False
+            ),
+            help="🔒 Path security mode: permissive (allow all), warn (log warnings), strict (allowlist only)",
+        ),
+    ):
+        cmd = deco(cmd)
+
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
+
+    return cast(Command, cmd)
+
+
+def help_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add help-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
 
     cmd = click.option(
-        "--no-progress", is_flag=True, help="Disable progress indicators"
-    )(cmd)
-
-    cmd = click.option(
-        "--progress-level",
-        type=click.Choice(["none", "basic", "detailed"]),
-        default="basic",
-        show_default=True,
-        help="""Control progress verbosity. 'none' shows no progress,
-        'basic' shows key steps, 'detailed' shows all steps.""",
-    )(cmd)
-
-    cmd = click.option(
-        "--verbose", is_flag=True, help="Enable verbose logging"
+        "--help-json",
+        is_flag=True,
+        callback=print_help_json,
+        expose_value=False,
+        is_eager=True,
+        hidden=True,  # Hide from help output - feature not ready for release
+        help="📖 Output command help in JSON format for programmatic consumption",
     )(cmd)
 
     return cast(Command, cmd)
 
 
-def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
-    """Apply all CLI options to a command."""
+def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add file attachment options with target/alias syntax."""
+
+    # Import validation functions here to avoid circular imports
+    def validate_attachment_file(
+        ctx: click.Context, param: click.Parameter, value: Any
+    ) -> Any:
+        from .params import normalise_targets, validate_attachment_alias
+
+        if not value:
+            return []
+
+        result = []
+        for spec, path in value:
+            # Parse spec part: [targets:]alias
+            if ":" in spec:
+                # Check for Windows drive letter false positive
+                if len(spec) == 2 and spec[1] == ":" and spec[0].isalpha():
+                    prefix, alias = "prompt", spec
+                else:
+                    prefix, alias = spec.split(":", 1)
+            else:
+                prefix, alias = "prompt", spec
+
+            # Normalize targets
+            try:
+                targets = normalise_targets(prefix)
+            except click.BadParameter as e:
+                raise click.BadParameter(
+                    f"Invalid target(s) in '{prefix}' for {param.name}. {e}"
+                )
+
+            # Validate alias
+            try:
+                alias = validate_attachment_alias(alias)
+            except click.BadParameter as e:
+                raise click.BadParameter(
+                    f"Invalid alias for {param.name}: {e}"
+                )
+
+            result.append(
+                {
+                    "alias": alias,
+                    "path": path,
+                    "targets": targets,
+                    "recursive": False,
+                    "pattern": None,
+                }
+            )
+
+        return result
+
+    def validate_attachment_dir(
+        ctx: click.Context, param: click.Parameter, value: Any
+    ) -> Any:
+        return validate_attachment_file(ctx, param, value)
+
+    def validate_attachment_collect(
+        ctx: click.Context, param: click.Parameter, value: Any
+    ) -> Any:
+        if not value:
+            return []
+
+        result = []
+        for spec, path in value:
+            # Parse spec part: [targets:]alias
+            if ":" in spec:
+                if len(spec) == 2 and spec[1] == ":" and spec[0].isalpha():
+                    prefix, alias = "prompt", spec
+                else:
+                    prefix, alias = spec.split(":", 1)
+            else:
+                prefix, alias = "prompt", spec
+
+            # Handle collect @filelist syntax
+            processed_path = path
+            if path.startswith("@"):
+                filelist_path = path[1:]  # Remove @
+                if not filelist_path:
+                    raise click.BadParameter(
+                        f"Filelist path cannot be empty after @ for {param.name}"
+                    )
+                processed_path = ("@", filelist_path)
+
+            result.append(
+                {
+                    "alias": alias,
+                    "path": processed_path,
+                    "targets": set([prefix.lower()]),
+                    "recursive": False,
+                    "pattern": None,
+                }
+            )
+
+        return result
+
+    # Apply File Attachment Options using click-option-group
+    # Fix: Attach options first, then wrap them in the group decorator last
     cmd: Any = f if isinstance(f, Command) else f
 
-    # Apply option groups in order
-    cmd = file_options(cmd)
-    cmd = variable_options(cmd)
-    cmd = model_options(cmd)
-    cmd = system_prompt_options(cmd)
-    cmd = output_options(cmd)
-    cmd = api_options(cmd)
-    cmd = mcp_options(cmd)
-    cmd = code_interpreter_options(cmd)
-    cmd = file_search_options(cmd)
-    cmd = web_search_options(cmd)
-    cmd = tool_toggle_options(cmd)
-    cmd = debug_options(cmd)
+    # Attach options first (in reverse order since they stack)
+    for deco in (
+        click.option(
+            "--pattern",
+            metavar="GLOB",
+            help="Apply to last --dir/--collect (replaces legacy --glob)",
+        ),
+        click.option(
+            "--recursive",
+            is_flag=True,
+            help="Apply to last --dir/--collect",
+        ),
+        click.option(
+            "-C",
+            "--collect",
+            "collects",
+            multiple=True,
+            nargs=2,
+            callback=validate_attachment_collect,
+            metavar="[TARGETS:]ALIAS @FILELIST",
+            help="Attach file collection: '[targets:]alias @file-list.txt'",
+        ),
+        click.option(
+            "-D",
+            "--dir",
+            "dirs",
+            multiple=True,
+            nargs=2,
+            callback=validate_attachment_dir,
+            metavar="[TARGETS:]ALIAS PATH",
+            help="Attach directory: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+        ),
+        click.option(
+            "-F",
+            "--file",
+            "attaches",
+            multiple=True,
+            nargs=2,
+            callback=validate_attachment_file,
+            metavar="[TARGETS:]ALIAS PATH",
+            help="Attach file: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+        ),
+    ):
+        cmd = deco(cmd)
+
+    # Apply the group decorator LAST so it sees all the options
+    cmd = cmd
+
+    return cast(Command, cmd)
+
+
+def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Apply all CLI options to a command in progressive disclosure order.
+
+    Order: Essential → Core Workflow → Advanced Features → Debug/Development
+    """
+    cmd: Any = f if isinstance(f, Command) else f
+
+    # Apply option groups in progressive disclosure order (REVERSE order since they stack)
+    # Debug and Development Options (last - most advanced)
+    cmd = help_options(cmd)
     cmd = debug_progress_options(cmd)
+    cmd = debug_options(cmd)
+
+    # Advanced Configuration Options
+    cmd = security_options(cmd)  # Path security and allowlist options
+    cmd = web_search_options(cmd)
+    cmd = file_search_config_options(cmd)  # File search config
+    cmd = feature_options(cmd)  # Feature flags and config
+    cmd = mcp_options(cmd)
+    cmd = api_options(cmd)
+
+    # Core Workflow Options
+    cmd = output_options(cmd)
+    cmd = system_prompt_options(cmd)
+    cmd = tool_toggle_options(cmd)
+    cmd = file_options(cmd)  # File attachment system
+    cmd = model_options(cmd)
+
+    # Essential Options (first - most important)
+    cmd = variable_options(cmd)
 
     return cast(Command, cmd)
 

@@ -136,28 +136,6 @@ class TestWebSearchToggle:
         assert result.exit_code == 0
         assert "web_search_enabled: bool (False)" in result.output
 
-    @pytest.mark.no_fs
-    def test_enable_tool_overrides_no_web_search(self):
-        """Test that --enable-tool overrides --no-web-search."""
-        runner = CliRunner()
-
-        result = runner.invoke(
-            create_cli(),
-            [
-                "run",
-                f"{TEST_BASE_DIR}/template.j2",
-                f"{TEST_BASE_DIR}/schema.json",
-                "--enable-tool",
-                "web-search",
-                "--no-web-search",
-                "--debug",
-                "--dry-run",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "web_search_enabled: bool (True)" in result.output
-
 
 class TestCodeInterpreterToggle:
     """Test code interpreter tool toggle functionality."""

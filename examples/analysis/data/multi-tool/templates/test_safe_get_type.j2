@@ -1,0 +1,7 @@
+# Test Template for safe_get Type Error
+
+## Valid Usage (should work)
+Valid string path: {{ safe_get('sales_data.name', 'No file') }}
+
+## Invalid Usage - Wrong Type (should show helpful error)
+Wrong object as path: {{ safe_get(sales_data, 'No file') }}

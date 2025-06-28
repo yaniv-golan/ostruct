@@ -1,9 +1,8 @@
-.PHONY: help build-install-script clean test test-unit test-integration test-docker test-dependencies lint format check-version
+.PHONY: help clean test test-unit test-integration test-docker test-dependencies lint format check-version
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  build-install-script  Generate install-macos.sh from template with current version"
 	@echo "  clean                 Clean generated files"
 	@echo "  test                  Run all tests"
 	@echo "  test-unit             Run unit tests only"
@@ -14,16 +13,9 @@ help:
 	@echo "  format                Format code"
 	@echo "  check-version         Show current version from pyproject.toml"
 
-# Generate the installation script with current version
-build-install-script:
-	@echo "🔨 Building macOS installation script..."
-	python3 scripts/build/build-install-script.py
-	@echo "✅ Installation script built successfully"
-
 # Clean generated files
 clean:
 	@echo "🧹 Cleaning generated files..."
-	rm -f scripts/generated/install-macos.sh
 	@echo "✅ Clean complete"
 
 # Show current version
@@ -76,5 +68,5 @@ format:
 	poetry run ruff check --fix src/ tests/
 
 # Build everything (useful for CI/CD)
-build: build-install-script
+build:
 	poetry build

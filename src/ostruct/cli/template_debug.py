@@ -5,11 +5,241 @@ including proper logging configuration and template visibility features.
 """
 
 import logging
+import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 import click
+
+
+class TDCap(str, Enum):
+    """Template Debug Capacity enum for granular debugging control."""
+
+    PRE_EXPAND = "pre-expand"
+    VARS = "vars"
+    PREVIEW = "preview"
+    STEPS = "steps"
+    POST_EXPAND = "post-expand"
+
+
+ALL_CAPS: Set[TDCap] = set(TDCap)
+
+# Tag mapping for consistent output prefixes
+TAG_MAP = {
+    TDCap.PRE_EXPAND: "PRE",
+    TDCap.VARS: "VARS",
+    TDCap.PREVIEW: "PREVIEW",
+    TDCap.STEPS: "STEP",
+    TDCap.POST_EXPAND: "TPL",
+}
+
+
+def parse_td(value: str | None) -> Set[TDCap]:
+    """Parse template debug capacity string into set of capacities.
+
+    Args:
+        value: Comma-separated capacity list or "all" or None
+
+    Returns:
+        Set of TDCap enum values
+
+    Raises:
+        click.BadParameter: If invalid capacity specified
+    """
+    if value is None or value.lower() == "all":
+        return ALL_CAPS
+
+    caps = set()
+    for tok in value.split(","):
+        tok = tok.strip()
+        try:
+            caps.add(TDCap(tok))
+        except ValueError:
+            valid_caps = ", ".join(c.value for c in TDCap)
+            raise click.BadParameter(
+                f"Unknown template-debug capacity '{tok}'. "
+                f"Valid: all, {valid_caps}"
+            )
+    return caps
+
+
+def td_log(ctx: click.Context, cap: TDCap, msg: str) -> None:
+    """Log template debug message if capacity is enabled.
+
+    Args:
+        ctx: Click context containing template debug configuration
+        cap: Template debug capacity for this message
+        msg: Message to log
+    """
+    if not ctx.obj:
+        return
+
+    active: Set[TDCap] | None = ctx.obj.get("_template_debug_caps")
+    if active and cap in active:
+        tag = TAG_MAP[cap]
+        click.echo(f"[{tag}] {msg}", err=True)
+
+
+MAX_PREVIEW = int(os.getenv("OSTRUCT_TEMPLATE_PREVIEW_LIMIT", "4096"))
+
+
+def preview_snip(val: Any, max_size: int | None = None) -> str:
+    """Create size-aware preview of variable content.
+
+    Args:
+        val: Variable value to preview
+        max_size: Maximum preview size (default: OSTRUCT_TEMPLATE_PREVIEW_LIMIT)
+
+    Returns:
+        Preview string with truncation info if needed
+    """
+    if max_size is None:
+        max_size = MAX_PREVIEW
+
+    # Handle FileInfoList objects specially to avoid multi-file content access errors
+    from .file_list import FileInfoList
+
+    if isinstance(val, FileInfoList):
+        if len(val) == 0:
+            txt = "No files attached"
+            type_info = ""
+        elif len(val) == 1:
+            try:
+                txt = str(val.content)
+                type_info = f" ({type(val).__name__})"
+            except Exception:
+                txt = "1 file attached (content not accessible)"
+                type_info = ""
+        else:
+            txt = f"{len(val)} files attached (use indexing or loop to access individual files)"
+            type_info = ""
+    # Handle other objects with content property
+    elif hasattr(
+        val, "content"
+    ):  # FileInfo objects and other content-bearing objects
+        try:
+            txt = str(val.content)
+            type_info = f" ({type(val).__name__})"
+        except ValueError:
+            # Handle other content access failures
+            txt = f"Content access failed for {type(val).__name__}"
+            type_info = ""
+    elif isinstance(val, (dict, list)):
+        import json
+
+        txt = json.dumps(val, indent=2)
+        type_info = f" ({type(val).__name__} with {len(val)} items)"
+    else:
+        txt = str(val)
+        type_info = f" ({type(val).__name__})"
+
+    if len(txt) > max_size:
+        return f"{txt[:max_size]}... [truncated {len(txt) - max_size} chars]{type_info}"
+    return f"{txt}{type_info}"
+
+
+def get_active_capacities(ctx: click.Context | None = None) -> Set[TDCap]:
+    """Get currently active template debug capacities.
+
+    Args:
+        ctx: Click context (auto-detected if None)
+
+    Returns:
+        Set of active capacities, empty if none
+    """
+    if ctx is None:
+        try:
+            ctx = click.get_current_context()
+        except RuntimeError:
+            return set()
+
+    if not ctx.obj:
+        return set()
+
+    result = ctx.obj.get("_template_debug_caps", set())
+    return result if isinstance(result, set) else set()
+
+
+def is_capacity_active(cap: TDCap, ctx: click.Context | None = None) -> bool:
+    """Check if specific template debug capacity is active.
+
+    Args:
+        cap: Capacity to check
+        ctx: Click context (auto-detected if None)
+
+    Returns:
+        True if capacity is active
+    """
+    active_caps = get_active_capacities(ctx)
+    return cap in active_caps
+
+
+def td_log_if_active(
+    cap: TDCap, msg: str, ctx: click.Context | None = None
+) -> None:
+    """Log template debug message if capacity is active (convenience wrapper).
+
+    Args:
+        cap: Template debug capacity
+        msg: Message to log
+        ctx: Click context (auto-detected if None)
+    """
+    if ctx is None:
+        try:
+            ctx = click.get_current_context()
+        except RuntimeError:
+            return
+
+    td_log(ctx, cap, msg)
+
+
+def td_log_vars(
+    variables: Dict[str, Any], ctx: click.Context | None = None
+) -> None:
+    """Log variable summary for VARS capacity.
+
+    Args:
+        variables: Dictionary of template variables
+        ctx: Click context (auto-detected if None)
+    """
+    if not is_capacity_active(TDCap.VARS, ctx):
+        return
+
+    for name, value in variables.items():
+        type_name = type(value).__name__
+        td_log_if_active(TDCap.VARS, f"{name} : {type_name}", ctx)
+
+
+def td_log_preview(
+    variables: Dict[str, Any], ctx: click.Context | None = None
+) -> None:
+    """Log variable content preview for PREVIEW capacity.
+
+    Args:
+        variables: Dictionary of template variables
+        ctx: Click context (auto-detected if None)
+    """
+    if not is_capacity_active(TDCap.PREVIEW, ctx):
+        return
+
+    for name, value in variables.items():
+        preview = preview_snip(value)
+        td_log_if_active(TDCap.PREVIEW, f"{name} → {preview}", ctx)
+
+
+def td_log_step(
+    step_num: int, description: str, ctx: click.Context | None = None
+) -> None:
+    """Log template expansion step for STEPS capacity.
+
+    Args:
+        step_num: Step number in expansion process
+        description: Description of what this step does
+        ctx: Click context (auto-detected if None)
+    """
+    td_log_if_active(TDCap.STEPS, f"Step {step_num}: {description}", ctx)
 
 
 def configure_debug_logging(
@@ -81,7 +311,6 @@ def log_template_expansion(
 def show_template_content(
     system_prompt: str,
     user_prompt: str,
-    show_templates: bool = False,
     debug: bool = False,
 ) -> None:
     """Show template content with appropriate formatting.
@@ -89,12 +318,14 @@ def show_template_content(
     Args:
         system_prompt: System prompt content
         user_prompt: User prompt content
-        show_templates: Show templates flag
         debug: Debug flag
     """
     logger = logging.getLogger(__name__)
 
-    if show_templates or debug:
+    # Show if debug mode or if post-expand capacity is active
+    should_show = debug or is_capacity_active(TDCap.POST_EXPAND)
+
+    if should_show:
         # Use click.echo for immediate output that bypasses logging
         click.echo("📝 Template Content:", err=True)
         click.echo("=" * 50, err=True)
@@ -126,10 +357,54 @@ def show_file_content_expansions(context: Dict[str, Any]) -> None:
 
     logger.debug("📁 File Content Expansions:")
     for key, value in context.items():
-        if hasattr(value, "content"):  # FileInfo object
-            logger.debug(
-                f"  → {key}: {getattr(value, 'path', 'unknown')} ({len(value.content)} chars)"
-            )
+        # Check for specific file-related types more safely
+        from .attachment_template_bridge import LazyFileContent
+        from .file_info import FileInfo
+        from .file_list import FileInfoList
+
+        if isinstance(value, FileInfo):
+            try:
+                content_len = len(value.content) if value.content else 0
+                logger.debug(f"  → {key}: {value.path} ({content_len} chars)")
+            except Exception as e:
+                logger.debug(
+                    f"  → {key}: FileInfo at {value.path} (content access failed: {e})"
+                )
+        elif isinstance(value, FileInfoList):
+            try:
+                file_count = len(value)
+                if file_count > 0:
+                    # Try to get content length safely
+                    try:
+                        content_len = (
+                            len(value.content) if value.content else 0
+                        )
+                        logger.debug(
+                            f"  → {key}: FileInfoList with {file_count} files ({content_len} chars)"
+                        )
+                    except ValueError:
+                        logger.debug(
+                            f"  → {key}: FileInfoList with {file_count} files (empty)"
+                        )
+                else:
+                    logger.debug(f"  → {key}: FileInfoList (empty)")
+            except Exception as e:
+                logger.debug(f"  → {key}: FileInfoList (access failed: {e})")
+        elif isinstance(value, LazyFileContent):
+            try:
+                # Show user-friendly file information instead of class name
+                file_size = getattr(value, "actual_size", None) or 0
+                if file_size > 0:
+                    size_str = f"{file_size:,} bytes"
+                else:
+                    size_str = "unknown size"
+                logger.debug(
+                    f"  → {key}: file {value.name} ({size_str}) at {value.path}"
+                )
+            except Exception as e:
+                logger.debug(
+                    f"  → {key}: file {getattr(value, 'name', 'unknown')} (access failed: {e})"
+                )
         elif isinstance(value, str) and len(value) > 100:
             logger.debug(f"  → {key}: {len(value)} chars")
         elif isinstance(value, dict):
@@ -467,75 +742,6 @@ def display_context_detailed(context: Dict[str, Any]) -> None:
     click.echo("=" * 50, err=True)
 
 
-def show_pre_optimization_template(template_content: str) -> None:
-    """Display template content before optimization is applied.
-
-    Args:
-        template_content: Raw template content before optimization
-    """
-    click.echo("🔧 Template Before Optimization:", err=True)
-    click.echo("=" * 50, err=True)
-    click.echo(template_content, err=True)
-    click.echo("=" * 50, err=True)
-
-
-def show_optimization_diff(original: str, optimized: str) -> None:
-    """Show template optimization changes in a readable diff format.
-
-    Args:
-        original: Original template content
-        optimized: Optimized template content
-    """
-    click.echo("🔄 Template Optimization Changes:", err=True)
-    click.echo("=" * 50, err=True)
-
-    # Simple line-by-line comparison
-    original_lines = original.split("\n")
-    optimized_lines = optimized.split("\n")
-
-    # Show basic statistics
-    click.echo(
-        f"Original: {len(original_lines)} lines, {len(original)} chars",
-        err=True,
-    )
-    click.echo(
-        f"Optimized: {len(optimized_lines)} lines, {len(optimized)} chars",
-        err=True,
-    )
-
-    if original == optimized:
-        click.echo("✅ No optimization changes made", err=True)
-        click.echo("=" * 50, err=True)
-        return
-
-    click.echo("\nChanges:", err=True)
-
-    # Find differences line by line
-    max_lines = max(len(original_lines), len(optimized_lines))
-    changes_found = False
-
-    for i in range(max_lines):
-        orig_line = original_lines[i] if i < len(original_lines) else ""
-        opt_line = optimized_lines[i] if i < len(optimized_lines) else ""
-
-        if orig_line != opt_line:
-            changes_found = True
-            click.echo(f"  Line {i + 1}:", err=True)
-            if orig_line:
-                click.echo(f"    - {orig_line}", err=True)
-            if opt_line:
-                click.echo(f"    + {opt_line}", err=True)
-
-    if not changes_found:
-        # If no line-by-line differences but content differs, show character-level diff
-        click.echo(
-            "  Content differs but not at line level (whitespace/formatting changes)",
-            err=True,
-        )
-
-    click.echo("=" * 50, err=True)
-
-
 def detect_undefined_variables(
     template_content: str, context: Dict[str, Any]
 ) -> List[str]:
@@ -562,187 +768,3 @@ def detect_undefined_variables(
             undefined_vars.append(var)
 
     return undefined_vars
-
-
-@dataclass
-class OptimizationStep:
-    """Information about a single optimization step."""
-
-    name: str
-    before: str
-    after: str
-    reason: str
-    timestamp: float
-    chars_changed: int = 0
-
-    def __post_init__(self) -> None:
-        """Calculate character changes after initialization."""
-        self.chars_changed = len(self.after) - len(self.before)
-
-
-class OptimizationStepTracker:
-    """Tracker for detailed optimization step analysis."""
-
-    def __init__(self, enabled: bool = False):
-        """Initialize the optimization step tracker.
-
-        Args:
-            enabled: Whether step tracking is enabled
-        """
-        self.enabled = enabled
-        self.steps: List[OptimizationStep] = []
-
-    def log_step(
-        self,
-        step_name: str,
-        before: str,
-        after: str,
-        reason: str,
-    ) -> None:
-        """Log an optimization step.
-
-        Args:
-            step_name: Name/description of the optimization step
-            before: Content before this step
-            after: Content after this step
-            reason: Explanation of why this step was applied
-        """
-        if self.enabled:
-            step = OptimizationStep(
-                name=step_name,
-                before=before,
-                after=after,
-                reason=reason,
-                timestamp=time.time(),
-            )
-            self.steps.append(step)
-
-    def show_step_summary(self) -> None:
-        """Show a summary of optimization steps."""
-        if not self.enabled or not self.steps:
-            return
-
-        click.echo("🔧 Optimization Steps Summary:", err=True)
-        click.echo("=" * 50, err=True)
-
-        total_chars_changed = 0
-        for i, step in enumerate(self.steps, 1):
-            total_chars_changed += step.chars_changed
-            change_indicator = (
-                "📈"
-                if step.chars_changed > 0
-                else "📉" if step.chars_changed < 0 else "📊"
-            )
-
-            click.echo(f"  {i}. {step.name}: {step.reason}", err=True)
-            if step.before != step.after:
-                click.echo(
-                    f"     {change_indicator} Changed: {len(step.before)} → {len(step.after)} chars ({step.chars_changed:+d})",
-                    err=True,
-                )
-            else:
-                click.echo("     📊 No changes made", err=True)
-
-        click.echo(
-            f"\n📊 Total: {total_chars_changed:+d} characters changed",
-            err=True,
-        )
-        click.echo("=" * 50, err=True)
-
-    def show_detailed_steps(self) -> None:
-        """Show detailed information for each optimization step."""
-        if not self.enabled or not self.steps:
-            return
-
-        click.echo("🔍 Detailed Optimization Steps:", err=True)
-        click.echo("=" * 50, err=True)
-
-        for i, step in enumerate(self.steps, 1):
-            click.echo(f"\n--- Step {i}: {step.name} ---", err=True)
-            click.echo(f"Reason: {step.reason}", err=True)
-            click.echo(f"Character change: {step.chars_changed:+d}", err=True)
-
-            if step.before != step.after:
-                click.echo("Changes:", err=True)
-                _show_step_diff(step.before, step.after)
-            else:
-                click.echo("✅ No changes made", err=True)
-
-        click.echo("=" * 50, err=True)
-
-    def get_step_stats(self) -> Dict[str, Any]:
-        """Get statistics about optimization steps.
-
-        Returns:
-            Dictionary with step statistics
-        """
-        if not self.steps:
-            return {}
-
-        total_steps = len(self.steps)
-        total_chars_changed = sum(step.chars_changed for step in self.steps)
-        steps_with_changes = sum(
-            1 for step in self.steps if step.before != step.after
-        )
-
-        return {
-            "total_steps": total_steps,
-            "steps_with_changes": steps_with_changes,
-            "total_chars_changed": total_chars_changed,
-            "step_names": [step.name for step in self.steps],
-        }
-
-
-def _show_step_diff(before: str, after: str) -> None:
-    """Show a simple diff between before and after content.
-
-    Args:
-        before: Content before changes
-        after: Content after changes
-    """
-    before_lines = before.split("\n")
-    after_lines = after.split("\n")
-
-    max_lines = max(len(before_lines), len(after_lines))
-    changes_shown = 0
-    max_changes = 5  # Limit output for readability
-
-    for i in range(max_lines):
-        if changes_shown >= max_changes:
-            click.echo(
-                f"  ... ({max_lines - i} more lines not shown)", err=True
-            )
-            break
-
-        before_line = before_lines[i] if i < len(before_lines) else ""
-        after_line = after_lines[i] if i < len(after_lines) else ""
-
-        if before_line != after_line:
-            changes_shown += 1
-            click.echo(f"  Line {i + 1}:", err=True)
-            if before_line:
-                click.echo(f"    - {before_line}", err=True)
-            if after_line:
-                click.echo(f"    + {after_line}", err=True)
-
-
-def show_optimization_steps(
-    steps: List[OptimizationStep], detail_level: str = "summary"
-) -> None:
-    """Show optimization steps with specified detail level.
-
-    Args:
-        steps: List of optimization steps
-        detail_level: Level of detail ("summary" or "detailed")
-    """
-    if not steps:
-        click.echo("ℹ️  No optimization steps were recorded", err=True)
-        return
-
-    tracker = OptimizationStepTracker(enabled=True)
-    tracker.steps = steps
-
-    if detail_level == "detailed":
-        tracker.show_detailed_steps()
-    else:
-        tracker.show_step_summary()

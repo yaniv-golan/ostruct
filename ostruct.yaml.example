@@ -4,13 +4,13 @@
 
 # Model configuration
 models:
-  default: gpt-4o  # Default model to use
+  default: gpt-4.1  # Default model to use
 
 # Tool-specific settings
 tools:
   code_interpreter:
     auto_download: true
-    output_directory: "./output"
+    output_directory: "./downloads"
 
   file_search:
     max_results: 10
@@ -36,6 +36,12 @@ limits:
   max_cost_per_run: 10.00
   warn_expensive_operations: true
 
-# Environment Variables for Secrets:
+# Environment Variables:
+# API Configuration:
 # OPENAI_API_KEY - Your OpenAI API key
-# MCP_<NAME>_URL - URL for custom MCP servers (e.g., MCP_STRIPE_URL)
+# OSTRUCT_MCP_URL_<name> - URL for custom MCP servers (e.g., OSTRUCT_MCP_URL_stripe)
+#
+# Template Processing Limits (template-only files):
+# OSTRUCT_TEMPLATE_FILE_LIMIT - Max individual file size for templates (default: 65536 bytes)
+# OSTRUCT_TEMPLATE_TOTAL_LIMIT - Max total file size for templates (default: 1048576 bytes)
+# OSTRUCT_TEMPLATE_PREVIEW_LIMIT - Max chars in debug previews (default: 4096)

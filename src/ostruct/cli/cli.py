@@ -1,9 +1,11 @@
-"""Minimal CLI entry point for ostruct."""
+#!/usr/bin/env python3
+"""Main CLI module for ostruct."""
 
+import os
 import sys
 from typing import Optional
 
-import click
+import rich_click as click
 from dotenv import load_dotenv
 
 from .. import __version__
@@ -17,8 +19,39 @@ from .errors import (
     handle_error,
 )
 from .exit_codes import ExitCode
+from .help_json import print_full_cli_help_json as print_full_help_json
 from .registry_updates import get_update_notification
+
+# Import rich-click configuration
+from .rich_config import *  # noqa: F401,F403
+from .unicode_compat import safe_emoji
 from .utils import fix_surrogate_escapes
+
+# Load environment variables from .env file
+load_dotenv()
+
+
+def _handle_quick_ref(
+    ctx: click.Context, param: click.Parameter, value: bool
+) -> None:
+    """Handle --quick-ref flag by showing quick reference help and exiting."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    from .quick_ref_help import show_quick_ref_help
+
+    show_quick_ref_help()
+    ctx.exit()
+
+
+def _handle_version(
+    ctx: click.Context, param: click.Parameter, value: bool
+) -> None:
+    """Handle --version flag by showing version and exiting."""
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(f"ostruct, version {__version__}")
+    ctx.exit()
 
 
 def fix_argv_encoding() -> None:
@@ -50,44 +83,55 @@ def fix_argv_encoding() -> None:
 def create_cli_group() -> click.Group:
     """Create the main CLI group with all commands."""
 
-    @click.group()
-    @click.version_option(version=__version__)
+    @click.group(cls=click.RichGroup)
+    @click.option(
+        "--version",
+        "-V",
+        is_flag=True,
+        expose_value=False,
+        is_eager=True,
+        callback=_handle_version,
+        help="Show the version and exit.",
+    )
     @click.option(
         "--config",
         type=click.Path(exists=True),
         help="Configuration file path (default: ostruct.yaml)",
     )
+    @click.option(
+        "--quick-ref",
+        is_flag=True,
+        callback=_handle_quick_ref,
+        expose_value=False,
+        is_eager=True,
+        help=f"{safe_emoji('📖')} Show concise usage examples and patterns",
+    )
+    @click.option(
+        "--help-json",
+        is_flag=True,
+        callback=print_full_help_json,
+        expose_value=False,
+        is_eager=True,
+        hidden=True,  # Hide from help output - feature not ready for release
+        help=f"{safe_emoji('📖')} Output comprehensive help for all commands in JSON format",
+    )
+    @click.option(
+        "--unicode/--no-unicode",
+        default=None,
+        help="Force enable/disable Unicode emoji display (overrides auto-detection)",
+        envvar="OSTRUCT_UNICODE",
+    )
     @click.pass_context
-    def cli_group(ctx: click.Context, config: Optional[str] = None) -> None:
-        """ostruct - AI-powered structured output with multi-tool integration.
+    def cli_group(
+        ctx: click.Context,
+        config: Optional[str] = None,
+        unicode: Optional[bool] = None,
+    ) -> None:
+        """ostruct - AI-powered structured output with multi-tool integration."""
+        # Handle Unicode preference
+        if unicode is not None:
+            os.environ["OSTRUCT_UNICODE"] = "1" if unicode else "0"
 
-        ostruct transforms unstructured inputs into structured JSON using OpenAI APIs,
-        Jinja2 templates, and powerful tool integrations including Code Interpreter,
-        File Search, Web Search, and MCP servers.
-
-        🚀 QUICK START:
-            ostruct run template.j2 schema.json -V name=value
-
-        📁 FILE ROUTING (explicit tool assignment):
-            -ft/--file-for-template          Template access only
-            -fc/--file-for-code-interpreter  Code execution & analysis
-            -fs/--file-for-file-search       Document search & retrieval
-
-        ⚡ EXAMPLES:
-            # Basic usage (unchanged)
-            ostruct run template.j2 schema.json -f config.yaml
-
-            # Multi-tool explicit routing
-            ostruct run analysis.j2 schema.json -fc data.csv -fs docs.pdf -ft config.yaml
-
-            # Advanced routing with --file-for
-            ostruct run task.j2 schema.json --file-for code-interpreter shared.json --file-for file-search shared.json
-
-            # MCP server integration
-            ostruct run template.j2 schema.json --mcp-server deepwiki@https://mcp.deepwiki.com/sse
-
-        📖 For detailed documentation: https://ostruct.readthedocs.io
-        """
         # Load configuration
         try:
             app_config = OstructConfig.load(config)
@@ -111,6 +155,86 @@ def create_cli_group() -> click.Group:
         except Exception:
             # Ensure any errors don't affect normal operation
             pass
+
+    # Set the docstring dynamically with emoji compatibility
+    rocket = safe_emoji("🚀")
+    folder = safe_emoji("📁")
+    target = safe_emoji("🎯")
+    book = safe_emoji("📖")
+    lightning = safe_emoji("⚡")
+    wrench = safe_emoji("🔧")
+
+    cli_group.__doc__ = f"""ostruct - AI-powered structured output with multi-tool integration.
+
+Transform unstructured inputs into structured JSON using OpenAI APIs, Jinja2 templates, and powerful tool integrations.
+
+{rocket} **QUICK START**
+
+ostruct run template.j2 schema.json --var name=value
+
+{folder} **FILE ATTACHMENT SYSTEM**
+
+--file [targets:]alias path      Attach file with optional target routing
+
+--dir [targets:]alias path       Attach directory with optional target routing
+
+{target} **TARGETS**
+
+prompt (default)                 Template access only
+
+code-interpreter, ci             Code execution & analysis
+
+file-search, fs                  Document search & retrieval
+
+{book} **GETTING HELP**
+
+ostruct --help                   Command overview
+
+ostruct --quick-ref              Usage examples and patterns
+
+ostruct run --help               Detailed options reference
+
+ostruct run --help-debug         Troubleshooting guide
+
+{book} Documentation: https://ostruct.readthedocs.io
+
+{lightning} **EXAMPLES**
+
+# Basic usage
+ostruct run template.j2 schema.json --file data file.txt
+
+# Multi-tool routing
+ostruct run analysis.j2 schema.json --file ci:data data.csv --file fs:docs manual.pdf
+
+# Combined targets
+ostruct run task.j2 schema.json --file ci,fs:shared data.json
+
+# MCP server integration
+ostruct run template.j2 schema.json --mcp-server deepwiki@https://mcp.deepwiki.com/sse
+
+{wrench} **ENVIRONMENT VARIABLES**
+
+```text
+Core API Configuration:
+OPENAI_API_KEY                           OpenAI API authentication key
+OPENAI_API_BASE                          Custom OpenAI API base URL
+
+Template Processing Limits:
+OSTRUCT_TEMPLATE_FILE_LIMIT              Max individual file size (default: 64KB)
+OSTRUCT_TEMPLATE_TOTAL_LIMIT             Max total files size (default: 1MB)
+OSTRUCT_TEMPLATE_PREVIEW_LIMIT           Template preview size limit (default: 4096)
+
+System Behavior:
+OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS   Disable model registry updates
+OSTRUCT_MCP_URL_<name>                   Custom MCP server URLs
+
+Unicode Display Control:
+OSTRUCT_UNICODE=auto                     Auto-detect terminal capabilities (default)
+OSTRUCT_UNICODE=1/true/yes               Force emoji display (override detection)
+OSTRUCT_UNICODE=0/false/no               Force plain text (override detection)
+OSTRUCT_UNICODE=debug                    Show detection details and auto-detect
+```
+"""
 
     # Add all commands from the command module
     command_group = create_command_group()

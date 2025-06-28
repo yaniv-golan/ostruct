@@ -314,7 +314,7 @@ Follow these guidelines for documentation:
       .. code-block:: bash
 
          # Example command
-         ostruct run template.j2 schema.json -ft config.yaml
+         ostruct run template.j2 schema.json --file config config.yaml
 
 3. **Use cross-references** for internal links:
 

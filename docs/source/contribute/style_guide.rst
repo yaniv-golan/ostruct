@@ -514,9 +514,9 @@ Include comprehensive code examples:
 
       # Example command with explanation
       ostruct run template.j2 schema.json \
-        -fc source_code/ \
-        -fs documentation/ \
-        -ft config.yaml
+        --file ci:data source_code/ \
+        --file fs:docs documentation/ \
+        --file config config.yaml
 
    .. code-block:: python
 

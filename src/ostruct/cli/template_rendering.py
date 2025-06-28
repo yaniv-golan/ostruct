@@ -65,12 +65,7 @@ from jinja2 import Environment
 from .errors import TaskTemplateVariableError, TemplateValidationError
 from .file_utils import FileInfo
 from .progress import ProgressContext
-from .progress_reporting import get_progress_reporter
 from .template_env import create_jinja_env
-from .template_optimizer import (
-    is_optimization_beneficial,
-    optimize_template_for_llm,
-)
 from .template_schema import DotDict, StdinProxy
 
 __all__ = [
@@ -156,7 +151,7 @@ def render_template(
         TaskTemplateVariableError: If template variables are undefined
         TemplateValidationError: If template rendering fails for other reasons
     """
-    from .progress import (  # Import here to avoid circular dependency
+    from .progress import (
         ProgressContext,
     )
 
@@ -169,7 +164,7 @@ def render_template(
                 progress.update(1)  # Update progress for setup
 
             if env is None:
-                env = create_jinja_env(loader=jinja2.FileSystemLoader("."))
+                env, _ = create_jinja_env(loader=jinja2.FileSystemLoader("."))
 
             logger.debug("=== Raw Input ===")
             logger.debug(
@@ -304,67 +299,6 @@ def render_template(
                             "  %s: %s (%r)", key, type(value).__name__, value
                         )
 
-                # Apply template optimization for better LLM performance
-                try:
-                    # Get template source - use template_str for string templates or template.source for file templates
-                    if hasattr(template, "source") and template.source:
-                        original_template_source = template.source
-                    else:
-                        original_template_source = template_str
-
-                    if (
-                        original_template_source
-                        and is_optimization_beneficial(
-                            original_template_source
-                        )
-                    ):
-                        logger.debug("=== Template Optimization ===")
-                        optimization_result = optimize_template_for_llm(
-                            original_template_source
-                        )
-
-                        if optimization_result.has_optimizations:
-                            # Report optimization to user
-                            progress_reporter = get_progress_reporter()
-                            progress_reporter.report_optimization(
-                                optimization_result.transformations
-                            )
-
-                            logger.info(
-                                "Template optimized for LLM performance:"
-                            )
-                            for (
-                                transformation
-                            ) in optimization_result.transformations:
-                                logger.info(f"  • {transformation}")
-                            logger.info(
-                                f"  • Optimization time: {optimization_result.optimization_time_ms:.1f}ms"
-                            )
-
-                            # Create new template from optimized content
-                            template = env.from_string(
-                                optimization_result.optimized_template
-                            )
-                            # Re-add globals to new template
-                            template.globals["template_name"] = getattr(
-                                template, "name", "<string>"
-                            )
-                            template.globals["template_path"] = getattr(
-                                template, "filename", None
-                            )
-                        else:
-                            logger.debug("No beneficial optimizations found")
-                    else:
-                        logger.debug(
-                            "Template optimization not beneficial - skipping"
-                        )
-                except Exception as e:
-                    # If optimization fails, continue with original template
-                    logger.warning(
-                        f"Template optimization failed, using original: {e}"
-                    )
-                    # template remains unchanged
-
                 result = template.render(**wrapped_context)
                 if not isinstance(result, str):
                     raise TemplateValidationError(
@@ -391,11 +325,53 @@ def render_template(
                     f"  -V {var_name}='value'"
                 )
                 raise TaskTemplateVariableError(error_msg) from e
-            except (jinja2.TemplateError, Exception) as e:
-                logger.error("Template rendering failed: %s", str(e))
-                raise TemplateValidationError(
-                    f"Template rendering failed: {str(e)}"
-                ) from e
+            except TypeError as e:
+                error_str = str(e)
+                # Handle iteration errors with user-friendly messages
+                if "object is not iterable" in error_str:
+                    # Extract variable name from iteration context
+                    # Look for patterns like "'ClassName' object is not iterable"
+                    # and provide helpful guidance
+                    user_friendly_msg = (
+                        "Template iteration error: A variable used in a loop ({% for ... %}) "
+                        "is not iterable. This usually means:\n"
+                        "1. The variable is not a file object, list, or other iterable type\n"
+                        "2. Check that your template variable names match the expected data\n"
+                        "3. Verify the variable contains the expected data type\n"
+                        f"Available variables: {', '.join(sorted(context.keys()))}"
+                    )
+                    logger.error("Template iteration error: %s", error_str)
+                    raise TemplateValidationError(user_friendly_msg) from e
+                else:
+                    # Other TypeError - preserve original behavior
+                    logger.error("Template rendering failed: %s", str(e))
+                    raise TemplateValidationError(
+                        f"Template rendering failed: {str(e)}"
+                    ) from e
+            except Exception as e:
+                # Import here to avoid circular imports
+                from .template_filters import (
+                    TemplateStructureError,
+                    format_tses_error,
+                )
+
+                # Handle TemplateStructureError with helpful formatting
+                if isinstance(e, TemplateStructureError):
+                    formatted_error = format_tses_error(e)
+                    logger.error(
+                        "Template structure error: %s", formatted_error
+                    )
+                    raise TemplateValidationError(formatted_error) from e
+                elif isinstance(e, jinja2.TemplateError):
+                    logger.error("Template rendering failed: %s", str(e))
+                    raise TemplateValidationError(
+                        f"Template rendering failed: {str(e)}"
+                    ) from e
+                else:
+                    logger.error("Template rendering failed: %s", str(e))
+                    raise TemplateValidationError(
+                        f"Template rendering failed: {str(e)}"
+                    ) from e
 
         except ValueError as e:
             # Re-raise with original context
