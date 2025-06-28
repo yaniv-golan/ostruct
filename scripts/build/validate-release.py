@@ -65,9 +65,32 @@ class ReleaseValidator:
 
             with open("pyproject.toml", "rb") as f:
                 pyproject = tomli.load(f)
-            version = pyproject["project"]["version"]
-            self.log_success(f"Version consistency check passed: {version}")
-            return True
+
+            # Check for dynamic versioning
+            if (
+                "dynamic" in pyproject.get("project", {})
+                and "version" in pyproject["project"]["dynamic"]
+            ):
+                # Dynamic versioning - get version from poetry
+                result = self.run_command(
+                    ["poetry", "version", "-s"], check=False
+                )
+                if result.returncode == 0:
+                    version = result.stdout.strip()
+                    self.log_success(
+                        f"Version consistency check passed (dynamic): {version}"
+                    )
+                    return True
+                else:
+                    self.log_error("Failed to get version from poetry")
+                    return False
+            else:
+                # Static versioning
+                version = pyproject["project"]["version"]
+                self.log_success(
+                    f"Version consistency check passed (static): {version}"
+                )
+                return True
 
         except Exception as e:
             self.log_error(f"Version consistency check failed: {e}")
@@ -86,9 +109,20 @@ class ReleaseValidator:
             # Check required fields
             required_fields = [
                 "project.name",
-                "project.version",
                 "project.description",
             ]
+
+            # Check version (static or dynamic)
+            project = pyproject.get("project", {})
+            if "version" not in project and (
+                "dynamic" not in project
+                or "version" not in project.get("dynamic", [])
+            ):
+                self.log_error(
+                    "Missing version: neither project.version nor dynamic versioning configured"
+                )
+                return False
+
             for field in required_fields:
                 keys = field.split(".")
                 obj = pyproject
