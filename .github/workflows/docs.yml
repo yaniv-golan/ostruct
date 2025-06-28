@@ -39,7 +39,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          poetry install --extras "dev docs"
+          poetry install --with dev --extras docs
           echo "Sphinx package location:"
           python -c "import sphinx; print(sphinx.__file__)" || true
           echo "Sphinx entry points:"
