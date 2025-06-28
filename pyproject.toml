@@ -143,6 +143,14 @@ module = ["click.*", "ostruct.cli.click_options"]
 disallow_untyped_decorators = false
 warn_return_any = false
 
+[[tool.mypy.overrides]]
+module = ["bleach", "bleach.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["ostruct.cli.mcp_integration"]
+warn_unused_ignores = false
+
 [tool.black]
 line-length = 79
 target-version = ["py310"]

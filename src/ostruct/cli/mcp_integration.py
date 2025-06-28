@@ -19,7 +19,7 @@ except ImportError:
 try:
     import bleach  # type: ignore[import-untyped]
 except ImportError:
-    bleach = None
+    bleach = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from .services import ServiceHealth
