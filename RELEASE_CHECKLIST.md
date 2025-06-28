@@ -2,6 +2,67 @@
 
 This checklist ensures that ostruct releases are thoroughly tested and can be installed successfully on any clean system. It documents the validation process used by maintainers before publishing to PyPI.
 
+## 🏷️ Dynamic Versioning & Release Process
+
+**IMPORTANT**: This project uses `poetry-dynamic-versioning` - versions are determined by Git tags, NOT by `pyproject.toml`.
+
+### Version Management
+
+- ✅ **DO**: Create Git tags to set versions (`git tag v1.0.0-rc13`)
+- ❌ **DON'T**: Run `poetry version X.Y.Z` (this will be ignored)
+- ✅ **Verification**: Run `poetry run python -c "import ostruct; print(ostruct.__version__)"` to see current version
+
+### Release Candidate (RC) Process
+
+1. **Create RC tag:**
+
+   ```bash
+   git tag v1.0.0-rc13
+   git push origin v1.0.0-rc13
+   ```
+
+2. **CI automatically handles:**
+   - ✅ Building the package from the tagged commit
+   - ✅ Publishing to TestPyPI (RC tags only)
+   - ✅ Creating GitHub release with binaries
+
+3. **Test RC from TestPyPI:**
+
+   ```bash
+   # IMPORTANT: Always pin exact RC version when final release exists
+   pipx install --index-url https://test.pypi.org/simple/ \
+     --pip-args "--extra-index-url https://pypi.org/simple/" \
+     "ostruct-cli==1.0.0rc13"
+
+   # NOTE: --pre flag alone is insufficient if final version exists
+   # (pip prefers 1.0.0 over 1.0.0rc13 even with --pre due to PEP 440)
+   ```
+
+4. **Verify RC works:**
+
+   ```bash
+   ostruct --help          # Should work without errors
+   ostruct run --help      # Test CLI functionality
+   ```
+
+### Final Release Process
+
+1. **Create final tag:**
+
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+2. **CI automatically publishes to PyPI** (final releases only)
+
+### Common Pitfalls to Avoid
+
+- 🚫 **Don't manually edit version in pyproject.toml** - it's ignored due to dynamic versioning
+- 🚫 **Don't manually publish to TestPyPI** - CI handles this automatically for RC tags
+- 🚫 **Don't rely on --pre flag alone** - when final release exists, always pin exact RC version (PEP 440: `1.0.0 > 1.0.0rc13`)
+- 🚫 **Don't assume TestPyPI install worked** - always test `ostruct --help` to verify correct version installed
+
 ## Pre-Release Testing Strategy
 
 ### 1. Automated Validation (REQUIRED)
@@ -84,18 +145,31 @@ This provides the most realistic simulation of a clean laptop installation.
 
 ### 4. Test Installation from PyPI Test Server (BEFORE FINAL RELEASE)
 
-1. Upload to PyPI test server:
+**Note**: For RC releases, TestPyPI publishing is automated by CI when you push an RC tag.
 
-```bash
-poetry config repositories.test-pypi https://test.pypi.org/legacy/
-poetry publish -r test-pypi
-```
+1. **For RC testing** (automated upload via CI):
 
-2. Test installation from test server:
+   ```bash
+   # ALWAYS pin exact RC version (required when final release exists)
+   pipx install --index-url https://test.pypi.org/simple/ \
+     --pip-args "--extra-index-url https://pypi.org/simple/" \
+     "ostruct-cli==1.0.0rc13"
 
-```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ ostruct-cli==<VERSION>
-```
+   # NOTE: --pre flag alone won't work if 1.0.0 final already exists
+   # (PEP 440: final versions always preferred over pre-releases)
+   ```
+
+2. **For manual testing** (if needed):
+
+   ```bash
+   poetry config repositories.test-pypi https://test.pypi.org/legacy/
+   poetry publish -r test-pypi
+
+   # Test installation
+   pip install --index-url https://test.pypi.org/simple/ \
+     --extra-index-url https://pypi.org/simple/ \
+     ostruct-cli==<VERSION>
+   ```
 
 ### 5. Platform-Specific Testing
 
@@ -115,7 +189,7 @@ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://
 
 ### Package Metadata
 
-- [ ] Version updated in `pyproject.toml`
+- [ ] **Git tag created** for version (dynamic versioning - do NOT edit pyproject.toml)
 - [ ] Dependencies are correctly specified with proper version bounds
 - [ ] Entry points (CLI commands) are properly configured
 - [ ] Python version requirement is correct (`>=3.10,<4.0`)
@@ -169,18 +243,14 @@ Ensure your GitHub Actions CI is passing:
 
 4. **Update CHANGELOG.md** with version changes
 
-5. **Create git tag:**
+5. **Create git tag** (triggers automated CI release):
 
    ```bash
    git tag v<VERSION>
    git push origin v<VERSION>
    ```
 
-6. **Publish to PyPI:**
-
-   ```bash
-   poetry publish
-   ```
+6. **CI automatically publishes to PyPI** (no manual action needed)
 
 ## Post-Release Verification
 
