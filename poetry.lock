@@ -1329,10 +1329,9 @@ files = [
 name = "mdit-py-plugins"
 version = "0.4.2"
 description = "Collection of plugins for markdown-it-py"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"docs\""
 files = [
     {file = "mdit_py_plugins-0.4.2-py3-none-any.whl", hash = "sha256:0c673c3f889399a33b95e88d2f0d111b4447bdfea7f237dab2d488f459835636"},
     {file = "mdit_py_plugins-0.4.2.tar.gz", hash = "sha256:5f2cd1fdb606ddf152d37ec30e46101a60512bc0e5fa1a7002c36647b09e26b5"},
@@ -1441,10 +1440,9 @@ files = [
 name = "myst-parser"
 version = "4.0.1"
 description = "An extended [CommonMark](https://spec.commonmark.org/) compliant parser,"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"docs\""
 files = [
     {file = "myst_parser-4.0.1-py3-none-any.whl", hash = "sha256:9134e88959ec3b5780aedf8a99680ea242869d012e8821db3126d427edc9c95d"},
     {file = "myst_parser-4.0.1.tar.gz", hash = "sha256:5cfea715e4f3574138aecbf7d54132296bfd72bb614d31168f48c477a830a7c4"},
@@ -2574,10 +2572,9 @@ test = ["cython (>=3.0)", "defusedxml (>=0.7.1)", "pytest (>=8.0)", "setuptools 
 name = "sphinx-design"
 version = "0.6.1"
 description = "A sphinx extension for designing beautiful, view size responsive web components."
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"docs\""
 files = [
     {file = "sphinx_design-0.6.1-py3-none-any.whl", hash = "sha256:b11f37db1a802a183d61b159d9a202314d4d2fe29c163437001324fe2f19549c"},
     {file = "sphinx_design-0.6.1.tar.gz", hash = "sha256:b44eea3719386d04d765c1a8257caca2b3e6f8421d7b3a5e742c0fd45f84e632"},
@@ -3176,4 +3173,4 @@ examples = ["asyncio-throttle", "tenacity"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "b40fa787bca484c35177bee09f7b2ac4f5386c63747aa31edaec77fae19ad21d"
+content-hash = "00acbe1ac844f99597c2f02591f14103c6d94d92c0c11d6c2a86920f046a2bcd"
