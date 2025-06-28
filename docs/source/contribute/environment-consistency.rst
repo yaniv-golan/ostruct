@@ -1,5 +1,5 @@
 Environment Consistency Guide
-============================
+==============================
 
 This guide ensures that local development environments match CI environments to prevent inconsistent behavior.
 
