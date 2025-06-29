@@ -3,3 +3,6 @@
 *.toml text
 *.yml text
 *.yaml text
+
+# Exclude intentionally vulnerable security examples from security scanning
+examples/security/vulnerability-scan/** linguist-documentation

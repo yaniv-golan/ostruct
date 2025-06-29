@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Main project dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Normal security updates for main project
+
+  # Ignore vulnerabilities in intentionally vulnerable examples
+  - package-ecosystem: "pip"
+    directory: "/examples/security/vulnerability-scan"
+    schedule:
+      interval: "weekly"
+    # Disable security updates for intentionally vulnerable demo code
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch", "version-update:semver-minor", "version-update:semver-major"]

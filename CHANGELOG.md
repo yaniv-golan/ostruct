@@ -5,34 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.3] - 2025-06-29
 
 ### Documentation
 
-- **Major Documentation Reorganization**: Comprehensive restructuring to improve user experience and navigation:
-  - **Streamlined Structure**: Reduced documentation from ~25 pages to ~13 focused pages with logical grouping
-  - **Flatter TOC Hierarchy**: Simplified table of contents with maximum 1 level of nesting for cleaner navigation
-  - **Consolidated Template Documentation**: Merged 6+ template-related pages into 3 comprehensive guides (Template Guide, Quick Reference, Advanced Patterns)
-  - **Unified Tool Integration**: Created single page covering Code Interpreter, File Search, Web Search, and MCP server integration
-  - **Merged Automation Content**: Consolidated CI/CD and containerization docs, combined scripting patterns with cost control guidance
+- **Major Documentation Reorganization**: Restructured documentation from 25 pages to 13 focused pages with improved navigation
+  - Consolidated template documentation into 3 comprehensive guides (template_guide.rst, template_quick_reference.rst, advanced_patterns.rst)
+  - Created unified tool_integration.rst covering Code Interpreter, File Search, Web Search, and MCP servers
+  - Merged automation content (4→2 pages) and contributing section (5→3 pages)
+  - Extracted CLI content from index.rst to cli_reference.rst
+  - Fixed all Sphinx build warnings and broken cross-references
+  - Achieved zero-warning documentation builds
 
-- **Removed Historical Version References**: Cleaned up outdated migration content and version-specific information:
-  - **Removed Migration Guides**: Eliminated v0.8.x → v0.9.0 migration instructions no longer relevant to current users
-  - **Cleaned Version Qualifiers**: Removed "New in v0.X.X" and "Starting in v0.X.X" language throughout documentation
-  - **Updated Examples**: Replaced historical version references with current version patterns or generic references
-  - **Focused on Present**: Documentation now describes current capabilities without historical evolution context
+### Security
 
-- **Fixed Factual Errors**: Corrected multiple technical inaccuracies in documentation:
-  - **CLI Flag Accuracy**: Removed references to non-existent flags (`--file-for`, `-dc`) and updated renamed flags (`--sys-file` → `--sys-prompt-file`)
-  - **Corrected Syntax Errors**: Fixed malformed options (`--top--dir` → `--top-p`) and invalid shell commands (`mkdir --dir ... --pattern`)
-  - **Updated Model References**: Replaced deprecated model names (gpt-3.5-turbo, gpt-4-turbo) with current supported models
-  - **Shell Command Fixes**: Corrected invalid mkdir syntax in automation documentation
-
-- **Improved Content Organization**: Better separation of concerns and logical flow:
-  - **User vs Contributor Docs**: Clear separation between user guides and contributor documentation
-  - **Progressive Disclosure**: Organized content from beginner (Getting Started) to advanced (Contributing, Security)
-  - **Reduced Duplication**: Eliminated redundant content across multiple pages
-  - **Enhanced Cross-References**: Improved linking between related sections and topics
+- **Security Scanning Configuration**: Implemented solution for handling intentionally vulnerable example code:
+  - **Dependabot Configuration**: Added `.github/dependabot.yml` to disable dependency updates for vulnerability demonstration examples
+  - **Security Policy**: Created `SECURITY.md` documenting intentional vulnerabilities in `examples/security/vulnerability-scan/` directory
+  - **Scanner Suppression**: Enhanced vulnerable example files with security scanner suppression comments (`# nosec`, `# noqa: S`, `# NOSONAR`)
+  - **Git Attributes**: Configured `.gitattributes` to mark vulnerability examples as documentation to reduce automated scanning
+  - **Clear Documentation**: Added prominent warnings and explanations that vulnerabilities in security examples are intentional for educational purposes
 
 ## [1.0.2] - 2025-06-28
 
