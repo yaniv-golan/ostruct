@@ -5,26 +5,37 @@ set -euo pipefail
 # Parse arguments
 TEXT_FILE="${1:-texts/paradox_of_the_court.txt}"
 OUTPUT_PREFIX="${2:-$(basename "$TEXT_FILE" .txt)}"
-MODEL="${3:-gpt-4.1}"
+MODEL="${3:-gpt-4o}"
+shift 3 2>/dev/null || shift $# # Remove first 3 args, or all if less than 3
+OSTRUCT_ARGS="$@" # Remaining arguments passed to ostruct
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXAMPLE_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Ensure dependencies are available
-source "$SCRIPT_DIR/../../../scripts/install/dependencies/ensure_jq.sh"
-source "$SCRIPT_DIR/../../../scripts/install/dependencies/ensure_mermaid.sh"
+source "$SCRIPT_DIR/../../../../scripts/install/dependencies/ensure_jq.sh"
+source "$SCRIPT_DIR/../../../../scripts/install/dependencies/ensure_mermaid.sh"
+
+# Determine output directory based on input file location
+if [[ "$TEXT_FILE" = /* ]]; then
+    # Absolute path - use same directory as input file
+    OUTPUT_DIR="$(dirname "$TEXT_FILE")"
+else
+    # Relative path - use example output directory
+    OUTPUT_DIR="$EXAMPLE_DIR/output"
+fi
 
 # Create output directory
-mkdir -p "$EXAMPLE_DIR/output"
+mkdir -p "$OUTPUT_DIR"
 
 # Generate AIF JSON
 echo "🔍 Analyzing argument structure in $TEXT_FILE..."
 echo "🤖 Using model: $MODEL"
-AIF_FILE="$EXAMPLE_DIR/output/${OUTPUT_PREFIX}.aif.json"
+AIF_FILE="$OUTPUT_DIR/${OUTPUT_PREFIX}.aif.json"
 
 cd "$EXAMPLE_DIR"
-if ostruct run prompt.j2 schema.json --file argument_text "$TEXT_FILE" --model "$MODEL" --output-file "$AIF_FILE"; then
+if ostruct run templates/main.j2 schemas/main.json --file argument_text "$TEXT_FILE" --model "$MODEL" --output-file "$AIF_FILE" $OSTRUCT_ARGS; then
     echo "✅ AIF JSON generated: $AIF_FILE"
 else
     echo "❌ Failed to generate AIF JSON"
@@ -35,13 +46,13 @@ fi
 TITLE="$(basename "$TEXT_FILE" .txt | tr '_' ' ' | sed 's/\b\w/\U&/g')"
 
 # Generate Mermaid diagram
-echo "🎨 Creating Mermaid diagram..."
-MERMAID_FILE="$EXAMPLE_DIR/output/${OUTPUT_PREFIX}.mmd"
+echo "🎨 Creating interactive Mermaid diagram..."
+MERMAID_FILE="$OUTPUT_DIR/${OUTPUT_PREFIX}.mmd"
 "$SCRIPT_DIR/aif2mermaid.sh" "$AIF_FILE" "$TITLE" > "$MERMAID_FILE"
 echo "✅ Mermaid diagram generated: $MERMAID_FILE"
 
 # Generate SVG if Mermaid CLI is available
-SVG_FILE="$EXAMPLE_DIR/output/${OUTPUT_PREFIX}.svg"
+SVG_FILE="$OUTPUT_DIR/${OUTPUT_PREFIX}.svg"
 if command -v mmdc >/dev/null 2>&1; then
     echo "🖼️  Generating SVG diagram..."
     if mmdc -i "$MERMAID_FILE" -o "$SVG_FILE"; then
@@ -81,10 +92,13 @@ jq -r '
 ' "$AIF_FILE"
 
 echo ""
-echo "🔍 To view the diagram:"
+echo "🔍 To view the interactive diagram:"
 if [[ -f "$SVG_FILE" ]]; then
-    echo "   open $SVG_FILE"
+    echo "   Static SVG: open $SVG_FILE"
+    echo "   Interactive: Copy $MERMAID_FILE content to https://mermaid.live/"
+    echo "   💡 Click any node in mermaid.live to see full text!"
 else
     echo "   Copy the Mermaid code from $MERMAID_FILE"
     echo "   Paste it into: https://mermaid.live/"
+    echo "   💡 Click any node to see the complete argument text!"
 fi

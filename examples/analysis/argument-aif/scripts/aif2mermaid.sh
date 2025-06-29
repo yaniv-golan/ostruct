@@ -7,7 +7,7 @@ TITLE="${2:-AIF Argument Graph}"
 
 # Ensure jq is available
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../../../scripts/install/dependencies/ensure_jq.sh"
+source "$SCRIPT_DIR/../../../../scripts/install/dependencies/ensure_jq.sh"
 
 jq -r --arg title "$TITLE" '
   . as $root |
@@ -109,6 +109,19 @@ jq -r --arg title "$TITLE" '
     else
       "    class " + .nodeID + " defaultNode"
     end
+  ] +
+
+  [""] +
+  ["    %% Clickable nodes show full text (works in mermaid.live)"] +
+  # Add click events that work in mermaid.live and other interactive environments
+  [.nodes[] |
+    "    click " + .nodeID + " \"" + (.text | gsub("\""; "\\\"") | gsub("\n"; " ")) + "\" _blank"
+  ] +
+  [""] +
+  ["    %% Full text for each node (for reference)"] +
+  # Add comments with full text for reference
+  [.nodes[] |
+    "    %% Node " + .nodeID + ": " + (.text | gsub("\n"; " "))
   ]
   )[]
 ' "$AIF_FILE"
