@@ -195,7 +195,7 @@ Create ``analyze_pet.j2`` to tell the AI how to process the profile:
       system_prompt: Focus on adoption readiness assessment.
       ---
 
-   See :doc:`template_authoring` for advanced shared prompt techniques.
+   See :doc:`template_guide` for advanced shared prompt techniques.
 
 Step 4: Run the Analysis
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -300,7 +300,7 @@ Create ``comprehensive_analysis.j2``:
    {{ profile.content }}
 
    MEDICAL RECORDS:
-   Please analyze the CSV data to extract medical history patterns.
+   Please analyze the uploaded CSV medical data to extract medical history patterns.
 
    Provide a comprehensive health and adoption readiness assessment.
 
@@ -456,16 +456,8 @@ Next Steps
 
 🎓 **Learn More**
   - :doc:`cli_reference` - Complete CLI documentation
-  - :doc:`template_authoring` - Advanced template techniques
+  - :doc:`template_guide` - Comprehensive template techniques
   - :doc:`../security/overview` - Security best practices
 
 🔧 **Integrate**
-  - :doc:`../automate/ci_cd` - CI/CD integration
-
-🎓 **Learn More**
-  - :doc:`cli_reference` - Complete CLI documentation
-  - :doc:`template_authoring` - Advanced template techniques
-  - :doc:`../security/overview` - Security best practices
-
-🔧 **Integrate**
-  - :doc:`../automate/ci_cd` - CI/CD integration
+  - :doc:`../automate/ci_cd_and_containers` - CI/CD integration

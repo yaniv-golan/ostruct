@@ -142,7 +142,7 @@ By default, ostruct restricts file access to the current working directory. Expa
    /configs
    /tmp/workspace
 
-   ostruct run template.j2 schema.json --allowed-dir-file allowed_dirs.txt
+   ostruct run template.j2 schema.json --allow-list allowed_dirs.txt
 
 Base Directory Control
 ----------------------
@@ -517,7 +517,7 @@ Staging Environment
      --path-security strict --allow /app \
      --allow /app/data \
      --allow /app/configs \
-     --allowed-dir-file /app/allowed_dirs.txt \
+     --allow-list /app/allowed_dirs.txt \
      --file config configs/app.yaml \
      --ci-cleanup \
      --fs-cleanup \
@@ -533,7 +533,7 @@ Production Environment
 
    ostruct run template.j2 schema.json \
      --path-security strict --allow /prod/app \
-     --allowed-dir-file /prod/security/allowed_dirs.txt \
+     --allow-list /prod/security/allowed_dirs.txt \
      --file config configs/production.yaml \
      --ci-cleanup \
      --fs-cleanup \
@@ -567,7 +567,7 @@ Documentation
 
 - :doc:`../user-guide/cli_reference` - Complete CLI security options
 - :doc:`../user-guide/quickstart` - Security-aware examples
-- :doc:`../automate/ci_cd` - Secure CI/CD integration
+- :doc:`../automate/ci_cd_and_containers` - Secure CI/CD integration
 
 Code References
 ---------------

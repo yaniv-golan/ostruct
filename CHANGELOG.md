@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Documentation
+
+- **Major Documentation Reorganization**: Comprehensive restructuring to improve user experience and navigation:
+  - **Streamlined Structure**: Reduced documentation from ~25 pages to ~13 focused pages with logical grouping
+  - **Flatter TOC Hierarchy**: Simplified table of contents with maximum 1 level of nesting for cleaner navigation
+  - **Consolidated Template Documentation**: Merged 6+ template-related pages into 3 comprehensive guides (Template Guide, Quick Reference, Advanced Patterns)
+  - **Unified Tool Integration**: Created single page covering Code Interpreter, File Search, Web Search, and MCP server integration
+  - **Merged Automation Content**: Consolidated CI/CD and containerization docs, combined scripting patterns with cost control guidance
+
+- **Removed Historical Version References**: Cleaned up outdated migration content and version-specific information:
+  - **Removed Migration Guides**: Eliminated v0.8.x → v0.9.0 migration instructions no longer relevant to current users
+  - **Cleaned Version Qualifiers**: Removed "New in v0.X.X" and "Starting in v0.X.X" language throughout documentation
+  - **Updated Examples**: Replaced historical version references with current version patterns or generic references
+  - **Focused on Present**: Documentation now describes current capabilities without historical evolution context
+
+- **Fixed Factual Errors**: Corrected multiple technical inaccuracies in documentation:
+  - **CLI Flag Accuracy**: Removed references to non-existent flags (`--file-for`, `-dc`) and updated renamed flags (`--sys-file` → `--sys-prompt-file`)
+  - **Corrected Syntax Errors**: Fixed malformed options (`--top--dir` → `--top-p`) and invalid shell commands (`mkdir --dir ... --pattern`)
+  - **Updated Model References**: Replaced deprecated model names (gpt-3.5-turbo, gpt-4-turbo) with current supported models
+  - **Shell Command Fixes**: Corrected invalid mkdir syntax in automation documentation
+
+- **Improved Content Organization**: Better separation of concerns and logical flow:
+  - **User vs Contributor Docs**: Clear separation between user guides and contributor documentation
+  - **Progressive Disclosure**: Organized content from beginner (Getting Started) to advanced (Contributing, Security)
+  - **Reduced Duplication**: Eliminated redundant content across multiple pages
+  - **Enhanced Cross-References**: Improved linking between related sections and topics
+
 ## [1.0.2] - 2025-06-28
 
 ### Fixed

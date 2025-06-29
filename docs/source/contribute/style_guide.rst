@@ -191,10 +191,10 @@ Use comprehensive docstrings following Google style:
            ValidationError: If template contains invalid syntax.
 
        Example:
-           >>> context = {"name": "ostruct", "version": "0.8.0"}
+           >>> context = {"name": "ostruct", "version": "1.0.0"}
            >>> result = render_template(Path("template.j2"), context)
            >>> print(result)
-           Hello, ostruct v0.8.0!
+           Hello, ostruct v1.0.0!
        """
 
 **Docstring guidelines:**
@@ -566,12 +566,12 @@ Document all public APIs comprehensively:
        Example:
            >>> import jinja2
            >>> env = jinja2.Environment()
-           >>> context = {"name": "ostruct", "version": "0.8.1"}
+           >>> context = {"name": "ostruct", "version": "1.0.0"}
            >>> result = render_template_with_context(
            ...     "Hello, {{ name }} v{{ version }}!", context, env
            ... )
            >>> print(result)
-           Hello, ostruct v0.8.1!
+           Hello, ostruct v1.0.0!
        """
 
 Performance Guidelines

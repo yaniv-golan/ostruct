@@ -127,8 +127,8 @@ Automated code review with security, style, and performance analysis.
 
    cd examples/code-quality/code-review
    ostruct run prompts/task.j2 schemas/code_review.json \
-     --file code examples/basic/app.py \
-     --sys-file prompts/system.txt
+     --file ci:code examples/basic/app.py \
+     --sys-prompt "You are an expert code reviewer focused on security, performance, and best practices."
 
 Testing Examples
 ----------------
@@ -166,7 +166,7 @@ Three-approach automated security vulnerability scanning with comprehensive test
    # Recommended: Code Interpreter approach
    ostruct run prompts/code_interpreter.j2 schemas/scan_result.json \
      --file ci:code examples/basic/app.py \
-     --sys-file prompts/system.txt
+     --sys-prompt "You are a security expert specializing in vulnerability detection and code analysis."
 
 Data Analysis Examples
 ----------------------
@@ -447,6 +447,6 @@ Next Steps
 ==========
 
 - :doc:`quickstart` - Get started with basic ostruct usage
-- :doc:`template_authoring` - Learn advanced template techniques
+- :doc:`template_guide` - Learn comprehensive template techniques
 - :doc:`cli_reference` - Complete CLI reference
 - `GitHub Repository <https://github.com/yaniv-golan/ostruct>`_ - Browse all examples

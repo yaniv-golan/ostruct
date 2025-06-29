@@ -130,7 +130,7 @@ Next Steps
 
 - :doc:`quickstart` - Follow the step-by-step tutorial
 - :doc:`cli_reference` - Explore all CLI options and features
-- :doc:`template_authoring` - Learn advanced template techniques
+- :doc:`template_guide` - Learn comprehensive template techniques
 - :doc:`../security/overview` - Understand security considerations
 
 .. note::

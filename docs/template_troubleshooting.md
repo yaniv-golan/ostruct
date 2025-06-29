@@ -42,7 +42,7 @@ Return your analysis in this exact format:
 }
 ```
 
-[Download filename.txt](sandbox:/mnt/data/filename.txt)
+filename.txt
 
 ```
 
@@ -62,7 +62,7 @@ Return your analysis in this exact format:
 1. **Remove `download_link` from JSON schema** - Files are now downloaded via annotations
 2. **Use fenced JSON blocks** - Wrap JSON in ````json ...````
 3. **Place markdown link outside JSON** - Link must be plain text after the JSON block
-4. **Use exact link format** - `[filename](sandbox:/mnt/data/filename)`
+4. **Let ostruct handle downloads** - File downloads are automatic when Code Interpreter generates files
 
 #### Troubleshooting File Downloads
 
@@ -96,7 +96,7 @@ Return your analysis in this exact format:
 
 - **Markdown link inside JSON** → Move link outside JSON block
 - **No fenced JSON** → Wrap JSON in ````json ...````
-- **Wrong link format** → Use `[name](sandbox:/mnt/data/name)`
+- **Manual link formatting** → ostruct handles file downloads automatically
 - **Model doesn't follow instructions** → Try different model (GPT-4o-mini works well)
 
 #### File Conflict Resolution
