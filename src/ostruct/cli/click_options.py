@@ -881,6 +881,17 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
     # Attach options first (in reverse order since they stack)
     for deco in (
         click.option(
+            "--gitignore-file",
+            type=click.Path(exists=True),
+            help="Custom gitignore file path (default: .gitignore in target directory)",
+        ),
+        click.option(
+            "--ignore-gitignore",
+            is_flag=True,
+            default=False,
+            help="Ignore .gitignore files when collecting directory files (disables gitignore support)",
+        ),
+        click.option(
             "--pattern",
             metavar="GLOB",
             help="Apply to last --dir/--collect (replaces legacy --glob)",
