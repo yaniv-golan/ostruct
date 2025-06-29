@@ -1,7 +1,7 @@
-ostruct Template Quick Reference
-=================================
+Template Quick Reference
+========================
 
-This quick reference provides a concise summary of ostruct's most commonly used template features. For comprehensive documentation, see the :doc:`template_authoring`.
+This quick reference provides a concise summary of ostruct's most commonly used template features. For comprehensive documentation, see the :doc:`template_guide`.
 
 Template Structure
 ==================
@@ -147,6 +147,7 @@ Text Processing
 
    {{ text | word_count }}             <!-- Count words -->
    {{ text | char_count }}             <!-- Count characters -->
+   {{ text | length }}                 <!-- Count characters (built-in) -->
    {{ text | upper }}                  <!-- UPPERCASE -->
    {{ text | lower }}                  <!-- lowercase -->
    {{ long_text | truncate(100) }}     <!-- Truncate to 100 chars -->
@@ -253,7 +254,7 @@ Token Estimation
 
 .. code-block:: jinja
 
-   Estimated tokens: {{ content | estimate_tokens }}
+   Estimated tokens: {{ estimate_tokens(content) }}
 
 Data Analysis
 -------------
@@ -288,8 +289,14 @@ Safe Defaults
 
 .. code-block:: jinja
 
+   <!-- Simple variable defaults -->
    {{ config.timeout | default(30) }}
    {{ project_name | default("Unnamed Project") }}
+
+   <!-- Safe nested property access -->
+   {{ safe_get("config.database.host", "localhost") }}
+   {{ safe_get("user.profile.name", "Anonymous") }}
+   {{ safe_get("api.response.data") }}              <!-- Empty string default -->
 
 CLI Examples
 ============
@@ -350,6 +357,6 @@ Debugging
 
 .. seealso::
 
-   - :doc:`template_authoring` - Complete templating guide
+   - :doc:`template_guide` - Complete templating guide
    - :doc:`cli_reference` - Full CLI documentation
    - :doc:`examples` - Practical examples and use cases

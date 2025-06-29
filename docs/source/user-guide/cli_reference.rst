@@ -18,6 +18,137 @@ Basic Usage
 - ``TEMPLATE_FILE``: Path to Jinja2 template file (typically with ``.j2`` extension)
 - ``SCHEMA_FILE``: JSON Schema file that defines the structure of the output
 
+Command Structure
+-----------------
+
+The CLI revolves around a single subcommand called ``run``. All file processing, model configuration, and tool integration happens through this command with various options.
+
+File and Directory Management
+-----------------------------
+
+**File Attachment System**:
+
+- ``--file [targets:]alias path``: Attach file with explicit tool targeting
+- ``--dir [targets:]alias path``: Attach directory with explicit tool targeting
+- ``--collect [targets:]alias @filelist``: Attach file collection from list
+
+**Targets**: ``prompt`` (template-only, default), ``ci`` (code-interpreter), ``fs`` (file-search)
+
+**Examples**:
+
+- ``--file config settings.yaml``: Template access only
+- ``--file ci:data analysis.csv``: Upload to Code Interpreter
+- ``--file fs:docs manual.pdf``: Upload to File Search
+- ``--file ci,fs:shared data.json``: Multi-tool routing
+
+**Security & Path Control**:
+
+- ``--recursive``: Process directories and patterns recursively
+- ``-S, --path-security [permissive|warn|strict]``: Path security mode (default: warn)
+- ``--allow DIR``: Add an allowed directory for security (repeatable)
+- ``--allow-list FILE``: File containing allowed directory paths
+
+Variables
+---------
+
+- ``-V, --var name=value``: Define a simple string variable
+- ``-J, --json-var name='{"key":"value"}'``: Define a JSON variable
+
+Model Configuration
+-------------------
+
+- ``-m, --model TEXT``: OpenAI model (supported: gpt-4o, o1, o3-mini) (default: gpt-4o)
+- ``--temperature FLOAT``: Sampling temperature (0.0-2.0)
+- ``--max-output-tokens INT``: Maximum output tokens
+- ``--top-p FLOAT``: Top-p sampling parameter (0.0-1.0)
+- ``--frequency-penalty FLOAT``: Frequency penalty (-2.0-2.0)
+- ``--presence-penalty FLOAT``: Presence penalty (-2.0-2.0)
+- ``--reasoning-effort [low|medium|high]``: Control model reasoning effort
+
+System Prompt Configuration
+---------------------------
+
+- ``--sys-prompt TEXT``: Provide system prompt directly
+- ``--sys-prompt-file FILE``: Load system prompt from file
+- ``--ignore-task-sysprompt``: Ignore system prompt in template frontmatter
+
+API Configuration
+-----------------
+
+- ``--api-key TEXT``: OpenAI API key (defaults to OPENAI_API_KEY env var)
+- ``--timeout FLOAT``: API timeout in seconds (default: 60.0)
+- ``--config PATH``: Configuration file path (default: ostruct.yaml)
+
+Output and Debugging
+--------------------
+
+- ``--output-file FILE``: Write output to file instead of stdout
+- ``--dry-run``: Validate and render template without making API calls
+- ``--progress [none|basic|detailed]``: Control progress display (default: basic)
+- ``--verbose``: Enable verbose logging
+
+Tool Integration
+----------------
+
+**Web Search**:
+
+- ``--enable-tool web-search``: Enable OpenAI web search tool for up-to-date information
+- ``--disable-tool web-search``: Explicitly disable web search
+- ``--ws-context-size [low|medium|high]``: Control content retrieval amount
+- ``--ws-country TEXT``: Specify user country for geographically tailored results
+- ``--ws-region TEXT``: Specify user region/state for search results
+- ``--ws-city TEXT``: Specify user city for search results
+
+**MCP Servers**:
+
+- ``--mcp-server [LABEL@]URL``: Connect to Model Context Protocol server
+- ``--mcp-headers TEXT``: JSON string of headers for MCP servers
+- ``--mcp-require-approval [always|never]``: Approval level for MCP tool usage
+- ``--mcp-allowed-tools TEXT``: Allowed tools per server
+
+**Code Interpreter Options**:
+
+- ``--ci-cleanup``: Clean up uploaded files after execution (default: True)
+- ``--ci-download-dir DIR``: Directory to save generated files
+
+**File Search Options**:
+
+- ``--fs-cleanup``: Clean up uploaded files and vector stores (default: True)
+- ``--fs-store-name TEXT``: Name for the vector store
+- ``--fs-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
+- ``--fs-retries INT``: Number of retry attempts (default: 3)
+
+Logging Configuration
+---------------------
+
+The CLI writes logs to the following files in ``~/.ostruct/logs/``:
+
+- ``ostruct.log``: General application logs (debug, errors, status)
+- ``openai_stream.log``: OpenAI streaming operations logs
+
+**Logging Control**:
+
+1. Command-line options:
+   - ``--verbose``: Enable verbose logging (sets log level to DEBUG)
+   - ``--debug-openai-stream``: Enable detailed OpenAI API stream logging
+   - ``--debug-validation``: Enable schema validation debug logging
+
+2. Environment variables (template processing limits):
+   - ``OSTRUCT_TEMPLATE_FILE_LIMIT``: Max individual file size for template access (default: 65536 bytes)
+   - ``OSTRUCT_TEMPLATE_TOTAL_LIMIT``: Max total file size for template processing (default: 1048576 bytes)
+   - ``OSTRUCT_TEMPLATE_PREVIEW_LIMIT``: Max characters in template debug previews (default: 4096)
+
+Example:
+
+.. code-block:: bash
+
+   # Set template processing limits
+   export OSTRUCT_TEMPLATE_FILE_LIMIT=131072  # 128KB
+   export OSTRUCT_TEMPLATE_TOTAL_LIMIT=2097152  # 2MB
+
+   # Run with verbose logging (controlled via CLI flags)
+   ostruct run task.j2 schema.json --verbose
+
 Quick Reference Commands
 ------------------------
 
@@ -45,11 +176,10 @@ Quick Reference Commands
    - **Format may change** between versions without backward compatibility
    - **Intended for development** and testing purposes only
 
-New Attachment System (v0.9.0)
-===============================
+Attachment System
+=================
 
-.. important::
-   **Breaking Change in v0.9.0**: The file routing system has been completely replaced with an explicit target/alias attachment system. This provides better control, security, and clarity about how files are processed.
+The file routing system uses explicit target/alias attachment syntax for precise control over how files are processed and which tools they're sent to.
 
 The new attachment system uses explicit target/alias syntax for precise control over file routing:
 
@@ -70,7 +200,7 @@ The new attachment system uses explicit target/alias syntax for precise control 
 Attachment Options
 ------------------
 
-.. option:: -A, --file [TARGETS:]ALIAS PATH
+.. option:: -F, --file [TARGETS:]ALIAS PATH
 
    Attach file with explicit tool targeting.
 
@@ -174,7 +304,7 @@ LLMs process prompts sequentially and pay more attention to content at the end. 
 - **XML appendix**: Files appear at the very end, ideal for supporting documentation
 - **Mixed approach**: Use both - manual for immediate analysis, ``file_ref()`` for reference
 
-See :doc:`template_structure` for complete file reference documentation.
+See :doc:`template_guide` for complete file reference documentation.
 
 Tool Targets
 ------------
@@ -229,7 +359,7 @@ Usage Examples
 ==============
 
 Template Access Examples
--------------------------
+------------------------
 
 Files attached with ``prompt`` target (default) are available in templates but not uploaded to external services.
 
@@ -245,7 +375,7 @@ Files attached with ``prompt`` target (default) are available in templates but n
 **Template Access**: Use ``{{ alias.content }}`` or ``{{ alias }}`` to access file content in templates.
 
 Code Interpreter Examples
---------------------------
+-------------------------
 
 Files attached with ``ci`` target are uploaded to OpenAI's Code Interpreter for execution and analysis.
 
@@ -446,7 +576,7 @@ Model and API Options
    Maximum retry attempts for failed requests (default: 3).
 
 Output and Execution Options
------------------------------
+----------------------------
 
 .. option:: --dry-run
 
@@ -476,7 +606,7 @@ Output and Execution Options
    Write output to file instead of stdout.
 
 Tool Configuration Options
----------------------------
+--------------------------
 
 .. option:: --ci-duplicate-outputs {overwrite|rename|skip}
 
@@ -522,7 +652,7 @@ Tool Configuration Options
       ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-download-dir ./results
 
 Debug and Progress Options
----------------------------
+--------------------------
 
 .. option:: --debug
 
@@ -587,90 +717,37 @@ Debug and Progress Options
 
       This provides detailed analysis including security, performance, best practices, and OpenAI compliance checking with interactive HTML reports.
 
-Migration from v0.8.x
-======================
+Model Name Validation
+---------------------
 
-.. important::
-   **Breaking Changes in v0.9.0**: All file routing options have changed. See the migration guide below.
+ostruct validates model names against the OpenAI model registry to ensure compatibility.
 
-Model Name Validation (v0.8.0+)
---------------------------------
-
-Starting in v0.8.0, ostruct validates model names against the OpenAI model registry.
-
-**What Changed:**
-
-- Invalid model names are now rejected immediately
-- Shell completion shows available models
-- Help text automatically lists current models
-
-**If You Get Model Validation Errors:**
+**Available Commands:**
 
 1. Check available models: ``ostruct list-models``
-2. Update your scripts to use valid model names
-3. Update your registry if needed: ``ostruct update-registry``
+2. Update model registry: ``ostruct update-registry``
 
-**Common Issues:**
+**Common Model Names:**
 
-- **Typos**: ``gpt4o`` → ``gpt-4o``
-- **Old names**: ``gpt-4-turbo`` → ``gpt-4o``
-- **Custom names**: Use ``ostruct list-models`` to see what's available
+- **Current**: ``gpt-4o``, ``o1``, ``o3-mini``
+- **Common Issues**: Check for typos like ``gpt4o`` → ``gpt-4o``
 
-Progress Options (v1.0.0+)
----------------------------
+Progress Options
+----------------
 
-Starting in v1.0.0, progress control has been simplified from two separate flags to a single option.
+Control progress display during execution with a single ``--progress`` option.
 
-**What Changed:**
+**Available Options:**
 
-- ``--no-progress`` and ``--progress-level`` have been merged into ``--progress``
-- Single option with three choices: ``none``, ``basic``, ``detailed``
-- Default behavior remains the same (``basic`` progress)
-
-**Migration:**
-
-.. list-table:: Progress Options Migration
-   :widths: 50 50
-   :header-rows: 1
-
-   * - Legacy (v0.9.x)
-     - New (v1.0.0+)
-   * - ``--no-progress``
-     - ``--progress none``
-   * - ``--progress-level none``
-     - ``--progress none``
-   * - ``--progress-level basic``
-     - ``--progress basic`` (default)
-   * - ``--progress-level detailed``
-     - ``--progress detailed``
-
-Quick Migration Reference
---------------------------
-
-.. list-table:: Legacy → New Syntax Migration
-   :widths: 50 50
-   :header-rows: 1
-
-   * - Legacy (v0.8.x)
-     - New (v0.9.0)
-   * - ``--file data file.txt``
-     - ``--file data file.txt``
-   * - ``--dir docs ./docs``
-     - ``--dir docs ./docs``
-   * - ``--file ci:data data.csv``
-     - ``--file ci:data data.csv``
-   * - ``--file fs:docs manual.pdf``
-     - ``--file fs:docs manual.pdf``
-   * - ``--file-for code-interpreter data.csv``
-     - ``--file ci:data data.csv``
-
-.. note::
-   **Automatic Migration**: Use the migration scripts provided in the documentation for bulk updates to existing scripts.
+- ``--progress none``: Silent operation (ideal for CI/CD pipelines)
+- ``--progress basic``: Key progress steps (default)
+- ``--progress detailed``: Detailed progress with additional information
 
 See Also
 ========
 
 * :doc:`quickstart` - Getting started guide
 * :doc:`examples` - Practical examples and use cases
-* :doc:`template_authoring` - Template authoring guide
+* :doc:`template_guide` - Template authoring guide
 * :doc:`template_quick_reference` - Template syntax reference
+* :doc:`tool_integration` - Multi-tool integration patterns

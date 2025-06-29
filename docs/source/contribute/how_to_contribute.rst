@@ -45,7 +45,7 @@ Before You Start
 
 1. **Review existing issues** on GitHub to avoid duplication
 2. **Read the documentation** to understand current functionality
-3. **Set up your development environment** following :doc:`setting_up`
+3. **Set up your development environment** following the `Development Environment Setup`_ section below
 4. **Familiarize yourself** with our :doc:`style_guide`
 5. **Join the discussions** to introduce yourself and ask questions
 
@@ -75,7 +75,7 @@ When reporting bugs, include:
    **Environment**
    - OS: [e.g., macOS 13.0, Ubuntu 22.04, Windows 11]
    - Python version: [e.g., 3.11.2]
-   - ostruct version: [e.g., 0.8.0]
+   - ostruct version: [e.g., current version]
    - Installation method: [pip, poetry, from source]
 
    **Additional Context**
@@ -197,6 +197,8 @@ Development Workflow
 
       # Install pre-commit hooks
       poetry run pre-commit install
+
+   For detailed setup instructions, see the `Development Environment Setup`_ section below.
 
 4. **Make Your Changes**
 
@@ -532,6 +534,195 @@ How to Get Credit
 - Include your preferred attribution in PR descriptions
 - Participate in community discussions
 
+Development Environment Setup
+=============================
+
+Prerequisites
+-------------
+
+Before setting up your development environment, ensure you have:
+
+- **Python 3.10 or higher**: Check with ``python --version``
+- **Git**: For version control and repository management
+- **Poetry**: For dependency management and packaging
+
+Installing Poetry
+-----------------
+
+Poetry is used for dependency management and packaging. Install it using the official installer:
+
+.. code-block:: bash
+
+   # Install Poetry (recommended method)
+   curl -sSL https://install.python-poetry.org | python3 -
+
+   # Add Poetry to your PATH (follow installer instructions)
+   export PATH="$HOME/.local/bin:$PATH"
+
+   # Verify installation
+   poetry --version
+
+Alternative installation methods are available in the `Poetry documentation <https://python-poetry.org/docs/#installation>`_.
+
+Repository Setup
+----------------
+
+1. **Install Dependencies**
+
+   Install all dependencies including development and documentation tools:
+
+   .. code-block:: bash
+
+      # Install all dependency groups
+      poetry install --with dev,docs,examples
+
+      # Verify installation
+      poetry run ostruct --version
+
+   This installs:
+
+   - **Core dependencies**: Required for ostruct functionality
+   - **Development dependencies**: Testing, linting, formatting tools
+   - **Documentation dependencies**: Sphinx and related tools
+   - **Example dependencies**: Tools needed for running examples
+
+2. **Activate Virtual Environment**
+
+   Poetry creates and manages a virtual environment automatically:
+
+   .. code-block:: bash
+
+      # Activate the environment
+      poetry shell
+
+      # Or run commands directly
+      poetry run python --version
+
+Code Quality Tools
+------------------
+
+The project uses several tools to maintain code quality:
+
+**Black** - Code formatting:
+
+.. code-block:: bash
+
+   # Format all code
+   poetry run black src tests
+
+   # Check formatting without changes
+   poetry run black --check src tests
+
+**isort** - Import sorting:
+
+.. code-block:: bash
+
+   # Sort imports
+   poetry run isort src tests
+
+   # Check import sorting
+   poetry run isort --check-only src tests
+
+**MyPy** - Type checking:
+
+.. code-block:: bash
+
+   # Type check source code
+   poetry run mypy src
+
+   # Type check with detailed output
+   poetry run mypy --show-error-codes src
+
+**Flake8** - Linting:
+
+.. code-block:: bash
+
+   # Lint source and tests
+   poetry run flake8 src tests
+
+   # Lint with configuration file
+   poetry run flake8 --config=.flake8 src tests
+
+Pre-commit Hooks
+----------------
+
+Set up pre-commit hooks to automatically run quality checks:
+
+.. code-block:: bash
+
+   # Install pre-commit
+   poetry run pre-commit install
+
+   # Run hooks manually
+   poetry run pre-commit run --all-files
+
+   # Update hook versions
+   poetry run pre-commit autoupdate
+
+The pre-commit configuration runs:
+
+- Black code formatting
+- isort import sorting
+- MyPy type checking
+- Flake8 linting
+- Trailing whitespace removal
+- YAML/JSON validation
+
+Testing
+-------
+
+The project uses pytest for testing:
+
+.. code-block:: bash
+
+   # Run all tests
+   poetry run pytest
+
+   # Run specific test file
+   poetry run pytest tests/test_cli.py
+
+   # Run tests with coverage
+   poetry run pytest --cov=src --cov-report=html
+
+   # Run tests matching pattern
+   poetry run pytest -k "test_template"
+
+   # Run tests with verbose output
+   poetry run pytest -v
+
+Environment Consistency
+-----------------------
+
+Run the environment verification script to ensure your local environment matches CI:
+
+.. code-block:: bash
+
+   ./scripts/verify-environment.sh
+
+This script will:
+
+- Display all tool versions
+- Compare with expected versions from ``pyproject.toml``
+- Run health checks on mypy and pre-commit
+- Report any inconsistencies
+
+**Clean Environment Setup**:
+
+If you encounter environment issues, perform a clean setup:
+
+.. code-block:: bash
+
+   # Remove any broken virtual environments
+   poetry env remove --all
+   rm -rf .venv* rc*_test
+
+   # Configure Poetry (should already be set)
+   poetry config virtualenvs.create true
+   poetry config virtualenvs.in-project false
+
+   # Fresh install
+   poetry install --no-interaction --with dev --extras "docs examples"
+
 Getting Help
 ============
 
@@ -563,7 +754,6 @@ Resources and Links
 
 **Development Resources**:
 
-- :doc:`setting_up`: Development environment setup
 - :doc:`style_guide`: Coding standards and best practices
 - `GitHub Repository <https://github.com/yaniv-golan/ostruct>`_: Main repository
 - `Issue Tracker <https://github.com/yaniv-golan/ostruct/issues>`_: Bug reports and features
