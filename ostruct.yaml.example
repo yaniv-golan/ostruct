@@ -15,6 +15,12 @@ tools:
   file_search:
     max_results: 10
 
+# File collection settings
+file_collection:
+  ignore_gitignore: false  # Set to true to disable gitignore filtering globally
+  gitignore_file: null     # Custom gitignore file path (overrides .gitignore)
+  gitignore_patterns: []   # Additional custom ignore patterns
+
 # MCP (Model Context Protocol) server configurations
 # You can define shortcuts to commonly used MCP servers
 mcp:

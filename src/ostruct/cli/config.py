@@ -38,6 +38,21 @@ class WebSearchToolConfig(BaseModel):
         return v
 
 
+class FileCollectionConfig(BaseModel):
+    """Configuration for file collection behavior."""
+
+    ignore_gitignore: bool = False
+    gitignore_file: Optional[str] = None
+    gitignore_patterns: list[str] = Field(default_factory=list)
+
+    @field_validator("gitignore_file")
+    @classmethod
+    def validate_gitignore_file(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not Path(v).exists():
+            logger.warning(f"Gitignore file not found: {v}")
+        return v
+
+
 class ToolsConfig(BaseModel):
     """Configuration for tool-specific settings."""
 
@@ -89,6 +104,9 @@ class OstructConfig(BaseModel):
 
     models: ModelsConfig = Field(default_factory=ModelsConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    file_collection: FileCollectionConfig = Field(
+        default_factory=FileCollectionConfig
+    )
     mcp: Dict[str, str] = Field(default_factory=dict)
     operation: OperationConfig = Field(default_factory=OperationConfig)
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
@@ -215,6 +233,10 @@ class OstructConfig(BaseModel):
     def get_web_search_config(self) -> WebSearchToolConfig:
         """Get web search configuration."""
         return self.tools.web_search
+
+    def get_file_collection_config(self) -> FileCollectionConfig:
+        """Get file collection configuration."""
+        return self.file_collection
 
     def should_require_approval(self, cost_estimate: float = 0.0) -> bool:
         """Determine if approval should be required for an operation."""

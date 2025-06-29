@@ -145,6 +145,15 @@ def run(
         if params.get("model") is None:
             params["model"] = config.get_model_default()
 
+        # Apply file collection configuration defaults
+        file_collection_config = config.get_file_collection_config()
+        if params.get("ignore_gitignore") is None:
+            params["ignore_gitignore"] = (
+                file_collection_config.ignore_gitignore
+            )
+        if params.get("gitignore_file") is None:
+            params["gitignore_file"] = file_collection_config.gitignore_file
+
         # UNIFIED GUIDELINES: Perform basic validation even in dry-run mode
         if kwargs.get("dry_run"):
             # Import validation functions
