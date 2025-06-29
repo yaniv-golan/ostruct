@@ -200,6 +200,21 @@ class OstructConfig(BaseModel):
                 ].lower()  # Remove OSTRUCT_MCP_URL_ prefix
                 mcp_config[server_name] = value
 
+        # File collection environment variables
+        file_collection_config = config_data.setdefault("file_collection", {})
+
+        # OSTRUCT_IGNORE_GITIGNORE environment variable
+        ignore_gitignore_env = os.getenv("OSTRUCT_IGNORE_GITIGNORE")
+        if ignore_gitignore_env is not None:
+            file_collection_config["ignore_gitignore"] = (
+                ignore_gitignore_env.lower() in ("true", "1", "yes")
+            )
+
+        # OSTRUCT_GITIGNORE_FILE environment variable
+        gitignore_file_env = os.getenv("OSTRUCT_GITIGNORE_FILE")
+        if gitignore_file_env:
+            file_collection_config["gitignore_file"] = gitignore_file_env
+
         # Built-in MCP server shortcuts
         builtin_servers = {
             "stripe": "https://mcp.stripe.com",

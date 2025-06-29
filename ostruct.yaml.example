@@ -47,6 +47,10 @@ limits:
 # OPENAI_API_KEY - Your OpenAI API key
 # OSTRUCT_MCP_URL_<name> - URL for custom MCP servers (e.g., OSTRUCT_MCP_URL_stripe)
 #
+# File Collection:
+# OSTRUCT_IGNORE_GITIGNORE - Set to "true" to disable gitignore filtering globally
+# OSTRUCT_GITIGNORE_FILE - Custom gitignore file path (overrides .gitignore)
+#
 # Template Processing Limits (template-only files):
 # OSTRUCT_TEMPLATE_FILE_LIMIT - Max individual file size for templates (default: 65536 bytes)
 # OSTRUCT_TEMPLATE_TOTAL_LIMIT - Max total file size for templates (default: 1048576 bytes)
