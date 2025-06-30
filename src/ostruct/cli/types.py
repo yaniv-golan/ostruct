@@ -85,3 +85,7 @@ class CLIParams(TypedDict, total=False):
     help_debug: bool
     enabled_features: List[str]  # List of feature names to enable
     disabled_features: List[str]  # List of feature names to disable
+
+    # Gitignore support
+    ignore_gitignore: bool
+    gitignore_file: Optional[str]

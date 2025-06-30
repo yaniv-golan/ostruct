@@ -36,6 +36,9 @@ class AttachmentSpec:
     attachment_type: str = (
         "file"  # Original attachment type: "file", "dir", or "collection"
     )
+    # Gitignore settings for directory expansion
+    ignore_gitignore: bool = False  # Whether to ignore gitignore patterns
+    gitignore_file: Optional[str] = None  # Custom gitignore file path
 
 
 @dataclass
@@ -112,6 +115,10 @@ class AttachmentProcessor:
                     attachment_type=attachment_dict.get(
                         "attachment_type", "file"
                     ),
+                    ignore_gitignore=attachment_dict.get(
+                        "ignore_gitignore", False
+                    ),
+                    gitignore_file=attachment_dict.get("gitignore_file"),
                 )
 
                 # Validate file/directory with security manager
@@ -235,6 +242,12 @@ class AttachmentProcessor:
                             from_collection=True,  # Mark as from collection
                             collection_base_alias=base_alias,  # Store original alias
                             attachment_type="collection",  # From --collect
+                            ignore_gitignore=attachment_dict.get(
+                                "ignore_gitignore", False
+                            ),
+                            gitignore_file=attachment_dict.get(
+                                "gitignore_file"
+                            ),
                         )
 
                         specs.append(spec)
@@ -425,12 +438,23 @@ def _extract_attachments_from_args(args: CLIParams) -> List[Dict[str, Any]]:
     """
     attachments: List[Dict[str, Any]] = []
 
+    # Get global flags that apply to ALL applicable attachments
+    recursive_flag = args.get("recursive", False)
+    pattern_flag = args.get("pattern", None)
+
+    # Get gitignore settings from CLI args
+    ignore_gitignore = args.get("ignore_gitignore", False)
+    gitignore_file = args.get("gitignore_file")
+
     # Extract --attach specifications (file attachments)
     attaches = args.get("attaches", [])
     if attaches:
         for attach in attaches:
             attach_with_type = dict(attach)
             attach_with_type["attachment_type"] = "file"
+            # Files don't support recursive/pattern flags, but add gitignore settings
+            attach_with_type["ignore_gitignore"] = ignore_gitignore
+            attach_with_type["gitignore_file"] = gitignore_file
             attachments.append(attach_with_type)
 
     # Extract --dir specifications (directory attachments)
@@ -439,6 +463,17 @@ def _extract_attachments_from_args(args: CLIParams) -> List[Dict[str, Any]]:
         for dir_spec in dirs:
             dir_with_type = dict(dir_spec)
             dir_with_type["attachment_type"] = "dir"
+
+            # Apply global flags to ALL directories
+            if recursive_flag:
+                dir_with_type["recursive"] = True
+            if pattern_flag:
+                dir_with_type["pattern"] = pattern_flag
+
+            # Add gitignore settings
+            dir_with_type["ignore_gitignore"] = ignore_gitignore
+            dir_with_type["gitignore_file"] = gitignore_file
+
             attachments.append(dir_with_type)
 
     # Extract --collect specifications (collection attachments)
@@ -447,6 +482,17 @@ def _extract_attachments_from_args(args: CLIParams) -> List[Dict[str, Any]]:
         for collect in collects:
             collect_with_type = dict(collect)
             collect_with_type["attachment_type"] = "collection"
+
+            # Apply global flags to ALL collections
+            if recursive_flag:
+                collect_with_type["recursive"] = True
+            if pattern_flag:
+                collect_with_type["pattern"] = pattern_flag
+
+            # Add gitignore settings
+            collect_with_type["ignore_gitignore"] = ignore_gitignore
+            collect_with_type["gitignore_file"] = gitignore_file
+
             attachments.append(collect_with_type)
 
     logger.debug(

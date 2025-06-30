@@ -60,6 +60,7 @@ from ostruct.cli.errors import (
 
 from .file_info import FileInfo, FileRoutingIntent
 from .file_list import FileInfoList
+from .gitignore_support import GitignoreManager
 from .security import SecurityManager
 from .security.types import SecurityManagerProtocol
 
@@ -181,6 +182,8 @@ def collect_files_from_directory(
     allowed_extensions: Optional[List[str]] = None,
     routing_type: Optional[str] = None,
     routing_intent: Optional[FileRoutingIntent] = None,
+    ignore_gitignore: bool = False,
+    gitignore_file: Optional[str] = None,
     **kwargs: Any,
 ) -> List[FileInfo]:
     """Collect files from a directory.
@@ -192,6 +195,8 @@ def collect_files_from_directory(
         allowed_extensions: List of allowed file extensions (without dot)
         routing_type: How the file was routed
         routing_intent: The intended use of the file in the pipeline
+        ignore_gitignore: If True, ignore .gitignore files (include all files)
+        gitignore_file: Custom gitignore file path (default: .gitignore in directory)
         **kwargs: Additional arguments passed to FileInfo.from_path
 
     Returns:
@@ -221,6 +226,17 @@ def collect_files_from_directory(
     if not os.path.isdir(abs_dir):
         logger.error("Path is not a directory: %s", abs_dir)
         raise DirectoryNotFoundError(f"Path is not a directory: {directory}")
+
+    # Initialize gitignore manager
+    gitignore_manager = None
+    excluded_count = 0
+
+    if not ignore_gitignore:  # Only load gitignore if not explicitly ignored
+        gitignore_manager = GitignoreManager(gitignore_file, abs_dir)
+        if gitignore_manager.has_patterns:
+            logger.info(
+                "Applying .gitignore patterns from directory: %s", abs_dir
+            )
 
     files: List[FileInfo] = []
 
@@ -265,6 +281,17 @@ def collect_files_from_directory(
                         str(e),
                     )
                     continue
+
+                # Apply gitignore filtering
+                if gitignore_manager:
+                    # Get path relative to the directory being scanned for gitignore matching
+                    gitignore_rel_path = os.path.relpath(abs_path, abs_dir)
+                    if gitignore_manager.should_ignore(gitignore_rel_path):
+                        excluded_count += 1
+                        logger.debug(
+                            "Excluded by .gitignore: %s", gitignore_rel_path
+                        )
+                        continue
 
                 # Check extension if filter is specified
                 if allowed_extensions is not None:
@@ -320,6 +347,13 @@ def collect_files_from_directory(
     except Exception as e:
         logger.error("Error collecting files: %s", str(e))
         raise
+
+    # Log summary if files were excluded
+    if excluded_count > 0:
+        logger.info(
+            "Excluded %d files based on .gitignore patterns", excluded_count
+        )
+        logger.info("Use --ignore-gitignore to include ignored files")
 
     logger.debug("Collected %d files from directory %s", len(files), directory)
     return files

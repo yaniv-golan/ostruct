@@ -32,6 +32,7 @@ dependencies = [
     "sphinx-design>=0.6.1,<1.0",
     "rich-click (>=1.8.9,<2.0.0)",
     "rich (>=13.0.0,<14.0.0)",
+    "pathspec (>=0.12.1,<0.13.0)",
 ]
 
 [project.scripts]

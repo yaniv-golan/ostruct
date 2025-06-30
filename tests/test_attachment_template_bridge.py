@@ -242,3 +242,160 @@ def test_build_template_context_from_attachments_integration(
 
     # Check content access works
     assert str(context["config"]) == "Test file content"
+
+
+def test_expand_directory_with_gitignore():
+    """Test directory expansion respects gitignore patterns (Bug #2)."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        # Create test directory with files
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        (project_dir / "main.py").write_text("# main")
+        (project_dir / "main.pyc").write_text("# compiled")
+        (project_dir / "debug.log").write_text("# debug")
+        (project_dir / "important.log").write_text("# important")
+
+        # Create .gitignore
+        gitignore = project_dir / ".gitignore"
+        gitignore.write_text("*.pyc\n*.log\n!important.log\n")
+
+        security_manager = SecurityManager(base_dir=str(tmp_path))
+
+        # Create attachment spec with gitignore enabled
+        spec = AttachmentSpec(
+            alias="code",
+            path=str(project_dir),
+            targets={"prompt"},
+            recursive=True,
+            pattern=None,
+            ignore_gitignore=False,
+            gitignore_file=None,
+        )
+
+        context = AttachmentTemplateContext(security_manager)
+        expanded = context._expand_directory(spec)
+
+        # Should exclude gitignored files
+        file_names = [Path(f.path).name for f in expanded]
+        assert "main.py" in file_names
+        assert "important.log" in file_names  # Negation pattern
+        assert "main.pyc" not in file_names
+        assert "debug.log" not in file_names
+
+
+def test_expand_directory_ignore_gitignore():
+    """Test directory expansion with gitignore disabled."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        # Create test directory with files
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        (project_dir / "main.py").write_text("# main")
+        (project_dir / "main.pyc").write_text("# compiled")
+
+        # Create .gitignore
+        gitignore = project_dir / ".gitignore"
+        gitignore.write_text("*.pyc\n")
+
+        security_manager = SecurityManager(base_dir=str(tmp_path))
+
+        # Create attachment spec with gitignore disabled
+        spec = AttachmentSpec(
+            alias="all_code",
+            path=str(project_dir),
+            targets={"prompt"},
+            recursive=True,
+            pattern=None,
+            ignore_gitignore=True,
+            gitignore_file=None,
+        )
+
+        context = AttachmentTemplateContext(security_manager)
+        expanded = context._expand_directory(spec)
+
+        # Should include all files when gitignore is disabled
+        file_names = [Path(f.path).name for f in expanded]
+        assert "main.py" in file_names
+        assert "main.pyc" in file_names
+
+
+def test_expand_directory_custom_gitignore_file():
+    """Test directory expansion with custom gitignore file."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        # Create test directory with files
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        (project_dir / "file.py").write_text("# python")
+        (project_dir / "file.tmp").write_text("# temp")
+
+        # Create custom gitignore
+        custom_gitignore = tmp_path / ".custom"
+        custom_gitignore.write_text("*.tmp\n")
+
+        security_manager = SecurityManager(base_dir=str(tmp_path))
+
+        # Create attachment spec with custom gitignore
+        spec = AttachmentSpec(
+            alias="filtered",
+            path=str(project_dir),
+            targets={"prompt"},
+            recursive=True,
+            pattern=None,
+            ignore_gitignore=False,
+            gitignore_file=str(custom_gitignore),
+        )
+
+        context = AttachmentTemplateContext(security_manager)
+        expanded = context._expand_directory(spec)
+
+        # Should exclude .tmp files per custom gitignore
+        file_names = [Path(f.path).name for f in expanded]
+        assert "file.py" in file_names
+        assert "file.tmp" not in file_names
+
+
+def test_expand_directory_with_pattern_and_gitignore():
+    """Test directory expansion with both pattern and gitignore filtering."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        # Create test directory with various file types
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        (project_dir / "script.py").write_text("# python script")
+        (project_dir / "script.pyc").write_text("# compiled python")
+        (project_dir / "data.json").write_text("# json data")
+        (project_dir / "readme.txt").write_text("# readme")
+
+        # Create .gitignore
+        gitignore = project_dir / ".gitignore"
+        gitignore.write_text("*.pyc\n")
+
+        security_manager = SecurityManager(base_dir=str(tmp_path))
+
+        # Create attachment spec with both pattern and gitignore
+        spec = AttachmentSpec(
+            alias="python_files",
+            path=str(project_dir),
+            targets={"prompt"},
+            recursive=True,
+            pattern="*.py",
+            ignore_gitignore=False,
+            gitignore_file=None,
+        )
+
+        context = AttachmentTemplateContext(security_manager)
+        expanded = context._expand_directory(spec)
+
+        # Should only include .py files that aren't gitignored
+        file_names = [Path(f.path).name for f in expanded]
+        assert "script.py" in file_names
+        # Should exclude .pyc (gitignore) and .json/.txt (pattern)
+        assert "script.pyc" not in file_names
+        assert "data.json" not in file_names
+        assert "readme.txt" not in file_names

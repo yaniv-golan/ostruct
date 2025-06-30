@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 from .attachment_processor import AttachmentSpec, ProcessedAttachments
 from .file_info import FileInfo, FileRoutingIntent
 from .file_list import FileInfoList
+from .file_utils import collect_files_from_directory
 from .security import SecurityManager
 from .template_schema import DotDict
 
@@ -821,52 +822,44 @@ class AttachmentTemplateContext:
         Returns:
             List of FileInfo objects for files in directory
         """
-        path = Path(spec.path)
-        files = []
-
         try:
-            if spec.recursive:
-                if spec.pattern:
-                    file_paths = list(path.rglob(spec.pattern))
-                else:
-                    file_paths = [f for f in path.rglob("*") if f.is_file()]
-            else:
-                if spec.pattern:
-                    file_paths = list(path.glob(spec.pattern))
-                else:
-                    file_paths = [f for f in path.iterdir() if f.is_file()]
+            # Use the gitignore-aware file collection function
+            files = collect_files_from_directory(
+                directory=str(spec.path),
+                security_manager=self.security_manager,
+                recursive=spec.recursive,
+                allowed_extensions=None,  # No extension filtering for directory attachments
+                routing_type="template",
+                routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+                ignore_gitignore=spec.ignore_gitignore,
+                gitignore_file=spec.gitignore_file,
+                parent_alias=spec.alias,
+                base_path=str(spec.path),
+                from_collection=False,
+                attachment_type=spec.attachment_type,
+            )
 
-            # Convert to FileInfo objects with security validation
-            for file_path in file_paths:
-                try:
-                    validated_path = (
-                        self.security_manager.validate_file_access(
-                            file_path,
-                            context=f"directory expansion {spec.alias}",
-                        )
-                    )
-                    file_info = FileInfo.from_path(
-                        str(validated_path),
-                        self.security_manager,
-                        routing_type="template",
-                        routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
-                        parent_alias=spec.alias,
-                        relative_path=str(file_path.relative_to(path)),
-                        base_path=str(spec.path),
-                        from_collection=False,
-                        attachment_type=spec.attachment_type,
-                    )
-                    files.append(file_info)
-                except Exception as e:
-                    logger.warning(f"Skipping file {file_path}: {e}")
+            # Apply pattern filtering if specified (after gitignore filtering)
+            if spec.pattern:
+                from fnmatch import fnmatch
+
+                filtered_files = []
+                for file_info in files:
+                    # Check pattern against the relative path from the directory
+                    rel_path = file_info.relative_path or file_info.name
+                    if fnmatch(rel_path, spec.pattern):
+                        filtered_files.append(file_info)
+                files = filtered_files
 
             logger.debug(
                 f"Expanded directory {spec.path} to {len(files)} files "
-                f"(recursive={spec.recursive}, pattern={spec.pattern})"
+                f"(recursive={spec.recursive}, pattern={spec.pattern}, "
+                f"ignore_gitignore={spec.ignore_gitignore})"
             )
 
         except Exception as e:
             logger.error(f"Error expanding directory {spec.path}: {e}")
+            files = []
 
         return files
 

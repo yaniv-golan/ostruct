@@ -9,6 +9,7 @@ from ostruct.cli.attachment_processor import (
     process_new_attachments,
 )
 from ostruct.cli.security import PathSecurity, SecurityManager
+from ostruct.cli.types import CLIParams
 
 
 def test_attachment_spec_creation():
@@ -19,6 +20,8 @@ def test_attachment_spec_creation():
         targets={"prompt", "code-interpreter"},
         recursive=False,
         pattern=None,
+        ignore_gitignore=False,
+        gitignore_file=None,
     )
 
     assert spec.alias == "test_data"
@@ -26,6 +29,149 @@ def test_attachment_spec_creation():
     assert spec.targets == {"prompt", "code-interpreter"}
     assert spec.recursive is False
     assert spec.pattern is None
+    assert spec.ignore_gitignore is False
+    assert spec.gitignore_file is None
+
+
+def test_attachment_spec_with_gitignore_settings():
+    """Test AttachmentSpec with gitignore settings."""
+    spec = AttachmentSpec(
+        alias="code",
+        path="/project/src",
+        targets={"prompt"},
+        recursive=True,
+        pattern="*.py",
+        ignore_gitignore=True,
+        gitignore_file="/custom/.gitignore",
+    )
+
+    assert spec.ignore_gitignore is True
+    assert spec.gitignore_file == "/custom/.gitignore"
+    assert spec.recursive is True
+    assert spec.pattern == "*.py"
+
+
+def test_attachment_processor_with_gitignore():
+    """Test attachment processing with gitignore settings."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        # Create test directory with files
+        test_dir = tmp_path / "project"
+        test_dir.mkdir()
+        (test_dir / "main.py").write_text("# main")
+        (test_dir / "main.pyc").write_text("# compiled")
+
+        # Create .gitignore
+        gitignore = test_dir / ".gitignore"
+        gitignore.write_text("*.pyc\n")
+
+        manager = SecurityManager(
+            base_dir=tmp_path, security_mode=PathSecurity.WARN
+        )
+
+        processor = AttachmentProcessor(manager)
+
+        # Test processing directory attachment with gitignore enabled
+        attachments = [
+            {
+                "alias": "code",
+                "path": str(test_dir),
+                "targets": ["prompt"],
+                "recursive": True,
+                "pattern": None,
+                "ignore_gitignore": False,
+                "gitignore_file": None,
+            }
+        ]
+
+        processed = processor.process_attachments(attachments)
+
+        # Verify gitignore settings are preserved
+        assert len(processed.template_dirs) == 1
+        template_dir = processed.template_dirs[0]
+        assert template_dir.alias == "code"
+
+        # The actual gitignore filtering happens in collect_files_from_directory
+        # Here we just verify the settings are passed through correctly
+
+
+def test_attachment_processor_ignore_gitignore():
+    """Test attachment processing with gitignore disabled."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        # Create test directory
+        test_dir = tmp_path / "project"
+        test_dir.mkdir()
+        (test_dir / "file.txt").write_text("content")
+
+        manager = SecurityManager(
+            base_dir=tmp_path, security_mode=PathSecurity.WARN
+        )
+
+        processor = AttachmentProcessor(manager)
+
+        # Test processing with gitignore disabled
+        attachments = [
+            {
+                "alias": "all_files",
+                "path": str(test_dir),
+                "targets": ["code-interpreter"],
+                "recursive": True,
+                "pattern": None,
+                "ignore_gitignore": True,
+                "gitignore_file": None,
+            }
+        ]
+
+        processed = processor.process_attachments(attachments)
+
+        # Verify ignore_gitignore setting
+        assert len(processed.ci_dirs) == 1
+        ci_dir = processed.ci_dirs[0]
+        assert ci_dir.alias == "all_files"
+
+
+def test_attachment_processor_custom_gitignore_file():
+    """Test attachment processing with custom gitignore file."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        # Create test directory
+        test_dir = tmp_path / "project"
+        test_dir.mkdir()
+        (test_dir / "file.txt").write_text("content")
+
+        # Create custom gitignore
+        custom_gitignore = tmp_path / ".custom_ignore"
+        custom_gitignore.write_text("*.txt\n")
+
+        manager = SecurityManager(
+            base_dir=tmp_path, security_mode=PathSecurity.WARN
+        )
+
+        processor = AttachmentProcessor(manager)
+
+        # Test processing with custom gitignore file
+        attachments = [
+            {
+                "alias": "filtered",
+                "path": str(test_dir),
+                "targets": ["file-search"],
+                "recursive": True,
+                "pattern": None,
+                "ignore_gitignore": False,
+                "gitignore_file": str(custom_gitignore),
+            }
+        ]
+
+        processed = processor.process_attachments(attachments)
+
+        # Verify custom gitignore file setting
+        assert len(processed.fs_dirs) == 1
+        fs_dir = processed.fs_dirs[0]
+        assert fs_dir.alias == "filtered"
 
 
 def test_attachment_processor_basic():
@@ -213,8 +359,8 @@ def test_process_new_attachments_integration():
             base_dir=tmp_path, security_mode=PathSecurity.WARN
         )
 
-        # Test with new attachment syntax
-        args = {
+        # Test with new attachment syntax - use CLIParams
+        args: CLIParams = {
             "attaches": [
                 {
                     "alias": "data",
@@ -246,8 +392,8 @@ def test_process_new_attachments_no_syntax():
             base_dir=tmp_path, security_mode=PathSecurity.WARN
         )
 
-        # Test with no new attachment syntax
-        args = {"legacy_files": ["file1.txt"]}
+        # Test with no new attachment syntax - use CLIParams
+        args: CLIParams = {}
 
         result = process_new_attachments(args, manager)
 

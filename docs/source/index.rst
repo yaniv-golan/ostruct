@@ -89,6 +89,7 @@ Documentation
    :caption: 🔧 Reference
 
    user-guide/cli_reference
+   user-guide/gitignore_guide
    user-guide/tool_integration
 
 .. toctree::
