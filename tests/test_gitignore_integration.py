@@ -163,7 +163,7 @@ class TestGitignoreFileCollection:
 
             # Mock the logger to capture log messages
             with patch("ostruct.cli.file_utils.logger") as mock_logger:
-                files = collect_files_from_directory(
+                _ = collect_files_from_directory(
                     directory=str(test_dir),
                     security_manager=security_manager,
                     recursive=True,
