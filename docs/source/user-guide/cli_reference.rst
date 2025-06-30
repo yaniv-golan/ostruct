@@ -43,10 +43,16 @@ File and Directory Management
 
 **Security & Path Control**:
 
-- ``--recursive``: Process directories and patterns recursively
+- ``--recursive``: Apply recursive processing to all --dir and --collect attachments
+- ``--pattern GLOB``: Apply glob pattern to all --dir and --collect attachments
 - ``-S, --path-security [permissive|warn|strict]``: Path security mode (default: warn)
 - ``--allow DIR``: Add an allowed directory for security (repeatable)
 - ``--allow-list FILE``: File containing allowed directory paths
+
+**File Collection Options**:
+
+- ``--ignore-gitignore``: Ignore .gitignore files when collecting directory files (default: respect .gitignore)
+- ``--gitignore-file PATH``: Use custom gitignore file instead of default .gitignore
 
 Variables
 ---------
@@ -138,6 +144,10 @@ The CLI writes logs to the following files in ``~/.ostruct/logs/``:
    - ``OSTRUCT_TEMPLATE_TOTAL_LIMIT``: Max total file size for template processing (default: 1048576 bytes)
    - ``OSTRUCT_TEMPLATE_PREVIEW_LIMIT``: Max characters in template debug previews (default: 4096)
 
+3. Environment variables (file collection configuration):
+   - ``OSTRUCT_IGNORE_GITIGNORE``: Set to "true" to ignore .gitignore files by default (default: "false")
+   - ``OSTRUCT_GITIGNORE_FILE``: Default path to gitignore file (default: ".gitignore")
+
 Example:
 
 .. code-block:: bash
@@ -145,6 +155,10 @@ Example:
    # Set template processing limits
    export OSTRUCT_TEMPLATE_FILE_LIMIT=131072  # 128KB
    export OSTRUCT_TEMPLATE_TOTAL_LIMIT=2097152  # 2MB
+
+   # Configure gitignore behavior
+   export OSTRUCT_IGNORE_GITIGNORE=true  # Ignore .gitignore by default
+   export OSTRUCT_GITIGNORE_FILE=.custom-ignore  # Use custom gitignore file
 
    # Run with verbose logging (controlled via CLI flags)
    ostruct run task.j2 schema.json --verbose
@@ -434,6 +448,79 @@ Process multiple files from lists:
 
    # Upload collection to Code Interpreter
    ostruct run analyze.j2 schema.json --collect ci:datasets @data-files.txt
+
+Directory Collection with Gitignore Support
+-------------------------------------------
+
+Control file collection from directories using gitignore patterns:
+
+.. code-block:: bash
+
+   # Respect .gitignore files (default behavior)
+   ostruct run analyze.j2 schema.json --dir source ./project --recursive
+
+   # Ignore .gitignore files and collect all files
+   ostruct run analyze.j2 schema.json --dir source ./project --recursive --ignore-gitignore
+
+   # Use custom gitignore file
+   ostruct run analyze.j2 schema.json --dir source ./project --recursive --gitignore-file .custom-ignore
+
+   # Upload to Code Interpreter with gitignore filtering
+   ostruct run analyze.j2 schema.json --dir ci:codebase ./src --recursive
+
+.. note::
+   **Gitignore Behavior**: When collecting files from directories recursively, ostruct respects ``.gitignore`` files by default. This prevents sensitive files (like ``.env``, ``node_modules/``, or ``__pycache__/``) from being included. Use ``--ignore-gitignore`` to override this behavior when needed.
+
+   For comprehensive gitignore usage, patterns, and troubleshooting, see the :doc:`gitignore_guide`.
+
+Global Directory Processing Flags
+---------------------------------
+
+The ``--recursive`` and ``--pattern`` flags apply **globally** to all ``--dir`` and ``--collect`` attachments in a single command, following standard CLI conventions:
+
+.. code-block:: bash
+
+   # Both directories become recursive
+   ostruct run template.j2 schema.json \
+     --dir src ./source \
+     --dir tests ./test_files \
+     --recursive
+
+   # Both directories get the pattern applied
+   ostruct run template.j2 schema.json \
+     --dir code ./src \
+     --dir configs ./config \
+     --pattern "*.py"
+
+   # Combined: both directories are recursive with pattern
+   ostruct run template.j2 schema.json \
+     --dir ci:codebase ./src \
+     --dir ci:tests ./tests \
+     --recursive --pattern "*.py"
+
+.. note::
+   **Global Flag Behavior**: Unlike some CLI tools that apply flags only to the preceding argument, ostruct applies ``--recursive`` and ``--pattern`` to **all applicable attachments** in the command. This follows the same pattern as tools like ``cp``, ``rsync``, and ``ls`` where flags affect all targets.
+
+**Examples of global behavior:**
+
+.. code-block:: bash
+
+   # Standard: All directories become recursive
+   ostruct run analyze.j2 schema.json \
+     --dir source ./src \
+     --dir docs ./documentation \
+     --dir tests ./test_suite \
+     --recursive
+
+   # Mixed targets: Only directories are affected by flags
+   ostruct run process.j2 schema.json \
+     --file config ./config.yaml \
+     --dir ci:data ./datasets \
+     --dir fs:docs ./docs \
+     --file prompt:readme ./README.md \
+     --recursive --pattern "*.json"
+   # Result: config.yaml and README.md are unaffected
+   #         datasets/ and docs/ are both recursive with *.json pattern
 
 File Type Limitations
 =====================

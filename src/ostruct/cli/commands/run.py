@@ -173,6 +173,14 @@ def run(
             # Process attachments for the dry-run plan
             processed_attachments = ProcessedAttachments()
 
+            # Get global flags that apply to ALL applicable attachments
+            recursive_flag = kwargs.get("recursive", False)
+            pattern_flag = kwargs.get("pattern", None)
+
+            # Get gitignore settings
+            ignore_gitignore = kwargs.get("ignore_gitignore", False)
+            gitignore_file = kwargs.get("gitignore_file")
+
             # Process --file attachments
             files = kwargs.get("attaches", [])
             for file_spec in files:
@@ -180,8 +188,10 @@ def run(
                     alias=file_spec["alias"],
                     path=file_spec["path"],
                     targets=file_spec["targets"],
-                    recursive=file_spec.get("recursive", False),
-                    pattern=file_spec.get("pattern"),
+                    recursive=False,  # Files don't use recursive
+                    pattern=None,  # Files don't use pattern
+                    ignore_gitignore=ignore_gitignore,
+                    gitignore_file=gitignore_file,
                 )
                 processed_attachments.alias_map[spec.alias] = spec
 
@@ -200,8 +210,34 @@ def run(
                     alias=dir_spec["alias"],
                     path=dir_spec["path"],
                     targets=dir_spec["targets"],
-                    recursive=dir_spec.get("recursive", True),
-                    pattern=dir_spec.get("pattern"),
+                    recursive=recursive_flag,  # Apply global flag
+                    pattern=pattern_flag,  # Apply global flag
+                    ignore_gitignore=ignore_gitignore,
+                    gitignore_file=gitignore_file,
+                )
+                processed_attachments.alias_map[spec.alias] = spec
+
+                # Route to appropriate lists based on targets
+                if "prompt" in spec.targets:
+                    processed_attachments.template_dirs.append(spec)
+                if "code-interpreter" in spec.targets or "ci" in spec.targets:
+                    processed_attachments.ci_dirs.append(spec)
+                if "file-search" in spec.targets or "fs" in spec.targets:
+                    processed_attachments.fs_dirs.append(spec)
+
+            # Process --collect attachments
+            collects = kwargs.get("collects", [])
+            for collect_spec in collects:
+                spec = AttachmentSpec(
+                    alias=collect_spec["alias"],
+                    path=collect_spec["path"],
+                    targets=collect_spec["targets"],
+                    recursive=recursive_flag,  # Apply global flag
+                    pattern=pattern_flag,  # Apply global flag
+                    from_collection=True,
+                    attachment_type="collection",
+                    ignore_gitignore=ignore_gitignore,
+                    gitignore_file=gitignore_file,
                 )
                 processed_attachments.alias_map[spec.alias] = spec
 

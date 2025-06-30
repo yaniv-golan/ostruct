@@ -894,12 +894,12 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
         click.option(
             "--pattern",
             metavar="GLOB",
-            help="Apply to last --dir/--collect (replaces legacy --glob)",
+            help="Apply glob pattern to all --dir/--collect attachments",
         ),
         click.option(
             "--recursive",
             is_flag=True,
-            help="Apply to last --dir/--collect",
+            help="Apply recursively to all --dir/--collect attachments",
         ),
         click.option(
             "-C",
