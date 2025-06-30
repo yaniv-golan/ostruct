@@ -4,7 +4,6 @@ from typing import Any, Dict
 from unittest.mock import Mock, patch
 
 import pytest
-
 from ostruct.cli.file_info import FileRoutingIntent
 from ostruct.cli.model_validation import validate_model_and_schema
 from ostruct.cli.security import SecurityManager
@@ -298,7 +297,7 @@ class TestTokenValidationFix:
         mock_create_model.return_value = Mock()
         mock_registry.get_instance.return_value = Mock()
 
-        template_context = {"files": []}
+        template_context: Dict[str, Any] = {"files": []}
 
         # Call the function
         await validate_model_and_schema(
@@ -341,7 +340,7 @@ class TestTokenValidationFix:
         mock_create_model.return_value = Mock()
         mock_registry.get_instance.return_value = Mock()
 
-        template_context = {}  # No 'files' key
+        template_context: Dict[str, Any] = {}  # No 'files' key
 
         # Call the function
         await validate_model_and_schema(
