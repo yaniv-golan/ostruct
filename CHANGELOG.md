@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-06-30
+
+### Added
+
+- **Gitignore Support**: Automatic .gitignore pattern matching for directory file collection
+  - **CLI Options**: New `--ignore-gitignore` flag to disable gitignore filtering and `--gitignore-file PATH` to specify custom gitignore files
+  - **Environment Variables**: `OSTRUCT_IGNORE_GITIGNORE` and `OSTRUCT_GITIGNORE_FILE` for default behavior configuration
+  - **Configuration Support**: New `file_collection` section in `ostruct.yaml` with `ignore_gitignore` and `gitignore_file` options
+  - **Pattern Matching**: Uses `pathspec` library for robust gitignore pattern matching following Git's behavior
+  - **Comprehensive Documentation**: Complete gitignore guide with usage examples, patterns, and troubleshooting
+  - **Security Benefits**: Automatically excludes sensitive files (`.env`, API keys) and build artifacts from directory collection
+
+- **Enhanced AIF Visualization**: Improved argument analysis visualization tools
+  - **Interactive Mermaid Diagrams**: Added clickable nodes and full text comments for better visualization
+  - **Script Improvements**: Fixed path references and enhanced output formatting
+
+### Changed
+
+- **Global Flag Behavior**: `--recursive` and `--pattern` flags now apply to ALL `--dir` and `--collect` attachments instead of only the last attachment, providing more intuitive and consistent behavior
+- **Default Directory Processing**: Directory file collection now respects `.gitignore` patterns by default for improved security and cleaner file sets (can be disabled with `--ignore-gitignore`)
+- **Dry-Run JSON Output**: Improved attachment type detection in dry-run mode, correctly identifying `directory`, `file`, and `collection` attachment types
+
+### Fixed
+
+- **Test Reliability**: Adjusted performance test thresholds from 0.1s to 0.2s to account for CI environment variability while still catching real performance regressions
+- **CLI Integration**: Fixed dry-run JSON format validation and schema requirements for better test compatibility
+- **Type Safety**: Resolved path handling issues in plan assembly for collection attachments
+
+### Dependencies
+
+- **Added**: `pathspec (>=0.12.1,<0.13.0)` for gitignore pattern matching
+
 ## [1.0.3] - 2025-06-29
 
 ### Documentation

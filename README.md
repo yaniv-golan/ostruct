@@ -82,7 +82,7 @@ ostruct run prompts/hybrid_analysis.j2 schemas/scan_result.json \
 - **Code Interpreter**: $0.18 cost (same!), superior analysis quality with evidence-based findings
 - **Hybrid Analysis**: $0.20 cost (+13%), maximum depth with cross-validation
 
-Each approach finds the same core vulnerabilities but with different levels of detail and analysis quality. Directory-based analysis provides comprehensive project coverage in a single scan.
+Each approach finds the same core vulnerabilities but with different levels of detail and analysis quality. Directory-based analysis provides comprehensive project coverage in a single scan, automatically excluding build artifacts and sensitive files via .gitignore patterns.
 
 ### Data Analysis with Code Interpreter
 
@@ -170,6 +170,7 @@ The optional `file_ref()` function provides clean references with automatic XML 
 ### Advanced Features
 
 - **Configuration System**: YAML-based configuration with environment variable support
+- **Gitignore Support**: Automatic .gitignore pattern matching for clean directory file collection
 - **Unattended Operation**: Designed for CI/CD and automation scenarios
 - **Progress Reporting**: Real-time progress updates with clear, user-friendly messaging
 - **Model Registry**: Dynamic model management with support for latest OpenAI models
@@ -300,6 +301,11 @@ ostruct-cli respects the following environment variables:
 
 - `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
 - `OSTRUCT_MCP_URL_<name>`: Custom MCP server URLs (e.g., `OSTRUCT_MCP_URL_stripe=https://mcp.stripe.com`)
+
+**File Collection:**
+
+- `OSTRUCT_IGNORE_GITIGNORE`: Set to "true" to ignore .gitignore files by default (default: "false")
+- `OSTRUCT_GITIGNORE_FILE`: Default path to gitignore file (default: ".gitignore")
 
 **Template Processing Limits (Template-only files via `--file alias path`):**
 
