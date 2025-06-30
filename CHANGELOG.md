@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Environment Variables**: `OSTRUCT_IGNORE_GITIGNORE` and `OSTRUCT_GITIGNORE_FILE` for default behavior configuration
   - **Configuration Support**: New `file_collection` section in `ostruct.yaml` with `ignore_gitignore` and `gitignore_file` options
   - **Pattern Matching**: Uses `pathspec` library for robust gitignore pattern matching following Git's behavior
-  - **Comprehensive Documentation**: Complete gitignore guide with usage examples, patterns, and troubleshooting
+  - **Documentation**: gitignore guide with usage examples, patterns, and troubleshooting
   - **Security Benefits**: Automatically excludes sensitive files (`.env`, API keys) and build artifacts from directory collection
 
 - **Enhanced AIF Visualization**: Improved argument analysis visualization tools
