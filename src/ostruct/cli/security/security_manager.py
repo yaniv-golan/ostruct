@@ -12,9 +12,10 @@ import logging
 import os
 import stat
 import tempfile
+import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, List, Optional, Tuple, Union
+from typing import Generator, List, Optional, Set, Tuple, Union
 
 from ostruct.cli.errors import OstructFileNotFoundError
 
@@ -67,6 +68,7 @@ class SecurityManager:
         allow_temp_paths: bool = False,
         max_symlink_depth: int = MAX_SYMLINK_DEPTH,
         security_mode: PathSecurity = PathSecurity.WARN,
+        config: Optional[dict] = None,
     ):
         """Initialize the SecurityManager.
 
@@ -78,6 +80,7 @@ class SecurityManager:
             allow_temp_paths: Whether to allow temporary directory paths.
             max_symlink_depth: Maximum depth for symlink resolution.
             security_mode: Path security enforcement mode (PERMISSIVE, WARN, or STRICT).
+            config: Optional configuration dictionary for warning behavior.
 
         Raises:
             DirectoryNotFoundError: If base_dir or any allowed directory doesn't exist.
@@ -108,6 +111,17 @@ class SecurityManager:
             set()
         )  # (device, inode) pairs
 
+        # Warning tracking for deduplication (T1.1)
+        self._warned_paths: Set[str] = set()  # Track warned paths per session
+        self._warning_lock = threading.Lock()  # Protect concurrent access
+
+        # Configuration-driven warning behavior (T2.2)
+        security_config = config.get("security", {}) if config else {}
+        self._suppress_warnings = security_config.get(
+            "suppress_path_warnings", False
+        )
+        self._show_summary = security_config.get("warning_summary", True)
+
         logger.debug(
             "\n=== Initialized SecurityManager ===\n"
             "Base dir: %s\n"
@@ -133,6 +147,113 @@ class SecurityManager:
     def allowed_dirs(self) -> List[Path]:
         """Return the list of allowed directories."""
         return self._allowed_dirs.copy()
+
+    def _should_warn_about_path(self, path: str) -> bool:
+        """Check if we should warn about this path (once per session).
+
+        Args:
+            path: The path to check for warning deduplication
+
+        Returns:
+            True if this path should trigger a warning, False if already warned
+        """
+        # Check configuration first
+        if self._suppress_warnings:
+            return False
+
+        resolved_key = (
+            str(Path(path).resolve()) if Path(path).exists() else path
+        )
+
+        with self._warning_lock:
+            if resolved_key in self._warned_paths:
+                return False
+            self._warned_paths.add(resolved_key)
+            return True
+
+    def reset_warning_tracking(self) -> None:
+        """Reset warning tracking (useful for testing or long-running processes)."""
+        with self._warning_lock:
+            self._warned_paths.clear()
+
+    def _get_file_context_message(self, path: str) -> str:
+        """Get contextual message based on file characteristics.
+
+        Args:
+            path: The file path to analyze
+
+        Returns:
+            A descriptive string about the file type/location
+        """
+        file_path = Path(path)
+
+        # Check for common external directories
+        path_str = (
+            str(file_path.resolve()) if file_path.exists() else str(file_path)
+        )
+
+        if "/Downloads/" in path_str:
+            return "downloaded file"
+        elif "/Desktop/" in path_str:
+            return "desktop file"
+        elif "/Documents/" in path_str and "/code/" not in path_str:
+            return "document file"
+        elif file_path.suffix in [".pdf", ".doc", ".docx", ".txt"]:
+            return "document"
+        elif file_path.suffix in [".csv", ".json", ".xlsx"]:
+            return "data file"
+        else:
+            return "file"
+
+    def _log_user_friendly_warning(
+        self, path: str, operation: str = "access"
+    ) -> None:
+        """Log user-friendly warning with actionable guidance.
+
+        Args:
+            path: The path that triggered the warning
+            operation: The operation being performed (for context)
+        """
+        resolved_path = (
+            str(Path(path).resolve()) if Path(path).exists() else path
+        )
+
+        # Determine the most relevant directory context
+        if Path(path).is_absolute():
+            parent_dir = str(Path(path).parent)
+            filename = Path(path).name
+            file_context = self._get_file_context_message(path)
+            context_msg = f"{file_context} '{filename}' from {parent_dir}"
+        else:
+            context_msg = f"path '{path}'"
+
+        logger.warning(
+            "🔒 Security Notice: Accessing %s outside the current project directory.",
+            context_msg,
+        )
+        logger.warning(
+            "   To allow this directory: --allow '%s'",
+            parent_dir if Path(path).is_absolute() else str(Path(path).parent),
+        )
+        logger.warning(
+            "   To allow this file only: --allow-file '%s'", resolved_path
+        )
+        logger.warning("   To disable warnings: --path-security permissive")
+
+    def log_security_summary(self) -> None:
+        """Log summary of security warnings at end of execution."""
+        if not self._show_summary:
+            return
+
+        with self._warning_lock:
+            if len(self._warned_paths) > 1:
+                logger.info(
+                    "🔒 Security Summary: Accessed %d files outside project directory.",
+                    len(self._warned_paths),
+                )
+                logger.info(
+                    "   Consider using --path-security permissive for external file workflows."
+                )
 
     def add_allowed_directory(self, directory: Union[str, Path]) -> None:
         """Add a new directory to the allowed directories list.
@@ -730,7 +851,10 @@ class SecurityManager:
             logger.debug("Path allowed by permissive mode: %s", path)
             return True
         elif self.security_mode == PathSecurity.WARN:
-            logger.warning("PathOutsidePolicy: %s", resolved_path or path)
+            # Only warn once per path per session
+            path_str = str(resolved_path or path)
+            if self._should_warn_about_path(path_str):
+                self._log_user_friendly_warning(path_str)
             return True
         else:  # STRICT
             raise PathSecurityError(

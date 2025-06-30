@@ -42,6 +42,12 @@ limits:
   max_cost_per_run: 10.00
   warn_expensive_operations: true
 
+# Security settings
+security:
+  path_security: warn  # Options: permissive, warn, strict
+  suppress_path_warnings: false  # Disable repeated warnings
+  warning_summary: true  # Show summary at end of execution
+
 # Environment Variables:
 # API Configuration:
 # OPENAI_API_KEY - Your OpenAI API key

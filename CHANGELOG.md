@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Improved
+
+- **Path Security Warnings**: Enhanced user experience for file access warnings with comprehensive improvements:
+  - **User-Friendly Messages**: Replaced technical "PathOutsidePolicy" warnings with clear, actionable security notices
+  - **Contextual Guidance**: Warnings now include specific CLI flags (--allow, --allow-file, --path-security) to resolve the issue
+  - **Smart Deduplication**: Each external file triggers only one warning per session, eliminating repetitive warning spam
+  - **File Type Detection**: Contextual messages identify file types (document, data file, downloaded file) for better user understanding
+  - **Configuration Support**: Added ostruct.yaml configuration options for warning behavior (suppress_path_warnings, warning_summary)
+  - **Thread Safety**: Warning system is safe for concurrent file access scenarios
+
+### Fixed
+
+- **Token Validation for Multi-Tool Scenarios**: Fixed context window validation bug that incorrectly counted tool files (Code Interpreter, File Search) as template content:
+  - **Accurate Token Counting**: Tool files are now excluded from context window validation as they consume tokens differently than template files
+  - **Multi-Tool Support**: Complex workflows with --file ci: and --file fs: attachments no longer fail with false "context window exceeded" errors
+  - **Backward Compatibility**: Template-only files continue to be validated normally for context window limits
+  - **Documentation**: Added comprehensive documentation explaining tool token consumption behavior
+
 ## [1.1.0] - 2025-06-30
 
 ### Added

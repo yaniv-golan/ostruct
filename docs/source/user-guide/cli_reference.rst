@@ -372,21 +372,38 @@ Control file access with enhanced security options:
 
    :param MODE: Security level (permissive, warn, strict)
 
-   - ``permissive``: Allow all file access (default)
-   - ``warn``: Allow with warnings for unauthorized paths
+   - ``permissive``: Allow all file access (no warnings)
+   - ``warn``: Allow with helpful security notices for external files (default)
    - ``strict``: Only allow explicitly permitted paths
+
+   **Warning behavior in warn mode:**
+
+   - Shows user-friendly security notices for files outside project directory
+   - Provides actionable CLI guidance (exact flags to resolve warnings)
+   - Deduplicates warnings (one warning per file per session)
+   - Includes contextual file type information (document, data file, etc.)
+   - Shows security summary at end if multiple external files accessed
 
 .. option:: --allow DIR
 
    Add allowed directory for security (can be used multiple times).
 
+   Grants access to the specified directory and all its contents.
+   Resolves security warnings for files within this directory.
+
 .. option:: --allow-file FILE
 
    Allow specific file access.
 
+   Grants access to one specific file only. More restrictive than ``--allow``
+   but useful when you need access to a single external file.
+
 .. option:: --allow-list FILE
 
    Load allowed paths from file.
+
+   Each line in the file should contain one directory path. Blank lines
+   and lines starting with ``#`` are ignored.
 
 Usage Examples
 ==============
