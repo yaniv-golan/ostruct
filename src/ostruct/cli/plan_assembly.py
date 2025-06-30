@@ -279,14 +279,30 @@ class PlanAssembler:
 
         # Add all attachment types with consistent format
         for alias, spec in processed_attachments.alias_map.items():
+            # Determine attachment type based on attachment_type field or path
+            if (
+                hasattr(spec, "attachment_type")
+                and spec.attachment_type == "collection"
+            ):
+                attachment_type = "collection"
+            elif spec.recursive or (
+                hasattr(spec, "attachment_type")
+                and spec.attachment_type == "dir"
+            ):
+                attachment_type = "directory"
+            else:
+                attachment_type = "file"
+
             attachment = {
                 "alias": alias,
-                "path": spec.path,
+                "path": str(spec.path),  # Convert Path to string
                 "targets": sorted(
                     list(spec.targets)
                 ),  # Ensure consistent ordering
-                "type": "file" if not spec.recursive else "directory",
-                "exists": os.path.exists(spec.path),
+                "type": attachment_type,
+                "exists": os.path.exists(
+                    str(spec.path)
+                ),  # Convert Path to string
                 "recursive": spec.recursive,
                 "pattern": spec.pattern,
             }
