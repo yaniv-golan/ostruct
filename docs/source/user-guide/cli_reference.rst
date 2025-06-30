@@ -342,6 +342,25 @@ The new system supports explicit targeting to specific tools:
      - ``fs``
      - Upload to File Search vector store for document retrieval
 
+Tool Token Consumption
+~~~~~~~~~~~~~~~~~~~~~~
+
+File Search and Code Interpreter tools consume additional tokens beyond your template content:
+
+**File Search:**
+- Automatically injects 15K-25K tokens of retrieved content per query
+- Multiple files = multiple content injections
+- Source: `OpenAI Community Discussion <https://community.openai.com/t/processing-large-documents-128k-limit/620347>`_
+
+**Code Interpreter:**
+- Base session cost: ~387 tokens per session
+- File processing overhead varies by operation
+- Source: `OpenAI Documentation <https://platform.openai.com/docs/assistants/tools/code-interpreter>`_
+
+**Token Validation:**
+ostruct validates that your template + template files fit within the context window.
+Tool files are not counted in this validation, but tools will consume additional tokens at runtime.
+
 Security Modes
 --------------
 

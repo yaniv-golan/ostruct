@@ -223,6 +223,29 @@ Handle large codebases by analyzing structure first, then using Code Interpreter
    avoiding token limits from embedding large amounts of source code directly in the template.
    ostruct automatically handles file downloads when Code Interpreter generates files.
 
+Managing Token Consumption in Multi-Tool Scenarios
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When using multiple tools with large files, be aware of additional token consumption:
+
+.. code-block:: bash
+
+   # This will NOT trigger context window errors (tool files ignored in validation)
+   ostruct --file fs:large_doc.pdf --file ci:large_doc.pdf template.j2 schema.json
+
+   # But File Search will inject 15K-25K tokens of retrieved content at runtime
+   # Monitor actual usage in OpenAI dashboard
+
+**Key Points:**
+- Tool files don't count toward context window validation
+- File Search injects significant content (15K-25K tokens per file)
+- Code Interpreter has session overhead (~387 tokens)
+- Actual token consumption may exceed validation estimates
+
+**References:**
+- `OpenAI Community: File Search Token Usage <https://community.openai.com/t/processing-large-documents-128k-limit/620347>`_
+- `Tool Pricing Details <https://platform.openai.com/docs/assistants/tools>`_
+
 Dynamic Content Generation
 ==========================
 
