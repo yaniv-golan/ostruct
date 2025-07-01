@@ -71,8 +71,8 @@ def run(
     OPENAI_API_BASE                          Custom OpenAI API base URL
 
     Template Processing Limits:
-    OSTRUCT_TEMPLATE_FILE_LIMIT              Max individual file size (default: 64KB)
-    OSTRUCT_TEMPLATE_TOTAL_LIMIT             Max total files size (default: 1MB)
+    OSTRUCT_TEMPLATE_FILE_LIMIT              Max individual file size (default: no limit, was 64KB)
+    OSTRUCT_TEMPLATE_TOTAL_LIMIT             Max total files size (default: no limit)
     OSTRUCT_TEMPLATE_PREVIEW_LIMIT           Template preview size limit (default: 4096)
 
     System Behavior:
@@ -153,6 +153,11 @@ def run(
             )
         if params.get("gitignore_file") is None:
             params["gitignore_file"] = file_collection_config.gitignore_file
+
+        # Apply template configuration defaults
+        template_config = config.get_template_config()
+        if params.get("max_file_size") is None:
+            params["max_file_size"] = template_config.max_file_size
 
         # UNIFIED GUIDELINES: Perform basic validation even in dry-run mode
         if kwargs.get("dry_run"):

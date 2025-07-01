@@ -6,7 +6,7 @@ decorator-based API.
 """
 
 import logging
-from typing import Any, Callable, List, TypeVar, Union, cast
+from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
 import click
 from click import Command
@@ -761,6 +761,58 @@ def security_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
+def template_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add template processing configuration options."""
+    cmd: Any = f if isinstance(f, Command) else f
+
+    def validate_max_file_size(
+        ctx: click.Context, param: click.Parameter, value: str
+    ) -> Optional[int]:
+        """Validate max file size parameter."""
+        if not value:
+            return None
+
+        if value.lower() in ("none", "unlimited", ""):
+            return None
+
+        try:
+            # Support common size suffixes
+            value_upper = value.upper()
+            if value_upper.endswith("KB"):
+                return int(value_upper[:-2]) * 1024
+            elif value_upper.endswith("MB"):
+                return int(value_upper[:-2]) * 1024 * 1024
+            elif value_upper.endswith("GB"):
+                return int(value_upper[:-2]) * 1024 * 1024 * 1024
+            elif value_upper.endswith("K"):
+                return int(value_upper[:-1]) * 1024
+            elif value_upper.endswith("M"):
+                return int(value_upper[:-1]) * 1024 * 1024
+            elif value_upper.endswith("G"):
+                return int(value_upper[:-1]) * 1024 * 1024 * 1024
+            else:
+                return int(value)
+        except (ValueError, OverflowError):
+            raise click.BadParameter(
+                f"Invalid size format: '{value}'. Use format like '1MB', '500KB', '1048576', or 'none' for unlimited."
+            )
+
+    # Apply Template Processing Options
+    for deco in (
+        click.option(
+            "--max-file-size",
+            callback=validate_max_file_size,
+            help="🗂️  Maximum individual file size for template access. "
+            "Supports suffixes: KB, MB, GB (e.g., '1MB', '500KB'). "
+            "Use 'none' or 'unlimited' for no limit. "
+            "Overrides OSTRUCT_TEMPLATE_FILE_LIMIT environment variable.",
+        ),
+    ):
+        cmd = deco(cmd)
+
+    return cast(Command, cmd)
+
+
 def help_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add help-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
@@ -955,6 +1007,7 @@ def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
     # Advanced Configuration Options
     cmd = security_options(cmd)  # Path security and allowlist options
+    cmd = template_options(cmd)  # Template processing configuration
     cmd = web_search_options(cmd)
     cmd = file_search_config_options(cmd)  # File search config
     cmd = feature_options(cmd)  # Feature flags and config

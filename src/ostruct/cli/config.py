@@ -31,9 +31,9 @@ class WebSearchToolConfig(BaseModel):
     @field_validator("search_context_size")
     @classmethod
     def validate_search_context_size(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in ["low", "medium", "high"]:
+        if v is not None and v not in ["small", "medium", "large"]:
             raise ValueError(
-                "search_context_size must be one of: low, medium, high"
+                "search_context_size must be one of: small, medium, large"
             )
         return v
 
@@ -50,6 +50,44 @@ class FileCollectionConfig(BaseModel):
     def validate_gitignore_file(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and not Path(v).exists():
             logger.warning(f"Gitignore file not found: {v}")
+        return v
+
+
+class TemplateConfig(BaseModel):
+    """Configuration for template processing behavior."""
+
+    max_file_size: Optional[int] = Field(
+        default=None,
+        description="Maximum individual file size for template access in bytes. None means no limit.",
+    )
+    max_total_size: Optional[int] = Field(
+        default=None,
+        description="Maximum total file size for all template files in bytes. None means no limit.",
+    )
+    preview_limit: int = Field(
+        default=4096,
+        description="Maximum characters shown in template debugging previews",
+    )
+
+    @field_validator("max_file_size")
+    @classmethod
+    def validate_max_file_size(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("max_file_size must be non-negative or None")
+        return v
+
+    @field_validator("max_total_size")
+    @classmethod
+    def validate_max_total_size(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("max_total_size must be non-negative or None")
+        return v
+
+    @field_validator("preview_limit")
+    @classmethod
+    def validate_preview_limit(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("preview_limit must be non-negative")
         return v
 
 
@@ -107,6 +145,7 @@ class OstructConfig(BaseModel):
     file_collection: FileCollectionConfig = Field(
         default_factory=FileCollectionConfig
     )
+    template: TemplateConfig = Field(default_factory=TemplateConfig)
     mcp: Dict[str, str] = Field(default_factory=dict)
     operation: OperationConfig = Field(default_factory=OperationConfig)
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
@@ -215,6 +254,60 @@ class OstructConfig(BaseModel):
         if gitignore_file_env:
             file_collection_config["gitignore_file"] = gitignore_file_env
 
+        # Template processing environment variables
+        template_config = config_data.setdefault("template", {})
+
+        # OSTRUCT_MAX_FILE_SIZE environment variable (new)
+        max_file_size_env = os.getenv("OSTRUCT_MAX_FILE_SIZE")
+        if max_file_size_env is not None:
+            try:
+                if max_file_size_env.lower() in ("none", "unlimited", ""):
+                    template_config["max_file_size"] = None
+                else:
+                    template_config["max_file_size"] = int(max_file_size_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_MAX_FILE_SIZE value '{max_file_size_env}', ignoring"
+                )
+
+        # Legacy environment variable support (OSTRUCT_TEMPLATE_FILE_LIMIT)
+        # Only use if new variable is not set
+        if "max_file_size" not in template_config:
+            legacy_limit_env = os.getenv("OSTRUCT_TEMPLATE_FILE_LIMIT")
+            if legacy_limit_env is not None:
+                try:
+                    template_config["max_file_size"] = int(legacy_limit_env)
+                    logger.warning(
+                        "OSTRUCT_TEMPLATE_FILE_LIMIT is deprecated, use OSTRUCT_MAX_FILE_SIZE instead"
+                    )
+                except ValueError:
+                    logger.warning(
+                        f"Invalid OSTRUCT_TEMPLATE_FILE_LIMIT value '{legacy_limit_env}', ignoring"
+                    )
+
+        # OSTRUCT_TEMPLATE_TOTAL_LIMIT environment variable
+        total_limit_env = os.getenv("OSTRUCT_TEMPLATE_TOTAL_LIMIT")
+        if total_limit_env is not None:
+            try:
+                if total_limit_env.lower() in ("none", "unlimited", ""):
+                    template_config["max_total_size"] = None
+                else:
+                    template_config["max_total_size"] = int(total_limit_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_TEMPLATE_TOTAL_LIMIT value '{total_limit_env}', ignoring"
+                )
+
+        # OSTRUCT_TEMPLATE_PREVIEW_LIMIT environment variable
+        preview_limit_env = os.getenv("OSTRUCT_TEMPLATE_PREVIEW_LIMIT")
+        if preview_limit_env is not None:
+            try:
+                template_config["preview_limit"] = int(preview_limit_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_TEMPLATE_PREVIEW_LIMIT value '{preview_limit_env}', ignoring"
+                )
+
         # Built-in MCP server shortcuts
         builtin_servers = {
             "stripe": "https://mcp.stripe.com",
@@ -252,6 +345,10 @@ class OstructConfig(BaseModel):
     def get_file_collection_config(self) -> FileCollectionConfig:
         """Get file collection configuration."""
         return self.file_collection
+
+    def get_template_config(self) -> TemplateConfig:
+        """Get template processing configuration."""
+        return self.template
 
     def should_require_approval(self, cost_estimate: float = 0.0) -> bool:
         """Determine if approval should be required for an operation."""
