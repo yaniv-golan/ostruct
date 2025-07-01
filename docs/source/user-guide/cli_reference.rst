@@ -48,6 +48,7 @@ File and Directory Management
 - ``-S, --path-security [permissive|warn|strict]``: Path security mode (default: warn)
 - ``--allow DIR``: Add an allowed directory for security (repeatable)
 - ``--allow-list FILE``: File containing allowed directory paths
+- ``--max-file-size SIZE``: Maximum file size for template processing (supports KB, MB, GB suffixes or "unlimited"/"none")
 
 **File Collection Options**:
 
@@ -140,7 +141,7 @@ The CLI writes logs to the following files in ``~/.ostruct/logs/``:
    - ``--debug-validation``: Enable schema validation debug logging
 
 2. Environment variables (template processing limits):
-   - ``OSTRUCT_TEMPLATE_FILE_LIMIT``: Max individual file size for template access (default: 65536 bytes)
+   - ``OSTRUCT_TEMPLATE_FILE_LIMIT``: Max individual file size for template access (default: unlimited, supports size suffixes or "unlimited"/"none")
    - ``OSTRUCT_TEMPLATE_TOTAL_LIMIT``: Max total file size for template processing (default: 1048576 bytes)
    - ``OSTRUCT_TEMPLATE_PREVIEW_LIMIT``: Max characters in template debug previews (default: 4096)
 
@@ -153,7 +154,7 @@ Example:
 .. code-block:: bash
 
    # Set template processing limits
-   export OSTRUCT_TEMPLATE_FILE_LIMIT=131072  # 128KB
+   export OSTRUCT_TEMPLATE_FILE_LIMIT=128KB  # 128KB (or "unlimited"/"none" for no limit)
    export OSTRUCT_TEMPLATE_TOTAL_LIMIT=2097152  # 2MB
 
    # Configure gitignore behavior

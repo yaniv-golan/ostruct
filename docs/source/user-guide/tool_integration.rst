@@ -499,6 +499,9 @@ Use ``ostruct.yaml`` for persistent configuration:
 
 .. code-block:: yaml
 
+   template:
+     max_file_size: null  # unlimited (can also use size suffixes like "128KB", "1MB")
+
    tools:
      web_search:
        enabled: true

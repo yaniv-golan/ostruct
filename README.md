@@ -309,11 +309,13 @@ ostruct-cli respects the following environment variables:
 
 **Template Processing Limits (Template-only files via `--file alias path`):**
 
-- `OSTRUCT_TEMPLATE_FILE_LIMIT`: Maximum individual file size for template access (default: 65536 bytes / 64KB)
-- `OSTRUCT_TEMPLATE_TOTAL_LIMIT`: Maximum total file size for all template files (default: 1048576 bytes / 1MB)
+- `OSTRUCT_TEMPLATE_FILE_LIMIT`: Maximum individual file size for template access (default: no limit, was 64KB). Use "none", "unlimited", or empty string for no limit. Supports size suffixes: KB, MB, GB.
+- `OSTRUCT_TEMPLATE_TOTAL_LIMIT`: Maximum total file size for all template files (default: no limit). Use "none", "unlimited", or empty string for no limit.
 - `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`: Maximum characters shown in template debugging previews (default: 4096)
 
-> **Note**: Template limits only apply to files accessed via `--file alias path` (template-only routing). Files routed to Code Interpreter (`--file ci:`) or File Search (`--file fs:`) are not subject to these limits.
+> **Note**: Template limits only apply to files accessed via `--file alias path` (template-only routing). Files routed to Code Interpreter (`--file ci:`) or File Search (`--file fs:`) are not subject to these limits. The default behavior now allows unlimited file sizes to take full advantage of the context window.
+
+> **Breaking Change in v3.2.0**: `OSTRUCT_TEMPLATE_FILE_LIMIT` now defaults to unlimited (was 64KB). Set `OSTRUCT_TEMPLATE_FILE_LIMIT=65536` to restore the previous behavior.
 
 **💡 Tip**: ostruct automatically loads `.env` files from the current directory. Environment variables take precedence over `.env` file values.
 
