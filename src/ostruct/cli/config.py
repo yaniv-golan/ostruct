@@ -128,6 +128,33 @@ class OperationConfig(BaseModel):
         return v
 
 
+class UploadConfig(BaseModel):
+    """Configuration for upload and cache behavior."""
+
+    persistent_cache: bool = True
+    preserve_cached_files: bool = True
+    cache_max_age_days: int = 14
+    cache_path: Optional[str] = None
+    hash_algorithm: str = "sha256"
+
+    @field_validator("cache_max_age_days")
+    @classmethod
+    def validate_cache_max_age_days(cls, v: int) -> int:
+        """Validate cache_max_age_days is non-negative."""
+        if v < 0:
+            raise ValueError("cache_max_age_days must be non-negative")
+        return v
+
+    @field_validator("hash_algorithm")
+    @classmethod
+    def validate_hash_algorithm(cls, v: str) -> str:
+        """Validate hash_algorithm is supported."""
+        supported = {"sha256", "sha1", "md5"}
+        if v not in supported:
+            raise ValueError(f"hash_algorithm must be one of: {supported}")
+        return v
+
+
 class LimitsConfig(BaseModel):
     """Configuration for cost and operation limits."""
 
@@ -146,6 +173,7 @@ class OstructConfig(BaseModel):
         default_factory=FileCollectionConfig
     )
     template: TemplateConfig = Field(default_factory=TemplateConfig)
+    uploads: UploadConfig = Field(default_factory=UploadConfig)
     mcp: Dict[str, str] = Field(default_factory=dict)
     operation: OperationConfig = Field(default_factory=OperationConfig)
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
@@ -308,6 +336,40 @@ class OstructConfig(BaseModel):
                     f"Invalid OSTRUCT_TEMPLATE_PREVIEW_LIMIT value '{preview_limit_env}', ignoring"
                 )
 
+        # Upload configuration environment variables
+        upload_config = config_data.setdefault("uploads", {})
+
+        # OSTRUCT_CACHE_UPLOADS environment variable
+        cache_uploads_env = os.getenv("OSTRUCT_CACHE_UPLOADS")
+        if cache_uploads_env is not None:
+            upload_config["persistent_cache"] = cache_uploads_env.lower() in (
+                "true",
+                "1",
+                "yes",
+            )
+
+        # OSTRUCT_PRESERVE_CACHED_FILES environment variable
+        preserve_cached_env = os.getenv("OSTRUCT_PRESERVE_CACHED_FILES")
+        if preserve_cached_env is not None:
+            upload_config["preserve_cached_files"] = (
+                preserve_cached_env.lower() in ("true", "1", "yes")
+            )
+
+        # OSTRUCT_CACHE_MAX_AGE_DAYS environment variable
+        cache_max_age_env = os.getenv("OSTRUCT_CACHE_MAX_AGE_DAYS")
+        if cache_max_age_env is not None:
+            try:
+                upload_config["cache_max_age_days"] = int(cache_max_age_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_CACHE_MAX_AGE_DAYS value '{cache_max_age_env}', ignoring"
+                )
+
+        # OSTRUCT_CACHE_PATH environment variable
+        cache_path_env = os.getenv("OSTRUCT_CACHE_PATH")
+        if cache_path_env:
+            upload_config["cache_path"] = cache_path_env
+
         # Built-in MCP server shortcuts
         builtin_servers = {
             "stripe": "https://mcp.stripe.com",
@@ -350,6 +412,10 @@ class OstructConfig(BaseModel):
         """Get template processing configuration."""
         return self.template
 
+    def get_upload_config(self) -> UploadConfig:
+        """Get upload and cache configuration."""
+        return self.uploads
+
     def should_require_approval(self, cost_estimate: float = 0.0) -> bool:
         """Determine if approval should be required for an operation."""
         if self.operation.require_approval == "always":
@@ -381,6 +447,29 @@ def create_example_config() -> str:
 # Model configuration
 models:
   default: gpt-4o  # Default model to use
+
+# Upload configuration
+uploads:
+  # Enable persistent upload cache (default: true)
+  # Files are uploaded only once across all runs
+  persistent_cache: true
+
+  # Preserve cached files during cleanup (default: true)
+  # TTL-based cache cleanup to manage storage costs
+  preserve_cached_files: true
+
+  # Maximum age for cached files in days (default: 14)
+  # Two-week window covers typical sprint cycles while keeping
+  # embedded storage fees <$0.02 per 100MB
+  cache_max_age_days: 14
+
+  # Custom cache path (optional)
+  # Default: platform-specific cache directory
+  # cache_path: ~/.cache/ostruct/uploads.db
+
+  # Hash algorithm for deduplication (default: sha256)
+  # Options: sha256, sha1, md5
+  hash_algorithm: sha256
 
 # Tool-specific settings
 tools:
