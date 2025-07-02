@@ -95,6 +95,39 @@ ostruct run analysis.j2 schemas/analysis_result.json \
 
 Perform sophisticated data analysis using Python execution, generate visualizations, and create comprehensive reports with document context.
 
+### Performance Features
+
+#### Upload Cache
+
+ostruct automatically caches file uploads to avoid duplicates:
+
+```bash
+# First run - uploads files
+ostruct run analysis.j2 schema.json --file ci:data large_dataset.csv
+
+# Subsequent runs - reuses cached uploads (instant!)
+ostruct run analysis.j2 schema.json --file ci:data large_dataset.csv
+```
+
+The cache is enabled by default and works across all file attachments:
+
+- Code Interpreter files (`--file ci:`)
+- File Search documents (`--file fs:`)
+- Multi-tool attachments (`--file ci,fs:`)
+
+Configure in `ostruct.yaml`:
+
+```yaml
+uploads:
+  persistent_cache: true  # Default: enabled
+```
+
+Or via environment:
+
+```bash
+export OSTRUCT_CACHE_UPLOADS=false  # Disable cache
+```
+
 ### Configuration Validation & Analysis
 
 ```bash
@@ -169,6 +202,7 @@ The optional `file_ref()` function provides clean references with automatic XML 
 
 ### Advanced Features
 
+- **Upload Cache**: Persistent file upload cache eliminates duplicate uploads across runs, saving bandwidth and API costs
 - **Configuration System**: YAML-based configuration with environment variable support
 - **Gitignore Support**: Automatic .gitignore pattern matching for clean directory file collection
 - **Unattended Operation**: Designed for CI/CD and automation scenarios
@@ -301,6 +335,12 @@ ostruct-cli respects the following environment variables:
 
 - `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
 - `OSTRUCT_MCP_URL_<name>`: Custom MCP server URLs (e.g., `OSTRUCT_MCP_URL_stripe=https://mcp.stripe.com`)
+
+**Upload Cache:**
+
+- `OSTRUCT_CACHE_UPLOADS`: Enable/disable persistent upload cache (true/false, default: true)
+- `OSTRUCT_CACHE_PATH`: Custom path for upload cache database
+- `OSTRUCT_CACHE_ALGO`: Hash algorithm for file deduplication (sha256/sha1/md5, default: sha256)
 
 **File Collection:**
 
