@@ -637,6 +637,23 @@ def tool_toggle_options(f: Union[Command, Callable[..., Any]]) -> Command:
         Available tools: code-interpreter, file-search, web-search, mcp
         Example: --enable-tool code-interpreter --enable-tool web-search""",
         ),
+        click.option(
+            "--tool-choice",
+            type=click.Choice(
+                [
+                    "auto",
+                    "none",
+                    "required",
+                    "code-interpreter",
+                    "file-search",
+                    "web-search",
+                ],
+                case_sensitive=False,
+            ),
+            default="auto",
+            show_default=True,
+            help="""🔧 [TOOL TOGGLES] Explicit tool selection strategy.\n            Values:\n            - auto (default): let the model decide\n            - none: disable all tools (template only)\n            - required: force the model to call at least one tool\n            - code-interpreter / file-search / web-search: force that single tool only""",
+        ),
     ):
         cmd = deco(cmd)
 

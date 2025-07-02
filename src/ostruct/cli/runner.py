@@ -511,6 +511,7 @@ async def create_structured_output(
     output_schema: Type[BaseModel],
     output_file: Optional[str] = None,
     tools: Optional[List[dict]] = None,
+    tool_choice: Optional[str] = None,
     **kwargs: Any,
 ) -> BaseModel:
     """Create structured output from OpenAI Responses API.
@@ -526,6 +527,7 @@ async def create_structured_output(
         output_schema: The Pydantic model to validate responses against
         output_file: Optional file to write output to (unused, kept for compatibility)
         tools: Optional list of tools (e.g., MCP, Code Interpreter) to include
+        tool_choice: Optional tool choice to use
         **kwargs: Additional parameters to pass to the API
 
     Returns:
@@ -593,6 +595,16 @@ async def create_structured_output(
         if tools:
             api_params["tools"] = tools
             logger.debug("Tools: %s", json.dumps(tools, indent=2))
+
+        # Apply tool_choice override if provided
+        if tool_choice and tool_choice.lower() != "auto":
+            normalized_choice = tool_choice.lower()
+            if normalized_choice in {"none", "required"}:
+                api_params["tool_choice"] = normalized_choice
+            else:
+                # Map hyphenated CLI values to underscore per OpenAI spec
+                api_params["tool_choice"] = normalized_choice.replace("-", "_")
+            logger.debug("tool_choice applied: %s", api_params["tool_choice"])
 
         # Log the API request details
         logger.debug("Making OpenAI Responses API request with:")
@@ -1000,6 +1012,9 @@ async def _fallback_single_pass(
         output_file=args.get("output_file"),
         on_log=log_cb,
         tools=tools,
+        tool_choice=(
+            str(args.get("tool_choice")) if args.get("tool_choice") else None
+        ),
     )
     return response, []  # No files downloaded in fallback
 
@@ -1551,6 +1566,11 @@ async def execute_model(
                 output_file=args.get("output_file"),
                 on_log=log_callback,
                 tools=tools,
+                tool_choice=(
+                    str(args.get("tool_choice"))
+                    if args.get("tool_choice")
+                    else None
+                ),
             )
         output_buffer.append(response)
 

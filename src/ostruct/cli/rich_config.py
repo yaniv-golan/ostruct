@@ -113,7 +113,7 @@ click.rich_click.OPTION_GROUPS = {
         },
         {
             "name": "Tool Integration Options",
-            "options": ["--enable-tool", "--disable-tool"],
+            "options": ["--enable-tool", "--disable-tool", "--tool-choice"],
         },
         {
             "name": "MCP Server Configuration",

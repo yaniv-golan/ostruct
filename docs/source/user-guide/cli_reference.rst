@@ -125,6 +125,15 @@ Tool Integration
 - ``--fs-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
 - ``--fs-retries INT``: Number of retry attempts (default: 3)
 
+**Tool Choice**:
+
+- ``--tool-choice [auto|none|required|code-interpreter|file-search|web-search]``: Explicitly control how (or whether) tools are used in this run. The default *auto* behaviour lets
+  the model pick any advertised tool. Use **none** to disable tool calls entirely (template-only),
+  **required** to force that at least one tool is invoked, or specify a single tool name to restrict
+  the run to that tool alone (e.g. ``--tool-choice file-search``). This option overrides
+  ``--enable-tool/--disable-tool`` resolution but does not implicitly enable a tool that has been
+  disabled.
+
 Logging Configuration
 ---------------------
 

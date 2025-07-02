@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Cache Statistics**: Comprehensive monitoring and reporting of cache performance and storage usage
   - **Thread Safety**: Robust concurrent access handling for multi-tool scenarios
 
+- **--tool-choice** CLI flag allowing explicit control over assistant tool usage (values: `auto`, `none`, `required`, `code-interpreter`, `file-search`, `web-search`).
+- **Documentation and tests for the new flag.
+
 ### Changed
 
 - **Breaking: File Size Limit Configuration**: Changed default behavior for file size limits in template processing:
