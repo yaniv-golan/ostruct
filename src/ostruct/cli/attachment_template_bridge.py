@@ -815,12 +815,35 @@ class AttachmentTemplateContext:
         path = Path(spec.path)
 
         if path.is_file():
-            # Single file - create FileInfo and wrap in LazyFileContent
+            """Create variable for a single file attachment.
+
+            For files that are *only* targeted at Code Interpreter (i.e., not
+            also routed to the prompt), we avoid eager content loading and set
+            the routing metadata appropriately to prevent template-only
+            warnings.
+            """
+
+            # Decide routing metadata based on attachment targets
+            if (
+                "code-interpreter" in spec.targets
+                and "prompt" not in spec.targets
+            ):
+                routing_type = "code-interpreter"
+                routing_intent = FileRoutingIntent.CODE_INTERPRETER
+                # Avoid pre-loading large CI files into the prompt
+                lazy_strict_mode = True
+                preload_priority = 5  # Lower priority → not preloaded
+            else:
+                routing_type = "template"
+                routing_intent = FileRoutingIntent.TEMPLATE_ONLY
+                lazy_strict_mode = strict_mode
+                preload_priority = 1  # High priority for template files
+
             file_info = FileInfo.from_path(
                 str(path),
                 self.security_manager,
-                routing_type="template",
-                routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+                routing_type=routing_type,
+                routing_intent=routing_intent,
                 parent_alias=spec.alias,
                 relative_path=path.name,
                 base_path=str(path.parent),
@@ -831,13 +854,15 @@ class AttachmentTemplateContext:
             # Use progressive loader if available, otherwise create LazyFileContent directly
             if self.progressive_loader:
                 return self.progressive_loader.create_lazy_content(
-                    file_info, priority=1, strict_mode=strict_mode
+                    file_info,
+                    priority=preload_priority,
+                    strict_mode=lazy_strict_mode,
                 )
             else:
                 return LazyFileContent(
                     file_info,
                     max_size=self.max_file_size,
-                    strict_mode=strict_mode,
+                    strict_mode=lazy_strict_mode,
                 )
 
         elif path.is_dir():
@@ -945,14 +970,14 @@ class AttachmentTemplateContext:
             dir_files = self._expand_directory(spec)
             all_files.extend(dir_files)
 
-        # Include CI and FS files for template access as well
+        # Include CI and FS files for template access as well (metadata only)
         for spec in processed_attachments.ci_files:
             if Path(spec.path).is_file():
                 try:
                     file_info = FileInfo.from_path(
                         str(spec.path),
                         self.security_manager,
-                        routing_type="template",
+                        routing_type="code-interpreter",
                         routing_intent=FileRoutingIntent.CODE_INTERPRETER,
                         parent_alias=spec.collection_base_alias or spec.alias,
                         relative_path=Path(spec.path).name,
@@ -962,7 +987,7 @@ class AttachmentTemplateContext:
                     )
                     all_files.append(file_info)
                 except Exception as e:
-                    logger.warning(f"Could not add CI file {spec.path}: {e}")
+                    logger.warning(f"Could not add file {spec.path}: {e}")
 
         for spec in processed_attachments.fs_files:
             if Path(spec.path).is_file():
