@@ -614,7 +614,36 @@ async def create_structured_output(
             return validated
 
         except ValueError as e:
-            logger.error(f"Failed to parse response content: {e}")
+            # Enhanced JSON parsing error with debug output
+            error_msg = f"Failed to parse response content: {e}"
+            logger.error(error_msg)
+
+            # Save problematic JSON to debug file for troubleshooting
+            try:
+                import time
+
+                timestamp = int(time.time())
+                debug_file = f"ostruct_json_debug_{timestamp}.txt"
+                with open(debug_file, "w", encoding="utf-8") as f:
+                    f.write("=== PROBLEMATIC JSON RESPONSE ===\n")
+                    f.write(f"Error: {e}\n")
+                    f.write(f"Content length: {len(content)} characters\n")
+                    f.write("=== RAW CONTENT ===\n")
+                    f.write(content)
+                    f.write("\n=== END CONTENT ===\n")
+
+                logger.error(f"Problematic JSON saved to: {debug_file}")
+                logger.error(
+                    f"Content preview (first 200 chars): {content[:200]!r}"
+                )
+                if len(content) > 200:
+                    logger.error(
+                        f"Content preview (last 200 chars): {content[-200:]!r}"
+                    )
+
+            except Exception as debug_error:
+                logger.warning(f"Could not save debug file: {debug_error}")
+
             raise InvalidResponseFormatError(
                 f"Failed to parse response as valid JSON: {e}"
             )
@@ -846,7 +875,36 @@ async def _execute_two_pass_sentinel(
         return validated, downloaded_files
 
     except ValueError as e:
-        logger.error(f"Failed to parse structured response content: {e}")
+        # Enhanced JSON parsing error with debug output
+        error_msg = f"Failed to parse structured response content: {e}"
+        logger.error(error_msg)
+
+        # Save problematic JSON to debug file for troubleshooting
+        try:
+            import time
+
+            timestamp = int(time.time())
+            debug_file = f"ostruct_json_debug_{timestamp}.txt"
+            with open(debug_file, "w", encoding="utf-8") as f:
+                f.write("=== PROBLEMATIC JSON RESPONSE (Two-Pass Mode) ===\n")
+                f.write(f"Error: {e}\n")
+                f.write(f"Content length: {len(content)} characters\n")
+                f.write("=== RAW CONTENT ===\n")
+                f.write(content)
+                f.write("\n=== END CONTENT ===\n")
+
+            logger.error(f"Problematic JSON saved to: {debug_file}")
+            logger.error(
+                f"Content preview (first 200 chars): {content[:200]!r}"
+            )
+            if len(content) > 200:
+                logger.error(
+                    f"Content preview (last 200 chars): {content[-200:]!r}"
+                )
+
+        except Exception as debug_error:
+            logger.warning(f"Could not save debug file: {debug_error}")
+
         raise InvalidResponseFormatError(
             f"Failed to parse response as valid JSON: {e}"
         )
@@ -1502,10 +1560,6 @@ async def execute_model(
                             )
                             for file_path in downloaded_files:
                                 logger.info(f"  - {file_path}")
-                        else:
-                            logger.debug(
-                                "No files were downloaded from Code Interpreter"
-                            )
                     else:
                         logger.debug("API response has no output attribute")
                 else:
