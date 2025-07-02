@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **User-Visible Cache Indicators**: Enhanced user experience with clear feedback on upload cache usage:
+  - **Progress Indicators**: Cache hits displayed as "♻️ Reusing cached upload for..." with file age and hash information in detailed mode
+  - **End-of-Run Summary**: Cache performance summary showing hit/miss rate, space saved estimates, and cache database location
+  - **Non-Intrusive Design**: Cache information appears only when relevant, maintaining clean output for cache-disabled workflows
+  - **Detailed Mode Support**: Enhanced cache hit reporting with file hash and age information via `--verbose` flag
+
+- **Configurable JSON Parsing Strategy**: Robust handling of OpenAI API duplication bugs with user control:
+  - **Automatic Recovery**: Default "robust" mode automatically handles OpenAI's intermittent JSON duplication bug where responses contain duplicate concatenated objects
+  - **Configuration Options**: `json_parsing_strategy` setting in `ostruct.yaml` and `OSTRUCT_JSON_PARSING_STRATEGY` environment variable
+  - **Strict Mode**: Optional "strict" mode for environments requiring strict JSON validation (fails on malformed JSON)
+  - **Community References**: Includes links to OpenAI community discussions about the duplication issue
+  - **Comprehensive Documentation**: New known issue document with technical details, workaround implementation, and removal plan
+
+- **Upload Cache System**: Comprehensive persistent caching system for Code Interpreter and File Search uploads:
+  - **SQLite Backend**: Hash-based file deduplication with cross-platform support and corruption recovery
+  - **TTL Management**: Configurable cache lifetime with automatic expiration and cleanup
+  - **CLI Integration**: New `--cache-uploads/--no-cache-uploads` flag and `--cache-path` option for cache configuration
+  - **Configuration Support**: Environment variables (`OSTRUCT_CACHE_*`) and `ostruct.yaml` settings for persistent cache behavior
+  - **Performance Benefits**: Eliminates redundant uploads for frequently used files across sessions
+  - **Cache Statistics**: Comprehensive monitoring and reporting of cache performance and storage usage
+  - **Thread Safety**: Robust concurrent access handling for multi-tool scenarios
+
 ### Changed
 
 - **Breaking: File Size Limit Configuration**: Changed default behavior for file size limits in template processing:

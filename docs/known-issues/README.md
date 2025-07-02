@@ -6,6 +6,12 @@ This directory contains documentation for known issues in ostruct and their work
 
 ### OpenAI API Issues
 
+- **[2025-01-openai-json-duplication.md](2025-01-openai-json-duplication.md)** - OpenAI structured output JSON duplication bug
+  - **Status**: ✅ Resolved with robust parsing workaround
+  - **Affects**: All models using structured output (JSON schemas)
+  - **Workaround**: Automatic recovery with `json_parsing_strategy: "robust"` (default)
+  - **Version**: v1.2.0+
+
 - **[2025-06-responses-ci-file-output.md](2025-06-responses-ci-file-output.md)** - OpenAI Code Interpreter file download bug with structured output
   - **Status**: ✅ Resolved with two-pass sentinel workaround
   - **Affects**: Code Interpreter + structured output (JSON schemas)

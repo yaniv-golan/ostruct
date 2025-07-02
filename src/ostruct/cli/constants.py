@@ -21,6 +21,11 @@ class DefaultConfig:
     # Model defaults
     DEFAULT_MODEL: str = "gpt-4.1"
 
+    # JSON parsing defaults
+    JSON_PARSING_STRATEGY: str = (
+        "robust"  # Enable duplication handling by default
+    )
+
     # Code Interpreter defaults
     CODE_INTERPRETER: Dict[str, Any] = {
         "auto_download": True,
@@ -84,6 +89,7 @@ class EnvVars:
     OSTRUCT_TEMPLATE_FILE_LIMIT = "OSTRUCT_TEMPLATE_FILE_LIMIT"
     OSTRUCT_TEMPLATE_TOTAL_LIMIT = "OSTRUCT_TEMPLATE_TOTAL_LIMIT"
     OSTRUCT_TEMPLATE_PREVIEW_LIMIT = "OSTRUCT_TEMPLATE_PREVIEW_LIMIT"
+    OSTRUCT_JSON_PARSING_STRATEGY = "OSTRUCT_JSON_PARSING_STRATEGY"
 
     # MCP URL pattern: OSTRUCT_MCP_URL_<name>
     MCP_URL_PREFIX = "OSTRUCT_MCP_URL_"

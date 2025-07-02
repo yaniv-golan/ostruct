@@ -7,7 +7,9 @@ This prevents redundant uploads and improves performance for multi-target attach
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
@@ -20,6 +22,14 @@ if TYPE_CHECKING:
     from .upload_cache import UploadCache
 
 logger = logging.getLogger(__name__)
+
+
+class UploadStatus(Enum):
+    """Status of an upload operation."""
+
+    HIT = "hit"  # File was found in cache and reused
+    MISS = "miss"  # File was not in cache, had to upload
+    FAILED = "failed"  # Upload operation failed
 
 
 @dataclass
@@ -36,6 +46,9 @@ class UploadRecord:
     )  # Tools that have received this file
     file_size: Optional[int] = None  # File size in bytes
     file_hash: Optional[str] = None  # File content hash for identity
+    upload_status: Optional[UploadStatus] = (
+        None  # Status of last upload attempt
+    )
 
 
 class UploadError(CLIError):
@@ -87,6 +100,12 @@ class SharedUploadManager:
 
         # Upload cache for deduplication (None = no caching)
         self._cache = cache
+
+        # Cache statistics
+        self._cache_hits: int = 0  # Number of times a cached file was reused
+        self._cache_misses: int = (
+            0  # Number of times a file had to be uploaded
+        )
 
         # Add per-file upload locks to prevent race conditions
         self._upload_locks: Dict[Tuple[int, int], asyncio.Lock] = {}
@@ -331,12 +350,65 @@ class SharedUploadManager:
                         file_path, file_hash
                     )
                     if cached_file_id:
+                        # Report cache hit to the user via progress reporter
+                        try:
+                            import click
+
+                            from .progress_reporting import (
+                                get_progress_reporter,
+                            )
+
+                            reporter = get_progress_reporter()
+                            if reporter.should_report:  # pragma: no cover
+                                if reporter.detailed:
+                                    # Get cache age for detailed reporting
+                                    age_str = ""
+                                    try:
+                                        created_at = (
+                                            self._cache.get_created_at(
+                                                cached_file_id
+                                            )
+                                        )
+                                        if created_at:
+                                            age_days = (
+                                                time.time() - created_at
+                                            ) / (24 * 3600)
+                                            if age_days < 1:
+                                                age_str = f", age: {age_days * 24:.1f}h"
+                                            else:
+                                                age_str = (
+                                                    f", age: {age_days:.1f}d"
+                                                )
+                                    except Exception:
+                                        pass
+
+                                    click.echo(
+                                        f"♻️  Reusing cached upload for {file_path} ({cached_file_id}{age_str})",
+                                        err=True,
+                                    )
+                                    click.echo(
+                                        f"   → Hash: {file_hash[:12]}...",
+                                        err=True,
+                                    )
+                                else:
+                                    click.echo(
+                                        f"✔ {file_path.name} (cached)",
+                                        err=True,
+                                    )
+                        except Exception:  # pragma: no cover
+                            # Never fail upload because of progress reporting
+                            pass
+
+                        # Update cache statistics
+                        self._cache_hits += 1
+
                         logger.debug(
                             f"[upload] Using cached file: {file_path} -> {cached_file_id}"
                         )
                         return cached_file_id
                     else:
                         logger.debug(f"[upload] Cache miss for: {file_path}")
+                        self._cache_misses += 1
                 except Exception as cache_err:
                     logger.debug(f"[upload] Cache lookup failed: {cache_err}")
 
@@ -460,6 +532,9 @@ class SharedUploadManager:
             - ci_files
             - fs_files
             + len(self._all_uploaded_ids),  # Files used by multiple tools
+            # Cache statistics
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
         }
 
     async def cleanup_uploads(self, ttl_days: Optional[int] = None) -> None:
@@ -571,3 +646,30 @@ class SharedUploadManager:
         if self._cache:
             return self._cache.get_stats()
         return None
+
+    def get_cache_summary_for_display(self) -> Optional[Dict[str, Any]]:
+        """Get cache summary formatted for end-of-run display."""
+        if not self._cache:
+            return None
+
+        cache_stats = self._cache.get_stats()
+        if not cache_stats:
+            return None
+
+        # Calculate space saved (rough estimate)
+        space_saved_mb = 0
+        if self._cache_hits > 0:
+            # Estimate average file size and multiply by hits
+            # This is a rough approximation since we don't track exact sizes
+            space_saved_mb = (
+                self._cache_hits * 5
+            )  # Assume 5MB average file size
+
+        return {
+            "hits": self._cache_hits,
+            "misses": self._cache_misses,
+            "space_saved_mb": space_saved_mb,
+            "cache_path": cache_stats.get("cache_path", ""),
+            "total_entries": cache_stats.get("total_entries", 0),
+            "db_size_mb": cache_stats.get("size_bytes", 0) / (1024 * 1024),
+        }

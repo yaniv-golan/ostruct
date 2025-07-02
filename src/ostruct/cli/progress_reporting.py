@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import click
 
@@ -237,26 +237,66 @@ class EnhancedProgressReporter:
 
     def report_error(
         self,
-        error_type: str,
         error_message: str,
         suggestions: Optional[List[str]] = None,
     ) -> None:
-        """Report errors with helpful context and suggestions.
+        """Report error with actionable suggestions.
 
         Args:
-            error_type: Type of error for categorization
             error_message: Main error message
-            suggestions: Optional list of actionable suggestions
+            suggestions: Optional list of suggested solutions
         """
         if not self.should_report:
             return
 
-        click.echo(f"❌ {error_type}: {error_message}", err=True)
-
+        click.echo(f"❌ {error_message}", err=True)
         if suggestions and self.detailed:
-            click.echo("💡 Suggestions:", err=True)
-            for suggestion in suggestions:
-                click.echo(f"  • {suggestion}", err=True)
+            for i, suggestion in enumerate(suggestions, 1):
+                click.echo(f"   {i}. {suggestion}", err=True)
+
+    def report_cache_summary(self, cache_summary: Dict[str, Any]) -> None:
+        """Report cache performance summary at end of run.
+
+        Args:
+            cache_summary: Cache statistics from SharedUploadManager
+        """
+        if not self.should_report or not cache_summary:
+            return
+
+        hits = cache_summary.get("hits", 0)
+        misses = cache_summary.get("misses", 0)
+
+        # Only show summary if there was cache activity
+        if hits == 0 and misses == 0:
+            return
+
+        if self.detailed:
+            # Detailed cache summary with decorative border
+            click.echo("", err=True)  # Empty line for spacing
+            click.echo(
+                "─ Cache Summary ──────────────────────────────────", err=True
+            )
+            click.echo(
+                f"Hits: {hits}   Misses: {misses}   Space saved: ~{cache_summary.get('space_saved_mb', 0)}MB",
+                err=True,
+            )
+            click.echo(
+                f"Cache DB: {cache_summary.get('cache_path', 'N/A')}", err=True
+            )
+            if cache_summary.get("total_entries", 0) > 0:
+                click.echo(
+                    f"Total entries: {cache_summary['total_entries']} ({cache_summary.get('db_size_mb', 0):.1f}MB)",
+                    err=True,
+                )
+        else:
+            # Basic cache summary - only show if there were hits
+            if hits > 0:
+                total_ops = hits + misses
+                hit_rate = (hits / total_ops * 100) if total_ops > 0 else 0
+                click.echo(
+                    f"♻️  Cache: {hits}/{total_ops} hits ({hit_rate:.0f}%), ~{cache_summary.get('space_saved_mb', 0)}MB saved",
+                    err=True,
+                )
 
     def report_validation_results(
         self,

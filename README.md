@@ -334,6 +334,7 @@ ostruct-cli respects the following environment variables:
 **System Configuration:**
 
 - `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`: Set to "1", "true", or "yes" to disable automatic registry update checks
+- `OSTRUCT_JSON_PARSING_STRATEGY`: JSON parsing strategy: "robust" (default, handles OpenAI API duplication bugs) or "strict" (fail on malformed JSON)
 - `OSTRUCT_MCP_URL_<name>`: Custom MCP server URLs (e.g., `OSTRUCT_MCP_URL_stripe=https://mcp.stripe.com`)
 
 **Upload Cache:**
@@ -518,6 +519,9 @@ tools:
     auto_download: true
     output_directory: "./downloads"
     download_strategy: "two_pass_sentinel"  # Enable reliable file downloads
+
+# JSON parsing configuration
+json_parsing_strategy: robust  # Handle OpenAI API duplication bugs (default)
 
 mcp:
   custom_server: "https://my-mcp-server.com"

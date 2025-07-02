@@ -177,6 +177,10 @@ class OstructConfig(BaseModel):
     mcp: Dict[str, str] = Field(default_factory=dict)
     operation: OperationConfig = Field(default_factory=OperationConfig)
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
+    json_parsing_strategy: str = Field(
+        default=DefaultConfig.JSON_PARSING_STRATEGY,
+        description="Strategy for JSON parsing: 'strict' (fail on malformed JSON) or 'robust' (handle OpenAI API duplication bugs)",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -194,6 +198,18 @@ class OstructConfig(BaseModel):
                         raise ValueError(
                             "download_strategy must be 'single_pass' or 'two_pass_sentinel'"
                         )
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_json_parsing_strategy(cls, values: Any) -> Any:
+        """Validate json_parsing_strategy configuration."""
+        if isinstance(values, dict):
+            strategy = values.get("json_parsing_strategy", "robust")
+            if strategy not in {"strict", "robust"}:
+                raise ValueError(
+                    "json_parsing_strategy must be 'strict' or 'robust'"
+                )
         return values
 
     @classmethod
@@ -369,6 +385,16 @@ class OstructConfig(BaseModel):
         cache_path_env = os.getenv("OSTRUCT_CACHE_PATH")
         if cache_path_env:
             upload_config["cache_path"] = cache_path_env
+
+        # JSON parsing strategy environment variable
+        json_parsing_env = os.getenv("OSTRUCT_JSON_PARSING_STRATEGY")
+        if json_parsing_env is not None:
+            if json_parsing_env.lower() in ("strict", "robust"):
+                config_data["json_parsing_strategy"] = json_parsing_env.lower()
+            else:
+                logger.warning(
+                    f"Invalid OSTRUCT_JSON_PARSING_STRATEGY value '{json_parsing_env}', ignoring"
+                )
 
         # Built-in MCP server shortcuts
         builtin_servers = {

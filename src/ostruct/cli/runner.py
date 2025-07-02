@@ -14,7 +14,7 @@ from openai_model_registry import ModelRegistry
 from pydantic import BaseModel
 
 from .code_interpreter import CodeInterpreterManager
-from .config import OstructConfig
+from .config import OstructConfig, get_config
 from .cost_estimation import calculate_cost_estimate, format_cost_breakdown
 from .errors import APIErrorMapper, CLIError, SchemaValidationError
 from .exit_codes import ExitCode
@@ -90,6 +90,71 @@ def _assistant_text(response: Any) -> str:
 
 
 logger = logging.getLogger(__name__)
+
+
+def parse_json_with_duplication_handling(content: str) -> Any:
+    """Parse JSON content with automatic handling of OpenAI API duplication bugs.
+
+    This function handles the intermittent OpenAI API issue where structured output
+    responses contain duplicate JSON objects concatenated together, causing parsing
+    errors like "Extra data: line 1 column 345 (char 344)".
+
+    The duplicates can be:
+    - Identical (most common case)
+    - Different/complementary content
+    - Partially truncated
+
+    Args:
+        content: Raw JSON string from OpenAI API response
+
+    Returns:
+        Parsed JSON object
+
+    Raises:
+        json.JSONDecodeError: If JSON parsing fails completely
+
+    References:
+        - https://community.openai.com/t/gpt-4o-structured-outputs-json-extra-data/884253
+        - https://community.openai.com/t/gpt-4o-structured-outputs-duplicate-json/883156
+    """
+    config = get_config()
+    strategy = config.json_parsing_strategy
+
+    if strategy == "strict":
+        # Strict mode: fail on any malformed JSON
+        return json.loads(content)
+
+    # Robust mode: handle duplication bugs
+    try:
+        # Try normal parsing first
+        return json.loads(content)
+    except json.JSONDecodeError as e:
+        # Check if this is the specific "Extra data" error indicating duplication
+        if "Extra data" in str(e) and hasattr(e, "pos"):
+            logger.warning(
+                f"Detected OpenAI API JSON duplication bug - attempting recovery. "
+                f"Error: {e}. "
+                f"This is a known OpenAI API issue. See: "
+                f"https://community.openai.com/t/gpt-4o-structured-outputs-json-extra-data/884253"
+            )
+
+            # Split at the error position and try to parse the first JSON object
+            try:
+                first_json = content[: e.pos].strip()
+                result = json.loads(first_json)
+                logger.info(
+                    f"Successfully recovered from JSON duplication bug by parsing first {e.pos} characters. "
+                    f"Discarded {len(content) - e.pos} duplicate characters."
+                )
+                return result
+            except json.JSONDecodeError as inner_e:
+                logger.error(
+                    f"Failed to recover from JSON duplication - first part is also malformed: {inner_e}"
+                )
+                raise e  # Re-raise original error
+        else:
+            # Different JSON error, re-raise as-is
+            raise
 
 
 async def process_mcp_configuration(args: CLIParams) -> MCPServerManager:
@@ -565,7 +630,7 @@ async def create_structured_output(
             except ValueError:
                 # Fallback to original parsing for non-fenced JSON
                 try:
-                    data = json.loads(content.strip())
+                    data = parse_json_with_duplication_handling(content)
                     markdown_text = ""
                 except json.JSONDecodeError as json_error:
                     # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
@@ -586,7 +651,9 @@ async def create_structured_output(
                         )
                         if json_match:
                             try:
-                                data = json.loads(json_match.group(0))
+                                data = parse_json_with_duplication_handling(
+                                    json_match.group(0)
+                                )
                                 markdown_text = ""
                                 logger.warning(
                                     "Code Interpreter added extra content after JSON. "
@@ -836,7 +903,7 @@ async def _execute_two_pass_sentinel(
         except ValueError:
             # Fallback to original parsing for non-fenced JSON
             try:
-                data_final = json.loads(content.strip())
+                data_final = parse_json_with_duplication_handling(content)
                 markdown_text = ""
             except json.JSONDecodeError as json_error:
                 # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
@@ -850,7 +917,9 @@ async def _execute_two_pass_sentinel(
                 json_match = re.search(r"\{.*?\}", content.strip(), re.DOTALL)
                 if json_match:
                     try:
-                        data_final = json.loads(json_match.group(0))
+                        data_final = parse_json_with_duplication_handling(
+                            json_match.group(0)
+                        )
                         markdown_text = ""
                         logger.warning(
                             "Two-pass mode: Extra content found after JSON in structured response. "
@@ -1656,6 +1725,20 @@ async def execute_model(
                 logger.debug(
                     f"Cleaned up shared upload manager files (TTL: {ttl_days}d)"
                 )
+
+                # Report cache summary if available
+                try:
+                    cache_summary = (
+                        shared_upload_manager.get_cache_summary_for_display()
+                    )
+                    if cache_summary:
+                        progress_reporter = get_progress_reporter()
+                        progress_reporter.report_cache_summary(cache_summary)
+                except Exception as cache_summary_err:
+                    logger.debug(
+                        f"Failed to report cache summary: {cache_summary_err}"
+                    )
+
             except Exception as e:
                 logger.warning(f"Failed to clean up shared upload files: {e}")
 
