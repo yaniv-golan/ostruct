@@ -5,15 +5,19 @@ attached to multiple tools are uploaded only once and shared across all target t
 This prevents redundant uploads and improves performance for multi-target attachments.
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from openai import AsyncOpenAI
 
 from .attachment_processor import AttachmentSpec, ProcessedAttachments
 from .errors import CLIError
+
+if TYPE_CHECKING:
+    from .upload_cache import UploadCache
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +62,14 @@ class SharedUploadManager:
     but shared across all requesting tools.
     """
 
-    def __init__(self, client: AsyncOpenAI):
+    def __init__(
+        self, client: AsyncOpenAI, cache: Optional["UploadCache"] = None
+    ):
         """Initialize the shared upload manager.
 
         Args:
             client: AsyncOpenAI client for file operations
+            cache: Optional upload cache for deduplication
         """
         self.client = client
 
@@ -77,6 +84,12 @@ class SharedUploadManager:
 
         # Track all uploaded file IDs for cleanup
         self._all_uploaded_ids: Set[str] = set()
+
+        # Upload cache for deduplication (None = no caching)
+        self._cache = cache
+
+        # Add per-file upload locks to prevent race conditions
+        self._upload_locks: Dict[Tuple[int, int], asyncio.Lock] = {}
 
     def register_attachments(
         self, processed_attachments: ProcessedAttachments
@@ -190,6 +203,7 @@ class SharedUploadManager:
 
         This uses the file's inode and device numbers to create a unique
         identity that works across different path representations of the same file.
+        Falls back to size+mtime+hash on Windows when inode is unreliable.
 
         Args:
             path: File path to get identity for
@@ -202,7 +216,15 @@ class SharedUploadManager:
         """
         try:
             stat = Path(path).stat()
-            return (stat.st_dev, stat.st_ino)
+
+            # Check if inode is reliable (non-zero on most filesystems)
+            if stat.st_ino != 0:
+                return (stat.st_dev, stat.st_ino)
+
+            # Fallback for Windows/NTFS: use size + mtime as approximation
+            logger.debug(f"Using size+mtime identity for {path} (inode=0)")
+            return (stat.st_dev, hash((stat.st_size, int(stat.st_mtime))))
+
         except OSError as e:
             logger.error(f"Cannot get file identity for {path}: {e}")
             raise
@@ -230,17 +252,25 @@ class SharedUploadManager:
             record = self._uploads[file_id]
 
             try:
-                if record.upload_id is None:
-                    # First upload for this file
-                    record.upload_id = await self._perform_upload(record.path)
-                    self._all_uploaded_ids.add(record.upload_id)
-                    logger.info(
-                        f"Uploaded {record.path} -> {record.upload_id}"
-                    )
-                else:
-                    logger.debug(
-                        f"Reusing upload {record.upload_id} for {record.path}"
-                    )
+                # Ensure we have a lock for this file
+                if file_id not in self._upload_locks:
+                    self._upload_locks[file_id] = asyncio.Lock()
+
+                # Use per-file lock to prevent concurrent uploads
+                async with self._upload_locks[file_id]:
+                    if record.upload_id is None:
+                        # First upload for this file
+                        record.upload_id = await self._perform_upload(
+                            record.path
+                        )
+                        self._all_uploaded_ids.add(record.upload_id)
+                        logger.info(
+                            f"Uploaded {record.path} -> {record.upload_id}"
+                        )
+                    else:
+                        logger.debug(
+                            f"Reusing upload {record.upload_id} for {record.path}"
+                        )
 
                 uploaded[str(record.path)] = record.upload_id
                 record.tools_completed.add(tool)
@@ -289,19 +319,58 @@ class SharedUploadManager:
                 raise FileNotFoundError(f"File not found: {file_path}")
 
             file_size = file_path.stat().st_size
-            logger.debug(f"Uploading {file_path} ({file_size} bytes)")
+            file_hash = None  # Compute once and reuse
 
-            # Perform upload
+            # Check cache first if available
+            if self._cache:
+                try:
+                    file_hash = self._cache.compute_file_hash(
+                        file_path
+                    )  # Only once
+                    cached_file_id = self._cache.lookup_with_validation(
+                        file_path, file_hash
+                    )
+                    if cached_file_id:
+                        logger.debug(
+                            f"[upload] Using cached file: {file_path} -> {cached_file_id}"
+                        )
+                        return cached_file_id
+                    else:
+                        logger.debug(f"[upload] Cache miss for: {file_path}")
+                except Exception as cache_err:
+                    logger.debug(f"[upload] Cache lookup failed: {cache_err}")
+
+            logger.debug(f"[upload] Uploading file: {file_path}")
+
+            # Upload file
             with open(file_path, "rb") as f:
-                upload_response = await self.client.files.create(
-                    file=f,
-                    purpose="assistants",  # Standard purpose for both CI and FS
+                file_obj = await self.client.files.create(
+                    file=f, purpose="assistants"
+                )
+                logger.debug(
+                    f"[upload] Successfully uploaded {file_path} as {file_obj.id}"
                 )
 
-            logger.debug(
-                f"Successfully uploaded {file_path} as {upload_response.id}"
-            )
-            return upload_response.id
+            # Store in cache if available (reuse computed hash)
+            if self._cache and file_hash:  # Reuse existing hash
+                try:
+                    file_stat = file_path.stat()
+                    self._cache.store(
+                        file_hash,  # Use previously computed hash
+                        file_obj.id,
+                        file_size,
+                        int(file_stat.st_mtime),
+                        {"purpose": "assistants"},
+                    )
+                    logger.debug(
+                        f"[upload] Stored in cache: {file_path} -> {file_obj.id}"
+                    )
+                except Exception as cache_err:
+                    logger.debug(
+                        f"[upload] Failed to store file in cache: {cache_err}"
+                    )
+
+            return file_obj.id
 
         except Exception as e:
             # Parse OpenAI API errors for better user experience
@@ -393,39 +462,89 @@ class SharedUploadManager:
             + len(self._all_uploaded_ids),  # Files used by multiple tools
         }
 
-    async def cleanup_uploads(self) -> None:
-        """Clean up all uploaded files.
+    async def cleanup_uploads(self, ttl_days: Optional[int] = None) -> None:
+        """Clean up uploaded files with TTL awareness.
 
-        This method deletes all files that were uploaded during this session.
-        Should be called when the operation is complete to avoid leaving
-        temporary files in OpenAI storage.
+        Args:
+            ttl_days: Time-to-live in days for cached files. Files older than this
+                     will be deleted. Set to 0 to delete all files immediately.
+                     If None, uses configuration or default value.
         """
         if not self._all_uploaded_ids:
-            logger.debug("No uploaded files to clean up")
+            logger.debug("[upload] No uploaded files to clean up")
             return
 
+        # Get TTL from config if not provided
+        if ttl_days is None:
+            from .cache_config import get_cache_ttl_from_config
+
+            ttl_days = get_cache_ttl_from_config()
+
         logger.debug(
-            f"Cleaning up {len(self._all_uploaded_ids)} uploaded files"
+            f"[upload] Starting cleanup of {len(self._all_uploaded_ids)} files (TTL: {ttl_days}d)"
         )
-        cleanup_errors = []
 
-        for file_id in self._all_uploaded_ids:
-            try:
-                await self.client.files.delete(file_id)
-                logger.debug(f"Deleted uploaded file: {file_id}")
-            except Exception as e:
-                logger.warning(
-                    f"Failed to delete uploaded file {file_id}: {e}"
-                )
-                cleanup_errors.append((file_id, str(e)))
+        preserved_files = set()  # Track files that were preserved
 
-        if cleanup_errors:
-            logger.error(f"Failed to clean up {len(cleanup_errors)} files")
+        if not self._cache:
+            logger.debug(
+                "[upload] No cache available, deleting all files immediately"
+            )
+            # Fallback to deleting all files if no cache
+            for file_id in self._all_uploaded_ids:
+                try:
+                    logger.debug(f"[upload] Deleting file: {file_id}")
+                    await self.client.files.delete(file_id)
+                    logger.debug(f"[upload] Successfully deleted: {file_id}")
+                except Exception as e:
+                    logger.warning(f"[upload] Failed to delete {file_id}: {e}")
         else:
-            logger.debug("Successfully cleaned up all uploaded files")
+            logger.debug(
+                f"[upload] Using cache-aware cleanup with TTL: {ttl_days}d"
+            )
 
-        # Clear tracking
-        self._all_uploaded_ids.clear()
+            # TTL-aware cleanup with cache
+            for file_id in self._all_uploaded_ids:
+                try:
+                    # Check if file should be preserved
+                    if ttl_days > 0 and self._cache.is_file_cached_and_valid(
+                        file_id, ttl_days
+                    ):
+                        logger.debug(
+                            f"[upload] Preserving cached file: {file_id}"
+                        )
+                        preserved_files.add(file_id)
+                        # Update last accessed for LRU behavior
+                        self._cache.update_last_accessed(file_id)
+                        continue
+
+                    # Delete the file
+                    logger.debug(f"[upload] Deleting file: {file_id}")
+                    await self.client.files.delete(file_id)
+                    logger.debug(f"[upload] Successfully deleted: {file_id}")
+
+                except Exception as e:
+                    if "404" in str(e) or "not found" in str(e).lower():
+                        logger.debug(
+                            f"[upload] File {file_id} already gone, cleaning cache"
+                        )
+                        # Clean up stale cache entry
+                        self._cache.invalidate_by_file_id(file_id)
+                    else:
+                        logger.warning(
+                            f"[upload] Failed to delete {file_id}: {e}"
+                        )
+
+        # Only clear deleted files, keep preserved ones for future cleanup
+        self._all_uploaded_ids = preserved_files
+
+        # Note: Lock cleanup logic omitted for simplicity
+        # Locks will be cleaned up when the manager is destroyed
+
+        logger.debug(
+            f"[upload] Cleanup complete, {len(preserved_files)} files preserved, "
+            f"{len(self._all_uploaded_ids)} files remaining in tracking"
+        )
 
     def get_files_for_tool(self, tool: str) -> List[str]:
         """Get list of upload IDs for a specific tool.
@@ -446,3 +565,9 @@ class SharedUploadManager:
                 file_ids.append(record.upload_id)
 
         return file_ids
+
+    def get_cache_stats(self) -> Optional[Dict[str, Any]]:
+        """Get cache statistics if enabled."""
+        if self._cache:
+            return self._cache.get_stats()
+        return None
