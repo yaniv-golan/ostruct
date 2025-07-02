@@ -313,7 +313,7 @@ class FileSearchManager:
         )
         return False
 
-    def build_tool_config(self, vector_store_id: str) -> dict:
+    def build_tool_config(self, vector_store_id: str) -> Dict[str, Any]:
         """Build File Search tool configuration.
 
         Creates a tool configuration compatible with the OpenAI Responses API
@@ -402,17 +402,54 @@ class FileSearchManager:
         self.created_vector_stores.clear()
 
     async def _cleanup_uploaded_files(self, file_ids: List[str]) -> None:
-        """Internal method to clean up specific file IDs.
+        """Clean up uploaded files with cache awareness."""
+        if not file_ids:
+            logger.debug("[fs] No uploaded files to clean up")
+            return
 
-        Args:
-            file_ids: List of file IDs to delete
-        """
+        logger.debug(f"[fs] Cleaning up {len(file_ids)} uploaded files")
+
+        # Get cache and TTL configuration
+        cache = getattr(self.upload_manager, "_cache", None)
+        from .cache_config import DEFAULT_CACHE_TTL_DAYS
+
+        ttl_days = DEFAULT_CACHE_TTL_DAYS
+
+        if cache:
+            logger.debug(
+                f"[fs] Cache available, using TTL-aware cleanup (TTL: {ttl_days}d)"
+            )
+        else:
+            logger.debug("[fs] No cache available, using immediate cleanup")
+
         for file_id in file_ids:
             try:
+                # Check if file should be preserved in cache
+                if cache and cache.is_file_cached_and_valid(file_id, ttl_days):
+                    logger.debug(f"[fs] Preserving cached file: {file_id}")
+                    # Update last accessed for LRU behavior
+                    cache.update_last_accessed(file_id)
+                    continue
+
+                # Delete the file
+                logger.debug(f"[fs] Deleting file: {file_id}")
                 await self.client.files.delete(file_id)
-                logger.debug(f"Cleaned up uploaded file: {file_id}")
+                logger.debug(f"[fs] Successfully deleted file: {file_id}")
+
             except Exception as e:
-                logger.warning(f"Failed to clean up file {file_id}: {e}")
+                if "404" in str(e) or "not found" in str(e).lower():
+                    logger.debug(
+                        f"[fs] File {file_id} already gone, cleaning cache"
+                    )
+                    # Clean up stale cache entry
+                    if cache:
+                        cache.invalidate_by_file_id(file_id)
+                else:
+                    logger.warning(
+                        f"[fs] Failed to delete file {file_id}: {e}"
+                    )
+
+        logger.debug("[fs] Cleanup complete")
 
     async def _cleanup_vector_stores(
         self, vector_store_ids: List[str]
