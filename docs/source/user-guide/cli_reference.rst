@@ -775,6 +775,57 @@ Tool Configuration Options
       # Save outputs to custom directory
       ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-download-dir ./results
 
+Upload Cache Options
+--------------------
+
+.. seealso::
+   For comprehensive information about the upload cache system, including configuration, TTL management, and troubleshooting, see :doc:`upload_cache_guide`.
+
+.. option:: --cache-uploads / --no-cache-uploads
+
+   Enable or disable the persistent upload cache (default: enabled).
+
+   When enabled, ostruct caches uploaded files to avoid duplicate uploads
+   across runs, providing significant performance improvements.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Disable cache for this run
+      ostruct run template.j2 schema.json --no-cache-uploads
+
+      # Explicitly enable cache (default behavior)
+      ostruct run template.j2 schema.json --cache-uploads
+
+.. option:: --cache-preserve / --no-cache-preserve
+
+   Enable or disable TTL-based cache preservation (default: enabled).
+
+   When enabled, cached files are preserved for the configured TTL period.
+   When disabled, all cached files are deleted after each run.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Force cleanup of all cached files
+      ostruct run template.j2 schema.json --no-cache-preserve
+
+      # Use TTL-based preservation (default)
+      ostruct run template.j2 schema.json --cache-preserve
+
+.. option:: --cache-path PATH
+
+   Specify custom path for the upload cache database.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Use custom cache location
+      ostruct run template.j2 schema.json --cache-path ~/.my-cache/uploads.db
+
 Debug and Progress Options
 --------------------------
 
@@ -874,4 +925,5 @@ See Also
 * :doc:`examples` - Practical examples and use cases
 * :doc:`template_guide` - Template authoring guide
 * :doc:`template_quick_reference` - Template syntax reference
+* :doc:`upload_cache_guide` - Upload cache configuration and management
 * :doc:`tool_integration` - Multi-tool integration patterns
