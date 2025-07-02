@@ -933,6 +933,20 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
     # Attach options first (in reverse order since they stack)
     for deco in (
         click.option(
+            "--cache-path",
+            type=click.Path(dir_okay=False),
+            help="""Path to upload cache database.
+Default: platform-specific cache directory
+Example: --cache-path ~/.cache/ostruct/uploads.db""",
+        ),
+        click.option(
+            "--cache-uploads/--no-cache-uploads",
+            default=None,  # Let config decide
+            help="""Enable/disable persistent upload cache.
+When enabled, files are uploaded only once across all runs.
+Default: enabled (set in config or via OSTRUCT_CACHE_UPLOADS)""",
+        ),
+        click.option(
             "--gitignore-file",
             type=click.Path(exists=True),
             help="Custom gitignore file path (default: .gitignore in target directory)",

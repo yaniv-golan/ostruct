@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
+from pathlib import Path, Path as _Path
 from typing import Any, Dict, List, Optional, Type, Union
 from urllib.parse import urlparse
 
@@ -31,6 +31,7 @@ from .sentinel import extract_json_block
 from .serialization import LogSerializer
 from .services import ServiceContainer
 from .types import CLIParams
+from .validators import validate_security_manager
 
 
 # Error classes for API operations
@@ -1020,6 +1021,7 @@ async def execute_model(
     # Initialize variables that will be used in nested functions
     code_interpreter_info = None
     file_search_info = None
+    shared_upload_manager = None
 
     # Create detailed log callback
     def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
@@ -1040,14 +1042,14 @@ async def execute_model(
 
         # Process tool configurations
         tools = []
-        nonlocal code_interpreter_info, file_search_info
+        nonlocal code_interpreter_info, file_search_info, shared_upload_manager
 
         # Get universal tool toggle overrides first
         enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
         disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
 
         # Initialize shared upload manager for multi-tool file sharing (T3.2)
-        shared_upload_manager = None
+        # (shared_upload_manager is declared in outer scope)
 
         # Check if we have new attachment system with multi-tool attachments
         from .attachment_processor import (
@@ -1060,10 +1062,32 @@ async def execute_model(
                 "Initializing shared upload manager for new attachment system"
             )
             from .attachment_processor import AttachmentProcessor
+            from .config import get_config
+            from .upload_cache import UploadCache
             from .upload_manager import SharedUploadManager
-            from .validators import validate_security_manager
 
-            shared_upload_manager = SharedUploadManager(client)
+            # Initialize persistent upload cache if enabled
+            cfg = get_config()
+            up_cfg = cfg.get_upload_config()
+
+            cache_obj = None
+            if up_cfg.persistent_cache:
+                default_cache_path = (
+                    _Path.home() / ".cache" / "ostruct" / "uploads.db"
+                )
+                cache_path = (
+                    _Path(up_cfg.cache_path).expanduser().resolve()
+                    if up_cfg.cache_path
+                    else default_cache_path
+                )
+
+                cache_obj = UploadCache(
+                    cache_path=cache_path, hash_algo=up_cfg.hash_algorithm
+                )
+
+            shared_upload_manager = SharedUploadManager(
+                client, cache=cache_obj
+            )
 
             # Get security manager for file validation
             security_manager = validate_security_manager(
@@ -1150,7 +1174,7 @@ async def execute_model(
                 from .code_interpreter import CodeInterpreterManager
 
                 code_interpreter_manager = CodeInterpreterManager(
-                    client, upload_manager=shared_upload_manager
+                    client, config=None, upload_manager=shared_upload_manager
                 )
 
                 # Get file IDs from shared manager
@@ -1612,6 +1636,28 @@ async def execute_model(
                 logger.warning(
                     f"Failed to clean up File Search resources: {e}"
                 )
+
+        # Clean up shared upload manager if it exists
+        if shared_upload_manager:
+            try:
+                # Get TTL configuration from config
+                from .config import get_config
+
+                config = get_config()
+                upload_config = config.get_upload_config()
+
+                # Check if cache preservation is enabled
+                if upload_config.preserve_cached_files:
+                    ttl_days = upload_config.cache_max_age_days
+                else:
+                    ttl_days = 0  # Immediate deletion if preservation disabled
+
+                await shared_upload_manager.cleanup_uploads(ttl_days)
+                logger.debug(
+                    f"Cleaned up shared upload manager files (TTL: {ttl_days}d)"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to clean up shared upload files: {e}")
 
         # Clean up service container
         try:

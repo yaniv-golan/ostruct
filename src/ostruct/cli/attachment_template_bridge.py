@@ -832,7 +832,9 @@ class AttachmentTemplateContext:
                 routing_intent = FileRoutingIntent.CODE_INTERPRETER
                 # Avoid pre-loading large CI files into the prompt
                 lazy_strict_mode = True
-                preload_priority = 5  # Lower priority → not preloaded
+                # Priority value is irrelevant because strict_mode=True below
+                # guarantees the file will be skipped by the pre-loader.
+                preload_priority = 5
             else:
                 routing_type = "template"
                 routing_intent = FileRoutingIntent.TEMPLATE_ONLY
