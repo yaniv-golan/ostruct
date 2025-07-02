@@ -430,6 +430,11 @@ def validate_security_manager(
             allow_lists=allow_lists,
         )
 
+    # Set the global security context after full configuration
+    from .security.context import set_current_security_manager
+
+    set_current_security_manager(security_manager)
+
     return security_manager
 
 

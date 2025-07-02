@@ -27,6 +27,7 @@ from .errors import (
     SecurityErrorReasons,
 )
 from .normalization import normalize_path
+from .path_policy import PathPolicy
 from .symlink_resolver import _resolve_symlink
 from .types import PathSecurity
 
@@ -85,6 +86,11 @@ class SecurityManager:
         Raises:
             DirectoryNotFoundError: If base_dir or any allowed directory doesn't exist.
         """
+        # Warn about ad-hoc SecurityManager creation after context initialization
+        from .context import warn_if_creating_security_manager_after_init
+
+        warn_if_creating_security_manager_after_init()
+
         # Normalize and verify base directory
         self._base_dir = normalize_path(base_dir)
         if not self._base_dir.is_dir():
@@ -107,9 +113,42 @@ class SecurityManager:
 
         # Enhanced security features (T2.1)
         self.security_mode = security_mode
-        self._allow_inodes: set[tuple[int, int]] = (
-            set()
-        )  # (device, inode) pairs
+        self._allow_inodes: Set[Tuple[int, int]] = set()
+        # NEW: Inherit global security context allowlists if context already initialized
+        try:
+            from .context import (
+                get_current_security_manager,
+                is_security_context_initialized,
+            )
+
+            if is_security_context_initialized():
+                global_sm = get_current_security_manager()
+                # Only inherit if no explicit allowed_dirs provided AND base_dir is compatible
+                should_inherit_dirs = (
+                    not allowed_dirs
+                    and base_dir
+                    and str(base_dir) == str(global_sm.base_dir)
+                )
+
+                if should_inherit_dirs:
+                    self._allowed_dirs = global_sm.allowed_dirs.copy()
+                    inherited_dirs = len(self._allowed_dirs)
+                else:
+                    inherited_dirs = 0
+
+                # Always inherit inode allowlist (file-specific permissions)
+                self._allow_inodes = global_sm._allow_inodes.copy()
+                inherited_inodes = len(self._allow_inodes)
+
+                if inherited_dirs > 0 or inherited_inodes > 0:
+                    logger.debug(
+                        "Inherited allowlists from global security context (dirs=%d, inodes=%d)",
+                        inherited_dirs,
+                        inherited_inodes,
+                    )
+        except ImportError:
+            # Context module not available - skip inheritance
+            pass
 
         # Warning tracking for deduplication (T1.1)
         self._warned_paths: Set[str] = set()  # Track warned paths per session
@@ -775,15 +814,11 @@ class SecurityManager:
         Raises:
             PathSecurityError: If there's an error checking the path.
         """
-        if not self._allow_temp_paths or not self._temp_dir:
+        if not self._allow_temp_paths:
             return False
 
         try:
-            # Use string-based comparison instead of resolving
-            norm_path = normalize_path(path)
-            temp_path_str = str(self._temp_dir)
-            norm_path_str = str(norm_path)
-            return norm_path_str.startswith(temp_path_str)
+            return PathPolicy.is_temp_path(path)
         except Exception as e:
             raise PathSecurityError(
                 f"Error checking temporary path: {e}",
@@ -818,8 +853,8 @@ class SecurityManager:
         """Enhanced path validation with three-tier security model.
 
         Precedence Rules (Reviewer feedback addressed):
-        1. Existing SecurityManager validation (directory allowlist) - highest precedence
-        2. Inode allowlist (--allow-file) - file-specific tracking
+        1. Inode allowlist (--allow-file) - file-specific tracking - highest precedence
+        2. Existing SecurityManager validation (directory allowlist)
         3. Security mode (permissive/warn/strict) - fallback behavior
 
         Args:
@@ -832,7 +867,9 @@ class SecurityManager:
             PathSecurityError: If security mode is STRICT and path is not allowed
         """
         # Rule 1: Check inode allowlist first (handles path traversal to allowed files)
+        # If file is explicitly allowed by inode, no warning should be shown
         if self.is_file_allowed_by_inode(path):
+            logger.debug("Path allowed by inode allowlist: %s", path)
             return True
 
         # Rule 2: Use existing SecurityManager validation (preserves current behavior)
@@ -847,6 +884,7 @@ class SecurityManager:
             resolved_path = None
 
         # Rule 3: Apply security mode (NEW - three-tier model)
+        # Only reach here if path is NOT in inode allowlist or regular allowed directories
         if self.security_mode == PathSecurity.PERMISSIVE:
             logger.debug("Path allowed by permissive mode: %s", path)
             return True
