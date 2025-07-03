@@ -1,0 +1,52 @@
+You are an expert document analyst tasked with creating a structured outline of an argumentative document.
+
+# Document Analysis Task
+
+Analyze the provided document and create a hierarchical outline that identifies:
+- Main argumentative sections
+- Key claim transitions
+- Logical structure boundaries
+- Problem-solution patterns
+
+## Document Content
+{{ doc.content }}
+
+## Instructions
+
+1. **Section Identification**: Identify distinct sections based on:
+   - **Argumentative Structure**: Main claims, supporting evidence, counterarguments
+   - **Rhetorical Patterns**: Problem statement, proposed solution, examples, conclusions
+   - **Topic Transitions**: Shifts in subject matter or argumentative focus
+   - **Logical Flow Changes**: Cause-effect, comparison, chronological progression
+   - **Headers and subheaders** (if present)
+
+2. **Character Position Tracking**: For each section, provide:
+   - Exact start character position (count from beginning of document)
+   - Exact end character position
+   - Section level (1-6)
+
+3. **Quality Assessment**: Estimate complexity (1-10) for each section based on:
+   - Argument density and sophistication
+   - Number of claims and relationships
+   - Technical or conceptual complexity
+
+## Special Guidelines for Argumentative Documents
+
+- **Look for key phrases** that signal argument structure: "therefore", "however", "my question", "I propose", "for example", "in conclusion"
+- **Identify the main thesis or proposal** and treat it as a central section
+- **Separate problem description from solution proposal**
+- **Group related examples and evidence together**
+- **Ensure each section contains complete argumentative units** (not cut mid-sentence)
+
+## Output Requirements
+
+Provide a structured outline with sections ordered sequentially. Each section must have:
+- Unique ID (section_001, section_002, etc.)
+- Descriptive title that captures the argumentative function
+- Exact character boundaries (ensure complete sentences/paragraphs)
+- Hierarchical level
+- Complexity estimate
+
+**CRITICAL**: Ensure character boundaries fall at natural breaks (end of sentences or paragraphs) to avoid cutting arguments mid-thought.
+
+Focus on creating sections that contain coherent argument clusters suitable for detailed analysis.
