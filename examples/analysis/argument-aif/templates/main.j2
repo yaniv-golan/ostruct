@@ -1,121 +1,55 @@
-{#  prompt.j2  —  feed to ostruct #}
-You are an *argument-graph extraction* specialist with deep knowledge of the **Argument Interchange Format (AIF)** and its Extensibility Framework.
+This template has been replaced by a comprehensive multi-pass AIF pipeline.
 
-**GOAL**
-Produce a **fully-compliant AIFdb JSON** (plus our visualization extensions) that captures the ENTIRE argumentative structure of the passage below, including:
+# Migration Notice
 
-• main thesis & sub-theses
-• supporting arguments and premises
-• empirical evidence & examples
-• reasoning steps (RA nodes)
-• conflicts / counter-arguments (CA nodes)
-• recommendations / value judgements (PA nodes if present)
-• meta-argumentation (MA nodes if present)
+The monolithic `main.j2` template has been replaced with a complete 6-pass pipeline system that provides:
 
-**SIZE GUIDELINE**
-For long academic texts (~3,000 words) create **20 – 35 nodes** and all required edges.
+- Better argument extraction quality
+- Proper AIF compliance
+- Relationship validation
+- Semantic analysis
+- Resume capability
 
-**AIF NODE-TYPE CHECKLIST**
-When you decide which node-type to emit, apply these exact rules:
+## New Usage
 
-| If the text segment …                       | Emit node-type | Typical category | Example displayName                |
-|--------------------------------------------|---------------|------------------|------------------------------------|
-| states a fact / claim / conclusion         | I             | premise / conclusion / evidence | "Drug treatments have limited efficacy" |
-| explicitly *draws* a conclusion ("thus…")  | RA            | inference        | "Therefore ABC should be first-line" |
-| directly *contradicts* or attacks a claim  | CA            | conflict         | "Evidence challenges ABC efficacy" |
-| expresses a preference / value judgement   | PA            | preference       | "Ethical priority: preserve dignity" |
-| critiques the *argument itself*            | MA            | methodology      | "Methodological weakness in studies" |
+Instead of using this template directly, use the new pipeline:
 
-**AIF EXTENSIONS**
-For enhanced visualization, include these optional attributes:
+```bash
+# Old way (deprecated):
+# ostruct run templates/main.j2 schemas/main.json --file fs:doc document.txt
 
-**displayName** (≤ 60 chars): Concise summary for visualization
-**category**: Semantic categories for styling:
-- "premise": Supporting statements and assumptions
-- "evidence": Empirical data, studies, examples, citations
-- "conclusion": Main thesis, final conclusions, recommendations
-- "inference": Reasoning processes and logical connections
-- "conflict": Contradictions, counterarguments, challenges
-- "assumption": Unstated premises or background assumptions
-- "methodology": Research methods, analytical approaches
-- "preference": Value judgments and recommendations
-
-**strength** (0.0-1.0): Confidence level:
-- 0.9-1.0: Strong empirical evidence, well-established claims
-- 0.7-0.8: Moderate evidence, reasonable claims
-- 0.5-0.6: Weak evidence, tentative claims, assumptions
-
-**relationshipType**: Semantic relationship types for edges
-
-**EDGE-TYPE GUIDELINE**
-• premise/evidence → **supports** → RA or claim
-• RA → **infers** → conclusion
-• counter-evidence → **conflicts** → target claim
-• CA → **attacks** → claim
-• other contextual links → **relates**
-• examples → **exemplifies** → general claims
-• unstated premises → **assumes** → arguments
-
-**REQUIRED JSON STRUCTURE**
-```json
-{
-  "AIF": {
-    "version": "1.0",
-    "analyst": "AI Assistant",
-    "created": "2024-01-01T00:00:00Z",
-    "extensions": ["visualization-v1.0"]
-  },
-  "nodes": [
-    {
-      "nodeID": "1",
-      "text": "actual text from input",
-      "type": "I",
-      "timestamp": "2024-01-01T00:00:00Z",
-      "displayName": "Short display text",
-      "category": "premise",
-      "strength": 0.8
-    }
-  ],
-  "edges": [
-    {
-      "edgeID": "1",
-      "fromID": "1",
-      "toID": "2",
-      "formEdgeID": "",
-      "relationshipType": "supports"
-    }
-  ],
-  "locutions": [],
-  "participants": []
-}
+# New way (recommended):
+./pipeline.sh document.txt
 ```
 
-**VALIDATION RULES**
-1. IDs are strings ("1", "2" …)
-2. `formEdgeID` is empty string if unused
-3. `locutions`, `participants` arrays must be present (may be empty)
-4. Use ISO timestamps
-5. JSON must satisfy the provided schema
-6. Extract actual text from input, don't create generic summaries
-7. Use sequential string IDs
-8. Make sure every edge connects valid node IDs
+## Pipeline Benefits
 
-**CRITICAL: USE RA/CA NODES LIBERALLY**
-- **RA nodes**: Create whenever text shows reasoning ("therefore", "thus", "because", "since", "it follows")
-- **CA nodes**: Create whenever text shows contradiction ("however", "but", "contradicts", "challenges")
-- **Don't be conservative**: Academic texts have extensive reasoning and conflicts
+1. **Multi-pass processing**: Document outline → Section extraction → Graph synthesis → Global linking → Consistency check → Embedding analysis
+2. **Better quality**: Specialized templates for each processing stage
+3. **Resume capability**: Restart from any interrupted pass
+4. **Validation**: Comprehensive quality checks and error detection
+5. **Scalability**: Handles large documents efficiently
 
-**OUTPUT**
-Respond **only** with the final JSON.
+## Migration Guide
+
+The new pipeline produces richer output with the same input documents:
+
+- **Input**: Any Markdown, TXT, or OCR-converted PDF
+- **Output**: `final_graph.json` (main result) + `embeddings.json` (semantic analysis)
+- **Quality**: Higher node extraction accuracy and relationship detection
+
+## Quick Start
+
+```bash
+# Process your document
+./pipeline.sh path/to/your/document.md
+
+# Results in output_<timestamp>/
+ls -la output_*/
+```
+
+For detailed documentation, see the updated README.md.
 
 ---
 
-<input>
-{% if argument_text is defined %}
-{{ argument_text }}
-{% elif argument is defined %}
-{{ argument.content }}
-{% else %}
-No argument text provided
-{% endif %}
-</input>
+**Note**: This template is kept for backward compatibility but will produce a migration notice instead of processing. Please use the new pipeline system for all new work.

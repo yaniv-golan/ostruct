@@ -2,176 +2,23 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-        "AIF": {
-            "type": "object",
-            "properties": {
-                "version": {
-                    "type": "string"
-                },
-                "analyst": {
-                    "type": "string"
-                },
-                "created": {
-                    "type": "string"
-                },
-                "extensions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "List of AIF extensions used in this document"
-                }
-            },
-            "required": [
-                "version",
-                "analyst",
-                "created"
-            ],
-            "additionalProperties": false
+        "migration_notice": {
+            "type": "string",
+            "description": "Notice about migration to new pipeline system"
         },
-        "nodes": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "nodeID": {
-                        "type": "string"
-                    },
-                    "text": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string",
-                        "enum": [
-                            "I",
-                            "RA",
-                            "CA",
-                            "PA",
-                            "MA"
-                        ]
-                    },
-                    "timestamp": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string",
-                        "description": "AIF Extension: Short display name for visualization (max 60 chars)"
-                    },
-                    "category": {
-                        "type": "string",
-                        "description": "AIF Extension: Semantic category for enhanced visualization"
-                    },
-                    "strength": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 1,
-                        "description": "AIF Extension: Argument strength for visualization weighting"
-                    }
-                },
-                "required": [
-                    "nodeID",
-                    "text",
-                    "type",
-                    "timestamp"
-                ],
-                "additionalProperties": false
-            }
+        "new_usage": {
+            "type": "string",
+            "description": "Instructions for using the new pipeline"
         },
-        "edges": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "edgeID": {
-                        "type": "string"
-                    },
-                    "fromID": {
-                        "type": "string"
-                    },
-                    "toID": {
-                        "type": "string"
-                    },
-                    "formEdgeID": {
-                        "type": "string"
-                    },
-                    "relationshipType": {
-                        "type": "string",
-                        "enum": [
-                            "supports",
-                            "conflicts",
-                            "infers",
-                            "attacks",
-                            "relates"
-                        ],
-                        "description": "AIF Extension: Semantic relationship type for enhanced edge visualization"
-                    }
-                },
-                "required": [
-                    "edgeID",
-                    "fromID",
-                    "toID",
-                    "formEdgeID"
-                ],
-                "additionalProperties": false
-            }
-        },
-        "locutions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "nodeID": {
-                        "type": "string"
-                    },
-                    "personID": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "nodeID",
-                    "personID",
-                    "timestamp",
-                    "source"
-                ],
-                "additionalProperties": false
-            }
-        },
-        "participants": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "participantID": {
-                        "type": "string"
-                    },
-                    "firstname": {
-                        "type": "string"
-                    },
-                    "surname": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "participantID",
-                    "firstname",
-                    "surname"
-                ],
-                "additionalProperties": false
-            }
+        "documentation": {
+            "type": "string",
+            "description": "Reference to updated documentation"
         }
     },
     "required": [
-        "AIF",
-        "nodes",
-        "edges",
-        "locutions",
-        "participants"
+        "migration_notice",
+        "new_usage",
+        "documentation"
     ],
     "additionalProperties": false
 }
