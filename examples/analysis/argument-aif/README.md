@@ -1,193 +1,297 @@
-# Natural Language → AIF (Argument Interchange Format)
+# AIF Argument Graph Pipeline
 
-This example demonstrates converting natural language arguments into **AIFdb-compatible JSON** format.
+A complete pipeline for converting scientific documents into richly populated AIF (Argument Interchange Format) argument graphs.
 
-## What is AIF?
+## Overview
 
-The **Argument Interchange Format (AIF)** is a standard for representing argument structures in a machine-readable format. It consists of:
+This pipeline processes any long scientific document (Markdown, TXT, or pre-OCR-converted PDF) through 6 specialized passes to create a comprehensive argument graph with:
 
-- **Nodes**: Information (I), Rule Application (RA), Conflict Application (CA), Preference Application (PA)
-- **Edges**: Directed connections between nodes
-- **AIFdb Format**: A specific JSON schema used by AIF tools and applications
+- Structured argument node extraction
+- Relationship identification and validation
+- Cross-document linking
+- Consistency checking
+- Semantic embedding analysis
 
-## Key Features
+## Quick Start
 
-✅ **AIFdb Compatible**: Generates JSON that follows AIFdb standards
-✅ **AIF Extensions**: Enhanced visualization attributes while maintaining full compatibility
-✅ **OpenAI Structured Output**: Uses simplified schema for reliable generation
-✅ **Real Text Extraction**: Extracts actual claims from input text, not placeholders
-✅ **Visual Diagrams**: Color-coded Mermaid diagrams with automatic SVG generation
-✅ **Multiple Output Formats**: Console display, JSON files, and visual diagrams
+```bash
+# Navigate to the AIF pipeline
+cd examples/analysis/argument-aif/
 
-## Files
+# Process a document
+./pipeline.sh path/to/your/document.md
 
-- `prompt.j2` - Jinja2 template for AIF graph extraction with AIFdb specification and AIF extensions
-- `schema.json` - JSON Schema for AIFdb-compatible format with AIF visualization extensions
-- `texts/` - Sample argumentative texts for analysis
-- `scripts/` - Visualization and utility scripts
-  - `run_with_visualization.sh` - Generate AIF JSON + Mermaid diagram + SVG
-  - `aif2mermaid.sh` - Convert AIF JSON to color-coded Mermaid diagram with extension support
-- `output/` - Generated files (AIF JSON, Mermaid diagrams, SVG images)
-- `Makefile` - Convenience commands for running examples
-- `AIF_EXTENSIONS.md` - Documentation for AIF visualization extensions
+# Results will be in output_<timestamp>/
+```
 
-## Usage
+## Pipeline Stages
+
+1. **Outline Extraction**: Document structure analysis and sectioning
+2. **Section Processing**: AIF node extraction from individual sections
+3. **Graph Synthesis**: Unification of section-level extractions
+4. **Global Linking**: Cross-document relationship identification
+5. **Consistency Check**: Validation and quality assessment
+6. **Embedding Analysis**: Semantic similarity and clustering
+
+## Output Files
+
+- `outline.json`: Document structure and sections
+- `extract_*.json`: Per-section argument extractions
+- `synthesized_graph.json`: Unified argument graph
+- `linked_graph.json`: Graph with global relationships
+- `final_graph.json`: Validated and consistent final graph
+- `embeddings.json`: Semantic analysis results
+
+## Requirements
+
+- ostruct CLI tool
+- jq (JSON processor)
+- Standard Unix utilities (wc, split, etc.)
+
+## Configuration
+
+The pipeline automatically calculates processing parameters based on document size:
+
+- Target nodes: ~3 per page + 40 base
+- Chunk size: Configurable via `AIF_LINES_PER_CHUNK` environment variable
+- Temperature settings optimized for each pass
+
+### Environment Variables
+
+- `AIF_LINES_PER_CHUNK`: Lines per chunk for fallback processing (default: 1000)
+- `AIF_MIN_NODES`: Minimum nodes per section (default: 3)
+- `AIF_NODES_PER_100W`: Node scaling factor per 100 words (default: 2.5)
+
+## Resume Capability
+
+The pipeline supports resuming from interrupted runs:
+
+```bash
+# Resume from existing output directory
+./pipeline.sh document.md output_1234567890
+```
+
+The pipeline automatically detects completed passes and skips them, making debugging and re-runs efficient.
+
+## Architecture
+
+### Templates (`templates/`)
+
+- `01_outline.j2`: Document structure extraction
+- `02_extract_section.j2`: AIF node extraction from sections
+- `03_synthesise_graph.j2`: Graph synthesis and consolidation
+- `04_link_global.j2`: Cross-document relationship identification
+- `05_consistency_check.j2`: Final validation and quality assessment
+- `embed_cosine.j2`: Semantic embedding analysis
+
+### Schemas (`schemas/`)
+
+- `outline.json`: Document outline structure
+- `extraction.json`: Section-level node extraction
+- `rich_aif.json`: Complete argument graph format
+- `embedding_pairs.json`: Embedding vectors and clustering
+
+### Utilities (`jq/`)
+
+- `merge_nodes.jq`: Node deduplication and merging
+- `renumber_patch.jq`: Sequential ID renumbering
+- `validate_graph.jq`: Graph consistency validation
+
+## AIF Node Types
+
+The pipeline extracts and processes these AIF node types:
+
+- **I-nodes (Information)**: Factual claims, data, observations
+- **CA-nodes (Conflict Application)**: Direct contradictions or conflicts
+- **RA-nodes (Rule Application)**: Logical rules, principles, methodologies
+- **MA-nodes (Multiple Application)**: Complex multi-premise arguments
+- **TA-nodes (Transition Application)**: Bridging arguments, transitions
+- **YA-nodes (Yet Another Application)**: Supporting evidence, examples
+
+## Relationship Types
+
+- **supports**: Node A provides evidence for Node B
+- **attacks**: Node A contradicts or undermines Node B
+- **conflicts**: Node A and Node B are mutually exclusive
+- **relates**: General semantic relationship
+
+## Quality Metrics
+
+The pipeline provides comprehensive quality assessment:
+
+- **Structural Validation**: Node ID uniqueness, edge validity
+- **Logical Consistency**: Contradiction detection, support chain validation
+- **Completeness**: Coverage analysis, orphaned node detection
+- **Connectivity**: Graph connectedness, argument density
+
+## Customization
+
+### Modifying Templates
+
+Templates use Jinja2 syntax and can be customized for different extraction strategies:
+
+```jinja2
+# Example: Custom node extraction criteria
+{% if section_complexity > 7 %}
+Aim for {{ section_complexity * 2 }} nodes in this complex section.
+{% else %}
+Extract 3-5 key argument nodes from this section.
+{% endif %}
+```
+
+### Adjusting Schemas
+
+Schemas follow OpenAI structured output requirements and can be extended:
+
+```json
+{
+  "custom_analysis": {
+    "type": "object",
+    "properties": {
+      "domain_specific_score": {"type": "number"}
+    }
+  }
+}
+```
+
+### Custom Processing Logic
+
+JQ utilities can be modified for specific processing needs:
+
+```jq
+# Example: Custom node filtering
+def filter_high_confidence:
+  .nodes | map(select(.confidence > 0.8));
+```
+
+## Troubleshooting
+
+### Empty Outline
+
+If the outline extraction fails, the pipeline automatically falls back to UTF-8 safe content chunking:
+
+```bash
+# Manual chunking parameters
+export AIF_LINES_PER_CHUNK=500  # Smaller chunks for complex documents
+```
+
+### Processing Errors
+
+Check individual pass outputs for debugging:
+
+```bash
+# Examine specific pass output
+jq '.' output_*/extract_section_001.json
+```
+
+### Performance Issues
+
+Adjust processing parameters for large documents:
+
+```bash
+# Optimize for large documents
+export AIF_MIN_NODES=5
+export AIF_NODES_PER_100W=1.5
+```
+
+### Memory Limitations
+
+The pipeline handles large documents by:
+
+- Using file-based input for large JSON data
+- Externalizing embedding vectors to separate files
+- Implementing streaming processing where possible
+
+## Examples
 
 ### Basic Usage
 
 ```bash
-# Generate AIF analysis with color-coded Mermaid visualization (default: Paradox of the Court)
-make run
+# Process a research paper
+./pipeline.sh papers/climate_change_analysis.md
 
-# Generate AIF analysis with visualization for specific text
-make run TEXT=aint_i_a_woman_by.txt
-
-# Console output only (original behavior)
-make console
-
-# Generate AIF + Mermaid + SVG for all texts
-make generate-all
-
-# Generate AIF file only (no visualization)
-make generate
-
-# Generate AIF files only for all texts (no visualization)
-make generate-all-json
+# Check results
+ls -la output_*/
+jq '.metadata.statistics' output_*/final_graph.json
 ```
 
-### Direct ostruct Usage
+### Advanced Usage
 
 ```bash
-# Console output
-ostruct run prompt.j2 schema.json --file argument_text texts/paradox_of_the_court.txt
+# Custom processing parameters
+export AIF_LINES_PER_CHUNK=2000
+export AIF_MIN_NODES=8
 
-# Save to file
-ostruct run prompt.j2 schema.json --file argument_text texts/paradox_of_the_court.txt --output-file output/paradox_of_the_court.aif.json
+# Process with custom settings
+./pipeline.sh documents/complex_analysis.txt
 
-# Generate with visualization
-./scripts/run_with_visualization.sh texts/paradox_of_the_court.txt
+# Resume if interrupted
+./pipeline.sh documents/complex_analysis.txt output_1234567890
 ```
 
-### Available Texts
+### Validation
 
-- **paradox_of_the_court.txt** - Classic logical paradox by Protagoras and Euathlus
-- **aint_i_a_woman_by.txt** - Sojourner Truth's famous speech (1851)
-- **yes_virgina_there_is_a_santa_claus.txt** - Francis Pharcellus Church's editorial (1897)
-- **a_letter_to_a_royal_academy_about_farting.txt** - Benjamin Franklin's satirical essay (1781)
+```bash
+# Validate graph structure
+jq -f jq/validate_graph.jq output_*/final_graph.json
 
-## Visualization Features
-
-### Enhanced Visual Features
-
-#### Color-Coded Node Types
-
-The Mermaid diagrams use distinct colors and icons for different AIF node types and semantic categories:
-
-**Core AIF Types:**
-
-- 💬 **Information nodes (I)**: Blue - Contains claims, premises, and conclusions
-- ✅ **Rule Application nodes (RA)**: Green - Represents inference rules and logical connections
-- ⚔️ **Conflict Application nodes (CA)**: Pink - Shows contradictions and conflicts
-- ⭐ **Preference Application nodes (PA)**: Orange - Indicates preferences between arguments
-- 🔗 **Meta-Argument nodes (MA)**: Purple - Arguments about arguments
-
-**AIF Extension Categories:**
-
-- 💬 **Premise nodes**: Light blue - Supporting evidence and premises
-- 💬 **Evidence nodes**: Light green - Factual evidence and data
-- 🎯 **Conclusion nodes**: Dark green - Final conclusions and outcomes
-- ⚔️ **Conflict nodes**: Pink - Conflicting information and contradictions
-
-#### Smart Edge Styling & Labels
-
-Edges are automatically color-coded and labeled based on the relationship type:
-
-- `-.->|"supports"|` - **Dotted lines**: Information supporting reasoning nodes
-- `==>|"infers"|` - **Thick arrows**: Reasoning nodes inferring conclusions
-- `-.->|"conflicts"|` - **Dotted lines**: Information creating conflicts
-- `==>|"attacks"|` - **Thick arrows**: Conflicts attacking claims
-- `-->|"relates"|` - **Solid lines**: General relationships between information
-
-#### Compact Design with AIF Extensions
-
-- **Smaller fonts (11px)** for better space utilization
-- **Smart text display**: Uses `displayName` from AIF extensions (max 60 chars) or truncated text
-- **Semantic edge labels** that explain the relationship type
-- **Enhanced categorization**: Uses AIF extension categories for more precise styling
-
-### Output Files
-
-When using visualization mode, the following files are generated in `output/`:
-
-- `{text_name}.aif.json` - AIFdb-compatible JSON structure
-- `{text_name}.mmd` - Mermaid diagram source code
-- `{text_name}.svg` - Rendered SVG diagram (if Mermaid CLI available)
-
-### Dependencies
-
-The visualization scripts automatically install required dependencies:
-
-- **jq** - JSON processing (via `scripts/install/dependencies/ensure_jq.sh`)
-- **Mermaid CLI** - Diagram rendering (via `scripts/install/dependencies/ensure_mermaid.sh`)
-
-If automatic installation fails, manual installation instructions are provided.
-
-## Technical Implementation
-
-### Schema Requirements
-
-The schema follows OpenAI's structured output requirements:
-
-- All properties must be in `required` arrays
-- No advanced JSON Schema features (`oneOf`, `anyOf`, `$ref`, etc.)
-- Simple type definitions only
-- No optional fields (use empty strings instead)
-
-### Output Format
-
-Generated JSON includes core AIF structure with optional visualization extensions:
-
-```json
-{
-  "AIF": {
-    "version": "1.0",
-    "analyst": "AI Assistant",
-    "created": "2024-01-01T00:00:00Z",
-    "extensions": ["visualization-v1.0"]
-  },
-  "nodes": [
-    {
-      "nodeID": "1",
-      "text": "Full argument text...",
-      "type": "I",
-      "timestamp": "2024-01-01T00:00:00Z",
-      "displayName": "Short display text",
-      "category": "premise",
-      "strength": 0.9
-    }
-  ],
-  "edges": [
-    {
-      "edgeID": "1",
-      "fromID": "1",
-      "toID": "2",
-      "formEdgeID": "",
-      "relationshipType": "supports"
-    }
-  ],
-  "locutions": [],
-  "participants": []
-}
+# Check embedding analysis
+jq '.clusters | length' output_*/embeddings.json
 ```
 
-See `AIF_EXTENSIONS.md` for complete documentation of the extension attributes.
+## Integration
 
-## Example Output
+### With Visualization Tools
 
-The Paradox of the Court generates an argument graph showing:
+The output format is compatible with standard graph visualization tools:
 
-- **Protagoras' Argument**: Euathlus must pay regardless of case outcome
-- **Euathlus' Counter-Argument**: He owes nothing regardless of case outcome
-- **Conflict Node**: Representing the logical contradiction between both arguments
+```python
+import json
+import networkx as nx
 
-This demonstrates how AIF can represent complex argumentative structures with competing reasoning patterns.
+# Load graph
+with open('output_*/final_graph.json') as f:
+    graph_data = json.load(f)
+
+# Convert to NetworkX
+G = nx.DiGraph()
+for node in graph_data['nodes']:
+    G.add_node(node['id'], **node)
+for edge in graph_data['edges']:
+    G.add_edge(edge['source'], edge['target'], **edge)
+```
+
+### With Analysis Frameworks
+
+```python
+# Example: Argument strength analysis
+def analyze_argument_strength(graph_data):
+    nodes = {n['id']: n for n in graph_data['nodes']}
+    edges = graph_data['edges']
+
+    for edge in edges:
+        if edge['type'] == 'supports':
+            strength = edge['strength'] * nodes[edge['source']]['confidence']
+            print(f"Argument strength: {strength:.2f}")
+```
+
+## Performance Characteristics
+
+- **Small documents** (1-5 pages): ~30 seconds
+- **Medium documents** (5-20 pages): ~2-5 minutes
+- **Large documents** (20+ pages): ~5-15 minutes
+
+Performance scales primarily with document complexity and argument density rather than raw size.
+
+## Contributing
+
+To contribute improvements:
+
+1. Test changes with existing example documents
+2. Validate schema compatibility with OpenAI structured outputs
+3. Ensure JQ utilities handle edge cases
+4. Update documentation and examples
+
+## License
+
+This pipeline is part of the ostruct project and follows the same licensing terms.
