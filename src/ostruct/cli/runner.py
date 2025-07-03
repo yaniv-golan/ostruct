@@ -603,8 +603,25 @@ async def create_structured_output(
                 api_params["tool_choice"] = normalized_choice
             else:
                 # Map hyphenated CLI values to underscore per OpenAI spec
-                api_params["tool_choice"] = normalized_choice.replace("-", "_")
-            logger.debug("tool_choice applied: %s", api_params["tool_choice"])
+                standardized = normalized_choice.replace("-", "_")
+
+                # Responses / Assistants API expects an **object** form when
+                # forcing a single built-in tool (file_search, code_interpreter,
+                # or web_search). Convert known built-in
+                # tool names into the required object form.
+
+                if standardized in {
+                    "file_search",
+                    "code_interpreter",
+                    "web_search",
+                }:
+                    api_params["tool_choice"] = {"type": standardized}
+                else:
+                    # Fallback to string form for future-proofing (e.g. function name)
+                    api_params["tool_choice"] = standardized
+                logger.debug(
+                    "tool_choice applied: %s", api_params["tool_choice"]
+                )
 
         # Log the API request details
         logger.debug("Making OpenAI Responses API request with:")
