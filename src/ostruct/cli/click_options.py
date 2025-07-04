@@ -19,7 +19,7 @@ from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
 )
 from ostruct.cli.validators import validate_json_variable, validate_variable
 
-from .constants import DefaultPaths
+from .constants import DefaultConfig, DefaultPaths
 from .help_json import print_command_help_json as print_help_json
 
 P = ParamSpec("P")
@@ -248,7 +248,7 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
     model_choice = create_model_choice()
 
     # Ensure default is in the list
-    default_model = "gpt-4o"
+    default_model = DefaultConfig.DEFAULT_MODEL
     choices_list = list(model_choice.choices)
     if default_model not in choices_list and choices_list:
         default_model = choices_list[0]
