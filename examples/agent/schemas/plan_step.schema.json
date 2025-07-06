@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "tool": {
+      "type": "string",
+      "enum": [
+        "jq",
+        "grep",
+        "sed",
+        "awk",
+        "curl",
+        "write_file",
+        "append_file",
+        "text_replace",
+        "read_file",
+        "download_file"
+      ]
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Explanation of why this tool is needed for the task"
+    }
+  },
+  "required": ["tool", "reasoning"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "jq"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "jq filter expression"
+          },
+          "input": {
+            "type": "string",
+            "description": "optional input file path"
+          }
+        },
+        "required": ["filter"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "grep"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "search pattern"
+          },
+          "file": {
+            "type": "string",
+            "description": "file path to search in"
+          }
+        },
+        "required": ["pattern", "file"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "sed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "sed expression for line extraction"
+          },
+          "file": {
+            "type": "string",
+            "description": "file path to process"
+          }
+        },
+        "required": ["expression", "file"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "awk"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "script": {
+            "type": "string",
+            "description": "awk script"
+          },
+          "file": {
+            "type": "string",
+            "description": "file path to process"
+          }
+        },
+        "required": ["script", "file"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "curl"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "URL to download"
+          }
+        },
+        "required": ["url"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "write_file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "file path to write"
+          },
+          "content": {
+            "type": "string",
+            "description": "content to write"
+          }
+        },
+        "required": ["path", "content"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "append_file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "file path to append to"
+          },
+          "content": {
+            "type": "string",
+            "description": "content to append"
+          }
+        },
+        "required": ["path", "content"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "text_replace"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "file path to process"
+          },
+          "search": {
+            "type": "string",
+            "description": "text to search for"
+          },
+          "replace": {
+            "type": "string",
+            "description": "text to replace with"
+          }
+        },
+        "required": ["file", "search", "replace"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "read_file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "file path to read"
+          }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tool": {
+            "const": "download_file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "URL to download"
+          },
+          "path": {
+            "type": "string",
+            "description": "local path to save file"
+          }
+        },
+        "required": ["url", "path"]
+      }
+    }
+  ]
+}

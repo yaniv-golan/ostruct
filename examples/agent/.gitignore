@@ -1,0 +1,7 @@
+# Exclude runtime directories
+logs/
+workdir/
+
+# Exclude temporary files
+*.tmp
+*.temp
