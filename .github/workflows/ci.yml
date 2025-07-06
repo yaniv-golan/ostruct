@@ -49,7 +49,7 @@ jobs:
         echo "================================="
     - name: Run pre-commit
       run: |
-        poetry run pre-commit run --all-files -v
+        poetry run pre-commit run --all-files
     - name: Run type checking with MyPy
       run: |
         poetry run mypy --package ostruct
