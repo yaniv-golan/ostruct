@@ -410,6 +410,58 @@ def create_dynamic_model(
 
         validate_json_schema(schema)
 
+        # ------------------------------------------------------------------
+        # Ensure every subschema can resolve local references ("#/definitions/…")
+        # by copying the root-level `definitions` block into any nested object
+        # that lacks its own. This is purely an in-memory fix; the original file
+        # on disk is not modified.
+        # ------------------------------------------------------------------
+
+        root_definitions = schema.get("definitions")
+
+        if root_definitions:
+            seen_ids: set[int] = set()
+
+            def _inject_defs(
+                sub: Any,
+            ) -> None:  # noqa: ANN401 – recursive helper
+                """Recursively add root definitions to nested dicts."""
+
+                if isinstance(sub, dict):
+                    obj_id = id(sub)
+                    if obj_id in seen_ids:
+                        return  # Prevent infinite loops
+                    seen_ids.add(obj_id)
+
+                    # Only inject if this dict isn't itself the shared definitions
+                    if "definitions" not in sub:
+                        sub["definitions"] = root_definitions
+
+                    for key, val in sub.items():
+                        # Skip traversing into the definitions block we just attached
+                        if key == "definitions":
+                            continue
+                        _inject_defs(val)
+
+                elif isinstance(sub, list):
+                    for item in sub:
+                        _inject_defs(item)
+
+            # Start recursion on key fields likely to contain subschemas
+            for key in (
+                "properties",
+                "items",
+                "additionalProperties",
+                "allOf",
+                "anyOf",
+                "oneOf",
+                "then",
+                "else",
+                "if",
+            ):
+                if key in schema:
+                    _inject_defs(schema[key])
+
         # Handle top-level array schemas
         if schema.get("type") == "array":
             items_schema = schema.get("items", {})
