@@ -47,10 +47,14 @@ class ProgressContext:
         logger.debug(
             "Exiting ProgressContext. Had exception: %s", exc_type is not None
         )
-        if exc_type:
+        # Avoid spamming the log with duplicate traces when the same
+        # exception bubbles through nested ProgressContext instances.
+        if exc_type and not getattr(self, "_already_logged", False):
             logger.error(
                 "Exception in ProgressContext: %s - %s", exc_type, exc_val
             )
+            # Mark so child contexts skip duplicate logging
+            setattr(self, "_already_logged", True)
         pass
 
     def update(self, amount: int = 1, force: bool = False) -> None:

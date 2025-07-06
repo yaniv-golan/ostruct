@@ -236,8 +236,47 @@ def char_count(text: str) -> int:
 
 
 def to_json(obj: Any) -> str:
-    """Convert object to JSON string."""
-    return json.dumps(obj)
+    """Convert an object to a JSON string.
+
+    Improvements over the original implementation:
+    1. Transparently serialises LazyFileContent (and similar wrappers)
+       by falling back to their string representation, which triggers
+       lazy loading and returns the raw file text.
+    2. Provides a graceful fallback for otherwise non-serialisable
+       objects instead of raising ``TypeError`` – the user gets a
+       clear *placeholder* value rather than a cryptic stack trace.
+
+    This function **never** raises ``TypeError``.  If an object cannot
+    be serialised after the fallback attempts, it is replaced with a
+    string marker ``"<unserialisable:ObjectType>"`` so template
+    rendering can continue and the user can see which value failed.
+    """
+
+    # Lazy import to avoid heavy deps at module import time
+    try:
+        from .attachment_template_bridge import LazyFileContent
+    except Exception:  # pragma: no cover
+        LazyFileContent = None  # type: ignore
+
+    # 1️⃣  Unwrap LazyFileContent → underlying text
+    if LazyFileContent is not None and isinstance(obj, LazyFileContent):
+        obj = str(obj)  # forces lazy load, returns text
+
+    # 2️⃣  Attempt normal serialisation first
+    def _default_fallback(value: Any) -> str:
+        """json.dumps default= handler."""
+        # Second chance: cast to str (common for Path, Enum, etc.)
+        try:
+            return str(value)
+        except Exception:
+            # Final resort: explicit marker
+            return f"<unserialisable:{type(value).__name__}>"
+
+    try:
+        return json.dumps(obj, default=_default_fallback)
+    except Exception as e:  # pragma: no cover – shouldn't happen now
+        logger.debug("to_json serialisation fallback hit: %s", e)
+        return json.dumps(f"<unserialisable:{type(obj).__name__}>")
 
 
 def from_json(json_str: str) -> Any:
