@@ -294,6 +294,27 @@ def run(
                     )
                     logger.debug("Template rendering validation passed")
 
+                    # NEW: Perform dynamic model creation during dry-run so that
+                    # schema issues surfaced only at model-generation time are
+                    # caught early (aligns dry-run with live execution while still
+                    # avoiding any OpenAI API calls).
+                    try:
+                        from ..model_creation import create_dynamic_model
+
+                        logger.debug(
+                            "Performing model creation validation (dry-run)"
+                        )
+                        _ = create_dynamic_model(
+                            schema,
+                            base_name="DryRunModel",
+                            show_schema=False,
+                            debug_validation=kwargs.get("debug", False),
+                        )
+                        logger.debug("Model creation validation passed")
+                    except Exception as e:
+                        logger.error("Model creation validation failed: %s", e)
+                        raise
+
                     # Check for template warnings by processing system prompt
                     from typing import cast
 
