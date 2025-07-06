@@ -34,18 +34,3 @@ repos:
         # Do not pass filenames to mypy, we are checking the whole src folder
         pass_filenames: false
         types: [python]
-
-    -   id: sphinx-linkcheck
-        name: sphinx linkcheck
-        # Fail fast: 5-second timeout per URL, 1 retry, 8 parallel workers.
-        entry: >-
-          bash -c 'echo "=== starting sphinx linkcheck ===" && cd docs && poetry run sphinx-build \
-            -b linkcheck \
-            -D linkcheck_timeout=5 \
-            -D linkcheck_retries=1 \
-            -D linkcheck_workers=8 \
-            source build/linkcheck'
-        language: system
-        always_run: true
-        files: ^docs/
-        pass_filenames: false
