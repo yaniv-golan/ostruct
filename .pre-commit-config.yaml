@@ -46,5 +46,6 @@ repos:
             -D linkcheck_workers=8 \
             source build/linkcheck'
         language: system
+        always_run: true
         files: ^docs/
         pass_filenames: false
