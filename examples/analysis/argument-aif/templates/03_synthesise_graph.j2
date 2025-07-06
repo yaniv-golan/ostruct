@@ -1,0 +1,50 @@
+You are an expert graph analyst tasked with synthesizing multiple argument extractions into a unified AIF graph.
+
+# Graph Synthesis Task
+
+Combine argument nodes from multiple document sections into a coherent, unified argument graph.
+
+## Input Data
+
+You have been provided with argument extractions from multiple document sections:
+
+{{ sections.content }}
+
+## Synthesis Guidelines
+
+1. **Node Consolidation**:
+   - Merge duplicate or highly similar nodes
+   - Preserve unique semantic content
+   - Maintain node type accuracy
+   - Update IDs for global consistency
+
+2. **Relationship Integration**:
+   - Combine section-level relationships
+   - Identify cross-section connections
+   - Resolve conflicting relationships
+   - Maintain relationship strength accuracy
+
+3. **Global Coherence**:
+   - Ensure logical consistency across the entire graph
+   - Identify and resolve contradictions
+   - Strengthen weak connections
+   - Remove redundant relationships
+
+## Quality Requirements
+
+- **Completeness**: Include all significant argumentative content from the provided sections
+- **Consistency**: Ensure logical coherence throughout
+- **Precision**: Maintain accurate node classifications
+- **Connectivity**: Ensure proper relationship mapping
+
+## Output Format
+
+Provide a unified graph with:
+- Consolidated node list (sequential IDs: N001, N002, etc.)
+- Integrated relationship list (sequential IDs: E001, E002, etc.)
+- Conflict resolution notes
+- Quality assessment metrics
+
+Focus on creating a coherent argumentative structure that preserves the document's logical flow while enabling rich analysis.
+
+**IMPORTANT**: Base your synthesis ONLY on the actual content provided in the input data above. Do not generate unrelated content about vaccination, graph validation, or any other topics not present in the source material.

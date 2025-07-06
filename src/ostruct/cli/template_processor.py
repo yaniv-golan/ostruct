@@ -626,6 +626,18 @@ def _build_tool_context(
 
     context["code_interpreter_enabled"] = code_interpreter_enabled
 
+    # File search configuration
+    fs_enabled_by_routing = "file-search" in routing_result.enabled_tools
+
+    if "file-search" in enabled_tools:
+        file_search_enabled = True
+    elif "file-search" in disabled_tools:
+        file_search_enabled = False
+    else:
+        file_search_enabled = fs_enabled_by_routing
+
+    context["file_search_enabled"] = file_search_enabled
+
     # Add CI config if enabled
     if code_interpreter_enabled:
         ci_config = config.get_code_interpreter_config()
@@ -768,11 +780,13 @@ async def create_template_context_from_routing(
         # Build attachment-based context
         # In dry-run mode, use strict mode to fail fast on binary file errors
         strict_mode = args.get("dry_run", False)
+        max_file_size = args.get("max_file_size")
         context = build_template_context_from_attachments(
             processed_attachments,
             security_manager,
             base_context,
             strict_mode=strict_mode,
+            max_file_size=max_file_size,
         )
 
         # Add debugging support for new attachment system
@@ -785,7 +799,9 @@ async def create_template_context_from_routing(
         ):
             from .attachment_template_bridge import AttachmentTemplateContext
 
-            context_builder = AttachmentTemplateContext(security_manager)
+            context_builder = AttachmentTemplateContext(
+                security_manager, max_file_size=max_file_size
+            )
             context_builder.debug_attachment_context(
                 context,
                 processed_attachments,

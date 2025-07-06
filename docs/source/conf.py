@@ -54,6 +54,21 @@ extensions = [
     "sphinx_design",
 ]
 
+# -----------------------
+# Linkcheck configuration
+# -----------------------
+
+# Reduce noise and avoid long stalls caused by domains that block bots or rate-limit aggressively.
+linkcheck_timeout = 5  # seconds per request
+linkcheck_retries = 1  # only retry once on failure
+linkcheck_workers = 8  # parallel workers
+
+# Ignore domains that systematically return 403 to CI crawlers or throttle heavily.
+linkcheck_ignore = [
+    r"https://platform\.openai\.com/.*",
+    r"https://community\.openai\.com/.*",
+]
+
 html_theme = "sphinx_rtd_theme"
 # html_static_path = ["_static"]
 

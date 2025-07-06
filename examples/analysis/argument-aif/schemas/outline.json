@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "outline": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^(section|chunk)_[0-9]{3}$"
+                    },
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                    },
+                    "start": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "end": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "level": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 6
+                    },
+                    "estimated_complexity": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "start",
+                    "end"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "total_sections": {
+                    "type": "integer"
+                },
+                "document_length": {
+                    "type": "integer"
+                },
+                "extraction_method": {
+                    "type": "string",
+                    "enum": [
+                        "structured",
+                        "chunked"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "outline"
+    ],
+    "additionalProperties": false
+}

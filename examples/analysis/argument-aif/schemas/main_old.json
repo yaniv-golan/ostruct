@@ -1,0 +1,301 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Rich AIF-Inspired Argument Graph",
+    "type": "object",
+    "properties": {
+        "AIF": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "version",
+                "analyst",
+                "created"
+            ],
+            "properties": {
+                "version": {
+                    "type": "string"
+                },
+                "analyst": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string",
+                    "description": "ISO-8601 timestamp"
+                },
+                "extensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of non-core extensions used (e.g. visualisation-v1)"
+                }
+            }
+        },
+        "nodes": {
+            "type": "array",
+            "description": "I / RA / CA / PA / MA content & scheme-application nodes",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "nodeID",
+                    "text",
+                    "type",
+                    "timestamp"
+                ],
+                "properties": {
+                    "nodeID": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "I",
+                            "RA",
+                            "CA",
+                            "PA",
+                            "MA"
+                        ]
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string",
+                        "maxLength": 60,
+                        "description": "Short label for GUIs"
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "premise",
+                            "evidence",
+                            "conclusion",
+                            "inference",
+                            "conflict",
+                            "assumption",
+                            "methodology",
+                            "preference",
+                            "context",
+                            "definition",
+                            "limitation",
+                            "background",
+                            "statistic"
+                        ]
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "main_thesis",
+                            "sub_thesis",
+                            "supporting_claim",
+                            "counter_argument",
+                            "example",
+                            "assumption",
+                            "methodological_critique",
+                            "recommendation"
+                        ]
+                    },
+                    "strength": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "schemeID": {
+                        "type": "string",
+                        "description": "FK → schemeNodes[].schemeID (only for RA|CA nodes)"
+                    },
+                    "section": {
+                        "type": "string",
+                        "description": "Paper section (e.g. Methods)"
+                    },
+                    "para": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Paragraph #"
+                    },
+                    "offsetStart": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "offsetEnd": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            }
+        },
+        "schemeNodes": {
+            "type": "array",
+            "description": "Formal argument-scheme definitions (F-nodes)",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "schemeID",
+                    "schemeName"
+                ],
+                "properties": {
+                    "schemeID": {
+                        "type": "string"
+                    },
+                    "schemeName": {
+                        "type": "string"
+                    },
+                    "schemeGroup": {
+                        "type": "string",
+                        "enum": [
+                            "causal",
+                            "authority",
+                            "analogy",
+                            "sign",
+                            "example",
+                            "statistical",
+                            "comparison",
+                            "abductive",
+                            "deductive",
+                            "other"
+                        ]
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "criticalQuestions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "edges": {
+            "type": "array",
+            "description": "All graph connections (argument, scheme, and locution)",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "edgeID",
+                    "fromID",
+                    "toID",
+                    "relationshipType",
+                    "formEdgeID"
+                ],
+                "properties": {
+                    "edgeID": {
+                        "type": "string"
+                    },
+                    "fromID": {
+                        "type": "string"
+                    },
+                    "toID": {
+                        "type": "string"
+                    },
+                    "formEdgeID": {
+                        "type": "string",
+                        "description": "FK → schemeNodes[].schemeID when edge instantiates a scheme; otherwise \"\""
+                    },
+                    "relationshipType": {
+                        "type": "string",
+                        "enum": [
+                            "supports",
+                            "infers",
+                            "conflicts",
+                            "attacks",
+                            "assumes",
+                            "exemplifies",
+                            "relates",
+                            "asserts",
+                            "questions",
+                            "references"
+                        ]
+                    },
+                    "weight": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                }
+            }
+        },
+        "locutions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "locutionID",
+                    "participantID",
+                    "nodeID",
+                    "timestamp"
+                ],
+                "properties": {
+                    "locutionID": {
+                        "type": "string"
+                    },
+                    "participantID": {
+                        "type": "string"
+                    },
+                    "nodeID": {
+                        "type": "string",
+                        "description": "I-node asserted"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "section": {
+                        "type": "string"
+                    },
+                    "sourceSentence": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "participants": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "participantID",
+                    "name"
+                ],
+                "properties": {
+                    "participantID": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "author",
+                            "coauthor",
+                            "reviewer",
+                            "editor",
+                            "other"
+                        ]
+                    },
+                    "affiliation": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "required": [
+        "AIF",
+        "nodes",
+        "schemeNodes",
+        "edges",
+        "locutions",
+        "participants"
+    ],
+    "additionalProperties": false
+}

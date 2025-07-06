@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
+from pathlib import Path, Path as _Path
 from typing import Any, Dict, List, Optional, Type, Union
 from urllib.parse import urlparse
 
@@ -14,7 +14,7 @@ from openai_model_registry import ModelRegistry
 from pydantic import BaseModel
 
 from .code_interpreter import CodeInterpreterManager
-from .config import OstructConfig
+from .config import OstructConfig, get_config
 from .cost_estimation import calculate_cost_estimate, format_cost_breakdown
 from .errors import APIErrorMapper, CLIError, SchemaValidationError
 from .exit_codes import ExitCode
@@ -31,6 +31,7 @@ from .sentinel import extract_json_block
 from .serialization import LogSerializer
 from .services import ServiceContainer
 from .types import CLIParams
+from .validators import validate_security_manager
 
 
 # Error classes for API operations
@@ -89,6 +90,71 @@ def _assistant_text(response: Any) -> str:
 
 
 logger = logging.getLogger(__name__)
+
+
+def parse_json_with_duplication_handling(content: str) -> Any:
+    """Parse JSON content with automatic handling of OpenAI API duplication bugs.
+
+    This function handles the intermittent OpenAI API issue where structured output
+    responses contain duplicate JSON objects concatenated together, causing parsing
+    errors like "Extra data: line 1 column 345 (char 344)".
+
+    The duplicates can be:
+    - Identical (most common case)
+    - Different/complementary content
+    - Partially truncated
+
+    Args:
+        content: Raw JSON string from OpenAI API response
+
+    Returns:
+        Parsed JSON object
+
+    Raises:
+        json.JSONDecodeError: If JSON parsing fails completely
+
+    References:
+        - https://community.openai.com/t/gpt-4o-structured-outputs-json-extra-data/884253
+        - https://community.openai.com/t/gpt-4o-structured-outputs-duplicate-json/883156
+    """
+    config = get_config()
+    strategy = config.json_parsing_strategy
+
+    if strategy == "strict":
+        # Strict mode: fail on any malformed JSON
+        return json.loads(content)
+
+    # Robust mode: handle duplication bugs
+    try:
+        # Try normal parsing first
+        return json.loads(content)
+    except json.JSONDecodeError as e:
+        # Check if this is the specific "Extra data" error indicating duplication
+        if "Extra data" in str(e) and hasattr(e, "pos"):
+            logger.warning(
+                f"Detected OpenAI API JSON duplication bug - attempting recovery. "
+                f"Error: {e}. "
+                f"This is a known OpenAI API issue. See: "
+                f"https://community.openai.com/t/gpt-4o-structured-outputs-json-extra-data/884253"
+            )
+
+            # Split at the error position and try to parse the first JSON object
+            try:
+                first_json = content[: e.pos].strip()
+                result = json.loads(first_json)
+                logger.info(
+                    f"Successfully recovered from JSON duplication bug by parsing first {e.pos} characters. "
+                    f"Discarded {len(content) - e.pos} duplicate characters."
+                )
+                return result
+            except json.JSONDecodeError as inner_e:
+                logger.error(
+                    f"Failed to recover from JSON duplication - first part is also malformed: {inner_e}"
+                )
+                raise e  # Re-raise original error
+        else:
+            # Different JSON error, re-raise as-is
+            raise
 
 
 async def process_mcp_configuration(args: CLIParams) -> MCPServerManager:
@@ -445,6 +511,7 @@ async def create_structured_output(
     output_schema: Type[BaseModel],
     output_file: Optional[str] = None,
     tools: Optional[List[dict]] = None,
+    tool_choice: Optional[str] = None,
     **kwargs: Any,
 ) -> BaseModel:
     """Create structured output from OpenAI Responses API.
@@ -460,6 +527,7 @@ async def create_structured_output(
         output_schema: The Pydantic model to validate responses against
         output_file: Optional file to write output to (unused, kept for compatibility)
         tools: Optional list of tools (e.g., MCP, Code Interpreter) to include
+        tool_choice: Optional tool choice to use
         **kwargs: Additional parameters to pass to the API
 
     Returns:
@@ -528,6 +596,33 @@ async def create_structured_output(
             api_params["tools"] = tools
             logger.debug("Tools: %s", json.dumps(tools, indent=2))
 
+        # Apply tool_choice override if provided
+        if tool_choice and tool_choice.lower() != "auto":
+            normalized_choice = tool_choice.lower()
+            if normalized_choice in {"none", "required"}:
+                api_params["tool_choice"] = normalized_choice
+            else:
+                # Map hyphenated CLI values to underscore per OpenAI spec
+                standardized = normalized_choice.replace("-", "_")
+
+                # Responses / Assistants API expects an **object** form when
+                # forcing a single built-in tool (file_search, code_interpreter,
+                # or web_search). Convert known built-in
+                # tool names into the required object form.
+
+                if standardized in {
+                    "file_search",
+                    "code_interpreter",
+                    "web_search",
+                }:
+                    api_params["tool_choice"] = {"type": standardized}
+                else:
+                    # Fallback to string form for future-proofing (e.g. function name)
+                    api_params["tool_choice"] = standardized
+                logger.debug(
+                    "tool_choice applied: %s", api_params["tool_choice"]
+                )
+
         # Log the API request details
         logger.debug("Making OpenAI Responses API request with:")
         logger.debug("Model: %s", model)
@@ -564,7 +659,7 @@ async def create_structured_output(
             except ValueError:
                 # Fallback to original parsing for non-fenced JSON
                 try:
-                    data = json.loads(content.strip())
+                    data = parse_json_with_duplication_handling(content)
                     markdown_text = ""
                 except json.JSONDecodeError as json_error:
                     # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
@@ -585,7 +680,9 @@ async def create_structured_output(
                         )
                         if json_match:
                             try:
-                                data = json.loads(json_match.group(0))
+                                data = parse_json_with_duplication_handling(
+                                    json_match.group(0)
+                                )
                                 markdown_text = ""
                                 logger.warning(
                                     "Code Interpreter added extra content after JSON. "
@@ -614,7 +711,36 @@ async def create_structured_output(
             return validated
 
         except ValueError as e:
-            logger.error(f"Failed to parse response content: {e}")
+            # Enhanced JSON parsing error with debug output
+            error_msg = f"Failed to parse response content: {e}"
+            logger.error(error_msg)
+
+            # Save problematic JSON to debug file for troubleshooting
+            try:
+                import time
+
+                timestamp = int(time.time())
+                debug_file = f"ostruct_json_debug_{timestamp}.txt"
+                with open(debug_file, "w", encoding="utf-8") as f:
+                    f.write("=== PROBLEMATIC JSON RESPONSE ===\n")
+                    f.write(f"Error: {e}\n")
+                    f.write(f"Content length: {len(content)} characters\n")
+                    f.write("=== RAW CONTENT ===\n")
+                    f.write(content)
+                    f.write("\n=== END CONTENT ===\n")
+
+                logger.error(f"Problematic JSON saved to: {debug_file}")
+                logger.error(
+                    f"Content preview (first 200 chars): {content[:200]!r}"
+                )
+                if len(content) > 200:
+                    logger.error(
+                        f"Content preview (last 200 chars): {content[-200:]!r}"
+                    )
+
+            except Exception as debug_error:
+                logger.warning(f"Could not save debug file: {debug_error}")
+
             raise InvalidResponseFormatError(
                 f"Failed to parse response as valid JSON: {e}"
             )
@@ -806,7 +932,7 @@ async def _execute_two_pass_sentinel(
         except ValueError:
             # Fallback to original parsing for non-fenced JSON
             try:
-                data_final = json.loads(content.strip())
+                data_final = parse_json_with_duplication_handling(content)
                 markdown_text = ""
             except json.JSONDecodeError as json_error:
                 # DEFENSIVE PARSING: Handle Code Interpreter + Structured Outputs compatibility issue
@@ -820,7 +946,9 @@ async def _execute_two_pass_sentinel(
                 json_match = re.search(r"\{.*?\}", content.strip(), re.DOTALL)
                 if json_match:
                     try:
-                        data_final = json.loads(json_match.group(0))
+                        data_final = parse_json_with_duplication_handling(
+                            json_match.group(0)
+                        )
                         markdown_text = ""
                         logger.warning(
                             "Two-pass mode: Extra content found after JSON in structured response. "
@@ -846,7 +974,36 @@ async def _execute_two_pass_sentinel(
         return validated, downloaded_files
 
     except ValueError as e:
-        logger.error(f"Failed to parse structured response content: {e}")
+        # Enhanced JSON parsing error with debug output
+        error_msg = f"Failed to parse structured response content: {e}"
+        logger.error(error_msg)
+
+        # Save problematic JSON to debug file for troubleshooting
+        try:
+            import time
+
+            timestamp = int(time.time())
+            debug_file = f"ostruct_json_debug_{timestamp}.txt"
+            with open(debug_file, "w", encoding="utf-8") as f:
+                f.write("=== PROBLEMATIC JSON RESPONSE (Two-Pass Mode) ===\n")
+                f.write(f"Error: {e}\n")
+                f.write(f"Content length: {len(content)} characters\n")
+                f.write("=== RAW CONTENT ===\n")
+                f.write(content)
+                f.write("\n=== END CONTENT ===\n")
+
+            logger.error(f"Problematic JSON saved to: {debug_file}")
+            logger.error(
+                f"Content preview (first 200 chars): {content[:200]!r}"
+            )
+            if len(content) > 200:
+                logger.error(
+                    f"Content preview (last 200 chars): {content[-200:]!r}"
+                )
+
+        except Exception as debug_error:
+            logger.warning(f"Could not save debug file: {debug_error}")
+
         raise InvalidResponseFormatError(
             f"Failed to parse response as valid JSON: {e}"
         )
@@ -872,6 +1029,9 @@ async def _fallback_single_pass(
         output_file=args.get("output_file"),
         on_log=log_cb,
         tools=tools,
+        tool_choice=(
+            str(args.get("tool_choice")) if args.get("tool_choice") else None
+        ),
     )
     return response, []  # No files downloaded in fallback
 
@@ -962,6 +1122,7 @@ async def execute_model(
     # Initialize variables that will be used in nested functions
     code_interpreter_info = None
     file_search_info = None
+    shared_upload_manager = None
 
     # Create detailed log callback
     def log_callback(level: int, message: str, extra: dict[str, Any]) -> None:
@@ -982,14 +1143,14 @@ async def execute_model(
 
         # Process tool configurations
         tools = []
-        nonlocal code_interpreter_info, file_search_info
+        nonlocal code_interpreter_info, file_search_info, shared_upload_manager
 
         # Get universal tool toggle overrides first
         enabled_tools: set[str] = args.get("_enabled_tools", set())  # type: ignore[assignment]
         disabled_tools: set[str] = args.get("_disabled_tools", set())  # type: ignore[assignment]
 
         # Initialize shared upload manager for multi-tool file sharing (T3.2)
-        shared_upload_manager = None
+        # (shared_upload_manager is declared in outer scope)
 
         # Check if we have new attachment system with multi-tool attachments
         from .attachment_processor import (
@@ -1002,10 +1163,32 @@ async def execute_model(
                 "Initializing shared upload manager for new attachment system"
             )
             from .attachment_processor import AttachmentProcessor
+            from .config import get_config
+            from .upload_cache import UploadCache
             from .upload_manager import SharedUploadManager
-            from .validators import validate_security_manager
 
-            shared_upload_manager = SharedUploadManager(client)
+            # Initialize persistent upload cache if enabled
+            cfg = get_config()
+            up_cfg = cfg.get_upload_config()
+
+            cache_obj = None
+            if up_cfg.persistent_cache:
+                default_cache_path = (
+                    _Path.home() / ".cache" / "ostruct" / "uploads.db"
+                )
+                cache_path = (
+                    _Path(up_cfg.cache_path).expanduser().resolve()
+                    if up_cfg.cache_path
+                    else default_cache_path
+                )
+
+                cache_obj = UploadCache(
+                    cache_path=cache_path, hash_algo=up_cfg.hash_algorithm
+                )
+
+            shared_upload_manager = SharedUploadManager(
+                client, cache=cache_obj
+            )
 
             # Get security manager for file validation
             security_manager = validate_security_manager(
@@ -1092,7 +1275,7 @@ async def execute_model(
                 from .code_interpreter import CodeInterpreterManager
 
                 code_interpreter_manager = CodeInterpreterManager(
-                    client, upload_manager=shared_upload_manager
+                    client, config=None, upload_manager=shared_upload_manager
                 )
 
                 # Get file IDs from shared manager
@@ -1400,6 +1583,11 @@ async def execute_model(
                 output_file=args.get("output_file"),
                 on_log=log_callback,
                 tools=tools,
+                tool_choice=(
+                    str(args.get("tool_choice"))
+                    if args.get("tool_choice")
+                    else None
+                ),
             )
         output_buffer.append(response)
 
@@ -1502,10 +1690,6 @@ async def execute_model(
                             )
                             for file_path in downloaded_files:
                                 logger.info(f"  - {file_path}")
-                        else:
-                            logger.debug(
-                                "No files were downloaded from Code Interpreter"
-                            )
                     else:
                         logger.debug("API response has no output attribute")
                 else:
@@ -1558,6 +1742,42 @@ async def execute_model(
                 logger.warning(
                     f"Failed to clean up File Search resources: {e}"
                 )
+
+        # Clean up shared upload manager if it exists
+        if shared_upload_manager:
+            try:
+                # Get TTL configuration from config
+                from .config import get_config
+
+                config = get_config()
+                upload_config = config.get_upload_config()
+
+                # Check if cache preservation is enabled
+                if upload_config.preserve_cached_files:
+                    ttl_days = upload_config.cache_max_age_days
+                else:
+                    ttl_days = 0  # Immediate deletion if preservation disabled
+
+                await shared_upload_manager.cleanup_uploads(ttl_days)
+                logger.debug(
+                    f"Cleaned up shared upload manager files (TTL: {ttl_days}d)"
+                )
+
+                # Report cache summary if available
+                try:
+                    cache_summary = (
+                        shared_upload_manager.get_cache_summary_for_display()
+                    )
+                    if cache_summary:
+                        progress_reporter = get_progress_reporter()
+                        progress_reporter.report_cache_summary(cache_summary)
+                except Exception as cache_summary_err:
+                    logger.debug(
+                        f"Failed to report cache summary: {cache_summary_err}"
+                    )
+
+            except Exception as e:
+                logger.warning(f"Failed to clean up shared upload files: {e}")
 
         # Clean up service container
         try:

@@ -95,11 +95,12 @@ def read_file(
     """
     # Create security manager if not provided
     if security_manager is None:
-        from .security import SecurityManager
+        from .security.context import get_current_security_manager
 
-        security_manager = SecurityManager(base_dir=os.getcwd())
+        security_manager = get_current_security_manager()
         logger.debug(
-            "Created default SecurityManager with base_dir=%s", os.getcwd()
+            "Using global security manager with base_dir=%s",
+            security_manager.base_dir,
         )
 
     # Create progress context

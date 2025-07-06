@@ -21,6 +21,12 @@ file_collection:
   gitignore_file: null     # Custom gitignore file path (overrides .gitignore)
   gitignore_patterns: []   # Additional custom ignore patterns
 
+# Template processing settings
+template:
+  max_file_size: null       # Maximum individual file size for template access (bytes). null = no limit
+  max_total_size: null      # Maximum total file size for all template files (bytes). null = no limit
+  preview_limit: 4096       # Maximum characters shown in template debugging previews
+
 # MCP (Model Context Protocol) server configurations
 # You can define shortcuts to commonly used MCP servers
 mcp:
@@ -42,6 +48,12 @@ limits:
   max_cost_per_run: 10.00
   warn_expensive_operations: true
 
+# Security settings
+security:
+  path_security: warn  # Options: permissive, warn, strict
+  suppress_path_warnings: false  # Disable repeated warnings
+  warning_summary: true  # Show summary at end of execution
+
 # Environment Variables:
 # API Configuration:
 # OPENAI_API_KEY - Your OpenAI API key
@@ -52,6 +64,6 @@ limits:
 # OSTRUCT_GITIGNORE_FILE - Custom gitignore file path (overrides .gitignore)
 #
 # Template Processing Limits (template-only files):
-# OSTRUCT_TEMPLATE_FILE_LIMIT - Max individual file size for templates (default: 65536 bytes)
-# OSTRUCT_TEMPLATE_TOTAL_LIMIT - Max total file size for templates (default: 1048576 bytes)
+# OSTRUCT_TEMPLATE_FILE_LIMIT - Max individual file size for templates (default: no limit, was 64KB). Use "none"/"unlimited" for no limit.
+# OSTRUCT_TEMPLATE_TOTAL_LIMIT - Max total file size for templates (default: no limit). Use "none"/"unlimited" for no limit.
 # OSTRUCT_TEMPLATE_PREVIEW_LIMIT - Max chars in debug previews (default: 4096)

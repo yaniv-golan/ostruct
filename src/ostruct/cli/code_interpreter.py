@@ -124,7 +124,7 @@ class CodeInterpreterManager:
         )
         return file_ids
 
-    def build_tool_config(self, file_ids: List[str]) -> dict:
+    def build_tool_config(self, file_ids: List[str]) -> Dict[str, Any]:
         """Build Code Interpreter tool configuration.
 
         Creates a tool configuration compatible with the OpenAI Responses API
@@ -526,17 +526,54 @@ class CodeInterpreterManager:
         self.uploaded_file_ids.clear()
 
     async def _cleanup_uploaded_files(self, file_ids: List[str]) -> None:
-        """Internal method to clean up specific file IDs.
+        """Clean up uploaded files with cache awareness."""
+        if not file_ids:
+            logger.debug("[ci] No uploaded files to clean up")
+            return
 
-        Args:
-            file_ids: List of file IDs to delete
-        """
+        logger.debug(f"[ci] Cleaning up {len(file_ids)} uploaded files")
+
+        # Get cache and TTL configuration
+        cache = getattr(self.upload_manager, "_cache", None)
+        from .cache_config import get_cache_ttl_from_config
+
+        ttl_days = get_cache_ttl_from_config(self.config)
+
+        if cache:
+            logger.debug(
+                f"[ci] Cache available, using TTL-aware cleanup (TTL: {ttl_days}d)"
+            )
+        else:
+            logger.debug("[ci] No cache available, using immediate cleanup")
+
         for file_id in file_ids:
             try:
+                # Check if file should be preserved in cache
+                if cache and cache.is_file_cached_and_valid(file_id, ttl_days):
+                    logger.debug(f"[ci] Preserving cached file: {file_id}")
+                    # Update last accessed for LRU behavior
+                    cache.update_last_accessed(file_id)
+                    continue
+
+                # Delete the file
+                logger.debug(f"[ci] Deleting file: {file_id}")
                 await self.client.files.delete(file_id)
-                logger.debug(f"Cleaned up uploaded file: {file_id}")
+                logger.debug(f"[ci] Successfully deleted file: {file_id}")
+
             except Exception as e:
-                logger.warning(f"Failed to clean up file {file_id}: {e}")
+                if "404" in str(e) or "not found" in str(e).lower():
+                    logger.debug(
+                        f"[ci] File {file_id} already gone, cleaning cache"
+                    )
+                    # Clean up stale cache entry
+                    if cache:
+                        cache.invalidate_by_file_id(file_id)
+                else:
+                    logger.warning(
+                        f"[ci] Failed to delete file {file_id}: {e}"
+                    )
+
+        logger.debug("[ci] Cleanup complete")
 
     def validate_files_for_upload(self, files: List[str]) -> List[str]:
         """Validate files are suitable for Code Interpreter upload.

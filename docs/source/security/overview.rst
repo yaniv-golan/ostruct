@@ -182,6 +182,53 @@ ostruct prevents common path traversal attacks:
    # Use allowed directories for legitimate access outside project
    ostruct run template.j2 schema.json --allow /etc --file config /etc/config.yaml
 
+Path Security Warnings
+-----------------------
+
+When ostruct accesses files outside your project directory, it shows helpful security notices with actionable guidance:
+
+.. code-block:: text
+
+   🔒 Security Notice: Accessing downloaded file 'document.pdf' from /Users/you/Downloads
+      outside the current project directory.
+      To allow this directory: --allow '/Users/you/Downloads'
+      To allow this file only: --allow-file '/Users/you/Downloads/document.pdf'
+      To disable warnings: --path-security permissive
+
+**Warning Features:**
+
+- **Contextual Messages**: Identifies file types (document, data file, downloaded file)
+- **Actionable Guidance**: Shows exact CLI flags to resolve the warning
+- **Deduplication**: Each file triggers only one warning per session
+- **Thread-Safe**: Safe for concurrent file access scenarios
+
+**Configuration Options:**
+
+.. code-block:: yaml
+
+   # ostruct.yaml
+   security:
+     path_security: warn  # Options: permissive, warn, strict
+     suppress_path_warnings: false  # Disable repeated warnings
+     warning_summary: true  # Show summary at end of execution
+
+**Troubleshooting Security Warnings:**
+
+.. list-table:: Warning Solutions
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Problem
+     - Solution
+   * - "Accessing file outside project directory"
+     - Use ``--allow '/path/to/directory'`` to allow the directory
+   * - Need access to specific file only
+     - Use ``--allow-file '/path/to/file.txt'`` for single file access
+   * - Working with external files regularly
+     - Use ``--path-security permissive`` to disable warnings
+   * - Files are in project but still warned
+     - Check if files are symlinks to external locations
+
 Data Upload and Tool Security
 =============================
 

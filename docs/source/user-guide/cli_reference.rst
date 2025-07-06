@@ -48,6 +48,7 @@ File and Directory Management
 - ``-S, --path-security [permissive|warn|strict]``: Path security mode (default: warn)
 - ``--allow DIR``: Add an allowed directory for security (repeatable)
 - ``--allow-list FILE``: File containing allowed directory paths
+- ``--max-file-size SIZE``: Maximum file size for template processing (supports KB, MB, GB suffixes or "unlimited"/"none")
 
 **File Collection Options**:
 
@@ -124,6 +125,15 @@ Tool Integration
 - ``--fs-timeout FLOAT``: Timeout for vector store indexing (default: 60.0)
 - ``--fs-retries INT``: Number of retry attempts (default: 3)
 
+**Tool Choice**:
+
+- ``--tool-choice [auto|none|required|code-interpreter|file-search|web-search]``: Explicitly control how (or whether) tools are used in this run. The default *auto* behaviour lets
+  the model pick any advertised tool. Use **none** to disable tool calls entirely (template-only),
+  **required** to force that at least one tool is invoked, or specify a single tool name to restrict
+  the run to that tool alone (e.g. ``--tool-choice file-search``). This option overrides
+  ``--enable-tool/--disable-tool`` resolution but does not implicitly enable a tool that has been
+  disabled.
+
 Logging Configuration
 ---------------------
 
@@ -140,7 +150,7 @@ The CLI writes logs to the following files in ``~/.ostruct/logs/``:
    - ``--debug-validation``: Enable schema validation debug logging
 
 2. Environment variables (template processing limits):
-   - ``OSTRUCT_TEMPLATE_FILE_LIMIT``: Max individual file size for template access (default: 65536 bytes)
+   - ``OSTRUCT_TEMPLATE_FILE_LIMIT``: Max individual file size for template access (default: unlimited, supports size suffixes or "unlimited"/"none")
    - ``OSTRUCT_TEMPLATE_TOTAL_LIMIT``: Max total file size for template processing (default: 1048576 bytes)
    - ``OSTRUCT_TEMPLATE_PREVIEW_LIMIT``: Max characters in template debug previews (default: 4096)
 
@@ -153,7 +163,7 @@ Example:
 .. code-block:: bash
 
    # Set template processing limits
-   export OSTRUCT_TEMPLATE_FILE_LIMIT=131072  # 128KB
+   export OSTRUCT_TEMPLATE_FILE_LIMIT=128KB  # 128KB (or "unlimited"/"none" for no limit)
    export OSTRUCT_TEMPLATE_TOTAL_LIMIT=2097152  # 2MB
 
    # Configure gitignore behavior
@@ -342,6 +352,25 @@ The new system supports explicit targeting to specific tools:
      - ``fs``
      - Upload to File Search vector store for document retrieval
 
+Tool Token Consumption
+~~~~~~~~~~~~~~~~~~~~~~
+
+File Search and Code Interpreter tools consume additional tokens beyond your template content:
+
+**File Search:**
+- Automatically injects 15K-25K tokens of retrieved content per query
+- Multiple files = multiple content injections
+- Source: `OpenAI Community Discussion <https://community.openai.com/t/processing-large-documents-128k-limit/620347>`_
+
+**Code Interpreter:**
+- Base session cost: ~387 tokens per session
+- File processing overhead varies by operation
+- Source: `OpenAI Documentation <https://platform.openai.com/docs/assistants/tools/code-interpreter>`_
+
+**Token Validation:**
+ostruct validates that your template + template files fit within the context window.
+Tool files are not counted in this validation, but tools will consume additional tokens at runtime.
+
 Security Modes
 --------------
 
@@ -353,21 +382,38 @@ Control file access with enhanced security options:
 
    :param MODE: Security level (permissive, warn, strict)
 
-   - ``permissive``: Allow all file access (default)
-   - ``warn``: Allow with warnings for unauthorized paths
+   - ``permissive``: Allow all file access (no warnings)
+   - ``warn``: Allow with helpful security notices for external files (default)
    - ``strict``: Only allow explicitly permitted paths
+
+   **Warning behavior in warn mode:**
+
+   - Shows user-friendly security notices for files outside project directory
+   - Provides actionable CLI guidance (exact flags to resolve warnings)
+   - Deduplicates warnings (one warning per file per session)
+   - Includes contextual file type information (document, data file, etc.)
+   - Shows security summary at end if multiple external files accessed
 
 .. option:: --allow DIR
 
    Add allowed directory for security (can be used multiple times).
 
+   Grants access to the specified directory and all its contents.
+   Resolves security warnings for files within this directory.
+
 .. option:: --allow-file FILE
 
    Allow specific file access.
 
+   Grants access to one specific file only. More restrictive than ``--allow``
+   but useful when you need access to a single external file.
+
 .. option:: --allow-list FILE
 
    Load allowed paths from file.
+
+   Each line in the file should contain one directory path. Blank lines
+   and lines starting with ``#`` are ignored.
 
 Usage Examples
 ==============
@@ -738,6 +784,57 @@ Tool Configuration Options
       # Save outputs to custom directory
       ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-download-dir ./results
 
+Upload Cache Options
+--------------------
+
+.. seealso::
+   For comprehensive information about the upload cache system, including configuration, TTL management, and troubleshooting, see :doc:`upload_cache_guide`.
+
+.. option:: --cache-uploads / --no-cache-uploads
+
+   Enable or disable the persistent upload cache (default: enabled).
+
+   When enabled, ostruct caches uploaded files to avoid duplicate uploads
+   across runs, providing significant performance improvements.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Disable cache for this run
+      ostruct run template.j2 schema.json --no-cache-uploads
+
+      # Explicitly enable cache (default behavior)
+      ostruct run template.j2 schema.json --cache-uploads
+
+.. option:: --cache-preserve / --no-cache-preserve
+
+   Enable or disable TTL-based cache preservation (default: enabled).
+
+   When enabled, cached files are preserved for the configured TTL period.
+   When disabled, all cached files are deleted after each run.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Force cleanup of all cached files
+      ostruct run template.j2 schema.json --no-cache-preserve
+
+      # Use TTL-based preservation (default)
+      ostruct run template.j2 schema.json --cache-preserve
+
+.. option:: --cache-path PATH
+
+   Specify custom path for the upload cache database.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Use custom cache location
+      ostruct run template.j2 schema.json --cache-path ~/.my-cache/uploads.db
+
 Debug and Progress Options
 --------------------------
 
@@ -837,4 +934,5 @@ See Also
 * :doc:`examples` - Practical examples and use cases
 * :doc:`template_guide` - Template authoring guide
 * :doc:`template_quick_reference` - Template syntax reference
+* :doc:`upload_cache_guide` - Upload cache configuration and management
 * :doc:`tool_integration` - Multi-tool integration patterns

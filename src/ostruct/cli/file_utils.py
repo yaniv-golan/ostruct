@@ -426,9 +426,12 @@ def collect_files(
     )
 
     if security_manager is None:
-        security_manager = SecurityManager(base_dir=os.getcwd())
+        from .security.context import get_current_security_manager
+
+        security_manager = get_current_security_manager()
         logger.debug(
-            "Created default security manager with base_dir=%s", os.getcwd()
+            "Using global security manager with base_dir=%s",
+            security_manager.base_dir,
         )
     else:
         logger.debug(

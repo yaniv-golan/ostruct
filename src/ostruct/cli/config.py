@@ -31,9 +31,9 @@ class WebSearchToolConfig(BaseModel):
     @field_validator("search_context_size")
     @classmethod
     def validate_search_context_size(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in ["low", "medium", "high"]:
+        if v is not None and v not in ["small", "medium", "large"]:
             raise ValueError(
-                "search_context_size must be one of: low, medium, high"
+                "search_context_size must be one of: small, medium, large"
             )
         return v
 
@@ -50,6 +50,44 @@ class FileCollectionConfig(BaseModel):
     def validate_gitignore_file(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and not Path(v).exists():
             logger.warning(f"Gitignore file not found: {v}")
+        return v
+
+
+class TemplateConfig(BaseModel):
+    """Configuration for template processing behavior."""
+
+    max_file_size: Optional[int] = Field(
+        default=None,
+        description="Maximum individual file size for template access in bytes. None means no limit.",
+    )
+    max_total_size: Optional[int] = Field(
+        default=None,
+        description="Maximum total file size for all template files in bytes. None means no limit.",
+    )
+    preview_limit: int = Field(
+        default=4096,
+        description="Maximum characters shown in template debugging previews",
+    )
+
+    @field_validator("max_file_size")
+    @classmethod
+    def validate_max_file_size(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("max_file_size must be non-negative or None")
+        return v
+
+    @field_validator("max_total_size")
+    @classmethod
+    def validate_max_total_size(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("max_total_size must be non-negative or None")
+        return v
+
+    @field_validator("preview_limit")
+    @classmethod
+    def validate_preview_limit(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("preview_limit must be non-negative")
         return v
 
 
@@ -90,6 +128,33 @@ class OperationConfig(BaseModel):
         return v
 
 
+class UploadConfig(BaseModel):
+    """Configuration for upload and cache behavior."""
+
+    persistent_cache: bool = True
+    preserve_cached_files: bool = True
+    cache_max_age_days: int = 14
+    cache_path: Optional[str] = None
+    hash_algorithm: str = "sha256"
+
+    @field_validator("cache_max_age_days")
+    @classmethod
+    def validate_cache_max_age_days(cls, v: int) -> int:
+        """Validate cache_max_age_days is non-negative."""
+        if v < 0:
+            raise ValueError("cache_max_age_days must be non-negative")
+        return v
+
+    @field_validator("hash_algorithm")
+    @classmethod
+    def validate_hash_algorithm(cls, v: str) -> str:
+        """Validate hash_algorithm is supported."""
+        supported = {"sha256", "sha1", "md5"}
+        if v not in supported:
+            raise ValueError(f"hash_algorithm must be one of: {supported}")
+        return v
+
+
 class LimitsConfig(BaseModel):
     """Configuration for cost and operation limits."""
 
@@ -107,9 +172,15 @@ class OstructConfig(BaseModel):
     file_collection: FileCollectionConfig = Field(
         default_factory=FileCollectionConfig
     )
+    template: TemplateConfig = Field(default_factory=TemplateConfig)
+    uploads: UploadConfig = Field(default_factory=UploadConfig)
     mcp: Dict[str, str] = Field(default_factory=dict)
     operation: OperationConfig = Field(default_factory=OperationConfig)
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
+    json_parsing_strategy: str = Field(
+        default=DefaultConfig.JSON_PARSING_STRATEGY,
+        description="Strategy for JSON parsing: 'strict' (fail on malformed JSON) or 'robust' (handle OpenAI API duplication bugs)",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -127,6 +198,18 @@ class OstructConfig(BaseModel):
                         raise ValueError(
                             "download_strategy must be 'single_pass' or 'two_pass_sentinel'"
                         )
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_json_parsing_strategy(cls, values: Any) -> Any:
+        """Validate json_parsing_strategy configuration."""
+        if isinstance(values, dict):
+            strategy = values.get("json_parsing_strategy", "robust")
+            if strategy not in {"strict", "robust"}:
+                raise ValueError(
+                    "json_parsing_strategy must be 'strict' or 'robust'"
+                )
         return values
 
     @classmethod
@@ -215,6 +298,104 @@ class OstructConfig(BaseModel):
         if gitignore_file_env:
             file_collection_config["gitignore_file"] = gitignore_file_env
 
+        # Template processing environment variables
+        template_config = config_data.setdefault("template", {})
+
+        # OSTRUCT_MAX_FILE_SIZE environment variable (new)
+        max_file_size_env = os.getenv("OSTRUCT_MAX_FILE_SIZE")
+        if max_file_size_env is not None:
+            try:
+                if max_file_size_env.lower() in ("none", "unlimited", ""):
+                    template_config["max_file_size"] = None
+                else:
+                    template_config["max_file_size"] = int(max_file_size_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_MAX_FILE_SIZE value '{max_file_size_env}', ignoring"
+                )
+
+        # Legacy environment variable support (OSTRUCT_TEMPLATE_FILE_LIMIT)
+        # Only use if new variable is not set
+        if "max_file_size" not in template_config:
+            legacy_limit_env = os.getenv("OSTRUCT_TEMPLATE_FILE_LIMIT")
+            if legacy_limit_env is not None:
+                try:
+                    template_config["max_file_size"] = int(legacy_limit_env)
+                    logger.warning(
+                        "OSTRUCT_TEMPLATE_FILE_LIMIT is deprecated, use OSTRUCT_MAX_FILE_SIZE instead"
+                    )
+                except ValueError:
+                    logger.warning(
+                        f"Invalid OSTRUCT_TEMPLATE_FILE_LIMIT value '{legacy_limit_env}', ignoring"
+                    )
+
+        # OSTRUCT_TEMPLATE_TOTAL_LIMIT environment variable
+        total_limit_env = os.getenv("OSTRUCT_TEMPLATE_TOTAL_LIMIT")
+        if total_limit_env is not None:
+            try:
+                if total_limit_env.lower() in ("none", "unlimited", ""):
+                    template_config["max_total_size"] = None
+                else:
+                    template_config["max_total_size"] = int(total_limit_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_TEMPLATE_TOTAL_LIMIT value '{total_limit_env}', ignoring"
+                )
+
+        # OSTRUCT_TEMPLATE_PREVIEW_LIMIT environment variable
+        preview_limit_env = os.getenv("OSTRUCT_TEMPLATE_PREVIEW_LIMIT")
+        if preview_limit_env is not None:
+            try:
+                template_config["preview_limit"] = int(preview_limit_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_TEMPLATE_PREVIEW_LIMIT value '{preview_limit_env}', ignoring"
+                )
+
+        # Upload configuration environment variables
+        upload_config = config_data.setdefault("uploads", {})
+
+        # OSTRUCT_CACHE_UPLOADS environment variable
+        cache_uploads_env = os.getenv("OSTRUCT_CACHE_UPLOADS")
+        if cache_uploads_env is not None:
+            upload_config["persistent_cache"] = cache_uploads_env.lower() in (
+                "true",
+                "1",
+                "yes",
+            )
+
+        # OSTRUCT_PRESERVE_CACHED_FILES environment variable
+        preserve_cached_env = os.getenv("OSTRUCT_PRESERVE_CACHED_FILES")
+        if preserve_cached_env is not None:
+            upload_config["preserve_cached_files"] = (
+                preserve_cached_env.lower() in ("true", "1", "yes")
+            )
+
+        # OSTRUCT_CACHE_MAX_AGE_DAYS environment variable
+        cache_max_age_env = os.getenv("OSTRUCT_CACHE_MAX_AGE_DAYS")
+        if cache_max_age_env is not None:
+            try:
+                upload_config["cache_max_age_days"] = int(cache_max_age_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_CACHE_MAX_AGE_DAYS value '{cache_max_age_env}', ignoring"
+                )
+
+        # OSTRUCT_CACHE_PATH environment variable
+        cache_path_env = os.getenv("OSTRUCT_CACHE_PATH")
+        if cache_path_env:
+            upload_config["cache_path"] = cache_path_env
+
+        # JSON parsing strategy environment variable
+        json_parsing_env = os.getenv("OSTRUCT_JSON_PARSING_STRATEGY")
+        if json_parsing_env is not None:
+            if json_parsing_env.lower() in ("strict", "robust"):
+                config_data["json_parsing_strategy"] = json_parsing_env.lower()
+            else:
+                logger.warning(
+                    f"Invalid OSTRUCT_JSON_PARSING_STRATEGY value '{json_parsing_env}', ignoring"
+                )
+
         # Built-in MCP server shortcuts
         builtin_servers = {
             "stripe": "https://mcp.stripe.com",
@@ -253,6 +434,14 @@ class OstructConfig(BaseModel):
         """Get file collection configuration."""
         return self.file_collection
 
+    def get_template_config(self) -> TemplateConfig:
+        """Get template processing configuration."""
+        return self.template
+
+    def get_upload_config(self) -> UploadConfig:
+        """Get upload and cache configuration."""
+        return self.uploads
+
     def should_require_approval(self, cost_estimate: float = 0.0) -> bool:
         """Determine if approval should be required for an operation."""
         if self.operation.require_approval == "always":
@@ -284,6 +473,29 @@ def create_example_config() -> str:
 # Model configuration
 models:
   default: gpt-4o  # Default model to use
+
+# Upload configuration
+uploads:
+  # Enable persistent upload cache (default: true)
+  # Files are uploaded only once across all runs
+  persistent_cache: true
+
+  # Preserve cached files during cleanup (default: true)
+  # TTL-based cache cleanup to manage storage costs
+  preserve_cached_files: true
+
+  # Maximum age for cached files in days (default: 14)
+  # Two-week window covers typical sprint cycles while keeping
+  # embedded storage fees <$0.02 per 100MB
+  cache_max_age_days: 14
+
+  # Custom cache path (optional)
+  # Default: platform-specific cache directory
+  # cache_path: ~/.cache/ostruct/uploads.db
+
+  # Hash algorithm for deduplication (default: sha256)
+  # Options: sha256, sha1, md5
+  hash_algorithm: sha256
 
 # Tool-specific settings
 tools:

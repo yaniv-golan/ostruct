@@ -19,6 +19,7 @@ from .errors import (
     SchemaValidationError,
 )
 from .exit_codes import ExitCode
+from .file_info import FileRoutingIntent
 from .model_creation import create_dynamic_model
 from .schema_utils import supports_structured_output
 from .token_validation import validate_token_limits
@@ -149,11 +150,20 @@ async def validate_model_and_schema(
         {"role": "user", "content": user_prompt},
     ]
 
-    # Token validation - extract file paths from FileInfo objects
+    # Token validation - only count files with TEMPLATE_ONLY routing intent
     files = template_context.get("files", [])
-    file_paths = [str(f.path) if hasattr(f, "path") else str(f) for f in files]
+    template_files = []
+
+    for file_info in files:
+        routing_intent = getattr(file_info, "routing_intent", None)
+        if routing_intent == FileRoutingIntent.TEMPLATE_ONLY:
+            template_files.append(str(file_info.path))
+        # Tool files (FILE_SEARCH, CODE_INTERPRETER) are ignored for token validation
+
     combined_template_content = system_prompt + user_prompt
-    validate_token_limits(combined_template_content, file_paths, args["model"])
+    validate_token_limits(
+        combined_template_content, template_files, args["model"]
+    )
 
     # For now, simplified token counting - the full implementation needs more imports
     total_tokens = len(system_prompt) + len(user_prompt)  # Rough estimate

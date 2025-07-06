@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.2.0] - 2025-07-06
+
+(Minor-breaking change: default template file-size limit raised from 64 KB to unlimited; see "Changed" section.)
+
+### Added
+
+- **User-Visible Cache Indicators**: Enhanced user experience with clear feedback on upload cache usage:
+  - **Progress Indicators**: Cache hits displayed as "♻️ Reusing cached upload for..." with file age and hash information in detailed mode
+  - **End-of-Run Summary**: Cache performance summary showing hit/miss rate, space saved estimates, and cache database location
+  - **Non-Intrusive Design**: Cache information appears only when relevant, maintaining clean output for cache-disabled workflows
+  - **Detailed Mode Support**: Enhanced cache hit reporting with file hash and age information via `--verbose` flag
+
+- **Configurable JSON Parsing Strategy**: Robust handling of OpenAI API duplication bugs with user control:
+  - **Automatic Recovery**: Default "robust" mode automatically handles OpenAI's intermittent JSON duplication bug where responses contain duplicate concatenated objects
+  - **Configuration Options**: `json_parsing_strategy` setting in `ostruct.yaml` and `OSTRUCT_JSON_PARSING_STRATEGY` environment variable
+  - **Strict Mode**: Optional "strict" mode for environments requiring strict JSON validation (fails on malformed JSON)
+  - **Community References**: Includes links to OpenAI community discussions about the duplication issue
+  - **Comprehensive Documentation**: New known issue document with technical details, workaround implementation, and removal plan
+
+- **Upload Cache System**: Comprehensive persistent caching system for Code Interpreter and File Search uploads:
+  - **SQLite Backend**: Hash-based file deduplication with cross-platform support and corruption recovery
+  - **TTL Management**: Configurable cache lifetime with automatic expiration and cleanup
+  - **CLI Integration**: New `--cache-uploads/--no-cache-uploads` flag and `--cache-path` option for cache configuration
+  - **Configuration Support**: Environment variables (`OSTRUCT_CACHE_*`) and `ostruct.yaml` settings for persistent cache behavior
+  - **Performance Benefits**: Eliminates redundant uploads for frequently used files across sessions
+  - **Cache Statistics**: Comprehensive monitoring and reporting of cache performance and storage usage
+  - **Thread Safety**: Robust concurrent access handling for multi-tool scenarios
+
+- **--tool-choice** CLI flag allowing explicit control over assistant tool usage (values: `auto`, `none`, `required`, `code-interpreter`, `file-search`, `web-search`).
+- **Documentation and tests for the new flag.
+
+### Changed
+
+- **Breaking: File Size Limit Configuration**: Changed default behavior for file size limits in template processing:
+  - **Default Changed**: `OSTRUCT_TEMPLATE_FILE_LIMIT` environment variable default changed from 64KB to unlimited
+  - **New Semantic Values**: Environment variable now supports "unlimited", "none", and empty string (all meaning no limit)
+  - **CLI Option Added**: New `--max-file-size` option with size suffixes (KB, MB, GB) and semantic values
+  - **Configuration Support**: Added `template.max_file_size` setting in `ostruct.yaml` for persistent configuration
+  - **Enhanced Tool Integration**: Templates now automatically receive `file_search_enabled` variable for conditional logic
+  - **Migration**: Users who need the old 64KB limit should set `OSTRUCT_TEMPLATE_FILE_LIMIT=64KB` or use `--max-file-size 64KB`
+
+### Improved
+
+- **Path Security Warnings**: Enhanced user experience for file access warnings with comprehensive improvements:
+  - **User-Friendly Messages**: Replaced technical "PathOutsidePolicy" warnings with clear, actionable security notices
+  - **Contextual Guidance**: Warnings now include specific CLI flags (--allow, --allow-file, --path-security) to resolve the issue
+  - **Smart Deduplication**: Each external file triggers only one warning per session, eliminating repetitive warning spam
+  - **File Type Detection**: Contextual messages identify file types (document, data file, downloaded file) for better user understanding
+  - **Configuration Support**: Added ostruct.yaml configuration options for warning behavior (suppress_path_warnings, warning_summary)
+  - **Thread Safety**: Warning system is safe for concurrent file access scenarios
+
+### Fixed
+
+- **Token Validation for Multi-Tool Scenarios**: Fixed context window validation bug that incorrectly counted tool files (Code Interpreter, File Search) as template content:
+  - **Accurate Token Counting**: Tool files are now excluded from context window validation as they consume tokens differently than template files
+  - **Multi-Tool Support**: Complex workflows with --file ci: and --file fs: attachments no longer fail with false "context window exceeded" errors
+  - **Backward Compatibility**: Template-only files continue to be validated normally for context window limits
+  - **Documentation**: Added comprehensive documentation explaining tool token consumption behavior
+
 ## [1.1.0] - 2025-06-30
 
 ### Added
@@ -762,3 +823,81 @@ For a comprehensive migration guide with examples and automated migration script
 [0.4.0]: https://github.com/yaniv-golan/ostruct/compare/v0.3.0...v0.4.0
 
 [0.5.0]: https://github.com/yaniv-golan/ostruct/compare/v0.4.0...v0.5.0
+
+## [3.2.0] - 2025-01-01
+
+### 🚨 BREAKING CHANGES
+
+#### Template File Size Limits
+
+- **Changed default behavior**: `OSTRUCT_TEMPLATE_FILE_LIMIT` now defaults to **unlimited** (was 64KB)
+- **Reason**: The 64KB limit was artificially restricting template processing and preventing users from taking full advantage of large context windows
+- **Migration**: If you need the old 64KB limit, set `OSTRUCT_TEMPLATE_FILE_LIMIT=65536` in your environment or config
+
+### Added
+
+- **Enhanced file size configuration**:
+  - `--max-file-size` CLI option with support for size suffixes (KB, MB, GB)
+  - Support for semantic values: `unlimited`, `none`, empty string for no limit
+  - Configurable limits via CLI args, environment variables, and config files
+  - Early validation in dry-run mode
+
+- **Improved template tool integration**:
+  - Automatic `file_search_enabled` variable detection
+  - Enhanced AIF template with conditional multi-tool instructions
+  - Better variable naming: `argument_file` (clearer than `argument_text`)
+  - Smart content access for large documents
+
+- **Better error handling**:
+  - Clear warning messages for files exceeding limits
+  - Graceful degradation with lazy loading
+  - Informative error messages with suggested solutions
+
+### Changed
+
+- **Template processing**: Now supports unlimited file sizes by default
+- **File size validation**: Enhanced to handle `None` values (unlimited)
+- **Environment variable behavior**: `OSTRUCT_TEMPLATE_FILE_LIMIT` supports new semantic values
+
+### Fixed
+
+- **Large document processing**: Files over 64KB can now be processed directly
+- **Tool variable detection**: `file_search_enabled` now properly set based on routing
+- **Configuration consistency**: All file size settings now use consistent `None` for unlimited
+
+### Technical Details
+
+#### Core Changes
+
+1. **LazyFileContent**: Enhanced `_get_default_max_size()` to return `None` by default
+2. **Template Processor**: Added `file_search_enabled` to `_build_tool_context()`
+3. **File Size Validator**: Updated to handle `None` values properly
+4. **CLI Integration**: Added `--max-file-size` parameter with validation
+
+#### Backward Compatibility
+
+- Existing templates continue to work unchanged
+- Legacy environment variable values still supported
+- Graceful handling of invalid configuration values
+
+#### Migration Examples
+
+```bash
+# Before (would fail for large files)
+ostruct run template.j2 schema.json --file data large_document.pdf
+# Error: File too large: 444,416 bytes > 65,536 bytes
+
+# After (works by default)
+ostruct run template.j2 schema.json --file data large_document.pdf
+# ✅ Processes successfully
+
+# To restore old behavior
+OSTRUCT_TEMPLATE_FILE_LIMIT=65536 ostruct run template.j2 schema.json --file data document.pdf
+
+# Or use CLI option
+ostruct run template.j2 schema.json --file data document.pdf --max-file-size 64KB
+```
+
+## [3.1.0] - Previous Release
+
+### Previous changes

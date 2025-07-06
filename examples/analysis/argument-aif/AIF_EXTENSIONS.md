@@ -1,83 +1,234 @@
-# AIF Visualization Extensions
+# Enhanced AIF with F-Node Support
 
-This example now supports **AIF Extensions** for enhanced visualization while maintaining full compatibility with standard AIF viewers and the AIFdb specification.
+This example implements a **rich, AIF-inspired argument graph extraction system** that captures formal argument schemes (F-nodes), enhanced metadata, and advanced argumentative structures while maintaining compatibility with standard AIF viewers.
 
-## What are AIF Extensions?
+## What is Enhanced AIF?
 
-AIF (Argument Interchange Format) was designed with a "Core concepts, multiple extensions" architecture. The core AIF specification defines the fundamental node types (I, RA, CA, PA, MA) and edge structure, while extensions add specialized attributes for particular domains or applications.
+Enhanced AIF extends the core Argument Interchange Format (AIF) specification with:
 
-Our **visualization-v1.0** extension adds optional attributes that enhance diagram generation without breaking AIF compatibility.
+1. **F-Node Support**: Formal argument schemes (schemeNodes array)
+2. **Rich Metadata**: Location tracking, roles, strength indicators
+3. **Advanced Relationships**: Expanded edge types for nuanced argument analysis
+4. **Participant Modeling**: Enhanced locutions and participant structures
+5. **Quality Validation**: Built-in metrics for extraction assessment
 
-## Extension Attributes
+## Schema Enhancements
 
-### Node Extensions
+### 1. Scheme Nodes (F-Nodes)
 
-**displayName** (string, max 60 chars)
+**schemeNodes** array - Formal argument schemes
 
-- Short, readable version of the node text for compact visualization
-- Example: `"Scientists agree on climate change"` instead of full text
-- Falls back to truncated text if not provided
+```json
+{
+  "schemeNodes": [
+    {
+      "schemeID": "S1",
+      "schemeName": "Argument from Authority",
+      "schemeGroup": "defeasible",
+      "description": "Argument based on expert testimony",
+      "criticalQuestions": [
+        "Is the authority a legitimate expert?",
+        "Is there agreement among experts?"
+      ]
+    }
+  ]
+}
+```
 
-**category** (string)
+**Supported Scheme Types**:
 
-- Semantic category for enhanced styling and icons
-- Values: `"premise"`, `"conclusion"`, `"inference"`, `"conflict"`, `"preference"`, `"evidence"`, `"assumption"`
-- Provides more nuanced visualization than just AIF node types
+- **Deductive**: Modus Ponens, Modus Tollens, Hypothetical Syllogism
+- **Defeasible**: Authority, Analogy, Causal, Practical Reasoning
+- **Inductive**: Generalization, Statistical, Example
+- **Abductive**: Best Explanation, Diagnostic
 
-**strength** (number, 0.0-1.0)
+### 2. Enhanced Node Properties
 
-- Argument confidence/weight for potential future enhancements
-- 0.9-1.0: Strong/certain claims
-- 0.7-0.8: Moderate confidence
-- 0.5-0.6: Weak/uncertain claims
+**Core Extensions**:
 
-### Edge Extensions
+```json
+{
+  "nodeID": "1",
+  "text": "Climate scientists agree on warming",
+  "type": "I",
+  "category": "evidence",           // NEW: Semantic category
+  "role": "supporting_evidence",    // NEW: Argumentative role
+  "strength": 0.9,                 // NEW: Confidence level
+  "schemeID": "S1",                // NEW: Links to scheme
+  "section": "Introduction",        // NEW: Document structure
+  "para": 2,                       // NEW: Paragraph number
+  "offsetStart": 45,               // NEW: Character position
+  "offsetEnd": 78                  // NEW: Character position
+}
+```
 
-**relationshipType** (string)
+**Role Classifications**:
 
-- Semantic relationship type for enhanced edge visualization
-- Values: `"supports"`, `"conflicts"`, `"infers"`, `"attacks"`, `"relates"`
-- Enables semantic edge styling and labels
+- `main_thesis`, `sub_thesis`, `supporting_claim`, `counter_claim`
+- `evidence`, `example`, `analogy`, `assumption`, `background`
+- `objection`, `rebuttal`, `concession`, `qualification`
 
-## Enhanced Visualization Features
+### 3. Advanced Edge Types
 
-### Node Styling by Category
+**Extended Relationships**:
 
-- **premise**: Blue styling with 💬 icon
-- **evidence**: Green styling with 💬 icon
-- **conclusion**: Dark green styling with 🎯 icon
-- **inference**: Green styling with ✅ icon
-- **conflict**: Pink styling with ⚔️ icon
-- **preference**: Orange styling with ⭐ icon
-- **assumption**: Purple styling with 🔗 icon
+```json
+{
+  "edgeID": "1",
+  "fromID": "1",
+  "toID": "2",
+  "relationshipType": "supports",   // Enhanced semantic types
+  "weight": 0.8,                   // Relationship strength
+  "formEdgeID": "S1"               // Links to scheme when applicable
+}
+```
 
-### Edge Styling by Relationship
+**Relationship Types**:
 
-- **supports**: Dotted arrows `-.->|"supports"|`
-- **conflicts**: Dotted arrows `-.->|"conflicts"|`
-- **infers**: Thick arrows `==>|"infers"|`
-- **attacks**: Thick arrows `==>|"attacks"|`
-- **relates**: Solid arrows `-->|"relates"|`
+- **supports**, **attacks**, **infers** (core AIF)
+- **assumes**, **exemplifies**, **questions** (new)
+- **references**, **asserts**, **relates** (new)
 
-## Example Output
+### 4. Enhanced Locutions
+
+**Participant-Node Linking**:
+
+```json
+{
+  "locutions": [
+    {
+      "locutionID": "L1",
+      "participantID": "P1",
+      "nodeID": "1",
+      "timestamp": "2024-01-01T12:00:00Z",
+      "section": "Introduction",     // NEW: Document location
+      "sourceSentence": "Sentence 3" // NEW: Source reference
+    }
+  ],
+  "participants": [
+    {
+      "participantID": "P1",
+      "name": "Author",
+      "role": "primary_author",      // NEW: Participant role
+      "affiliation": "University"    // NEW: Institutional context
+    }
+  ]
+}
+```
+
+## Quality Validation System
+
+### Built-in Metrics
+
+The enhanced system includes comprehensive quality validation:
+
+```bash
+# Run quality validation
+./scripts/validate_extraction.sh output/result.json texts/source.txt
+```
+
+**Quality Benchmarks**:
+
+- **Scheme Detection**: >80% of RA/CA nodes should have schemes
+- **Location Tracking**: >70% of nodes should have section/paragraph info
+- **Graph Connectivity**: No isolated nodes
+- **Locution Completeness**: All I-nodes should have locutions
+- **Hallucination Detection**: Monitor [Implied] content markers
+
+### Extraction Density Guidelines
+
+- **Simple texts**: 20-40 nodes per 1000 words
+- **Academic papers**: 40-60 nodes per 1000 words
+- **Complex arguments**: 60-80 nodes per 1000 words
+
+## Model Requirements
+
+### Recommended Models
+
+- **GPT-4 Turbo**: Best overall performance
+- **GPT-4o**: Excellent for complex schemes
+- **Claude-3 Opus**: Strong logical reasoning
+
+### Single-Prompt Approach
+
+The enhanced system uses a single, comprehensive prompt with:
+
+- **Self-verification rules** to reduce hallucination
+- **Comprehensive extraction guidelines** for consistency
+- **Quality benchmarks** built into the prompt
+- **Scheme detection training** with examples
+
+## Usage Examples
+
+### Basic Extraction
+
+```bash
+# Extract argument graph from text
+ostruct run templates/main.j2 schemas/main.json \
+  -V argument_text="$(cat your_text.txt)" \
+  > output/result.json
+
+# Validate quality
+./scripts/validate_extraction.sh output/result.json your_text.txt
+```
+
+### Testing Different Texts
+
+```bash
+# Test with pre-built examples
+ostruct run templates/main.j2 schemas/main.json \
+  -V argument_text="$(cat texts/authority_argument.txt)" \
+  > output/authority_test.json
+
+ostruct run templates/main.j2 schemas/main.json \
+  -V argument_text="$(cat texts/causal_argument.txt)" \
+  > output/causal_test.json
+```
+
+## Example Output Structure
 
 ```json
 {
   "AIF": {
     "version": "1.0",
-    "analyst": "AI Assistant",
-    "created": "2024-01-01T00:00:00Z",
-    "extensions": ["visualization-v1.0"]
+    "analyst": "Enhanced AIF Extractor",
+    "created": "2024-01-01T12:00:00Z",
+    "extensions": ["f-nodes-v1", "metadata-v1"]
   },
   "nodes": [
     {
       "nodeID": "1",
-      "text": "Climate change is real because 97% of scientists agree.",
+      "text": "Software testing prevents costly bugs",
       "type": "I",
-      "timestamp": "2024-01-01T00:00:00Z",
-      "displayName": "Scientists agree on climate change",
       "category": "premise",
-      "strength": 0.9
+      "role": "supporting_claim",
+      "strength": 0.9,
+      "section": "Introduction",
+      "para": 1,
+      "offsetStart": 0,
+      "offsetEnd": 35
+    },
+    {
+      "nodeID": "2",
+      "text": "Therefore, we should invest in testing",
+      "type": "RA",
+      "category": "inference",
+      "schemeID": "S1",
+      "para": 1,
+      "offsetStart": 36,
+      "offsetEnd": 74
+    }
+  ],
+  "schemeNodes": [
+    {
+      "schemeID": "S1",
+      "schemeName": "Practical Reasoning",
+      "schemeGroup": "defeasible",
+      "description": "Argument from consequences to action",
+      "criticalQuestions": [
+        "Are the consequences desirable?",
+        "Are there alternative actions?"
+      ]
     }
   ],
   "edges": [
@@ -85,8 +236,25 @@ Our **visualization-v1.0** extension adds optional attributes that enhance diagr
       "edgeID": "1",
       "fromID": "1",
       "toID": "2",
-      "formEdgeID": "",
-      "relationshipType": "supports"
+      "relationshipType": "supports",
+      "weight": 0.9,
+      "formEdgeID": "S1"
+    }
+  ],
+  "locutions": [
+    {
+      "locutionID": "L1",
+      "participantID": "P1",
+      "nodeID": "1",
+      "timestamp": "2024-01-01T12:00:00Z",
+      "section": "Introduction"
+    }
+  ],
+  "participants": [
+    {
+      "participantID": "P1",
+      "name": "Author",
+      "role": "primary_author"
     }
   ]
 }
@@ -94,28 +262,40 @@ Our **visualization-v1.0** extension adds optional attributes that enhance diagr
 
 ## Backward Compatibility
 
-- **Standard AIF viewers**: Extension attributes are ignored, core AIF structure works normally
-- **Enhanced viewers**: Can utilize extension attributes for richer visualization
-- **AIFdb compliance**: Fully compliant with AIFdb specification
-- **Fallback behavior**: Visualization script works with or without extensions
+- **Standard AIF Tools**: Core structure (nodes, edges) remains compatible
+- **AIFdb Integration**: Can import/export core AIF components
+- **Graceful Degradation**: Enhanced features are additive, not breaking
+- **Extension Mechanism**: Follows AIF's intended extensibility design
 
-## Usage
+## File Structure
 
-The extensions are automatically generated when using the enhanced prompt template:
-
-```bash
-# Generate AIF with extensions and enhanced visualization
-make run TEXT=your_text.txt
-
-# View results
-open output/your_text.svg
+```
+examples/analysis/argument-aif/
+├── schemas/main.json           # Enhanced AIF schema
+├── templates/main.j2           # Rich extraction prompt
+├── scripts/validate_extraction.sh  # Quality validation
+├── texts/                      # Test cases
+│   ├── test_1page.txt         # Simple argument
+│   ├── causal_argument.txt    # Causal reasoning
+│   └── authority_argument.txt # Argument from authority
+├── output/                     # Generated results
+└── AIF_EXTENSIONS.md          # This documentation
 ```
 
-## Technical Implementation
+## Quality Features
 
-1. **Schema**: Extended to allow optional extension attributes
-2. **Template**: Enhanced to generate extension attributes alongside core AIF
-3. **Visualization**: Updated to use extension attributes with fallbacks
-4. **Compliance**: Maintains full AIFdb compatibility
+### Self-Verification
 
-This approach follows the AIF specification's intended extensibility mechanism, allowing for enhanced visualization while preserving interoperability with standard AIF tools.
+- **Grounding checks**: All text must come from source
+- **Scheme validation**: SchemeIDs must reference existing schemes
+- **Connectivity validation**: No isolated nodes
+- **Role consistency**: Roles must match node types
+
+### Anti-Hallucination
+
+- **[Implied] markers** for inferred content
+- **Source grounding** for all claims
+- **Conservative extraction** approach
+- **Validation benchmarks** in prompt
+
+This enhanced AIF system provides research-grade argument graph extraction while maintaining practical usability and compatibility with existing AIF tools.

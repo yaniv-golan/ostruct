@@ -1,0 +1,138 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "embeddings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "node_id": {
+                        "type": "string"
+                    },
+                    "vector": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "minItems": 384,
+                        "maxItems": 1536,
+                        "description": "Full embedding vector (stored separately from main graph)"
+                    },
+                    "similarity_scores": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "target_node": {
+                                    "type": "string"
+                                },
+                                "similarity": {
+                                    "type": "number",
+                                    "minimum": 0.0,
+                                    "maximum": 1.0
+                                }
+                            },
+                            "required": [
+                                "target_node",
+                                "similarity"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "maxItems": 10,
+                        "description": "Top 10 most similar nodes"
+                    },
+                    "cluster_assignment": {
+                        "type": "object",
+                        "properties": {
+                            "cluster_id": {
+                                "type": "integer"
+                            },
+                            "cluster_label": {
+                                "type": "string"
+                            },
+                            "centrality_score": {
+                                "type": "number",
+                                "minimum": 0.0,
+                                "maximum": 1.0
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "node_id",
+                    "vector"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "clusters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "member_nodes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "centroid": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    },
+                    "coherence_score": {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    }
+                },
+                "required": [
+                    "id",
+                    "label",
+                    "member_nodes"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "embedding_model": {
+                    "type": "string"
+                },
+                "vector_dimension": {
+                    "type": "integer"
+                },
+                "total_nodes": {
+                    "type": "integer"
+                },
+                "clustering_method": {
+                    "type": "string"
+                },
+                "similarity_threshold": {
+                    "type": "number"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "required": [
+        "embeddings",
+        "clusters",
+        "metadata"
+    ],
+    "additionalProperties": false
+}

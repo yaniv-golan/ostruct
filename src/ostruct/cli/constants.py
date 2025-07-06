@@ -21,6 +21,11 @@ class DefaultConfig:
     # Model defaults
     DEFAULT_MODEL: str = "gpt-4.1"
 
+    # JSON parsing defaults
+    JSON_PARSING_STRATEGY: str = (
+        "robust"  # Enable duplication handling by default
+    )
+
     # Code Interpreter defaults
     CODE_INTERPRETER: Dict[str, Any] = {
         "auto_download": True,
@@ -52,8 +57,8 @@ class DefaultConfig:
     # Template processing defaults
     TEMPLATE: Dict[str, Any] = {
         "system_prompt": "You are a helpful assistant.",
-        "file_limit": 65536,  # 64KB
-        "total_limit": 1048576,  # 1MB
+        "max_file_size": None,  # No limit by default (was 64KB)
+        "max_total_size": None,  # No limit by default (was 1MB)
         "preview_limit": 4096,  # 4KB
     }
 
@@ -84,6 +89,7 @@ class EnvVars:
     OSTRUCT_TEMPLATE_FILE_LIMIT = "OSTRUCT_TEMPLATE_FILE_LIMIT"
     OSTRUCT_TEMPLATE_TOTAL_LIMIT = "OSTRUCT_TEMPLATE_TOTAL_LIMIT"
     OSTRUCT_TEMPLATE_PREVIEW_LIMIT = "OSTRUCT_TEMPLATE_PREVIEW_LIMIT"
+    OSTRUCT_JSON_PARSING_STRATEGY = "OSTRUCT_JSON_PARSING_STRATEGY"
 
     # MCP URL pattern: OSTRUCT_MCP_URL_<name>
     MCP_URL_PREFIX = "OSTRUCT_MCP_URL_"

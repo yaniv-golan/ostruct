@@ -89,3 +89,6 @@ class CLIParams(TypedDict, total=False):
     # Gitignore support
     ignore_gitignore: bool
     gitignore_file: Optional[str]
+
+    # Template processing configuration
+    max_file_size: Optional[int]

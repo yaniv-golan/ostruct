@@ -6,7 +6,7 @@ decorator-based API.
 """
 
 import logging
-from typing import Any, Callable, List, TypeVar, Union, cast
+from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
 import click
 from click import Command
@@ -19,7 +19,7 @@ from ostruct.cli.errors import (  # noqa: F401 - Used in error handling
 )
 from ostruct.cli.validators import validate_json_variable, validate_variable
 
-from .constants import DefaultPaths
+from .constants import DefaultConfig, DefaultPaths
 from .help_json import print_command_help_json as print_help_json
 
 P = ParamSpec("P")
@@ -248,7 +248,7 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
     model_choice = create_model_choice()
 
     # Ensure default is in the list
-    default_model = "gpt-4o"
+    default_model = DefaultConfig.DEFAULT_MODEL
     choices_list = list(model_choice.choices)
     if default_model not in choices_list and choices_list:
         default_model = choices_list[0]
@@ -637,6 +637,23 @@ def tool_toggle_options(f: Union[Command, Callable[..., Any]]) -> Command:
         Available tools: code-interpreter, file-search, web-search, mcp
         Example: --enable-tool code-interpreter --enable-tool web-search""",
         ),
+        click.option(
+            "--tool-choice",
+            type=click.Choice(
+                [
+                    "auto",
+                    "none",
+                    "required",
+                    "code-interpreter",
+                    "file-search",
+                    "web-search",
+                ],
+                case_sensitive=False,
+            ),
+            default="auto",
+            show_default=True,
+            help="""🔧 [TOOL TOGGLES] Explicit tool selection strategy.\n            Values:\n            - auto (default): let the model decide\n            - none: disable all tools (template only)\n            - required: force the model to call at least one tool\n            - code-interpreter / file-search / web-search: force that single tool only""",
+        ),
     ):
         cmd = deco(cmd)
 
@@ -761,6 +778,58 @@ def security_options(f: Union[Command, Callable[..., Any]]) -> Command:
     return cast(Command, cmd)
 
 
+def template_options(f: Union[Command, Callable[..., Any]]) -> Command:
+    """Add template processing configuration options."""
+    cmd: Any = f if isinstance(f, Command) else f
+
+    def validate_max_file_size(
+        ctx: click.Context, param: click.Parameter, value: str
+    ) -> Optional[int]:
+        """Validate max file size parameter."""
+        if not value:
+            return None
+
+        if value.lower() in ("none", "unlimited", ""):
+            return None
+
+        try:
+            # Support common size suffixes
+            value_upper = value.upper()
+            if value_upper.endswith("KB"):
+                return int(value_upper[:-2]) * 1024
+            elif value_upper.endswith("MB"):
+                return int(value_upper[:-2]) * 1024 * 1024
+            elif value_upper.endswith("GB"):
+                return int(value_upper[:-2]) * 1024 * 1024 * 1024
+            elif value_upper.endswith("K"):
+                return int(value_upper[:-1]) * 1024
+            elif value_upper.endswith("M"):
+                return int(value_upper[:-1]) * 1024 * 1024
+            elif value_upper.endswith("G"):
+                return int(value_upper[:-1]) * 1024 * 1024 * 1024
+            else:
+                return int(value)
+        except (ValueError, OverflowError):
+            raise click.BadParameter(
+                f"Invalid size format: '{value}'. Use format like '1MB', '500KB', '1048576', or 'none' for unlimited."
+            )
+
+    # Apply Template Processing Options
+    for deco in (
+        click.option(
+            "--max-file-size",
+            callback=validate_max_file_size,
+            help="🗂️  Maximum individual file size for template access. "
+            "Supports suffixes: KB, MB, GB (e.g., '1MB', '500KB'). "
+            "Use 'none' or 'unlimited' for no limit. "
+            "Overrides OSTRUCT_TEMPLATE_FILE_LIMIT environment variable.",
+        ),
+    ):
+        cmd = deco(cmd)
+
+    return cast(Command, cmd)
+
+
 def help_options(f: Union[Command, Callable[..., Any]]) -> Command:
     """Add help-related CLI options."""
     cmd: Any = f if isinstance(f, Command) else f
@@ -881,6 +950,20 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
     # Attach options first (in reverse order since they stack)
     for deco in (
         click.option(
+            "--cache-path",
+            type=click.Path(dir_okay=False),
+            help="""Path to upload cache database.
+Default: platform-specific cache directory
+Example: --cache-path ~/.cache/ostruct/uploads.db""",
+        ),
+        click.option(
+            "--cache-uploads/--no-cache-uploads",
+            default=None,  # Let config decide
+            help="""Enable/disable persistent upload cache.
+When enabled, files are uploaded only once across all runs.
+Default: enabled (set in config or via OSTRUCT_CACHE_UPLOADS)""",
+        ),
+        click.option(
             "--gitignore-file",
             type=click.Path(exists=True),
             help="Custom gitignore file path (default: .gitignore in target directory)",
@@ -955,6 +1038,7 @@ def all_options(f: Union[Command, Callable[..., Any]]) -> Command:
 
     # Advanced Configuration Options
     cmd = security_options(cmd)  # Path security and allowlist options
+    cmd = template_options(cmd)  # Template processing configuration
     cmd = web_search_options(cmd)
     cmd = file_search_config_options(cmd)  # File search config
     cmd = feature_options(cmd)  # Feature flags and config
