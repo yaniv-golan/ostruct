@@ -462,6 +462,33 @@ def create_dynamic_model(
                 if key in schema:
                     _inject_defs(schema[key])
 
+            # ------------------------------------------------------------------
+            # OpenAI Responses API does not yet accept $ref. Replace any local
+            # reference that points into the root-level definitions with the
+            # referenced schema in-place so the final schema is fully expanded.
+            # ------------------------------------------------------------------
+
+            def _expand_refs(node: Any) -> Any:  # noqa: ANN401
+                if isinstance(node, dict):
+                    if "$ref" in node:
+                        ref_val: str = node["$ref"]
+                        if ref_val.startswith("#/definitions/"):
+                            ref_key = ref_val.split("/", 2)[-1]
+                            if ref_key in root_definitions:
+                                return _expand_refs(root_definitions[ref_key])
+                        # Unknown refs fall through unchanged (will error later)
+                    # Recurse into values
+                    return {
+                        k: _expand_refs(v)
+                        for k, v in node.items()
+                        if k != "definitions"
+                    }
+                if isinstance(node, list):
+                    return [_expand_refs(i) for i in node]
+                return node
+
+            schema = _expand_refs(schema)
+
         # Handle top-level array schemas
         if schema.get("type") == "array":
             items_schema = schema.get("items", {})

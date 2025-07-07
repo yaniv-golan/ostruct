@@ -1088,6 +1088,7 @@ def register_template_filters(env: Environment) -> None:
         "word_count": word_count,
         "char_count": char_count,
         "to_json": to_json,
+        "tojson": to_json,
         "from_json": from_json,
         "remove_comments": remove_comments,
         "wrap": wrap_text,
