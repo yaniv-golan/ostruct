@@ -97,6 +97,15 @@ Analyze this template and generate a JSON schema that:
    - **Root type**: Must be object (no arrays, primitives, or unions at root)
    - **Optional fields**: Use union types like `["string", "null"]` instead of making fields optional
 
+   **CRITICAL LIMITATION - Union Types**:
+   - **oneOf is NOT supported**: Will likely produce empty objects ({}) even in non-strict mode
+   - **anyOf has limited support**: May work better than oneOf but still unreliable
+   - **Alternative approaches for conditional schemas**:
+     1. Use a single object with all possible fields (some nullable)
+     2. Use a discriminator field (e.g., "type": "toolA") with shared base properties
+     3. Flatten the schema and validate conditionally in post-processing
+   - **If unions are absolutely needed**: Prefer anyOf over oneOf, but expect potential issues
+
 3. **Follows JSON Schema best practices**:
    - Provides clear, descriptive property names
    - Includes helpful descriptions for all properties
@@ -140,5 +149,8 @@ Analyze this template and generate a JSON schema that:
 - Include constructive suggestions for improvement
 - **DO NOT use unsupported validation keywords** like minLength, maxLength, pattern, format, minimum, maximum
 - **Ensure all properties are required** - use type unions for nullable fields instead
+- **AVOID oneOf schemas** - they will likely fail with empty objects in the response
+- **Be cautious with anyOf** - while it may work better than oneOf, it's still not fully supported
+- **For conditional/union schemas**: Recommend flattening to a single object type with a discriminator field
 
 Begin your analysis now.

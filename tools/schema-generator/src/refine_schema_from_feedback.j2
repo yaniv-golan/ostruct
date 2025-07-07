@@ -36,6 +36,15 @@ Analyze the validation errors and create a corrected JSON schema that:
    - **Root type**: Must be object (no arrays, primitives, or unions at root)
    - **Optional fields**: Use union types like `["string", "null"]` instead of making fields optional
 
+   **CRITICAL LIMITATION - Union Types**:
+   - **oneOf is NOT supported**: Will likely produce empty objects ({}) even in non-strict mode
+   - **anyOf has limited support**: May work better than oneOf but still unreliable
+   - **If the original schema used oneOf/anyOf**, replace with:
+     1. A single object with all possible fields (some nullable)
+     2. A discriminator field pattern (e.g., "type": "toolA") with shared properties
+     3. Flatten the schema and handle variations in post-processing
+   - **Common fix for empty object errors**: Replace oneOf unions with a single comprehensive object schema
+
 4. **Maintains JSON Schema best practices**:
    - Provides clear, descriptive property names
    - Includes helpful descriptions for all properties
@@ -49,12 +58,14 @@ Analyze the validation errors and create a corrected JSON schema that:
    - What specific rule was violated
    - Why the original schema structure caused the error
    - What changes are needed to fix it
+   - **Special attention to oneOf/anyOf errors**: These often manifest as empty objects in responses
 
 2. **Schema Correction**: Create a fixed schema that:
    - Addresses each specific validation error
    - Maintains the original intent and purpose
    - Improves on any structural or logical issues
    - Complies with OpenAI limits and requirements
+   - **Replaces problematic union types** with supported alternatives
 
 3. **Validation Check**: Ensure the corrected schema:
    - Resolves all reported validation errors
@@ -91,5 +102,7 @@ Provide the refined schema in this format:
 - Maintain or improve the original schema's intent and usefulness
 - **DO NOT use unsupported validation keywords** like minLength, maxLength, pattern, format, minimum, maximum
 - **Ensure all properties are required** - use type unions for nullable fields instead
+- **If the schema had oneOf/anyOf causing empty objects**: Replace with a flattened single-object approach
+- **Document any union type replacements** in the changes_made list
 
 Begin your error analysis and schema correction now.
