@@ -1,0 +1,102 @@
+{
+    "jq": {
+        "description": "JSON filtering and transformation with stdin support",
+        "parameters": {
+            "filter": "jq filter expression",
+            "input": "optional input file path (if not provided, uses stdin)"
+        },
+        "limits": {
+            "max_output_size": "32KB"
+        }
+    },
+    "grep": {
+        "description": "Pattern search with line numbers",
+        "parameters": {
+            "pattern": "search pattern",
+            "file": "file path to search in"
+        },
+        "limits": {
+            "max_file_size": "32KB"
+        }
+    },
+    "sed": {
+        "description": "Read-only line extraction",
+        "parameters": {
+            "expression": "sed expression for line extraction",
+            "file": "file path to process"
+        },
+        "limits": {
+            "max_file_size": "32KB"
+        }
+    },
+    "awk": {
+        "description": "Field and line processing",
+        "parameters": {
+            "script": "awk script",
+            "file": "file path to process"
+        },
+        "limits": {
+            "max_file_size": "32KB"
+        }
+    },
+    "curl": {
+        "description": "HTTP download with size limit",
+        "parameters": {
+            "url": "URL to download"
+        },
+        "limits": {
+            "max_download_size": "10MB"
+        }
+    },
+    "write_file": {
+        "description": "Create or overwrite file with size check",
+        "parameters": {
+            "path": "file path to write",
+            "content": "content to write"
+        },
+        "limits": {
+            "max_file_size": "32KB"
+        }
+    },
+    "append_file": {
+        "description": "Append to file with size check",
+        "parameters": {
+            "path": "file path to append to",
+            "content": "content to append"
+        },
+        "limits": {
+            "max_file_size": "32KB"
+        }
+    },
+    "text_replace": {
+        "description": "Safe search and replace with hit counting",
+        "parameters": {
+            "file": "file path to process",
+            "search": "text to search for",
+            "replace": "text to replace with"
+        },
+        "limits": {
+            "max_file_size": "32KB",
+            "max_replacements": 1000
+        }
+    },
+    "read_file": {
+        "description": "Read file with size limit",
+        "parameters": {
+            "path": "file path to read"
+        },
+        "limits": {
+            "max_file_size": "32KB"
+        }
+    },
+    "download_file": {
+        "description": "Save HTTP resource to sandbox with size validation",
+        "parameters": {
+            "url": "URL to download",
+            "path": "local path to save file"
+        },
+        "limits": {
+            "max_download_size": "10MB"
+        }
+    }
+}

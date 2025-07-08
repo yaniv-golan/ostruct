@@ -1,0 +1,218 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "name": "agent_state",
+    "type": "object",
+    "properties": {
+        "task": {
+            "type": "string",
+            "description": "The original task given to the agent"
+        },
+        "current_turn": {
+            "type": "integer",
+            "description": "Current turn number",
+            "minimum": 1
+        },
+        "max_turns": {
+            "type": "integer",
+            "description": "Maximum number of turns allowed",
+            "minimum": 1
+        },
+        "sandbox_path": {
+            "type": "string",
+            "description": "Path to the sandbox directory"
+        },
+        "completed": {
+            "type": "boolean",
+            "description": "Whether the task has been completed"
+        },
+        "final_answer": {
+            "type": "string",
+            "description": "The final answer or result (only when completed=true)"
+        },
+        "error": {
+            "type": "string",
+            "description": "Error message if task failed"
+        },
+        "next_steps": {
+            "type": "array",
+            "description": "Array of next steps to execute",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "tool",
+                    "reasoning",
+                    "parameters"
+                ],
+                "properties": {
+                    "tool": {
+                        "type": "string",
+                        "enum": [
+                            "jq",
+                            "grep",
+                            "sed",
+                            "awk",
+                            "curl",
+                            "write_file",
+                            "append_file",
+                            "text_replace",
+                            "read_file",
+                            "download_file"
+                        ]
+                    },
+                    "reasoning": {
+                        "type": "string"
+                    },
+                    "parameters": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "name",
+                                "value"
+                            ],
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "minItems": 1
+                    }
+                }
+            }
+        },
+        "execution_history": {
+            "type": "array",
+            "description": "History of executed steps with results",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "turn": {
+                        "type": "integer",
+                        "description": "Turn number when step was executed"
+                    },
+                    "step": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "tool",
+                            "reasoning",
+                            "parameters"
+                        ],
+                        "properties": {
+                            "tool": {
+                                "type": "string",
+                                "enum": [
+                                    "jq",
+                                    "grep",
+                                    "sed",
+                                    "awk",
+                                    "curl",
+                                    "write_file",
+                                    "append_file",
+                                    "text_replace",
+                                    "read_file",
+                                    "download_file"
+                                ]
+                            },
+                            "reasoning": {
+                                "type": "string"
+                            },
+                            "parameters": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "name",
+                                        "value"
+                                    ],
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "minItems": 1
+                            }
+                        }
+                    },
+                    "result": {
+                        "type": "object",
+                        "properties": {
+                            "success": {
+                                "type": "boolean",
+                                "description": "Whether the step executed successfully"
+                            },
+                            "output": {
+                                "type": "string",
+                                "description": "Output from the step execution"
+                            },
+                            "error": {
+                                "type": "string",
+                                "description": "Error message if step failed"
+                            },
+                            "duration": {
+                                "type": "number",
+                                "description": "Execution time in seconds"
+                            }
+                        },
+                        "required": [
+                            "success"
+                        ]
+                    }
+                },
+                "required": [
+                    "turn",
+                    "step",
+                    "result"
+                ]
+            }
+        },
+        "observations": {
+            "type": "array",
+            "description": "Key observations and findings",
+            "items": {
+                "type": "string"
+            }
+        },
+        "files_created": {
+            "type": "array",
+            "description": "List of files created in the sandbox",
+            "items": {
+                "type": "string"
+            }
+        },
+        "files_modified": {
+            "type": "array",
+            "description": "List of files modified in the sandbox",
+            "items": {
+                "type": "string"
+            }
+        },
+        "working_directory": {
+            "type": "string",
+            "description": "Current working directory relative to sandbox"
+        }
+    },
+    "required": [
+        "task",
+        "current_turn",
+        "max_turns",
+        "sandbox_path",
+        "completed",
+        "next_steps",
+        "execution_history",
+        "observations",
+        "files_created",
+        "files_modified"
+    ]
+}
