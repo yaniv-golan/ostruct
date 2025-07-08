@@ -17,7 +17,7 @@ TOOLS_FILE="$AGENT_DIR/tools.json"
 
 # Configuration
 readonly MAX_TURNS=10
-readonly MAX_OSTRUCT_CALLS=20
+readonly MAX_OSTRUCT_CALLS=24
 readonly LOG_DIR="$AGENT_DIR/logs"
 readonly WORKDIR="workdir"
 
@@ -578,19 +578,111 @@ main() {
     log "INFO" "Max turns: $MAX_TURNS"
     log "INFO" "Max ostruct calls: $MAX_OSTRUCT_CALLS"
 
-    # Step 1: Initial planner call
-    log "INFO" "Calling initial planner"
-    planner_raw=$(ostruct_call "planner.j2" "state.schema.json" \
-        -V "task=$task" \
-        -V "sandbox_path=$SANDBOX_PATH" \
-        -V "max_turns=$MAX_TURNS" \
-        --file plan_schema "$SCHEMAS_DIR/plan_step.schema.json")
+    # Step 1: Generate multiple candidate plans
+    log "INFO" "Generating 3 candidate plans in parallel"
 
-    # ostruct_call now returns clean JSON via --output-file
-    planner_output="$planner_raw"
+    # Function to launch one planner with diversity
+    gen_plan() {
+        local idx="$1"
+        local tmp="$SANDBOX_PATH/plan_${idx}.json"
+        # Add diversity via temperature and random token
+        OSTRUCT_MODEL_PARAMS='{"temperature":0.9}' \
+        ostruct_call "planner.j2" "state.schema.json" \
+            -V "task=$task" \
+            -V "sandbox_path=$SANDBOX_PATH" \
+            -V "max_turns=$MAX_TURNS" \
+            -V "diversity_token=$(uuidgen | head -c 8)" \
+            --output-file "$tmp" \
+            --file plan_schema "$SCHEMAS_DIR/plan_step.schema.json" &
+        echo $!  # return PID
+    }
 
-    if [[ $? -ne 0 ]]; then
-        error_exit "Initial planner call failed"
+    # Launch 3 planners in parallel
+    pids=(); plan_files=()
+    for i in 0 1 2; do
+        gen_plan "$i"
+        pids[$i]=$!
+        plan_files[$i]="$SANDBOX_PATH/plan_${i}.json"
+    done
+
+    # Wait for all planners to complete
+    for pid in "${pids[@]}"; do
+        wait "$pid"
+    done
+
+    # Check for valid plan files and deduplicate
+    unique_files=()
+    # Use associative array for deduplication (requires bash 4+)
+    if [[ ${BASH_VERSION%%.*} -ge 4 ]]; then
+        declare -A seen
+    else
+        # Fallback for older bash - use a different approach
+        seen_sigs=""
+    fi
+    for f in "${plan_files[@]}"; do
+        # Skip missing or empty files
+        [[ -s "$f" ]] || { log "WARN" "plan $f missing, skipping"; continue; }
+
+        # Create signature for deduplication
+        sig=$(jq -S . "$f" 2>/dev/null | sha256sum | cut -d' ' -f1)
+        if [[ -n "$sig" ]]; then
+            if [[ ${BASH_VERSION%%.*} -ge 4 ]]; then
+                # Use associative array
+                if [[ -z "${seen[$sig]+x}" ]]; then
+                    seen[$sig]=1
+                    unique_files+=("$f")
+                fi
+            else
+                # Fallback: check if signature already in string
+                if [[ "$seen_sigs" != *"$sig"* ]]; then
+                    seen_sigs="$seen_sigs $sig"
+                    unique_files+=("$f")
+                fi
+            fi
+        fi
+    done
+
+    # Ensure we have at least one valid plan
+    if [[ ${#unique_files[@]} -eq 0 ]]; then
+        error_exit "No valid plans generated"
+    fi
+
+    # If only one unique plan, use it directly
+    if [[ ${#unique_files[@]} -eq 1 ]]; then
+        log "INFO" "Only one unique plan generated, using it directly"
+        planner_output=$(cat "${unique_files[0]}")
+    else
+        # Build JSON array of candidates for selector
+        plans_file="$SANDBOX_PATH/candidate_plans.json"
+        jq -s '.' "${unique_files[@]}" > "$plans_file"
+
+        # Call plan selector
+        log "INFO" "Running plan selector on ${#unique_files[@]} candidates"
+        selector_out=$(ostruct_call "plan_selector.j2" "plan_selector_out.schema.json" \
+            -V "task=$task" \
+            --file plans "$plans_file")
+
+        if [[ $? -ne 0 ]]; then
+            log "WARN" "Selector failed, using first plan"
+            planner_output=$(cat "${unique_files[0]}")
+        else
+            # Extract winner and use selected plan
+            winner_idx=$(echo "$selector_out" | jq -r '.winner_index // 0')
+            comment=$(echo "$selector_out" | jq -r '.comment // "No comment"')
+
+            # Validate index bounds
+            if [[ $winner_idx -ge 0 && $winner_idx -lt ${#unique_files[@]} ]]; then
+                log "INFO" "Selector chose plan index $winner_idx: $comment"
+                planner_output=$(cat "${unique_files[$winner_idx]}")
+            else
+                log "WARN" "Invalid winner index $winner_idx, using first plan"
+                planner_output=$(cat "${unique_files[0]}")
+            fi
+        fi
+    fi
+
+    if [[ -z "$planner_output" ]]; then
+        error_exit "Failed to generate valid initial plan"
     fi
 
     # Save initial state

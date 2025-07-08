@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "winner_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Index of the chosen plan (0-2)"
+        },
+        "comment": {
+            "type": "string",
+            "description": "Explanation of why this plan was chosen"
+        }
+    },
+    "required": [
+        "winner_index",
+        "comment"
+    ],
+    "additionalProperties": false
+}
