@@ -56,7 +56,7 @@ examples = [
 
 [tool.poetry]
 name = "ostruct-cli"
-version = "1.2.0"  # Placeholder, will be overridden by dynamic versioning
+version = "1.2.1.dev5"  # Placeholder, will be overridden by dynamic versioning
 description = "CLI for OpenAI Structured Output with Multi-Tool Integration"
 authors = ["Yaniv Golan <yaniv@golan.name>"]
 readme = "README.md"
@@ -73,7 +73,7 @@ format-jinja = """
     {%- elif revision is not none -%}
         {{ serialize_pep440(base, stage, revision + 1, dev=distance) }}
     {%- else -%}
-        {{ serialize_pep440("1.0.0", dev=distance) }}
+        {{ serialize_pep440(bump_version(base), dev=distance) }}
     {%- endif -%}
 """
 
