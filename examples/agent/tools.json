@@ -7,6 +7,20 @@
         },
         "limits": {
             "max_output_size": "32KB"
+        },
+        "example": {
+            "tool": "jq",
+            "parameters": [
+                {
+                    "name": "filter",
+                    "value": ".users[] | select(.active == true)"
+                },
+                {
+                    "name": "input",
+                    "value": "users.json"
+                }
+            ],
+            "reasoning": "Filter active users from JSON file"
         }
     },
     "grep": {
@@ -17,6 +31,20 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "example": {
+            "tool": "grep",
+            "parameters": [
+                {
+                    "name": "pattern",
+                    "value": "error"
+                },
+                {
+                    "name": "file",
+                    "value": "app.log"
+                }
+            ],
+            "reasoning": "Search for error messages in log file"
         }
     },
     "sed": {
@@ -27,6 +55,20 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "example": {
+            "tool": "sed",
+            "parameters": [
+                {
+                    "name": "expression",
+                    "value": "1,10p"
+                },
+                {
+                    "name": "file",
+                    "value": "data.txt"
+                }
+            ],
+            "reasoning": "Extract first 10 lines from file"
         }
     },
     "awk": {
@@ -37,6 +79,20 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "example": {
+            "tool": "awk",
+            "parameters": [
+                {
+                    "name": "script",
+                    "value": "{print $1, $3}"
+                },
+                {
+                    "name": "file",
+                    "value": "data.csv"
+                }
+            ],
+            "reasoning": "Extract first and third columns from CSV"
         }
     },
     "curl": {
@@ -46,6 +102,16 @@
         },
         "limits": {
             "max_download_size": "10MB"
+        },
+        "example": {
+            "tool": "curl",
+            "parameters": [
+                {
+                    "name": "url",
+                    "value": "https://api.example.com/data.json"
+                }
+            ],
+            "reasoning": "Download JSON data from API endpoint"
         }
     },
     "write_file": {
@@ -56,6 +122,20 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "example": {
+            "tool": "write_file",
+            "parameters": [
+                {
+                    "name": "path",
+                    "value": "hello.txt"
+                },
+                {
+                    "name": "content",
+                    "value": "Hello, World!"
+                }
+            ],
+            "reasoning": "Create a simple text file"
         }
     },
     "append_file": {
@@ -66,6 +146,20 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "example": {
+            "tool": "append_file",
+            "parameters": [
+                {
+                    "name": "path",
+                    "value": "log.txt"
+                },
+                {
+                    "name": "content",
+                    "value": "New log entry\n"
+                }
+            ],
+            "reasoning": "Add entry to existing log file"
         }
     },
     "text_replace": {
@@ -78,6 +172,24 @@
         "limits": {
             "max_file_size": "32KB",
             "max_replacements": 1000
+        },
+        "example": {
+            "tool": "text_replace",
+            "parameters": [
+                {
+                    "name": "file",
+                    "value": "config.txt"
+                },
+                {
+                    "name": "search",
+                    "value": "old_value"
+                },
+                {
+                    "name": "replace",
+                    "value": "new_value"
+                }
+            ],
+            "reasoning": "Update configuration value in file"
         }
     },
     "read_file": {
@@ -87,6 +199,16 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "example": {
+            "tool": "read_file",
+            "parameters": [
+                {
+                    "name": "path",
+                    "value": "config.json"
+                }
+            ],
+            "reasoning": "Read configuration file contents"
         }
     },
     "download_file": {
@@ -97,6 +219,20 @@
         },
         "limits": {
             "max_download_size": "10MB"
+        },
+        "example": {
+            "tool": "download_file",
+            "parameters": [
+                {
+                    "name": "url",
+                    "value": "https://example.com/file.pdf"
+                },
+                {
+                    "name": "path",
+                    "value": "downloads/file.pdf"
+                }
+            ],
+            "reasoning": "Download file and save to local path"
         }
     }
 }

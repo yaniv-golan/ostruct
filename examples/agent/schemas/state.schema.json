@@ -47,18 +47,7 @@
                 "properties": {
                     "tool": {
                         "type": "string",
-                        "enum": [
-                            "jq",
-                            "grep",
-                            "sed",
-                            "awk",
-                            "curl",
-                            "write_file",
-                            "append_file",
-                            "text_replace",
-                            "read_file",
-                            "download_file"
-                        ]
+                        "enum": ["append_file","awk","curl","download_file","grep","jq","read_file","sed","text_replace","write_file"]
                     },
                     "reasoning": {
                         "type": "string"
@@ -107,18 +96,7 @@
                         "properties": {
                             "tool": {
                                 "type": "string",
-                                "enum": [
-                                    "jq",
-                                    "grep",
-                                    "sed",
-                                    "awk",
-                                    "curl",
-                                    "write_file",
-                                    "append_file",
-                                    "text_replace",
-                                    "read_file",
-                                    "download_file"
-                                ]
+                                                            "enum": ["append_file","awk","curl","download_file","grep","jq","read_file","sed","text_replace","write_file"]
                             },
                             "reasoning": {
                                 "type": "string"

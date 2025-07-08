@@ -47,7 +47,7 @@
                     "tool": {
                         "type": "string",
                         "description": "Name of the tool to use",
-                        "enum": ["append_file","awk","curl","download_file","grep","jq","read_file","sed","text_replace","write_file"]
+                        "enum": __TOOL_NAMES__
                     },
                     "reasoning": {
                         "type": "string",
@@ -101,7 +101,7 @@
                             "tool": {
                                 "type": "string",
                                 "description": "Name of the tool to use",
-                                "enum": ["append_file","awk","curl","download_file","grep","jq","read_file","sed","text_replace","write_file"]
+                                "enum": __TOOL_NAMES__
                             },
                             "reasoning": {
                                 "type": "string",

@@ -1,5 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
+    "name": "agent_state",
     "type": "object",
     "properties": {
         "task": {
@@ -46,16 +47,13 @@
                 "properties": {
                     "tool": {
                         "type": "string",
-                        "description": "Name of the tool to use",
-                        "enum": ["append_file","awk","curl","download_file","grep","jq","read_file","sed","text_replace","write_file"]
+                        "enum": __TOOL_NAMES__
                     },
                     "reasoning": {
-                        "type": "string",
-                        "description": "Explanation of why this tool is being used and what it will accomplish"
+                        "type": "string"
                     },
                     "parameters": {
                         "type": "array",
-                        "description": "Tool-specific parameters as name/value pairs",
                         "items": {
                             "type": "object",
                             "additionalProperties": false,
@@ -65,12 +63,10 @@
                             ],
                             "properties": {
                                 "name": {
-                                    "type": "string",
-                                    "description": "Parameter name"
+                                    "type": "string"
                                 },
                                 "value": {
-                                    "type": "string",
-                                    "description": "Parameter value"
+                                    "type": "string"
                                 }
                             }
                         },
@@ -100,16 +96,13 @@
                         "properties": {
                             "tool": {
                                 "type": "string",
-                                "description": "Name of the tool to use",
-                                "enum": ["append_file","awk","curl","download_file","grep","jq","read_file","sed","text_replace","write_file"]
+                                                            "enum": __TOOL_NAMES__
                             },
                             "reasoning": {
-                                "type": "string",
-                                "description": "Explanation of why this tool is being used and what it will accomplish"
+                                "type": "string"
                             },
                             "parameters": {
                                 "type": "array",
-                                "description": "Tool-specific parameters as name/value pairs",
                                 "items": {
                                     "type": "object",
                                     "additionalProperties": false,
@@ -119,12 +112,10 @@
                                     ],
                                     "properties": {
                                         "name": {
-                                            "type": "string",
-                                            "description": "Parameter name"
+                                            "type": "string"
                                         },
                                         "value": {
-                                            "type": "string",
-                                            "description": "Parameter value"
+                                            "type": "string"
                                         }
                                     }
                                 },

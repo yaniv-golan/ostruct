@@ -18,7 +18,7 @@ TOOLS_FILE="$AGENT_DIR/tools.json"
 # Configuration
 readonly MAX_TURNS=10
 readonly MAX_OSTRUCT_CALLS=20
-readonly LOG_DIR="logs"
+readonly LOG_DIR="$AGENT_DIR/logs"
 readonly WORKDIR="workdir"
 
 # Will be set inside init_run after RUN_ID is defined
@@ -53,13 +53,50 @@ log() {
     shift
     local message="$*"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "[$timestamp] [$level] $message" | tee -a "$LOG_FILE"
+    # Write to log file only, not stdout
+    echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+    # Also echo to terminal for user feedback
+    echo "[$timestamp] [$level] $message" >&2
 }
 
 # Error handling
 error_exit() {
     log "ERROR" "$1"
     exit 1
+}
+
+# Generate schemas from templates
+generate_schemas() {
+    log "INFO" "Generating schemas from templates"
+
+    # Extract tool names from tools.json as JSON array
+    local tool_names
+    tool_names=$(jq -r 'keys | @json' "$TOOLS_FILE")
+
+    if [[ $? -ne 0 ]]; then
+        error_exit "Failed to extract tool names from $TOOLS_FILE"
+    fi
+
+    # Generate state.schema.json from template
+    if [[ -f "$SCHEMAS_DIR/state.schema.json.template" ]]; then
+        sed "s/__TOOL_NAMES__/$tool_names/g" \
+            "$SCHEMAS_DIR/state.schema.json.template" > "$SCHEMAS_DIR/state.schema.json"
+        log "DEBUG" "Generated state.schema.json with tools: $tool_names"
+    fi
+
+    # Generate plan_step.schema.json from template
+    if [[ -f "$SCHEMAS_DIR/plan_step.schema.json.template" ]]; then
+        sed "s/__TOOL_NAMES__/$tool_names/g" \
+            "$SCHEMAS_DIR/plan_step.schema.json.template" > "$SCHEMAS_DIR/plan_step.schema.json"
+        log "DEBUG" "Generated plan_step.schema.json with tools: $tool_names"
+    fi
+
+    # Generate replanner_out.schema.json from template
+    if [[ -f "$SCHEMAS_DIR/replanner_out.schema.json.template" ]]; then
+        sed "s/__TOOL_NAMES__/$tool_names/g" \
+            "$SCHEMAS_DIR/replanner_out.schema.json.template" > "$SCHEMAS_DIR/replanner_out.schema.json"
+        log "DEBUG" "Generated replanner_out.schema.json with tools: $tool_names"
+    fi
 }
 
 # Initialize run environment
@@ -91,6 +128,9 @@ init_run() {
     # Log sandbox info after paths are ready
     log "INFO" "Sandbox path: $SANDBOX_PATH"
     log "INFO" "Log file: $LOG_FILE"
+
+    # Generate schemas from templates
+    generate_schemas
 }
 
 # Safe path resolution - ensures paths are within sandbox
@@ -105,8 +145,12 @@ safe_path() {
 
     # Resolve with realpath if available, fallback to readlink
     if command -v realpath >/dev/null 2>&1; then
-        # -m is GNU-only; if unsupported fall back to plain realpath
-        resolved_path=$(realpath -m "$input_path" 2>/dev/null || realpath "$input_path")
+        # -m allows missing files (GNU and BSD both support this)
+        resolved_path=$(realpath -m "$input_path" 2>/dev/null)
+        # If realpath -m fails, try without -m, then fallback to input path
+        if [[ -z "$resolved_path" ]]; then
+            resolved_path=$(realpath "$input_path" 2>/dev/null || echo "$input_path")
+        fi
     else
         resolved_path=$(readlink -f "$input_path" 2>/dev/null || echo "$input_path")
     fi
@@ -141,18 +185,25 @@ ostruct_call() {
     while [[ $attempt -le $max_attempts ]]; do
         log "DEBUG" "Attempt $attempt/$max_attempts"
 
-        local ostr_cmd=(poetry run ostruct run "${TEMPLATES_DIR}/$template" "${SCHEMAS_DIR}/$schema" --file tools "$TOOLS_FILE" "${args[@]}")
+        # Create temporary file for ostruct output
+        local temp_output=$(mktemp)
+        local ostr_cmd=(poetry run ostruct run "${TEMPLATES_DIR}/$template" "${SCHEMAS_DIR}/$schema" --file tools "$TOOLS_FILE" --output-file "$temp_output" "${args[@]}")
 
         # Build shell-escaped command string for accurate logging
         local cmd_str=""
         printf -v cmd_str '%q ' "${ostr_cmd[@]}"
         log "DEBUG" "Running: ${cmd_str}(cwd: $REPO_ROOT)"
 
-        if (cd "$REPO_ROOT" && "${ostr_cmd[@]}") 2>&1 | tee -a "$LOG_FILE"; then
+        # Run ostruct with stderr going to log file only
+        if (cd "$REPO_ROOT" && "${ostr_cmd[@]}" 2>>"$LOG_FILE"); then
+            # Return the clean JSON output from file
+            cat "$temp_output"
+            rm -f "$temp_output"
             log "INFO" "Ostruct call successful"
             return 0
         else
             local exit_code=$?
+            rm -f "$temp_output"
             log "WARN" "Ostruct call failed (attempt $attempt/$max_attempts), exit code: $exit_code"
 
             if [[ $attempt -lt $max_attempts ]]; then
@@ -406,6 +457,13 @@ execute_download_file() {
     fi
 }
 
+# Helper function to extract parameter value by name
+get_param() {
+    local step_json="$1"
+    local param_name="$2"
+    echo "$step_json" | jq -r ".parameters[] | select(.name == \"$param_name\") | .value"
+}
+
 # Execute a single step
 execute_step() {
     local step_json="$1"
@@ -428,52 +486,52 @@ execute_step() {
 
     case "$tool" in
         "jq")
-            local filter=$(echo "$step_json" | jq -r '.filter')
-            local input=$(echo "$step_json" | jq -r '.input // empty')
+            local filter=$(get_param "$step_json" "filter")
+            local input=$(get_param "$step_json" "input")
             output=$(execute_jq "$filter" "$input")
             ;;
         "grep")
-            local pattern=$(echo "$step_json" | jq -r '.pattern')
-            local file=$(echo "$step_json" | jq -r '.file')
+            local pattern=$(get_param "$step_json" "pattern")
+            local file=$(get_param "$step_json" "file")
             output=$(execute_grep "$pattern" "$file")
             ;;
         "sed")
-            local expression=$(echo "$step_json" | jq -r '.expression')
-            local file=$(echo "$step_json" | jq -r '.file')
+            local expression=$(get_param "$step_json" "expression")
+            local file=$(get_param "$step_json" "file")
             output=$(execute_sed "$expression" "$file")
             ;;
         "awk")
-            local script=$(echo "$step_json" | jq -r '.script')
-            local file=$(echo "$step_json" | jq -r '.file')
+            local script=$(get_param "$step_json" "script")
+            local file=$(get_param "$step_json" "file")
             output=$(execute_awk "$script" "$file")
             ;;
         "curl")
-            local url=$(echo "$step_json" | jq -r '.url')
+            local url=$(get_param "$step_json" "url")
             output=$(execute_curl "$url")
             ;;
         "write_file")
-            local path=$(echo "$step_json" | jq -r '.path')
-            local content=$(echo "$step_json" | jq -r '.content')
+            local path=$(get_param "$step_json" "path")
+            local content=$(get_param "$step_json" "content")
             output=$(execute_write_file "$path" "$content")
             ;;
         "append_file")
-            local path=$(echo "$step_json" | jq -r '.path')
-            local content=$(echo "$step_json" | jq -r '.content')
+            local path=$(get_param "$step_json" "path")
+            local content=$(get_param "$step_json" "content")
             output=$(execute_append_file "$path" "$content")
             ;;
         "text_replace")
-            local file=$(echo "$step_json" | jq -r '.file')
-            local search=$(echo "$step_json" | jq -r '.search')
-            local replace=$(echo "$step_json" | jq -r '.replace')
+            local file=$(get_param "$step_json" "file")
+            local search=$(get_param "$step_json" "search")
+            local replace=$(get_param "$step_json" "replace")
             output=$(execute_text_replace "$file" "$search" "$replace")
             ;;
         "read_file")
-            local path=$(echo "$step_json" | jq -r '.path')
+            local path=$(get_param "$step_json" "path")
             output=$(execute_read_file "$path")
             ;;
         "download_file")
-            local url=$(echo "$step_json" | jq -r '.url')
-            local path=$(echo "$step_json" | jq -r '.path')
+            local url=$(get_param "$step_json" "url")
+            local path=$(get_param "$step_json" "path")
             output=$(execute_download_file "$url" "$path")
             ;;
         *)
@@ -528,8 +586,8 @@ main() {
         -V "max_turns=$MAX_TURNS" \
         --file plan_schema "$SCHEMAS_DIR/plan_step.schema.json")
 
-    # Extract JSON block (start at first '{')
-    planner_output=$(echo "$planner_raw" | sed -n '/^{/,$p')
+    # ostruct_call now returns clean JSON via --output-file
+    planner_output="$planner_raw"
 
     if [[ $? -ne 0 ]]; then
         error_exit "Initial planner call failed"
@@ -630,6 +688,7 @@ main() {
             error_exit "Replanner call failed"
         fi
 
+        # ostruct_call now returns clean JSON via --output-file
         # Save updated state
         echo "$replanner_output" > "$CURRENT_STATE_FILE"
 
