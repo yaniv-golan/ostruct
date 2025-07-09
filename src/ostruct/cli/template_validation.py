@@ -47,6 +47,7 @@ Notes:
     - Uses Jinja2's meta API to find undeclared variables
     - Supports custom filters through safe wrappers
     - Provides detailed error messages for validation failures
+    - Enhanced with context-aware error analysis for better user experience
 """
 
 import logging
@@ -67,9 +68,20 @@ import jinja2
 from jinja2 import meta
 from jinja2.nodes import For, Name, Node
 
-from . import template_filters
 from .errors import TaskTemplateVariableError, TemplateValidationError
 from .template_env import create_jinja_env
+from .template_error_analysis import TemplateErrorAnalyzer
+from .template_filters import (
+    aggregate,
+    dict_to_table,
+    extract_field,
+    format_code,
+    frequency,
+    list_to_table,
+    pivot_table,
+    strip_comments,
+    summarize,
+)
 from .template_schema import (
     DictProxy,
     FileInfoProxy,
@@ -79,7 +91,7 @@ from .template_schema import (
 
 T = TypeVar("T")
 FilterFunc = Callable[..., Any]
-FilterWrapper = Callable[[Any, Any, Any], Optional[Union[Any, str, List[Any]]]]
+FilterWrapper = Callable[..., Any]
 
 __all__ = [
     "TemplateValidationError",
@@ -224,15 +236,15 @@ def validate_template_placeholders(
         # Register custom filters with None-safe wrappers
         env.filters.update(
             {
-                "format_code": safe_filter(template_filters.format_code),
-                "strip_comments": safe_filter(template_filters.strip_comments),
-                "extract_field": safe_filter(template_filters.extract_field),
-                "frequency": safe_filter(template_filters.frequency),
-                "aggregate": safe_filter(template_filters.aggregate),
-                "pivot_table": safe_filter(template_filters.pivot_table),
-                "summarize": safe_filter(template_filters.summarize),
-                "dict_to_table": safe_filter(template_filters.dict_to_table),
-                "list_to_table": safe_filter(template_filters.list_to_table),
+                "format_code": safe_filter(format_code),
+                "strip_comments": safe_filter(strip_comments),
+                "extract_field": safe_filter(extract_field),
+                "frequency": safe_filter(frequency),
+                "aggregate": safe_filter(aggregate),
+                "pivot_table": safe_filter(pivot_table),
+                "summarize": safe_filter(summarize),
+                "dict_to_table": safe_filter(dict_to_table),
+                "list_to_table": safe_filter(list_to_table),
             }
         )
 
@@ -351,15 +363,25 @@ def validate_template_placeholders(
         }
 
         if missing:
-            # Create a more user-friendly error message
-            error_msg = (
-                f"Missing required template variable(s): {', '.join(sorted(missing))}\n"
-                f"Available variables: {', '.join(sorted(available_vars))}\n"
-                "To fix this, please provide the missing variable(s) using:\n"
+            # Use enhanced error analysis for better error messages
+            analyzer = TemplateErrorAnalyzer()
+
+            # For now, handle the first missing variable with enhanced analysis
+            primary_missing = sorted(missing)[0]
+            error_context = analyzer.analyze_missing_variable_error(
+                template, primary_missing, available_vars
             )
-            for var in sorted(missing):
-                error_msg += f"  -V {var}='value'\n"
-            raise TaskTemplateVariableError(error_msg)
+
+            enhanced_message = analyzer.generate_enhanced_error_message(
+                error_context
+            )
+
+            # If there are multiple missing variables, add them to the message
+            if len(missing) > 1:
+                other_missing = sorted(missing)[1:]
+                enhanced_message += f"\n\nAdditional missing variables: {', '.join(other_missing)}"
+
+            raise TaskTemplateVariableError(enhanced_message)
 
         logger.debug(
             "Before create_validation_context - available_vars type: %s, value: %s",
