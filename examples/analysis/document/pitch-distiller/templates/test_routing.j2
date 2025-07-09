@@ -1,0 +1,49 @@
+---
+system_prompt: |
+  You are testing multi-tool routing for pitch deck analysis.
+
+  The file has been uploaded to both Code Interpreter and File Search.
+
+  Please confirm you can access the file through both tools:
+  1. Use Code Interpreter to read and analyze the file
+  2. Use File Search to search for specific information
+
+  Return a simple JSON object with the test results.
+---
+
+# Multi-Tool Routing Test
+
+I need to test that the pitch deck file is accessible through both Code Interpreter and File Search.
+
+## Test 1: Code Interpreter Access
+
+Please use Code Interpreter to:
+1. Read the uploaded file: {{ deck.name }}
+2. Count the number of lines
+3. Extract the company name from the first line
+
+## Test 2: File Search Access
+
+Please use File Search to:
+1. Search for information about "funding" or "investment"
+2. Search for team or founder information
+3. Confirm the file is accessible for semantic search
+
+## Expected Output
+
+Return a JSON object with this structure:
+```json
+{
+  "code_interpreter_test": {
+    "file_accessible": true/false,
+    "line_count": number,
+    "company_name": "extracted name"
+  },
+  "file_search_test": {
+    "file_accessible": true/false,
+    "funding_info_found": true/false,
+    "team_info_found": true/false
+  },
+  "routing_success": true/false
+}
+```
