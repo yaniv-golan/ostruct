@@ -224,7 +224,7 @@ def test_validate_schema_file_errors(
         (
             "Hello {{ name }}!",
             cast(Dict[str, Any], {}),
-            "missing required template variable(s): name",
+            "template validation error: 'name'",
         ),  # Missing variable
         (
             "Hello {{ name!",
@@ -239,12 +239,12 @@ def test_validate_schema_file_errors(
         (
             "{% if condition %}{{ undefined_var }}{% endif %}",
             cast(Dict[str, Any], {"condition": True}),
-            "missing required template variable(s): undefined_var",
+            "template validation error: 'undefined_var'",
         ),  # Undefined in conditional
         (
             "{{ undefined_var }}",
             cast(Dict[str, Any], {}),
-            "missing required template variable(s): undefined_var",
+            "template validation error: 'undefined_var'",
         ),  # Simple undefined variable
     ],
 )

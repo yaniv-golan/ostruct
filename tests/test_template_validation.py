@@ -86,7 +86,7 @@ def test_validate_template_success(
         (
             "Hello {{ name }}!",
             cast(Dict[str, Any], {}),
-            "missing required template variable",
+            "template validation error: 'name'",
         ),  # Missing variable
         (
             "Hello {{ name!",
@@ -101,12 +101,12 @@ def test_validate_template_success(
         (
             "{% if condition %}{{ undefined_var }}{% endif %}",
             cast(Dict[str, Any], {"condition": True}),
-            "missing required template variable",
+            "template validation error: 'undefined_var'",
         ),  # Undefined in conditional
         (
             "{{ undefined_var }}",
             cast(Dict[str, Any], {}),
-            "missing required template variable",
+            "template validation error: 'undefined_var'",
         ),  # Simple undefined variable
     ],
 )

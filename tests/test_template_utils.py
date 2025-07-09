@@ -59,7 +59,7 @@ def test_validate_task_template_missing_var() -> None:
     file_mappings: Dict[str, Any] = {}  # Empty dict instead of set()
     with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
-    assert "Missing required template variable(s): name" in str(exc.value)
+    assert "Template validation error: 'name'" in str(exc.value)
 
 
 def test_validate_task_template_invalid_syntax() -> None:
@@ -243,9 +243,7 @@ def test_validate_template_conditional_vars() -> None:
     )
     with pytest.raises(TaskTemplateError) as exc:
         validate_template_placeholders(template, file_mappings)
-    assert "Missing required template variable(s): undefined_var" in str(
-        exc.value
-    )
+    assert "Template validation error: 'undefined_var'" in str(exc.value)
 
 
 def test_validate_template_builtin_functions() -> None:
