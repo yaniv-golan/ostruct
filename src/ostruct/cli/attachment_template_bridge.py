@@ -835,6 +835,14 @@ class AttachmentTemplateContext:
                 # Priority value is irrelevant because strict_mode=True below
                 # guarantees the file will be skipped by the pre-loader.
                 preload_priority = 5
+            elif (
+                "file-search" in spec.targets and "prompt" not in spec.targets
+            ):
+                routing_type = "file-search"
+                routing_intent = FileRoutingIntent.FILE_SEARCH
+                # File Search files don't need content loaded into prompt
+                lazy_strict_mode = True
+                preload_priority = 3  # Medium priority for file search files
             else:
                 routing_type = "template"
                 routing_intent = FileRoutingIntent.TEMPLATE_ONLY
@@ -997,7 +1005,7 @@ class AttachmentTemplateContext:
                     file_info = FileInfo.from_path(
                         str(spec.path),
                         self.security_manager,
-                        routing_type="template",
+                        routing_type="file-search",
                         routing_intent=FileRoutingIntent.FILE_SEARCH,
                         parent_alias=spec.collection_base_alias or spec.alias,
                         relative_path=Path(spec.path).name,
