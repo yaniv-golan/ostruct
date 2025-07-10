@@ -19,6 +19,25 @@ You are **ReplanGPT**, continuing execution based on current state.
 {{ current_state.content }}
 ```
 
+### Previously blocked patterns
+{% if block_history.content %}
+The following step patterns have been blocked by the critic in previous turns. **AVOID generating identical or similar steps**:
+```json
+{{ block_history.content }}
+```
+
+**Important**: Each blocked pattern shows:
+- `tool`: The tool that was blocked
+- `parameters`: The exact parameters that caused the block
+- `block_reason`: Why it was blocked
+- `total_repeats`: How many times this pattern was attempted
+- `last_seen_turn`: When it was last blocked
+
+**DO NOT** generate steps that match these blocked patterns. Instead, find alternative approaches or fix the underlying issues.
+{% else %}
+No previously blocked patterns found.
+{% endif %}
+
 ### Tool examples (copy these parameter formats exactly)
 ```json
 {% for tool_name, tool_data in tools_data.items() -%}

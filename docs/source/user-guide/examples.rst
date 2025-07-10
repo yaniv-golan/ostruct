@@ -84,6 +84,17 @@ Advanced PDF comparison with Code Interpreter integration for semantic document 
 - Code Interpreter integration for complex analysis
 - Multi-tool workflow demonstration
 
+**Pitch Deck Distiller** (``document-analysis/pitch-distiller/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Two-pass extraction of structured data from startup pitch decks with File Search powered semantic parsing.
+
+**Features**:
+- Pass 1: core company data (name, summary, funding, founders)
+- Pass 2: industry taxonomy classification using reference taxonomy file
+- Handles text-based PDFs (Uber 2008, Buffer 2011, Airbnb 2009 included)
+- Standards-compliant `run.sh` with `--test-dry-run`, `--test-live`, full two-pass modes
+
 **Doc Example Validator** (``document-analysis/doc-example-validator/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
