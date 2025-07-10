@@ -1,0 +1,130 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Critic Output Schema",
+    "description": "Structured critic evaluation response with optional patch generation",
+    "additionalProperties": false,
+    "required": [
+        "ok",
+        "score",
+        "comment"
+    ],
+    "properties": {
+        "ok": {
+            "type": "boolean",
+            "description": "Whether the step should proceed (true) or be blocked (false)"
+        },
+        "score": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Quality score: 1-2=block, 3=warn, 4-5=good"
+        },
+        "comment": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500,
+            "description": "Explanation of the evaluation and reasoning"
+        },
+        "patch": {
+            "type": "array",
+            "maxItems": 3,
+            "description": "Up to 3 replacement/additional steps (required when ok=false)",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "tool",
+                    "reasoning",
+                    "parameters"
+                ],
+                "properties": {
+                    "tool": {
+                        "type": "string",
+                        "description": "Name of the tool to use",
+                        "enum": [
+                            "append_file",
+                            "awk",
+                            "curl",
+                            "download_file",
+                            "grep",
+                            "jq",
+                            "read_file",
+                            "sed",
+                            "text_replace",
+                            "write_file"
+                        ]
+                    },
+                    "reasoning": {
+                        "type": "string",
+                        "description": "Explanation of why this tool is being used and what it will accomplish"
+                    },
+                    "parameters": {
+                        "type": "array",
+                        "description": "Tool-specific parameters as name/value pairs",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "name",
+                                "value"
+                            ],
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "Parameter name"
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "description": "Parameter value"
+                                }
+                            }
+                        },
+                        "minItems": 1
+                    }
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "description": "If ok=false, patch is required",
+            "if": {
+                "properties": {
+                    "ok": {
+                        "const": false
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "patch"
+                ]
+            },
+            "else": {
+                "not": {
+                    "required": [
+                        "patch"
+                    ]
+                }
+            }
+        },
+        {
+            "description": "If score <= 2, ok must be false",
+            "if": {
+                "properties": {
+                    "score": {
+                        "maximum": 2
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "ok": {
+                        "const": false
+                    }
+                }
+            }
+        }
+    ]
+}

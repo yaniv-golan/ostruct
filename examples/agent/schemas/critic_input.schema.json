@@ -1,0 +1,201 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Critic Input Schema",
+    "description": "Enhanced input for critic evaluation with temporal, safety, and failure pattern context",
+    "additionalProperties": false,
+    "required": [
+        "task",
+        "candidate_step",
+        "turn",
+        "max_turns",
+        "temporal_constraints",
+        "failure_patterns",
+        "safety_constraints"
+    ],
+    "properties": {
+        "task": {
+            "type": "string",
+            "description": "The original task description"
+        },
+        "candidate_step": {
+            "type": "object",
+            "description": "The step to be evaluated",
+            "additionalProperties": false,
+            "required": [
+                "tool",
+                "reasoning",
+                "parameters"
+            ],
+            "properties": {
+                "tool": {
+                    "type": "string",
+                    "description": "Name of the tool to use",
+                    "enum": [
+                        "append_file",
+                        "awk",
+                        "curl",
+                        "download_file",
+                        "grep",
+                        "jq",
+                        "read_file",
+                        "sed",
+                        "text_replace",
+                        "write_file"
+                    ]
+                },
+                "reasoning": {
+                    "type": "string",
+                    "description": "Explanation of why this tool is being used and what it will accomplish"
+                },
+                "parameters": {
+                    "type": "array",
+                    "description": "Tool-specific parameters as name/value pairs",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                            "name",
+                            "value"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Parameter name"
+                            },
+                            "value": {
+                                "type": "string",
+                                "description": "Parameter value"
+                            }
+                        }
+                    },
+                    "minItems": 1
+                }
+            }
+        },
+        "turn": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Current turn number"
+        },
+        "max_turns": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum allowed turns"
+        },
+        "last_observation": {
+            "type": "string",
+            "description": "Last observation from previous step execution (truncated to 1000 chars)"
+        },
+        "plan_remainder": {
+            "type": "array",
+            "description": "Remaining steps in current plan (first 3 steps)",
+            "items": {
+                "$ref": "#/properties/candidate_step"
+            },
+            "maxItems": 3
+        },
+        "execution_history_tail": {
+            "type": "array",
+            "description": "Last 3 execution history items",
+            "maxItems": 3,
+            "items": {
+                "type": "object"
+            }
+        },
+        "tool_spec": {
+            "type": "object",
+            "description": "Specification for the tool being used",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "limits": {
+                    "type": "object"
+                }
+            }
+        },
+        "sandbox_path": {
+            "type": "string",
+            "description": "Path to the sandbox directory"
+        },
+        "temporal_constraints": {
+            "type": "object",
+            "description": "Temporal context and deadlines",
+            "additionalProperties": false,
+            "required": [
+                "files_created",
+                "files_expected",
+                "deadline_turns"
+            ],
+            "properties": {
+                "files_created": {
+                    "type": "array",
+                    "description": "List of files that have been created",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "files_expected": {
+                    "type": "array",
+                    "description": "List of files that are expected to be created",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "deadline_turns": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1,
+                    "description": "Turn deadline for task completion, null if no deadline"
+                }
+            }
+        },
+        "failure_patterns": {
+            "type": "object",
+            "description": "Detected failure patterns",
+            "additionalProperties": false,
+            "required": [
+                "repeated_tool_failures",
+                "stuck_iterations"
+            ],
+            "properties": {
+                "repeated_tool_failures": {
+                    "type": "object",
+                    "description": "Count of failures per tool",
+                    "patternProperties": {
+                        "^[a-zA-Z_]+$": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "stuck_iterations": {
+                    "type": "boolean",
+                    "description": "Whether agent appears stuck in iteration loop"
+                }
+            }
+        },
+        "safety_constraints": {
+            "type": "array",
+            "description": "Active safety constraints",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "no_file_ops_outside_sandbox",
+                    "no_network_internal_ips",
+                    "max_file_size_32kb",
+                    "no_system_commands",
+                    "no_destructive_operations"
+                ]
+            },
+            "uniqueItems": true
+        }
+    }
+}
