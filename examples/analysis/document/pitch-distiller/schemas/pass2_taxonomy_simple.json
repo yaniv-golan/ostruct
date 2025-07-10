@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Industry Taxonomy Classification - Pass 2",
+    "description": "Industry classification for the company",
+    "required": [
+        "sector",
+        "industry_group"
+    ],
+    "properties": {
+        "sector": {
+            "type": "string",
+            "description": "Top-level sector classification (e.g., Information Technology (IT), Healthcare, Financial Services)"
+        },
+        "industry_group": {
+            "type": "string",
+            "description": "Industry group within the sector (e.g., Software, Pharmaceuticals & Biotechnology, Commercial Banks)"
+        },
+        "industry": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Specific industry classification (e.g., Application Software, Biotechnology, National Banks)"
+        },
+        "vertical": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Specific vertical or sub-industry focus (e.g., HR Tech, Digital Health, Fintech)"
+        },
+        "emerging_spaces": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Emerging technology spaces or trends (e.g., Generative AI, CRISPR diagnostics, Quantum computing)"
+        }
+    },
+    "additionalProperties": false
+}

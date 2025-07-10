@@ -1,15 +1,14 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
-    "title": "Pitch Deck Core Analysis",
-    "description": "Essential pitch deck information extraction focused on core fields to prevent LLM failures",
+    "title": "Pitch Deck Core Analysis - Pass 1",
+    "description": "Essential pitch deck information extraction without taxonomy classification",
     "required": [
         "company_name",
         "summary",
         "funding_ask",
         "founders",
-        "extraction_metadata",
-        "industry_classification"
+        "extraction_metadata"
     ],
     "properties": {
         "company_name": {
@@ -119,54 +118,6 @@
             ],
             "description": "How the company makes money (e.g., SaaS, Marketplace, B2B)"
         },
-        "industry_classification": {
-            "required": [
-                "sector",
-                "industry_group"
-            ],
-            "type": [
-                "object",
-                "null"
-            ],
-            "description": "Industry classification hierarchy",
-            "properties": {
-                "sector": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Top-level sector classification (e.g., Technology, Healthcare, Financial Services)"
-                },
-                "industry_group": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Industry group within the sector (e.g., Software, Biotechnology, Banking)"
-                },
-                "industry": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Specific industry classification (e.g., Enterprise Software, Drug Discovery, Digital Banking)"
-                },
-                "vertical": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Specific vertical or sub-industry focus (e.g., HR Tech, Oncology, Payments)"
-                },
-                "emerging_spaces": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "Emerging technology spaces or trends (e.g., Generative AI, Web3, Climate Tech)"
-                }
-            }
-        },
         "extraction_metadata": {
             "type": "object",
             "required": [
@@ -206,5 +157,6 @@
                 }
             }
         }
-    }
+    },
+    "additionalProperties": false
 }

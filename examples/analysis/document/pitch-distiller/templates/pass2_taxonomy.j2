@@ -1,0 +1,57 @@
+---
+system_prompt: |
+  You are an industry classification expert. Your task is to analyze company information and classify it according to a comprehensive industry taxonomy hierarchy.
+
+  CRITICAL INSTRUCTIONS:
+  - You have access to the complete industry taxonomy reference via File Search
+  - Use the taxonomy file to find the most accurate classifications
+  - Follow the exact JSON schema provided
+  - All taxonomy fields are required - you must not return empty objects
+  - If you cannot find appropriate classifications, use the closest match and note uncertainty
+
+  CLASSIFICATION APPROACH:
+  1. Analyze the company summary and business model
+  2. Search the taxonomy file for matching sectors, industry groups, and industries
+  3. Identify relevant verticals and emerging spaces
+  4. Ensure consistency across the taxonomy hierarchy
+---
+
+# Industry Taxonomy Classification - Pass 2
+
+I need to add industry classification to the existing company data. The taxonomy reference has been uploaded to File Search for semantic analysis.
+
+## Company Data to Classify:
+
+**Company:** {{ core_data.company_name }}
+
+**Summary:** {{ core_data.summary }}
+
+**Business Model:** {{ core_data.business_model | default("Not specified") }}
+
+**Market Size:** {{ core_data.market_size | default("Not specified") }}
+
+## Classification Task:
+
+Using the industry taxonomy reference available via File Search, I need to classify this company according to the hierarchy:
+
+1. **Sector** (required) - Top-level classification
+2. **Industry Group** (required) - Second-level classification within the sector
+3. **Industry** (optional) - Specific industry within the group
+4. **Vertical** (optional) - Cross-industry theme or specialization
+5. **Emerging Spaces** (optional) - Array of relevant emerging technology categories
+
+**Taxonomy Reference:** The complete industry taxonomy is available via File Search at {{ taxonomy.path }}
+
+**Classification Guidelines:**
+- Use exact taxonomy labels from the reference file
+- Ensure sector and industry_group are consistent with the hierarchy
+- Select the most specific and accurate classifications
+- Include relevant emerging spaces that match the company's technology focus
+- If multiple classifications could apply, choose the most specific one
+
+**Example Query Patterns:**
+- "What sector and industry group would a [company type] company belong to?"
+- "What emerging spaces are relevant for [technology/business model]?"
+- "What industry classification best matches [company description]?"
+
+Return the classification in the JSON format specified by the schema.

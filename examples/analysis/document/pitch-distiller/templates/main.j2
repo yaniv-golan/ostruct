@@ -9,12 +9,13 @@ system_prompt: |
   - Provide confidence scores for extracted information
   - Handle missing data gracefully with null values
   - This works with text-based PDFs only (image-only PDFs not supported)
+  - A structured industry taxonomy reference file (variable `taxonomy`) has been uploaded to File Search – use it to choose valid sector / industry_group / industry / vertical / emerging_spaces values
 
   EXTRACTION APPROACH:
   1. Use File Search to extract core required fields first (company_name, summary, funding_ask, founders)
-  2. Search for optional fields (market_size, business_model, industry, website)
-  3. If no explicit website is found, infer it from founder email domains (ignore generic providers like gmail, yahoo)
-  4. Apply basic PII redaction for privacy protection
+  2. Run an explicit File Search query on `taxonomy` to select the closest matches for sector → emerging_spaces hierarchy based on the company summary
+  3. Search the deck for optional fields (market_size, business_model, website)
+  4. If no explicit website is found, infer it from founder email domains (ignore generic providers like gmail, yahoo)
   5. Assign appropriate confidence scores based on data quality
 ---
 
@@ -37,7 +38,7 @@ I'll use File Search to find and extract information through semantic queries. I
 - Tagline
 - Market size information
 - Business model
-- Industry classification
+- Industry classification hierarchy (sector, industry group, industry, vertical, emerging spaces)
 
 **Special Instructions:**
 - If no website is explicitly mentioned, look for founder email addresses and infer the company website from non-generic email domains that match the company name
@@ -52,5 +53,35 @@ I'll use File Search to find and extract information through semantic queries. I
 - "Who are the founders and team members?"
 - "What is the market size and business model?"
 - "What industry and technology does the company work in?"
+
+**Industry Classification Instructions (use taxonomy):**
+IMPORTANT: Populate the classification object using values from the taxonomy file. Provide at least `sector` and `industry_group`; fill `industry`, `vertical`, and `emerging_spaces` when possible.
+
+Return the classification in this JSON skeleton (do NOT omit keys):
+```json
+"industry_classification": {
+  "sector": "",
+  "industry_group": "",
+  "industry": "",
+  "vertical": "",
+  "emerging_spaces": []
+}
+```
+
+Classify using the hierarchical taxonomy:
+- **Sector**: Broad economic sector (Technology, Healthcare, Financial Services, Consumer, Energy, etc.)
+- **Industry Group**: Sub-sector grouping (Software, Hardware, Biotechnology, Pharmaceuticals, etc.)
+- **Industry**: Specific industry (Enterprise Software, Consumer Internet, Drug Discovery, Medical Devices, etc.)
+- **Vertical**: Focused application area (HR Tech, Marketing Tech, Oncology, Cardiology, etc.)
+- **Emerging Spaces**: Array of current technology trends and emerging areas (Generative AI, Web3, Climate Tech, Quantum Computing, etc.)
+
+Classification Examples:
+- AI SaaS company → Sector: "Technology", Industry Group: "Software", Industry: "Enterprise Software", Vertical: "AI/ML", Emerging Spaces: ["Generative AI"]
+- Biotech company → Sector: "Healthcare", Industry Group: "Biotechnology", Industry: "Drug Discovery", Vertical: "Oncology", Emerging Spaces: ["Precision Medicine"]
+- Fintech company → Sector: "Financial Services", Industry Group: "Financial Technology", Industry: "Digital Banking", Vertical: "Payments", Emerging Spaces: ["Embedded Finance"]
+- PropTech company → Sector: "Technology", Industry Group: "Software", Industry: "Enterprise Software", Vertical: "Real Estate Tech", Emerging Spaces: ["AI/ML", "IoT"]
+
+**Required**: Always provide at least sector and industry_group. Fill in industry, vertical, and emerging_spaces based on available information.
+**If you cannot populate the classification, set `industry_classification` to `"__FAILED__"` and stop. This is a sanity check.**
 
 Let me start with a complete analysis using File Search:
