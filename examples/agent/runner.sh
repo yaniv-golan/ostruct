@@ -10,6 +10,13 @@ AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Repository root (two levels up from agent dir)
 REPO_ROOT="$(cd "$AGENT_DIR/../.." && pwd)"
 
+# Resolve ostruct executable once to avoid repeated Poetry startup overhead
+OSTRUCT_BIN="$(cd "$REPO_ROOT" && poetry run which ostruct 2>/dev/null)"
+if [[ -z "$OSTRUCT_BIN" ]]; then
+    echo "Error: Unable to locate ostruct executable via poetry" >&2
+    exit 1
+fi
+
 # Canonical sub-paths (absolute)
 TEMPLATES_DIR="$AGENT_DIR/templates"
 SCHEMAS_DIR="$AGENT_DIR/schemas"
@@ -37,6 +44,8 @@ TURN_COUNT=0
 # Runtime variables
 RUN_ID=""
 LOG_FILE=""
+TASK=""
+CURRENT_STATE=""
 
 # Portable helper to get file size in bytes (GNU/Linux and macOS/BSD)
 file_size() {
@@ -163,6 +172,457 @@ safe_path() {
     echo "$resolved_path"
 }
 
+# Critic system functions
+build_critic_input() {
+    local step="$1"
+    local turn="$2"
+
+    # Truncate last observation to 1000 chars
+    local last_obs_trunc=""
+    if [[ -f "$SANDBOX_PATH/.last_observation" ]]; then
+        last_obs_trunc=$(head -c 1000 "$SANDBOX_PATH/.last_observation")
+    fi
+
+    # Get plan remainder (first 3 steps)
+    local plan_tail
+    plan_tail=$(echo "$CURRENT_STATE" | jq '.next_steps[0:3]')
+
+    # Get execution history tail (last 3 items)
+    local hist_tail
+    hist_tail=$(echo "$CURRENT_STATE" | jq '.execution_history[-3:]')
+
+    # Get tool spec from tools.json
+    local tool_name
+    tool_name=$(echo "$step" | jq -r '.tool')
+    local tool_spec
+    tool_spec=$(jq --arg tool "$tool_name" \
+        '.[$tool] // {"name": $tool, "description": "Unknown tool", "limits": {}}' \
+        "$TOOLS_FILE")
+
+    # Build comprehensive input
+    jq -n \
+        --arg task "$TASK" \
+        --argjson candidate_step "$step" \
+        --arg turn "$turn" \
+        --arg max_turns "$MAX_TURNS" \
+        --arg last_observation "$last_obs_trunc" \
+        --argjson plan_remainder "$plan_tail" \
+        --argjson execution_history_tail "$hist_tail" \
+        --argjson tool_spec "$tool_spec" \
+        --arg sandbox_path "$SANDBOX_PATH" \
+        --argjson temporal_constraints "$(get_temporal_constraints)" \
+        --argjson failure_patterns "$(get_failure_patterns)" \
+        --argjson safety_constraints "$(get_safety_constraints)" \
+        '{
+            task: $task,
+            candidate_step: $candidate_step,
+            turn: ($turn | tonumber),
+            max_turns: ($max_turns | tonumber),
+            last_observation: $last_observation,
+            plan_remainder: $plan_remainder,
+            execution_history_tail: $execution_history_tail,
+            tool_spec: $tool_spec,
+            sandbox_path: $sandbox_path,
+            temporal_constraints: $temporal_constraints,
+            failure_patterns: $failure_patterns,
+            safety_constraints: $safety_constraints
+        }'
+}
+
+get_temporal_constraints() {
+    local temporal_file="$SANDBOX_PATH/.temporal_constraints.json"
+    if [[ -f "$temporal_file" ]]; then
+        cat "$temporal_file"
+    else
+        echo '{"files_created":[],"files_expected":[],"deadline_turns":null}'
+    fi
+}
+
+get_failure_patterns() {
+    local patterns_file="$SANDBOX_PATH/.failure_patterns.json"
+    if [[ -f "$patterns_file" ]]; then
+        cat "$patterns_file"
+    else
+        echo '{"repeated_tool_failures":{},"stuck_iterations":false}'
+    fi
+}
+
+get_safety_constraints() {
+    echo '["no_file_ops_outside_sandbox","no_network_internal_ips","max_file_size_32kb"]'
+}
+
+update_temporal_constraints() {
+    local action="$1"
+    local file_path="$2"
+    local temporal_file="$SANDBOX_PATH/.temporal_constraints.json"
+
+    local temporal
+    temporal=$(get_temporal_constraints)
+
+    case "$action" in
+        "file_created")
+            temporal=$(echo "$temporal" | \
+                jq --arg file "$file_path" '.files_created += [$file]')
+            ;;
+        "set_expected")
+            temporal=$(echo "$temporal" | \
+                jq --arg file "$file_path" '.files_expected += [$file]')
+            ;;
+        "set_deadline")
+            local deadline="$file_path"  # Reuse param for deadline
+            temporal=$(echo "$temporal" | \
+                jq --arg deadline "$deadline" '.deadline_turns = ($deadline | tonumber)')
+            ;;
+    esac
+
+    echo "$temporal" > "$temporal_file"
+}
+
+update_failure_patterns() {
+    local tool="$1"
+    local success="$2"
+    local turn="$3"
+    local patterns_file="$SANDBOX_PATH/.failure_patterns.json"
+
+    local patterns
+    patterns=$(get_failure_patterns)
+
+    if [[ "$success" == "false" ]]; then
+        # Increment failure count for tool
+        patterns=$(echo "$patterns" | \
+            jq --arg tool "$tool" \
+            '.repeated_tool_failures[$tool] = (.repeated_tool_failures[$tool] // 0) + 1')
+    fi
+
+    # Check for stuck iterations (simple heuristic)
+    if [[ -f "$SANDBOX_PATH/.prev_progress" ]]; then
+        local prev_progress
+        prev_progress=$(cat "$SANDBOX_PATH/.prev_progress")
+        local current_progress
+        current_progress=$(echo "$CURRENT_STATE" | jq '.execution_history | length')
+
+        if [[ "$current_progress" == "$prev_progress" ]]; then
+            patterns=$(echo "$patterns" | jq '.stuck_iterations = true')
+        fi
+    fi
+
+    echo "$patterns" > "$patterns_file"
+
+    # Update progress tracking
+    echo "$CURRENT_STATE" | jq '.execution_history | length' > "$SANDBOX_PATH/.prev_progress"
+}
+
+record_critic_intervention() {
+    local step_json="$1"
+    local critic_out="$2"
+
+    local intervention_file="$SANDBOX_PATH/.critic_interventions.jsonl"
+    local intervention_entry
+    intervention_entry=$(jq -n \
+        --argjson turn "$TURN_COUNT" \
+        --argjson step "$step_json" \
+        --argjson critic_out "$critic_out" \
+        '{turn: $turn, step: $step, critic_response: $critic_out, timestamp: (now | todate)}')
+
+    echo "$intervention_entry" >> "$intervention_file"
+}
+
+# Generate a fingerprint for a step to detect identical patterns
+generate_step_fingerprint() {
+    local step_json="$1"
+
+    # Create a normalized fingerprint that captures the essence of the step
+    # Include tool, key parameters, but exclude reasoning/timestamps
+    local fingerprint
+    fingerprint=$(echo "$step_json" | jq -c '{
+        tool: .tool,
+        parameters: (.parameters | sort_by(.name) | map({name, value}))
+    }' | shasum -a 256 | cut -d' ' -f1)
+
+    echo "$fingerprint"
+}
+
+# Record a blocked step in the block history
+record_blocked_step() {
+    local step_json="$1"
+    local critic_score="$2"
+    local block_reason="$3"
+
+    local block_history_file="$SANDBOX_PATH/.block_history.jsonl"
+    local fingerprint
+    fingerprint=$(generate_step_fingerprint "$step_json")
+
+    # Check if this fingerprint already exists
+    local existing_count=0
+    if [[ -f "$block_history_file" ]]; then
+        existing_count=$(grep -c "\"fingerprint\":\"$fingerprint\"" "$block_history_file" 2>/dev/null || echo "0")
+        # Ensure it's a valid number (strip any whitespace/newlines)
+        existing_count=$(echo "$existing_count" | tr -d '\n\r' | grep -E '^[0-9]+$' || echo "0")
+    fi
+
+    local block_entry
+    block_entry=$(jq -n \
+        --argjson turn "$TURN_COUNT" \
+        --arg fingerprint "$fingerprint" \
+        --argjson step "$step_json" \
+        --argjson score "$critic_score" \
+        --arg reason "$block_reason" \
+        --argjson count "$((existing_count + 1))" \
+        '{
+            turn: $turn,
+            fingerprint: $fingerprint,
+            step: $step,
+            critic_score: $score,
+            block_reason: $reason,
+            repeat_count: $count,
+            timestamp: (now | todate)
+        }')
+
+    echo "$block_entry" >> "$block_history_file"
+
+    if [[ $existing_count -gt 0 ]]; then
+        log "WARN" "Blocked step fingerprint $fingerprint seen $((existing_count + 1)) times"
+    fi
+}
+
+# Check if a step has been blocked before
+is_step_previously_blocked() {
+    local step_json="$1"
+    local block_history_file="$SANDBOX_PATH/.block_history.jsonl"
+
+    if [[ ! -f "$block_history_file" ]]; then
+        return 1  # Not blocked (file doesn't exist)
+    fi
+
+    local fingerprint
+    fingerprint=$(generate_step_fingerprint "$step_json")
+
+    # Check if this fingerprint exists in block history
+    if grep -q "\"fingerprint\":\"$fingerprint\"" "$block_history_file"; then
+        # Get the repeat count for this fingerprint
+        local repeat_count
+        repeat_count=$(grep "\"fingerprint\":\"$fingerprint\"" "$block_history_file" | tail -1 | jq -r '.repeat_count')
+
+        log "DEBUG" "Step fingerprint $fingerprint previously blocked $repeat_count times"
+        return 0  # Previously blocked
+    fi
+
+    return 1  # Not previously blocked
+}
+
+# Get block history summary for replanner context
+get_block_history_summary() {
+    local block_history_file="$SANDBOX_PATH/.block_history.jsonl"
+
+    if [[ ! -f "$block_history_file" ]]; then
+        echo "[]"
+        return
+    fi
+
+    # Get recent blocked patterns (last 10) with repeat counts
+    local summary
+    summary=$(tail -10 "$block_history_file" | jq -s 'map({
+        fingerprint,
+        tool: .step.tool,
+        parameters: .step.parameters,
+        block_reason,
+        repeat_count,
+        turn
+    }) | group_by(.fingerprint) | map({
+        fingerprint: .[0].fingerprint,
+        tool: .[0].tool,
+        parameters: .[0].parameters,
+        block_reason: .[0].block_reason,
+        total_repeats: (map(.repeat_count) | max),
+        first_seen_turn: (map(.turn) | min),
+        last_seen_turn: (map(.turn) | max)
+    }) | sort_by(.total_repeats) | reverse')
+
+    echo "$summary"
+}
+
+# Extract heuristic provides/requires from step JSON
+extract_dependencies() {
+    local step_json="$1"
+    local tool=$(echo "$step_json" | jq -r '.tool')
+    local provides="[]"
+    local requires="[]"
+
+    case "$tool" in
+        "write_file"|"append_file")
+            local path=$(get_param "$step_json" "path")
+            if [[ -n "$path" ]]; then
+                provides=$(jq -n --arg path "$path" '[$path]')
+            fi
+            ;;
+        "read_file"|"grep"|"sed"|"awk")
+            local file=$(get_param "$step_json" "file")
+            if [[ -n "$file" ]]; then
+                requires=$(jq -n --arg file "$file" '[$file]')
+            fi
+            ;;
+        "download_file")
+            local path=$(get_param "$step_json" "path")
+            if [[ -n "$path" ]]; then
+                provides=$(jq -n --arg path "$path" '[$path]')
+            fi
+            ;;
+        "text_replace")
+            local file=$(get_param "$step_json" "file")
+            if [[ -n "$file" ]]; then
+                # text_replace both requires and provides the same file
+                requires=$(jq -n --arg file "$file" '[$file]')
+                provides=$(jq -n --arg file "$file" '[$file]')
+            fi
+            ;;
+    esac
+
+    # Add synthetic dependencies for pipes/stdout (future enhancement)
+    # For now, keep it simple with file-based dependencies
+
+    echo "$step_json" | jq --argjson provides "$provides" --argjson requires "$requires" \
+        '. + {provides: $provides, requires: $requires}'
+}
+
+# Kahn topological sort implementation
+kahn_sort() {
+    # Create a temporary Python script for sorting (reads from stdin)
+    local temp_script="$AGENT_DIR/.kahn_sort.py"
+
+    # Write the Python script to a temporary file
+    cat > "$temp_script" << 'EOF'
+import json
+import sys
+from collections import defaultdict, deque
+
+def kahn_sort(steps):
+    """
+    Kahn's algorithm for topological sorting
+    Returns (sorted_steps, has_cycle)
+    """
+    # Build graph and in-degree count
+    graph = defaultdict(list)
+    in_degree = defaultdict(int)
+    nodes = {}
+
+    # Initialize all nodes
+    for i, step in enumerate(steps):
+        node_id = f"step_{i}"
+        nodes[node_id] = step
+        in_degree[node_id] = 0
+
+    # Build edges based on provides/requires
+    for i, step in enumerate(steps):
+        step_id = f"step_{i}"
+        provides = step.get('provides', [])
+
+        for j, other_step in enumerate(steps):
+            if i == j:
+                continue
+            other_id = f"step_{j}"
+            requires = other_step.get('requires', [])
+
+            # If this step provides something that other step requires
+            for provided in provides:
+                if provided in requires:
+                    graph[step_id].append(other_id)
+                    in_degree[other_id] += 1
+
+    # Kahn's algorithm
+    queue = deque([node for node in nodes.keys() if in_degree[node] == 0])
+    result = []
+
+    while queue:
+        current = queue.popleft()
+        result.append(nodes[current])
+
+        for neighbor in graph[current]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    # Check for cycles
+    has_cycle = len(result) != len(steps)
+
+    return result, has_cycle
+
+# Read input
+try:
+    steps = json.load(sys.stdin)
+    if not steps:
+        print(json.dumps({"error": None, "steps": []}))
+        sys.exit(0)
+
+    sorted_steps, has_cycle = kahn_sort(steps)
+
+    if has_cycle:
+        print(json.dumps({"error": "cycle_detected", "steps": []}))
+    else:
+        print(json.dumps({"error": None, "steps": sorted_steps}))
+except json.JSONDecodeError as e:
+    print(json.dumps({"error": "json_decode_error", "steps": []}), file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(json.dumps({"error": str(e), "steps": []}), file=sys.stderr)
+    sys.exit(1)
+EOF
+
+    # Run the Python script
+    python3 "$temp_script"
+
+    # Clean up the temporary script
+    rm -f "$temp_script"
+}
+
+# Sort steps using DAG
+sort_steps_dag() {
+    local steps_json="$1"
+
+    log "DEBUG" "DAG sorting steps based on dependencies"
+
+    # Extract dependencies for each step
+    local tagged_steps="[]"
+    local step_count=0
+    while IFS= read -r step; do
+        if [[ -z "$step" || "$step" == "{}" ]]; then
+            continue
+        fi
+
+        step_count=$((step_count + 1))
+        local tagged_step
+        tagged_step=$(extract_dependencies "$step")
+        tagged_steps=$(echo "$tagged_steps" | jq -c ". + [$tagged_step]")
+    done <<< "$(echo "$steps_json" | jq -c '.[]?')"
+
+    log "DEBUG" "DAG sorting processed $step_count steps"
+    log "DEBUG" "Tagged steps: $tagged_steps"
+
+    # Run Kahn sort
+    local sort_result
+    sort_result=$(echo "$tagged_steps" | kahn_sort 2>&1)
+
+    log "DEBUG" "Kahn sort result: $sort_result"
+
+    local error
+    error=$(echo "$sort_result" | jq -r '.error // empty' 2>/dev/null || echo "parse_error")
+
+    log "DEBUG" "Kahn sort error: $error"
+
+    if [[ "$error" == "cycle_detected" ]]; then
+        log "ERROR" "Cycle detected in DAG, aborting turn"
+        # Return empty array to trigger replanner
+        echo "[]"
+        return 1
+    fi
+
+    local sorted_steps
+    sorted_steps=$(echo "$sort_result" | jq -c '.steps')
+
+    log "DEBUG" "Extracted sorted steps: $sorted_steps"
+    log "INFO" "DAG sort completed successfully"
+    echo "$sorted_steps"
+}
+
 # Ostruct call wrapper with retry logic
 ostruct_call() {
     local template="$1"
@@ -178,6 +638,20 @@ ostruct_call() {
 
     log "INFO" "Ostruct call $OSTRUCT_CALL_COUNT/$MAX_OSTRUCT_CALLS: $template"
 
+    # Check if --output-file is already specified in args
+    local output_file=""
+    local filtered_args=()
+    local i=0
+    while [[ $i -lt ${#args[@]} ]]; do
+        if [[ "${args[$i]}" == "--output-file" ]]; then
+            output_file="${args[$((i+1))]}"
+            i=$((i+2))  # Skip both --output-file and its value
+        else
+            filtered_args+=("${args[$i]}")
+            i=$((i+1))
+        fi
+    done
+
     local attempt=1
     local max_attempts=3
     local backoff_delays=(1 3 7)
@@ -185,32 +659,64 @@ ostruct_call() {
     while [[ $attempt -le $max_attempts ]]; do
         log "DEBUG" "Attempt $attempt/$max_attempts"
 
-        # Create temporary file for ostruct output
-        local temp_output=$(mktemp)
-        local ostr_cmd=(poetry run ostruct run "${TEMPLATES_DIR}/$template" "${SCHEMAS_DIR}/$schema" --file tools "$TOOLS_FILE" --output-file "$temp_output" "${args[@]}")
+        # Use provided output file or create temporary one
+        local temp_output
+        local cleanup_temp=false
 
-        # Build shell-escaped command string for accurate logging
-        local cmd_str=""
-        printf -v cmd_str '%q ' "${ostr_cmd[@]}"
-        log "DEBUG" "Running: ${cmd_str}(cwd: $REPO_ROOT)"
-
-        # Run ostruct with stderr going to log file only
-        if (cd "$REPO_ROOT" && "${ostr_cmd[@]}" 2>>"$LOG_FILE"); then
-            # Return the clean JSON output from file
-            cat "$temp_output"
-            rm -f "$temp_output"
-            log "INFO" "Ostruct call successful"
-            return 0
+        if [[ -n "$output_file" ]]; then
+            temp_output="$output_file"
+            log "DEBUG" "Using provided output file: $temp_output"
         else
-            local exit_code=$?
-            rm -f "$temp_output"
-            log "WARN" "Ostruct call failed (attempt $attempt/$max_attempts), exit code: $exit_code"
-
-            if [[ $attempt -lt $max_attempts ]]; then
-                local delay=${backoff_delays[$((attempt-1))]}
-                log "INFO" "Retrying in ${delay}s..."
-                sleep $delay
+            temp_output=$(mktemp 2>/dev/null)
+            if [[ $? -ne 0 ]] || [[ -z "$temp_output" ]]; then
+                log "ERROR" "Failed to create temporary file"
+                return 1
             fi
+            cleanup_temp=true
+            log "DEBUG" "Created temporary output file: $temp_output"
+        fi
+
+        # Use cached ostruct executable to skip Poetry startup
+        local ostr_cmd=("$OSTRUCT_BIN" run "${TEMPLATES_DIR}/$template" "${SCHEMAS_DIR}/$schema" --file tools "$TOOLS_FILE" --output-file "$temp_output" "${filtered_args[@]}")
+
+        # Build simple command string for logging (avoid complex quoting)
+        local cmd_str="poetry run ostruct run $template $schema --file tools [tools.json] --output-file [output] [args...]"
+        log "DEBUG" "Running: ${cmd_str} (cwd: $REPO_ROOT)"
+
+        # Run ostruct with all output properly redirected
+        local exit_code=0
+        (cd "$REPO_ROOT" && "${ostr_cmd[@]}" 2>>"$LOG_FILE") || exit_code=$?
+
+        if [[ $exit_code -eq 0 ]]; then
+            # Verify output file exists and has content
+            if [[ -f "$temp_output" ]] && [[ -s "$temp_output" ]]; then
+                # Return the clean JSON output from file
+                cat "$temp_output"
+
+                # Clean up temporary file only if we created it
+                if [[ "$cleanup_temp" == "true" ]]; then
+                    rm -f "$temp_output"
+                fi
+
+                log "INFO" "Ostruct call successful"
+                return 0
+            else
+                log "WARN" "Ostruct completed but output file is empty or missing"
+                exit_code=1
+            fi
+        fi
+
+        # Clean up temp file on failure (only if we created it)
+        if [[ "$cleanup_temp" == "true" ]]; then
+            rm -f "$temp_output"
+        fi
+
+        log "WARN" "Ostruct call failed (attempt $attempt/$max_attempts), exit code: $exit_code"
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            local delay=${backoff_delays[$((attempt-1))]}
+            log "INFO" "Retrying in ${delay}s..."
+            sleep $delay
         fi
 
         attempt=$((attempt + 1))
@@ -329,6 +835,10 @@ execute_write_file() {
 
     log "DEBUG" "Writing to file: $path"
     echo "$content" > "$safe_file"
+
+    # Update temporal constraints
+    update_temporal_constraints "file_created" "$path"
+
     echo "Successfully wrote ${#content} bytes to $path"
 }
 
@@ -355,6 +865,12 @@ execute_append_file() {
 
     log "DEBUG" "Appending to file: $path"
     echo "$content" >> "$safe_file"
+
+    # Update temporal constraints if file was created
+    if [[ $current_size -eq 0 ]]; then
+        update_temporal_constraints "file_created" "$path"
+    fi
+
     echo "Successfully appended ${#content} bytes to $path (total: $total_size bytes)"
 }
 
@@ -475,6 +991,81 @@ execute_step() {
 
     log "INFO" "Executing step: $tool - $reasoning"
 
+    # Check if critic is enabled (default: true)
+    if [[ "${CRITIC_ENABLED:-true}" == "true" ]]; then
+        # Build critic input
+        local critic_input
+        critic_input=$(build_critic_input "$step_json" "$TURN_COUNT")
+
+        # Save critic input to temporary file
+        local critic_input_file="$SANDBOX_PATH/.critic_input_${TURN_COUNT}.json"
+        echo "$critic_input" > "$critic_input_file"
+
+        # Call critic
+        log "DEBUG" "Calling critic for step validation"
+        local critic_out
+        critic_out=$(ostruct_call "critic.j2" "critic_out.schema.json" \
+            --file critic_input "$critic_input_file")
+
+        if [[ $? -ne 0 ]]; then
+            log "ERROR" "Critic call failed, proceeding without validation"
+        else
+            # Parse critic response
+            local ok score comment
+            ok=$(echo "$critic_out" | jq -r '.ok')
+            score=$(echo "$critic_out" | jq -r '.score')
+            comment=$(echo "$critic_out" | jq -r '.comment')
+
+            log "CRITIC" "Score: $score, OK: $ok, Comment: $comment"
+
+            # Apply blocking logic
+            if [[ "$ok" == "false" ]] || (( score <= 2 )); then
+                log "CRITIC" "BLOCKING step execution (score=$score)"
+
+                # Apply patch if available
+                local patch_len
+                patch_len=$(echo "$critic_out" | jq '.patch | length')
+
+                if (( patch_len > 0 )); then
+                    log "CRITIC" "Applying $patch_len patch steps"
+                    local patch
+                    patch=$(echo "$critic_out" | jq '.patch')
+
+                    # Prepend patch to next_steps in current state
+                    CURRENT_STATE=$(echo "$CURRENT_STATE" | \
+                        jq --argjson patch "$patch" '.next_steps = ($patch + .next_steps)')
+
+                    # Save updated state
+                    echo "$CURRENT_STATE" > "$CURRENT_STATE_FILE"
+                fi
+
+                # Record critic intervention
+                record_critic_intervention "$step_json" "$critic_out"
+
+                # Record blocked step in history
+                record_blocked_step "$step_json" "$score" "$comment"
+
+                # Return blocked result
+                local result_json
+                result_json=$(jq -n \
+                    --arg comment "$comment" \
+                    --argjson score "$score" \
+                    --argjson duration "0" \
+                    '{success: false, error: ("Critic blocked: " + $comment), critic_score: $score, duration: $duration, blocked_by_critic: true}')
+                echo "$result_json"
+                return 2  # Special return code for critic block
+            fi
+
+            # Score 3: warn but proceed
+            if (( score == 3 )); then
+                log "WARN" "Critic warning: $comment"
+            fi
+        fi
+
+        # Clean up temporary file
+        rm -f "$critic_input_file"
+    fi
+
     local output=""
     local success=true
 
@@ -548,6 +1139,9 @@ execute_step() {
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
 
+    # Update failure patterns
+    update_failure_patterns "$tool" "$success" "$TURN_COUNT"
+
     # Create result JSON
     local result_json
     if [[ "$success" == "true" ]]; then
@@ -570,6 +1164,7 @@ main() {
     fi
 
     local task="$1"
+    TASK="$task"  # Make task available globally for critic
 
     # Initialize run environment
     init_run
@@ -700,6 +1295,7 @@ main() {
         fi
 
         local current_state=$(cat "$CURRENT_STATE_FILE")
+        CURRENT_STATE="$current_state"  # Make available globally for critic
         local completed=$(echo "$current_state" | jq -r '.completed')
         local current_turn=$(echo "$current_state" | jq -r '.current_turn')
 
@@ -720,15 +1316,38 @@ main() {
         fi
 
         # Extract and execute next steps
+        local next_steps_array=$(echo "$current_state" | jq -c '.next_steps')
         local next_steps=$(echo "$current_state" | jq -c '.next_steps[]?')
         # Bail if next_steps is empty (planner misbehaved)
         if [[ -z "$next_steps" ]]; then
             log "WARN" "Planner returned empty next_steps; calling replanner"
         else
+            # Sort steps using DAG if enabled
+            local sorted_next_steps_array
+            sorted_next_steps_array=$(sort_steps_dag "$next_steps_array")
+
+            if [[ $? -ne 0 ]]; then
+                # If DAG sort failed, proceed with original next_steps
+                log "WARN" "DAG sort failed, proceeding with original next_steps"
+                sorted_next_steps_array="$next_steps_array"
+            fi
+
+            log "DEBUG" "sorted_next_steps_array: $sorted_next_steps_array"
+
+            # Convert back to individual steps for execution
+            local sorted_next_steps=$(echo "$sorted_next_steps_array" | jq -c '.[]?')
+            log "DEBUG" "After jq conversion: $sorted_next_steps"
+
             # Execute each step
             local step_results="[]"
+            local attempted_count=0  # count every step we process (executed or skipped)
+            local created_paths="[]"
+            local modified_paths="[]"
+            log "DEBUG" "Starting step execution loop with sorted_next_steps: $sorted_next_steps"
             while IFS= read -r step; do
+                log "DEBUG" "Processing step: $step"
                 if [[ -z "$step" ]]; then
+                    log "DEBUG" "Skipping empty step"
                     continue
                 fi
                 # Skip literal empty object
@@ -740,8 +1359,24 @@ main() {
                 # Ensure step is valid JSON
                 echo "$step" | jq empty 2>/dev/null || { log "WARN" "Skipping invalid step JSON"; continue; }
 
+                # Check if step has been previously blocked
+                if is_step_previously_blocked "$step"; then
+                    log "WARN" "Skipping previously blocked step: $(echo "$step" | jq -r '.tool')"
+                    # Count it as attempted so slicing drops it
+                    attempted_count=$((attempted_count + 1))
+                    continue
+                fi
+
+                attempted_count=$((attempted_count + 1))
                 log "INFO" "Executing step: $(echo "$step" | jq -r '.tool')"
                 local result=$(execute_step "$step")
+
+                # Check if step was blocked by critic
+                local blocked_by_critic=$(echo "$result" | jq -r '.blocked_by_critic // false')
+                if [[ "$blocked_by_critic" == "true" ]]; then
+                    log "DEBUG" "Step blocked by critic"
+                    # Do not decrement attempted_count; slicing will drop it
+                fi
 
                 # Add step and result to history
                 local history_entry=$(jq -n \
@@ -756,25 +1391,69 @@ main() {
                 local success=$(echo "$result" | jq -r '.success')
                 if [[ "$success" == "true" ]]; then
                     log "INFO" "Step completed successfully"
+                    # Extract tool name once for tracking
+                    local step_tool
+                    step_tool=$(echo "$step" | jq -r '.tool')
+                    # Track file operations for state
+                    case "$step_tool" in
+                        "write_file"|"download_file")
+                            local tgt
+                            tgt=$(get_param "$step" "path")
+                            if [[ -n "$tgt" && "$tgt" != "null" ]]; then
+                                created_paths=$(echo "$created_paths" | jq --arg p "$tgt" '. + [$p]')
+                            fi
+                            ;;
+                        "append_file"|"text_replace")
+                            local tgt
+                            tgt=$(get_param "$step" "path")
+                            if [[ -z "$tgt" || "$tgt" == "null" ]]; then
+                                tgt=$(get_param "$step" "file")
+                            fi
+                            if [[ -n "$tgt" && "$tgt" != "null" ]]; then
+                                modified_paths=$(echo "$modified_paths" | jq --arg p "$tgt" '. + [$p]')
+                            fi
+                            ;;
+                    esac
                 else
                     log "WARN" "Step failed: $(echo "$result" | jq -r '.error')"
                 fi
-            done <<< "$next_steps"
+            done <<< "$sorted_next_steps"
 
-            # Update state with execution results
-            local updated_state=$(echo "$current_state" | jq \
+            # Reload latest state (may include critic patches) and merge execution results
+            local base_state=$(cat "$CURRENT_STATE_FILE")
+            local updated_state=$(echo "$base_state" | jq \
                 --argjson results "$step_results" \
-                '.execution_history += $results')
+                --argjson attempted "$attempted_count" \
+                --argjson created "$created_paths" \
+                --argjson modified "$modified_paths" \
+                '.execution_history += $results | .next_steps = (.next_steps[$attempted:]) | .current_turn += 1 | .files_created += $created | .files_modified += $modified')
 
             echo "$updated_state" > "$CURRENT_STATE_FILE"
+
+            # If critic injected new next_steps (patches) we already have work to do.
+            # Skip replanner this turn – immediately continue execution loop.
+            local pending_count
+            pending_count=$(echo "$updated_state" | jq '.next_steps | length')
+            if [[ $pending_count -gt 0 ]]; then
+                log "INFO" "Skipping replanner – ${pending_count} pending step(s) from critic patch.";
+                continue
+            fi
         fi
 
         # Call replanner
         log "INFO" "Calling replanner"
+
+        # Get block history summary for replanner context
+        local block_history_summary
+        block_history_summary=$(get_block_history_summary)
+        local block_history_file="$SANDBOX_PATH/.block_history_summary.json"
+        echo "$block_history_summary" > "$block_history_file"
+
         replanner_output=$(ostruct_call "replanner.j2" "replanner_out.schema.json" \
             -V "sandbox_path=$SANDBOX_PATH" \
             -V "max_turns=$MAX_TURNS" \
-            --file current_state "$CURRENT_STATE_FILE")
+            --file current_state "$CURRENT_STATE_FILE" \
+            --file block_history "$block_history_file")
 
         if [[ $? -ne 0 ]]; then
             error_exit "Replanner call failed"
