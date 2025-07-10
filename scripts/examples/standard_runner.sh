@@ -112,7 +112,7 @@ parse_args_with_getoptions() {
   if [[ "${VERBOSE:-}" == "1" ]]; then
     VERBOSE=true
     set -x
-    DRY="$DRY --debug --progress-max"
+    DRY="$DRY --debug --progress detailed"
   fi
 }
 
