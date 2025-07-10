@@ -21,26 +21,37 @@ OpenAI's structured output mode has compatibility issues with File Search when u
 ### Quick Start
 
 ```bash
-# Run the complete two-pass analysis
-./run_two_pass.sh
+# 1️⃣ CI-friendly validation (no API calls)
+./run.sh --test-dry-run
 
-# Or specify a different input file
-./run_two_pass.sh data/your_pitch.txt
+# 2️⃣ Live Pass-1 extraction only (core fields)
+./run.sh --test-live
+
+# 3️⃣ Full two-pass extraction on sample text
+./run.sh data/sample_pitch.txt
+
+# 4️⃣ Full two-pass extraction on a PDF deck (Uber 2008)
+./run.sh examples/uber-pitch-deck-2008.pdf
 ```
 
 ### Manual Pass-by-Pass
 
+If you want fine-grained control you can still run each pass yourself:
+
 ```bash
-# Pass 1: Extract core data
+# Pass 1 – Core data extraction
 ostruct run templates/pass1_core.j2 schemas/pass1_core.json \
     --enable-tool file-search \
-    --file fs:deck data/sample_pitch.txt
+    --file fs:deck examples/uber-pitch-deck-2008.pdf > pass1.json
 
-# Pass 2: Add taxonomy classification
+# Pass 2 – Industry taxonomy classification
 ostruct run templates/pass2_taxonomy.j2 schemas/pass2_taxonomy_simple.json \
     --enable-tool file-search \
     --file fs:taxonomy reference/taxonomy.md \
-    --json-var core_data="$(cat pass1_result.json)"
+    --json-var core_data="$(cat pass1.json)" > pass2.json
+
+# Merge results
+jq -s '.[0] + {"industry_classification": .[1]}' pass1.json pass2.json
 ```
 
 ## Output Structure
@@ -73,19 +84,23 @@ The final JSON includes:
 
 ## Files
 
-- `run_two_pass.sh` - Main orchestration script
-- `templates/pass1_core.j2` - Core data extraction template
-- `templates/pass2_taxonomy.j2` - Taxonomy classification template
-- `schemas/pass1_core.json` - Core data schema
-- `schemas/pass2_taxonomy_simple.json` - Taxonomy classification schema
-- `reference/taxonomy.md` - Complete industry taxonomy reference
-- `data/sample_pitch.txt` - Example pitch deck content
+- `run.sh` – Standards-compliant launcher (handles dry-run, live, full two-pass)
+- `templates/pass1_core.j2` – Core data extraction template
+- `templates/pass2_taxonomy.j2` – Taxonomy classification template
+- `schemas/pass1_core.json` – Core data schema
+- `schemas/pass2_taxonomy_simple.json` – Taxonomy classification schema
+- `reference/taxonomy.md` – Complete industry taxonomy reference
+- `data/sample_pitch.txt` – Sample pitch text
+- **Example PDF decks** (text-based):
+  - `examples/uber-pitch-deck-2008.pdf`
+  - `examples/buffer-seedround-pitchdeck-2011.pdf`
+  - `examples/airbnb-pitch-deck-2009.pdf`
 
 ## Requirements
 
-- OpenAI API key configured
-- File Search tool enabled
-- jq for JSON processing and result merging
+- OpenAI API key configured (`OPENAI_API_KEY`)
+- File Search tool enabled in your account
+- `jq` installed for JSON merging
 
 ## Example Output
 
