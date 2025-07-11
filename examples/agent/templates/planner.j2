@@ -44,7 +44,8 @@ Every step MUST have this exact structure:
   - `{ "type":"file_exists", "path":"<file>" }`
   - `{ "type":"file_contains", "path":"<file>", "substr":"<text up to 128 bytes>" }`
   - `{ "type":"json_key_equals", "path":"<file>", "key":"<json key>", "value":"<scalar>" }`
-  Include at least one criterion; omit the field entirely if no clear criterion can be formed.
+  **Include _at least one_ concrete criterion. Never leave objects empty.**
+  If the task's completion cannot be checked, return an empty array `[]` (but _not_ `[{}]`).
 - Keep all paths **relative** to `{{ sandbox_path }}`
 - Use download_file (not curl) to save web content to files
 
@@ -63,7 +64,9 @@ Every step MUST have this exact structure:
   "observations": [],
   "files_created": [],
   "files_modified": [],
-  "success_criteria": []
+  "success_criteria": [
+    { "type": "file_contains", "path": "demo.txt", "substr": "hello world" }
+  ]
 }
 ```
 

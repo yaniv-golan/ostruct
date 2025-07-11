@@ -27,6 +27,14 @@ fi
 # -----------------------------------------------------------------------------
 LOG_DIR="$AGENT_DIR/logs"            # reuse agent-specific log folder
 LOG_LEVEL=${LOG_LEVEL:-INFO}          # allow override via env
+# Library directory
+LIB_DIR="$AGENT_DIR/lib"
+# shellcheck source=/dev/null
+source "$LIB_DIR/retry.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/ostruct_cli.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/tools.sh"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/scripts/logging.sh"
 log_start "runner.sh"
@@ -56,10 +64,6 @@ WORKDIR_PATH=""
 SANDBOX_PATH=""
 CURRENT_STATE_FILE=""
 
-# File size limits
-FILE_SIZE_LIMIT=$((32 * 1024))  # 32KB limit for file operations
-DOWNLOAD_SIZE_LIMIT=$((10 * 1024 * 1024))  # 10MB limit for downloads
-
 # Global counters
 OSTRUCT_CALL_COUNT=0
 TURN_COUNT=0
@@ -69,54 +73,13 @@ RUN_ID=""
 TASK=""
 CURRENT_STATE=""
 
-# Portable helper to get file size in bytes (GNU/Linux and macOS/BSD)
-file_size() {
-    if stat -c%s "$1" >/dev/null 2>&1; then
-        stat -c%s "$1"
-    else
-        stat -f%z "$1"
-    fi
-}
-
 # Error handling helper
 error_exit() {
     log_error "$1"
     exit 1
 }
 
-# Generate schemas from templates
-generate_schemas() {
-    log_info "Generating schemas from templates"
-
-    # Extract tool names from tools.json as JSON array
-    local tool_names
-    tool_names=$(jq -r 'keys | @json' "$TOOLS_FILE")
-
-    if [[ $? -ne 0 ]]; then
-        error_exit "Failed to extract tool names from $TOOLS_FILE"
-    fi
-
-    # Generate state.schema.json from template
-    if [[ -f "$SCHEMAS_DIR/state.schema.json.template" ]]; then
-        sed "s/__TOOL_NAMES__/$tool_names/g" \
-            "$SCHEMAS_DIR/state.schema.json.template" > "$SCHEMAS_DIR/state.schema.json"
-        log_debug "Generated state.schema.json with tools: $tool_names"
-    fi
-
-    # Generate plan_step.schema.json from template
-    if [[ -f "$SCHEMAS_DIR/plan_step.schema.json.template" ]]; then
-        sed "s/__TOOL_NAMES__/$tool_names/g" \
-            "$SCHEMAS_DIR/plan_step.schema.json.template" > "$SCHEMAS_DIR/plan_step.schema.json"
-        log_debug "Generated plan_step.schema.json with tools: $tool_names"
-    fi
-
-    # Generate replanner_out.schema.json from template
-    if [[ -f "$SCHEMAS_DIR/replanner_out.schema.json.template" ]]; then
-        sed "s/__TOOL_NAMES__/$tool_names/g" \
-            "$SCHEMAS_DIR/replanner_out.schema.json.template" > "$SCHEMAS_DIR/replanner_out.schema.json"
-        log_debug "Generated replanner_out.schema.json with tools: $tool_names"
-    fi
-}
+# generate_schemas now provided by lib/ostruct_cli.sh
 
 # Initialize run environment
 init_run() {
@@ -149,36 +112,6 @@ init_run() {
 
     # Generate schemas from templates
     generate_schemas
-}
-
-# Safe path resolution - ensures paths are within sandbox
-safe_path() {
-    local input_path="$1"
-    local resolved_path
-
-    # Handle relative paths
-    if [[ "$input_path" != /* ]]; then
-        input_path="$SANDBOX_PATH/$input_path"
-    fi
-
-    # Resolve with realpath if available, fallback to readlink
-    if command -v realpath >/dev/null 2>&1; then
-        # -m allows missing files (GNU and BSD both support this)
-        resolved_path=$(realpath -m "$input_path" 2>/dev/null)
-        # If realpath -m fails, try without -m, then fallback to input path
-        if [[ -z "$resolved_path" ]]; then
-            resolved_path=$(realpath "$input_path" 2>/dev/null || echo "$input_path")
-        fi
-    else
-        resolved_path=$(readlink -f "$input_path" 2>/dev/null || echo "$input_path")
-    fi
-
-    # Ensure path is within sandbox
-    if [[ "$resolved_path" != "$SANDBOX_PATH"* ]]; then
-        error_exit "Path escape attempt detected: $input_path -> $resolved_path"
-    fi
-
-    echo "$resolved_path"
 }
 
 # Critic system functions
@@ -493,97 +426,7 @@ extract_dependencies() {
         '. + {provides: $provides, requires: $requires}'
 }
 
-# Kahn topological sort implementation
-kahn_sort() {
-    # Create a temporary Python script for sorting (reads from stdin)
-    local temp_script="$AGENT_DIR/.kahn_sort.py"
-
-    # Write the Python script to a temporary file
-    cat > "$temp_script" << 'EOF'
-import json
-import sys
-from collections import defaultdict, deque
-
-def kahn_sort(steps):
-    """
-    Kahn's algorithm for topological sorting
-    Returns (sorted_steps, has_cycle)
-    """
-    # Build graph and in-degree count
-    graph = defaultdict(list)
-    in_degree = defaultdict(int)
-    nodes = {}
-
-    # Initialize all nodes
-    for i, step in enumerate(steps):
-        node_id = f"step_{i}"
-        nodes[node_id] = step
-        in_degree[node_id] = 0
-
-    # Build edges based on provides/requires
-    for i, step in enumerate(steps):
-        step_id = f"step_{i}"
-        provides = step.get('provides', [])
-
-        for j, other_step in enumerate(steps):
-            if i == j:
-                continue
-            other_id = f"step_{j}"
-            requires = other_step.get('requires', [])
-
-            # If this step provides something that other step requires
-            for provided in provides:
-                if provided in requires:
-                    graph[step_id].append(other_id)
-                    in_degree[other_id] += 1
-
-    # Kahn's algorithm
-    queue = deque([node for node in nodes.keys() if in_degree[node] == 0])
-    result = []
-
-    while queue:
-        current = queue.popleft()
-        result.append(nodes[current])
-
-        for neighbor in graph[current]:
-            in_degree[neighbor] -= 1
-            if in_degree[neighbor] == 0:
-                queue.append(neighbor)
-
-    # Check for cycles
-    has_cycle = len(result) != len(steps)
-
-    return result, has_cycle
-
-# Read input
-try:
-    steps = json.load(sys.stdin)
-    if not steps:
-        print(json.dumps({"error": None, "steps": []}))
-        sys.exit(0)
-
-    sorted_steps, has_cycle = kahn_sort(steps)
-
-    if has_cycle:
-        print(json.dumps({"error": "cycle_detected", "steps": []}))
-    else:
-        print(json.dumps({"error": None, "steps": sorted_steps}))
-except json.JSONDecodeError as e:
-    print(json.dumps({"error": "json_decode_error", "steps": []}), file=sys.stderr)
-    sys.exit(1)
-except Exception as e:
-    print(json.dumps({"error": str(e), "steps": []}), file=sys.stderr)
-    sys.exit(1)
-EOF
-
-    # Run the Python script
-    python3 "$temp_script"
-
-    # Clean up the temporary script
-    rm -f "$temp_script"
-}
-
-# Sort steps using DAG
+# Sort steps using DAG (calls lib/dag_sort.py)
 sort_steps_dag() {
     local steps_json="$1"
 
@@ -606,9 +449,9 @@ sort_steps_dag() {
     log_debug "DAG sorting processed $step_count steps"
     log_debug "Tagged steps: $tagged_steps"
 
-    # Run Kahn sort
+    # Run python sorter
     local sort_result
-    sort_result=$(echo "$tagged_steps" | kahn_sort 2>&1)
+    sort_result=$(echo "$tagged_steps" | python3 "$LIB_DIR/dag_sort.py" 2>&1)
 
     log_debug "Kahn sort result: $sort_result"
 
@@ -632,107 +475,7 @@ sort_steps_dag() {
     echo "$sorted_steps"
 }
 
-# Ostruct call wrapper with retry logic
-ostruct_call() {
-    local template="$1"
-    local schema="$2"
-    shift 2
-    local args=("$@")
-
-    OSTRUCT_CALL_COUNT=$((OSTRUCT_CALL_COUNT + 1))
-
-    if [[ $OSTRUCT_CALL_COUNT -gt $MAX_OSTRUCT_CALLS ]]; then
-        error_exit "Maximum ostruct calls ($MAX_OSTRUCT_CALLS) exceeded"
-    fi
-
-    log_info "Ostruct call $OSTRUCT_CALL_COUNT/$MAX_OSTRUCT_CALLS: $template"
-
-    # Check if --output-file is already specified in args
-    local output_file=""
-    local filtered_args=()
-    local i=0
-    while [[ $i -lt ${#args[@]} ]]; do
-        if [[ "${args[$i]}" == "--output-file" ]]; then
-            output_file="${args[$((i+1))]}"
-            i=$((i+2))  # Skip both --output-file and its value
-        else
-            filtered_args+=("${args[$i]}")
-            i=$((i+1))
-        fi
-    done
-
-    local attempt=1
-    local max_attempts=3
-    local backoff_delays=(1 3 7)
-
-    while [[ $attempt -le $max_attempts ]]; do
-        log_debug "Attempt $attempt/$max_attempts"
-
-        # Use provided output file or create temporary one
-        local temp_output
-        local cleanup_temp=false
-
-        if [[ -n "$output_file" ]]; then
-            temp_output="$output_file"
-            log_debug "Using provided output file: $temp_output"
-        else
-            temp_output=$(mktemp 2>/dev/null)
-            if [[ $? -ne 0 ]] || [[ -z "$temp_output" ]]; then
-                log_error "Failed to create temporary file"
-                return 1
-            fi
-            cleanup_temp=true
-            log_debug "Created temporary output file: $temp_output"
-        fi
-
-        # Use cached ostruct executable to skip Poetry startup
-        local ostr_cmd=("$OSTRUCT_BIN" run "${TEMPLATES_DIR}/$template" "${SCHEMAS_DIR}/$schema" --file tools "$TOOLS_FILE" --output-file "$temp_output" "${filtered_args[@]}")
-
-        # Build simple command string for logging (avoid complex quoting)
-        local cmd_str="poetry run ostruct run $template $schema --file tools [tools.json] --output-file [output] [args...]"
-        log_debug "Running: ${cmd_str} (cwd: $REPO_ROOT)"
-
-        # Run ostruct with all output properly redirected
-        local exit_code=0
-        (cd "$REPO_ROOT" && "${ostr_cmd[@]}" 2>>"$LOG_FILE") || exit_code=$?
-
-        if [[ $exit_code -eq 0 ]]; then
-            # Verify output file exists and has content
-            if [[ -f "$temp_output" ]] && [[ -s "$temp_output" ]]; then
-                # Return the clean JSON output from file
-                cat "$temp_output"
-
-                # Clean up temporary file only if we created it
-                if [[ "$cleanup_temp" == "true" ]]; then
-                    rm -f "$temp_output"
-                fi
-
-                log_info "Ostruct call successful"
-                return 0
-            else
-                log_warn "Ostruct completed but output file is empty or missing"
-                exit_code=1
-            fi
-        fi
-
-        # Clean up temp file on failure (only if we created it)
-        if [[ "$cleanup_temp" == "true" ]]; then
-            rm -f "$temp_output"
-        fi
-
-        log_warn "Ostruct call failed (attempt $attempt/$max_attempts), exit code: $exit_code"
-
-        if [[ $attempt -lt $max_attempts ]]; then
-            local delay=${backoff_delays[$((attempt-1))]}
-            log_info "Retrying in ${delay}s..."
-            sleep $delay
-        fi
-
-        attempt=$((attempt + 1))
-    done
-
-    error_exit "Ostruct call failed after $max_attempts attempts"
-}
+# ostruct_call now provided by lib/ostruct_cli.sh
 
 # Tool execution functions
 execute_jq() {
@@ -1149,60 +892,15 @@ execute_step() {
         return 1
     fi
 
-    case "$tool" in
-        "jq")
-            local filter=$(get_param "$step_json" "filter")
-            local input=$(get_param "$step_json" "input")
-            output=$(execute_jq "$filter" "$input")
-            ;;
-        "grep")
-            local pattern=$(get_param "$step_json" "pattern")
-            local file=$(get_param "$step_json" "file")
-            output=$(execute_grep "$pattern" "$file")
-            ;;
-        "sed")
-            local expression=$(get_param "$step_json" "expression")
-            local file=$(get_param "$step_json" "file")
-            output=$(execute_sed "$expression" "$file")
-            ;;
-        "awk")
-            local script=$(get_param "$step_json" "script")
-            local file=$(get_param "$step_json" "file")
-            output=$(execute_awk "$script" "$file")
-            ;;
-        "curl")
-            local url=$(get_param "$step_json" "url")
-            output=$(execute_curl "$url")
-            ;;
-        "write_file")
-            local path=$(get_param "$step_json" "path")
-            local content=$(get_param "$step_json" "content")
-            output=$(execute_write_file "$path" "$content")
-            ;;
-        "append_file")
-            local path=$(get_param "$step_json" "path")
-            local content=$(get_param "$step_json" "content")
-            output=$(execute_append_file "$path" "$content")
-            ;;
-        "text_replace")
-            local file=$(get_param "$step_json" "file")
-            local search=$(get_param "$step_json" "search")
-            local replace=$(get_param "$step_json" "replace")
-            output=$(execute_text_replace "$file" "$search" "$replace")
-            ;;
-        "read_file")
-            local path=$(get_param "$step_json" "path")
-            output=$(execute_read_file "$path")
-            ;;
-        "download_file")
-            local url=$(get_param "$step_json" "url")
-            local path=$(get_param "$step_json" "path")
-            output=$(execute_download_file "$url" "$path")
-            ;;
+    # Dispatch to library
+    case "$tool" in jq|grep|sed|awk|curl|write_file|append_file|text_replace|read_file|download_file)
+        # Build positional args array from parameters order
+        local -a targs=()
+        while IFS= read -r p; do targs+=("$(jq -r '.value' <<<"$p")"); done < <(echo "$step_json" | jq -c '.parameters[]')
+        output=$(tool_exec "$tool" "${targs[@]}")
+        ;;
         *)
-            output="Error: Unknown tool: $tool"
-            success=false
-            ;;
+        output="Error: Unknown tool: $tool"; success=false ;;
     esac
 
     # Check if command failed
