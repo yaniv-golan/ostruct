@@ -41,8 +41,42 @@ source "$LIB_DIR/tools.sh"
 # shellcheck source=/dev/null
 source "$LIB_DIR/ai_helpers.sh"
 # shellcheck source=/dev/null
+source "$LIB_DIR/ui_helpers.sh"
+# shellcheck source=/dev/null
 source "$REPO_ROOT/scripts/logging.sh"
+
+# Configure logging for cleaner UI
+if [[ "${LOG_LEVEL:-INFO}" == "INFO" && "${AGENT_UI_DISABLE:-false}" != "true" ]]; then
+    # In normal operation with UI enabled, only show warnings and errors on console
+    # Full logging still goes to file (already configured by scripts/logging.sh)
+
+    # Just adjust the stderr appender level to WARN for cleaner UI
+    appender_setLevel stderr WARN
+    appender_activateOptions stderr
+
+    log_info "UI mode: Console shows warnings/errors only, full logging to: $LOG_FILE"
+elif [[ "${LOG_LEVEL:-INFO}" == "VERBOSE" ]]; then
+    # Verbose mode - show info and above
+    appender_setLevel stderr INFO
+    appender_activateOptions stderr
+    log_info "Verbose mode: Detailed logging to console and file: $LOG_FILE"
+else
+    # Debug/verbose mode - show everything (default configuration)
+    log_info "Debug mode: Full logging to console and file: $LOG_FILE"
+fi
+
+# Template debugging configuration
+# Set OSTRUCT_TEMPLATE_DEBUG=true to enable detailed template debugging
+# Useful when troubleshooting template rendering issues, variable substitution,
+# or understanding how templates are processed before being sent to the LLM
+if [[ "${OSTRUCT_TEMPLATE_DEBUG:-false}" == "true" ]]; then
+    log_info "Template debugging enabled - ostruct will show detailed template processing"
+fi
+
 log_start "runner.sh"
+
+# Initialize UI system
+ui_init
 
 # Load verifier helpers
 if [[ -f "$AGENT_DIR/verify.sh" ]]; then
@@ -155,7 +189,7 @@ init_run() {
     generate_schemas
 }
 
-# Sort steps using DAG (calls lib/dag_sort.py)
+# Sort steps using DAG (native tsort implementation)
 sort_steps_dag() {
     local steps_json="$1"
 
@@ -178,30 +212,48 @@ sort_steps_dag() {
     log_debug "DAG sorting processed $step_count steps"
     log_debug "Tagged steps: $tagged_steps"
 
-    # Run python sorter
-    local sort_result
-    sort_result=$(echo "$tagged_steps" | python3 "$LIB_DIR/dag_sort.py" 2>&1)
+    if [[ $step_count -eq 0 ]]; then
+        echo '{"error": null, "steps": []}'
+        return 0
+    fi
 
-    log_debug "Kahn sort result: $sort_result"
+    # Generate edges: for each pair, if intersection(provides_i, requires_j) add 'step_i step_j'
+    local edges
+    edges=$(echo "$tagged_steps" | jq -r '
+        . as $steps |
+        length as $n |
+        [range(0;$n) as $i | range(0;$n) as $j |
+        if $i != $j and ([$steps[$i].provides[] | select(. as $p | $steps[$j].requires | index($p) != null)] | length > 0)
+        then "step_\($i) step_\($j)"
+        else empty end]
+        | .[]'
+    )
 
-    local error
-    error=$(echo "$sort_result" | jq -r '.error // empty' 2>/dev/null || echo "parse_error")
+    # Run tsort
+    local sorted_nodes cycle_detected=0
+    sorted_nodes=$(echo "$edges" | tsort 2>/dev/null) || cycle_detected=1
 
-    log_debug "Kahn sort error: $error"
-
-    if [[ "$error" == "cycle_detected" ]]; then
+    # Check for cycle (tsort outputs partial if cycle)
+    local node_count
+    node_count=$(echo "$tagged_steps" | jq 'length')
+    local output_count
+    output_count=$(echo "$sorted_nodes" | wc -l | tr -d ' ')
+    if [[ $cycle_detected -ne 0 || $output_count -ne $node_count ]]; then
         log_error "Cycle detected in DAG, aborting turn"
-        # Return empty array to trigger replanner
-        echo "[]"
+        echo '{"error": "cycle_detected", "steps": []}'
         return 1
     fi
 
+    # Map sorted nodes back to steps (extract index from step_N)
     local sorted_steps
-    sorted_steps=$(echo "$sort_result" | jq -c '.steps')
+    sorted_steps=$(echo "$tagged_steps" | jq --arg sorted "$sorted_nodes" '
+        [ $sorted | split("\n")[] | select(. != "") | ltrimstr("step_") | tonumber ] as $order |
+        [ .[$order[]] ]
+    ')
 
-    log_debug "Extracted sorted steps: $sorted_steps"
+    log_debug "Sorted steps: $sorted_steps"
     log_info "DAG sort completed successfully"
-    echo "$sorted_steps"
+    echo '{"error": null, "steps": '"$sorted_steps"'}'
 }
 
 # ostruct_call now provided by lib/ostruct_cli.sh
@@ -242,10 +294,17 @@ execute_step() {
         # Call critic
         log_debug "Calling critic for step validation"
         local critic_out
-        critic_out=$(ostruct_call "critic.j2" "critic_out.schema.json" \
-            --file critic_input "$critic_input_file")
+        local critic_output_file="$SANDBOX_PATH/.critic_output_${TURN_COUNT}.json"
+        if ostruct_call "critic.j2" "critic_out.schema.json" \
+            --file critic_input "$critic_input_file" \
+            --output-file "$critic_output_file"; then
+            critic_out=$(cat "$critic_output_file")
+        else
+            critic_out=""
+        fi
 
         if [[ $? -ne 0 ]]; then
+            ui_step_warning "Critic Evaluation" "Critic call failed, proceeding without validation"
             log_error "Critic call failed, proceeding without validation"
         else
             # Parse critic response
@@ -255,6 +314,15 @@ execute_step() {
             comment=$(echo "$critic_out" | jq -r '.comment')
 
             log_info "Score: $score, OK: $ok, Comment: $comment"
+
+            # Display critic feedback with appropriate UI
+            if [[ "$ok" == "false" ]] || (( score <= 2 )); then
+                ui_critic_feedback "$score" "$comment" "blocked"
+            elif (( score == 3 )); then
+                ui_critic_feedback "$score" "$comment" "warning"
+            else
+                ui_critic_feedback "$score" "$comment" "approved"
+            fi
 
             # Apply blocking logic
             if [[ "$ok" == "false" ]] || (( score <= 2 )); then
@@ -389,11 +457,92 @@ execute_step() {
     echo "$result_json"
 }
 
+# Display the selected plan in human-readable format
+display_selected_plan() {
+    local plan_json="$1"
+
+    echo ""
+    echo "📋 Selected Plan Details:"
+    echo ""
+
+    # Extract and display basic info
+    local task=$(echo "$plan_json" | jq -r '.task // "No task description"')
+    local max_turns=$(echo "$plan_json" | jq -r '.max_turns // "Unknown"')
+    local step_count=$(echo "$plan_json" | jq -r '.next_steps | length')
+
+    echo "  Task: $task"
+    echo "  Max turns: $max_turns"
+    echo "  Steps planned: $step_count"
+    echo ""
+
+    # Display each step in detail
+    local step_num=1
+    while IFS= read -r step; do
+        if [[ -n "$step" && "$step" != "null" ]]; then
+            local tool=$(echo "$step" | jq -r '.tool // "unknown"')
+            local reasoning=$(echo "$step" | jq -r '.reasoning // "No reasoning provided"')
+
+            echo "  Step $step_num: $tool"
+            echo "    Reasoning: $reasoning"
+
+            # Display parameters
+            local param_count=$(echo "$step" | jq -r '.parameters | length')
+            if [[ $param_count -gt 0 ]]; then
+                echo "    Parameters:"
+                while IFS= read -r param; do
+                    if [[ -n "$param" && "$param" != "null" ]]; then
+                        local name=$(echo "$param" | jq -r '.name // "unknown"')
+                        local value=$(echo "$param" | jq -r '.value // "unknown"')
+                        echo "      $name: $value"
+                    fi
+                done < <(echo "$step" | jq -c '.parameters[]?')
+            fi
+            echo ""
+
+            step_num=$((step_num + 1))
+        fi
+    done < <(echo "$plan_json" | jq -c '.next_steps[]?')
+}
+
 # Main execution function
 main() {
+    # Default number of candidate plans
+    local NUM_PLANS=3
+
+    # ----------------------------------------------
+    # Parse optional CLI flags before task argument
+    # Supported flags:
+    #   -n, --num-plans <N>   Number of plans to generate (default 3)
+    #   -h, --help           Show usage
+    # ----------------------------------------------
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -n|--num-plans)
+                if [[ -z "$2" || "$2" =~ ^- ]]; then
+                    echo "Error: --num-plans requires an integer argument" >&2
+                    exit 1
+                fi
+                NUM_PLANS="$2"
+                shift 2
+                ;;
+            -h|--help)
+                echo "Usage: $0 [-n NUM_PLANS] <task_description>"
+                echo "Example: $0 -n 2 'Download and analyze the latest weather data'"
+                return 0
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                # First non-flag argument is the task description
+                break
+                ;;
+        esac
+    done
+
     if [[ $# -eq 0 ]]; then
-        echo "Usage: $0 <task_description>"
-        echo "Example: $0 'Download and analyze the latest weather data'"
+        echo "Usage: $0 [-n NUM_PLANS] <task_description>" >&2
         exit 1
     fi
 
@@ -403,17 +552,27 @@ main() {
     # Initialize run environment
     init_run
 
+    # Display task header
+    ui_header "🤖 Ostruct Agent Starting" "Sandboxed execution environment ready"
+    ui_status "Task" "$task"
+    ui_status "Run ID" "$RUN_ID"
+    ui_status "Max turns" "$MAX_TURNS"
+    ui_status "Max ostruct calls" "$MAX_OSTRUCT_CALLS"
+    ui_status "Sandbox" "$SANDBOX_PATH"
+
     log_info "Task: $task"
     log_info "Max turns: $MAX_TURNS"
     log_info "Max ostruct calls: $MAX_OSTRUCT_CALLS"
 
     # Step 1: Generate multiple candidate plans
-    log_info "Generating 3 candidate plans in parallel"
+    ui_planning_phase "Creating Plan" "Creating ${NUM_PLANS} alternative plans"
+    log_info "Generating ${NUM_PLANS} candidate plans in parallel"
 
     # Function to launch one planner with diversity
     gen_plan() {
         local idx="$1"
         local tmp="$SANDBOX_PATH/plan_${idx}.json"
+        ui_plan_status "$((idx + 1))" "generating"
         # Add diversity via temperature and random token
         OSTRUCT_MODEL_PARAMS='{"temperature":0.9}' \
         ostruct_call "planner.j2" "state.schema.json" \
@@ -423,62 +582,91 @@ main() {
             -V "diversity_token=$(uuidgen | head -c 8)" \
             --output-file "$tmp" \
             --file plan_schema "$SCHEMAS_DIR/plan_step.schema.json" &
-        echo $!  # return PID
+        # Return PID for process management
+        echo $!
     }
 
-    # Launch 3 planners in parallel
+    # Launch planners in parallel as per NUM_PLANS
     pids=(); plan_files=()
-    for i in 0 1 2; do
-        gen_plan "$i"
-        pids[$i]=$!
+    for ((i=0; i<NUM_PLANS; i++)); do
+        pids[$i]=$(gen_plan "$i")
         plan_files[$i]="$SANDBOX_PATH/plan_${i}.json"
     done
 
-    # Wait for all planners to complete
-    for pid in "${pids[@]}"; do
-        wait "$pid"
+    # Wait for all planners to complete and show progress
+    local completed_count=0
+    local failed_count=0
+    local duplicate_count=0
+
+    for i in "${!pids[@]}"; do
+        local pid="${pids[$i]}"
+        local file="${plan_files[$i]}"
+
+        if wait "$pid"; then
+            # Simple success status without shallow details
+            if [[ -f "$file" && -s "$file" ]] && jq empty "$file" 2>/dev/null; then
+                ui_plan_status "$((i + 1))" "completed"
+                ((completed_count++))
+                log_info "Plan $((i + 1)) generated successfully"
+            else
+                ui_plan_status "$((i + 1))" "failed" "Invalid or empty output"
+                ((failed_count++))
+                log_warn "Plan $((i + 1)) generated invalid output"
+            fi
+        else
+            ui_plan_status "$((i + 1))" "failed" "Planner process failed"
+            ((failed_count++))
+            log_warn "Plan $((i + 1)) generation failed"
+        fi
     done
 
     # Check for valid plan files and deduplicate
     unique_files=()
-    # Use associative array for deduplication (requires bash 4+)
-    if [[ ${BASH_VERSION%%.*} -ge 4 ]]; then
-        declare -A seen
-    else
-        # Fallback for older bash - use a different approach
-        seen_sigs=""
-    fi
-    for f in "${plan_files[@]}"; do
-        # Skip missing or empty files
-        [[ -s "$f" ]] || { log_warn "plan $f missing, skipping"; continue; }
-
-        # Create signature for deduplication
-        sig=$(jq -S . "$f" 2>/dev/null | sha256sum | cut -d' ' -f1)
-        if [[ -n "$sig" ]]; then
-            if [[ ${BASH_VERSION%%.*} -ge 4 ]]; then
-                # Use associative array
-                if [[ -z "${seen[$sig]+x}" ]]; then
-                    seen[$sig]=1
-                    unique_files+=("$f")
+    seen_hashes=""  # Simple string to track seen hashes
+    for i in "${!plan_files[@]}"; do
+        local file="${plan_files[$i]}"
+        if [[ -f "$file" && -s "$file" ]]; then
+            # Check if file is valid JSON
+            if jq empty "$file" 2>/dev/null; then
+                # Generate hash for deduplication
+                local hash=$(jq -S '.' "$file" | shasum -a 256 | cut -d' ' -f1)
+                if [[ "$seen_hashes" != *"$hash"* ]]; then
+                    unique_files+=("$file")
+                    seen_hashes="$seen_hashes $hash"
+                    log_info "Valid plan file: $file"
+                else
+                    ui_plan_status "$((i + 1))" "duplicate"
+                    ((duplicate_count++))
+                    ((completed_count--))  # Adjust completed count
+                    log_info "Duplicate plan detected, skipping: $file"
                 fi
             else
-                # Fallback: check if signature already in string
-                if [[ "$seen_sigs" != *"$sig"* ]]; then
-                    seen_sigs="$seen_sigs $sig"
-                    unique_files+=("$f")
-                fi
+                ui_plan_status "$((i + 1))" "failed" "Invalid JSON output"
+                ((failed_count++))
+                ((completed_count--))  # Adjust completed count
+                log_warn "Invalid JSON in plan file: $file"
             fi
+        else
+            if [[ $failed_count -eq 0 ]]; then
+                # Only mark as failed if we haven't already counted this failure
+                ui_plan_status "$((i + 1))" "failed" "No output file generated"
+                ((failed_count++))
+                ((completed_count--))  # Adjust completed count
+            fi
+            log_warn "Plan file missing or empty: $file"
         fi
     done
 
-    # Ensure we have at least one valid plan
-    if [[ ${#unique_files[@]} -eq 0 ]]; then
-        error_exit "No valid plans generated"
-    fi
+    # Show summary
+    ui_plan_summary "${NUM_PLANS}" "$completed_count" "$failed_count" "$duplicate_count"
 
-    # If only one unique plan, use it directly
-    if [[ ${#unique_files[@]} -eq 1 ]]; then
-        log_info "Only one unique plan generated, using it directly"
+    local planner_output=""
+    if [[ ${#unique_files[@]} -eq 0 ]]; then
+        ui_step_error "Plan Generation" "All planners failed to generate valid plans"
+        error_exit "All planners failed to generate valid plans"
+    elif [[ ${#unique_files[@]} -eq 1 ]]; then
+        ui_step_success "Plan Generation" "Using single valid plan"
+        log_info "Using single valid plan"
         planner_output=$(cat "${unique_files[0]}")
     else
         # Build JSON array of candidates for selector
@@ -486,12 +674,21 @@ main() {
         jq -s '.' "${unique_files[@]}" > "$plans_file"
 
         # Call plan selector
+        ui_planning_phase "Selecting Best Plan" "Evaluating ${#unique_files[@]} candidate plans"
         log_info "Running plan selector on ${#unique_files[@]} candidates"
-        selector_out=$(ostruct_call "plan_selector.j2" "plan_selector_out.schema.json" \
+
+        local selector_output_file="$SANDBOX_PATH/selector_output.json"
+        if ostruct_call "plan_selector.j2" "plan_selector_out.schema.json" \
             -V "task=$task" \
-            --file plans "$plans_file")
+            --file plans "$plans_file" \
+            --output-file "$selector_output_file"; then
+            selector_out=$(cat "$selector_output_file")
+        else
+            selector_out=""
+        fi
 
         if [[ $? -ne 0 ]]; then
+            ui_step_warning "Plan Selection" "Selector failed, using first plan"
             log_warn "Selector failed, using first plan"
             planner_output=$(cat "${unique_files[0]}")
         else
@@ -501,27 +698,41 @@ main() {
 
             # Validate index bounds
             if [[ $winner_idx -ge 0 && $winner_idx -lt ${#unique_files[@]} ]]; then
+                # Show full reasoning without truncation
+                ui_step_success "Plan Selection" "Selected plan $((winner_idx + 1))"
+                if [[ -n "$comment" && "$comment" != "No comment" ]]; then
+                    echo "  Reasoning: $comment"
+                fi
                 log_info "Selector chose plan index $winner_idx: $comment"
                 planner_output=$(cat "${unique_files[$winner_idx]}")
+
+                # Display the full selected plan in human-readable format
+                display_selected_plan "$planner_output"
             else
+                ui_step_warning "Plan Selection" "Invalid winner index $winner_idx, using first plan"
                 log_warn "Invalid winner index $winner_idx, using first plan"
                 planner_output=$(cat "${unique_files[0]}")
+
+                # Display the full selected plan in human-readable format
+                display_selected_plan "$planner_output"
             fi
         fi
     fi
 
     if [[ -z "$planner_output" ]]; then
+        ui_step_error "Plan Generation" "Failed to generate valid initial plan"
         error_exit "Failed to generate valid initial plan"
     fi
 
     # Save initial state
     echo "$planner_output" > "$CURRENT_STATE_FILE"
+    ui_step_success "Plan Initialization" "Initial state saved and ready for execution"
     log_info "Initial state saved"
 
     # Step 2: Turn-based execution loop
+    ui_header "🔄 Executing" "Beginning turn-based task execution"
     while true; do
         TURN_COUNT=$((TURN_COUNT + 1))
-        log_info "=== Turn $TURN_COUNT/$MAX_TURNS ==="
 
         # Load current state
         if [[ ! -f "$CURRENT_STATE_FILE" ]]; then
@@ -533,10 +744,15 @@ main() {
         local completed=$(echo "$current_state" | jq -r '.completed')
         local current_turn=$(echo "$current_state" | jq -r '.current_turn')
 
+        # Display turn header
+        ui_turn_header "$TURN_COUNT" "$MAX_TURNS"
+        log_info "=== Turn $TURN_COUNT/$MAX_TURNS ==="
+
         # Check if task is completed
         if [[ "$completed" == "true" ]]; then
-            log_info "Task completed!"
             local final_answer=$(echo "$current_state" | jq -r '.final_answer')
+            ui_final_result "true" "Task Completed Successfully" "$final_answer"
+            log_info "Task completed!"
             echo "=== FINAL ANSWER ==="
             echo "$final_answer"
             echo "==================="
@@ -545,6 +761,7 @@ main() {
 
         # Check if max turns reached
         if [[ $current_turn -gt $MAX_TURNS ]]; then
+            ui_final_result "false" "Maximum Turns Reached" "Task incomplete after $MAX_TURNS turns"
             log_error "Maximum turns reached without completion"
             break
         fi
@@ -554,16 +771,23 @@ main() {
         local next_steps=$(echo "$current_state" | jq -c '.next_steps[]?')
         # Bail if next_steps is empty (planner misbehaved)
         if [[ -z "$next_steps" ]]; then
+            ui_step_warning "Planning" "No next steps available, calling replanner"
             log_warn "Planner returned empty next_steps; calling replanner"
         else
             # Sort steps using DAG if enabled
             local sorted_next_steps_array
+            ui_step_start "Dependency Analysis" "0" "0" "Analyzing step dependencies"
             sorted_next_steps_array=$(sort_steps_dag "$next_steps_array")
 
             if [[ $? -ne 0 ]]; then
                 # If DAG sort failed, proceed with original next_steps
+                ui_step_warning "Dependency Analysis" "DAG sort failed, proceeding with original order"
                 log_warn "DAG sort failed, proceeding with original next_steps"
                 sorted_next_steps_array="$next_steps_array"
+            else
+                # Extract steps from the JSON response
+                sorted_next_steps_array=$(echo "$sorted_next_steps_array" | jq '.steps')
+                ui_step_success "Dependency Analysis" "Steps sorted and ready for execution"
             fi
 
             log_debug "sorted_next_steps_array: $sorted_next_steps_array"
@@ -579,7 +803,11 @@ main() {
             local fail_count=0
             local created_paths="[]"
             local modified_paths="[]"
+            local total_steps=$(echo "$sorted_next_steps_array" | jq 'length')
+
+            ui_status "Step Execution" "Processing $total_steps steps in this turn"
             log_debug "Starting step execution loop with sorted_next_steps: $sorted_next_steps"
+
             while IFS= read -r step; do
                 log_debug "Processing step: $step"
                 if [[ -z "$step" ]]; then
@@ -597,6 +825,8 @@ main() {
 
                 # Check if step has been previously blocked
                 if is_step_previously_blocked "$step"; then
+                    local tool_name=$(echo "$step" | jq -r '.tool')
+                    ui_step_warning "Step $((attempted_count + 1))/$total_steps" "Skipping previously blocked step: $tool_name"
                     log_warn "Skipping previously blocked step: $(echo "$step" | jq -r '.tool')"
                     # Count it as attempted so slicing drops it
                     attempted_count=$((attempted_count + 1))
@@ -604,12 +834,19 @@ main() {
                 fi
 
                 attempted_count=$((attempted_count + 1))
+                local tool_name=$(echo "$step" | jq -r '.tool')
+                local reasoning=$(echo "$step" | jq -r '.reasoning')
+
+                ui_step_start "$tool_name" "$attempted_count" "$total_steps" "$reasoning"
                 log_info "Executing step: $(echo "$step" | jq -r '.tool')"
                 local result=$(execute_step "$step")
 
                 # Check if step was blocked by critic
                 local blocked_by_critic=$(echo "$result" | jq -r '.blocked_by_critic // false')
                 if [[ "$blocked_by_critic" == "true" ]]; then
+                    local critic_score=$(echo "$result" | jq -r '.critic_score // 0')
+                    local error_msg=$(echo "$result" | jq -r '.error // "Unknown error"')
+                    ui_step_error "$tool_name" "Blocked by critic (score: $critic_score) - $error_msg"
                     log_debug "Step blocked by critic"
                     # Do not decrement attempted_count; slicing will drop it
                 fi
@@ -625,7 +862,10 @@ main() {
 
                 # Log step result
                 local success=$(echo "$result" | jq -r '.success')
+                local duration=$(echo "$result" | jq -r '.duration // 0')
                 if [[ "$success" == "true" ]]; then
+                    local output=$(echo "$result" | jq -r '.output // ""')
+                    ui_step_success "$tool_name" "$output" "$duration"
                     log_info "Step completed successfully"
                     succ_count=$((succ_count + 1))
                     # Extract tool name once for tracking
@@ -652,6 +892,8 @@ main() {
                             ;;
                     esac
                 else
+                    local error_msg=$(echo "$result" | jq -r '.error // "Unknown error"')
+                    ui_step_error "$tool_name" "$error_msg"
                     log_warn "Step failed: $(echo "$result" | jq -r '.error')"
                     fail_count=$((fail_count + 1))
                 fi
@@ -718,6 +960,7 @@ main() {
         fi
 
         # Call replanner
+        ui_planning_phase "Replanning" "Analyzing current state and generating next steps"
         log_info "Calling replanner"
 
         # Get block history summary for replanner context
@@ -726,19 +969,23 @@ main() {
         local block_history_file="$SANDBOX_PATH/.block_history_summary.json"
         echo "$block_history_summary" > "$block_history_file"
 
-        replanner_output=$(ostruct_call "replanner.j2" "replanner_out.schema.json" \
+        local replanner_output_file="$SANDBOX_PATH/replanner_output.json"
+        if ostruct_call "replanner.j2" "replanner_out.schema.json" \
             -V "sandbox_path=$SANDBOX_PATH" \
             -V "max_turns=$MAX_TURNS" \
             --file current_state "$CURRENT_STATE_FILE" \
-            --file block_history "$block_history_file")
-
-        if [[ $? -ne 0 ]]; then
+            --file block_history "$block_history_file" \
+            --output-file "$replanner_output_file"; then
+            replanner_output=$(cat "$replanner_output_file")
+        else
+            ui_step_error "Replanning" "Replanner call failed"
             error_exit "Replanner call failed"
         fi
 
         # ostruct_call now returns clean JSON via --output-file
         # Save updated state
         echo "$replanner_output" > "$CURRENT_STATE_FILE"
+        ui_step_success "Replanning" "State updated with new plan"
 
         # Log state diff
         local prev_state="$current_state"
@@ -747,12 +994,18 @@ main() {
 
         # Check turn limit
         if [[ $TURN_COUNT -ge $MAX_TURNS ]]; then
+            ui_final_result "false" "Maximum Turns Reached" "Task incomplete after $MAX_TURNS turns"
             log_error "Maximum turns reached"
             break
         fi
     done
 
     # Step 3: Final cleanup and reporting
+    ui_header "📊 Execution Summary" "Final results and statistics"
+    ui_status "Total turns" "$TURN_COUNT"
+    ui_status "Total ostruct calls" "$OSTRUCT_CALL_COUNT"
+    ui_status "Sandbox location" "$SANDBOX_PATH"
+
     log_info "Execution completed"
     log_info "Total turns: $TURN_COUNT"
     log_info "Total ostruct calls: $OSTRUCT_CALL_COUNT"
@@ -763,14 +1016,18 @@ main() {
         local error=$(echo "$final_state" | jq -r '.error // empty')
 
         if [[ "$completed" == "true" ]]; then
+            ui_final_result "true" "Task Completed Successfully" "All objectives achieved"
             log_info "Task completed successfully"
         elif [[ -n "$error" ]]; then
+            ui_final_result "false" "Task Failed" "$error"
             log_error "Task failed: $error"
         else
+            ui_final_result "false" "Task Incomplete" "Task did not complete within the allowed turns"
             log_warn "Task incomplete"
         fi
     fi
 
+    ui_status "Run completed" "$RUN_ID"
     log_info "Run completed: $RUN_ID"
 }
 

@@ -96,6 +96,26 @@ ostruct_call() {
         fi
     done
 
+    # Add verbosity flags based on agent's log level
+    local -a verbosity_flags=()
+    case "${LOG_LEVEL:-INFO}" in
+        DEBUG)
+            verbosity_flags+=("--debug")
+            ;;
+        VERBOSE)
+            verbosity_flags+=("--verbose")
+            ;;
+        *)
+            # Default: use --progress none to suppress progress output
+            verbosity_flags+=("--progress" "none")
+            ;;
+    esac
+
+    # Add template debugging if requested
+    if [[ "${OSTRUCT_TEMPLATE_DEBUG:-}" == "true" ]]; then
+        verbosity_flags+=("--template-debug" "all")
+    fi
+
     run_once() {
         local tmp cleanup=false
         if [[ -n "$output_file" ]]; then
@@ -104,10 +124,27 @@ ostruct_call() {
             tmp=$(mktemp) || { log_error "mktemp failed"; return 1; }
             cleanup=true
         fi
-        local cmd=("$OSTRUCT_BIN" run "${TEMPLATES_DIR}/$template" "${SCHEMAS_DIR}/$schema" --file tools "$TOOLS_FILE" --output-file "$tmp" "${filtered[@]}")
-        (cd "$REPO_ROOT" && "${cmd[@]}" 2>>"$LOG_FILE") || return 1
+
+        local cmd=("$OSTRUCT_BIN" run "${TEMPLATES_DIR}/$template" "${SCHEMAS_DIR}/$schema" --file tools "$TOOLS_FILE" --output-file "$tmp" "${verbosity_flags[@]}" "${filtered[@]}")
+
+        # When using --output-file, ostruct shouldn't output JSON to stdout
+        # but it might still output progress/status messages, so redirect appropriately
+        if [[ "${LOG_LEVEL:-INFO}" == "DEBUG" ]]; then
+            # In debug mode, let ostruct output go to console and log
+            (cd "$REPO_ROOT" && "${cmd[@]}" 2>&1 | tee -a "$LOG_FILE") || return 1
+        else
+            # In normal mode, send all output to log file only
+            (cd "$REPO_ROOT" && "${cmd[@]}" >>"$LOG_FILE" 2>&1) || return 1
+        fi
+
         [[ -s "$tmp" ]] || return 1
-        cat "$tmp"
+
+        # Only output to stdout if no --output-file was provided
+        # This prevents JSON from being displayed when using --output-file
+        if [[ -z "$output_file" ]]; then
+            cat "$tmp"
+        fi
+
         $cleanup && rm -f "$tmp"
         return 0
     }

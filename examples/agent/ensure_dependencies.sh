@@ -65,6 +65,17 @@ install_tools_debian() {
     # Install required packages
     sudo apt-get install -y jq curl gawk sed grep coreutils
 
+    # Install gum (Charmbracelet) - Official method
+    if ! command -v gum >/dev/null 2>&1; then
+        log_info "Installing gum (Charmbracelet) v0.16.2"
+        # Use official Charm repository
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
+        sudo apt update && sudo apt install gum
+        log_success "gum installed successfully"
+    fi
+
     log_success "Tools installed successfully"
 }
 
@@ -82,6 +93,27 @@ install_tools_rhel() {
         return 1
     fi
 
+    # Install gum (Charmbracelet) - Official method
+    if ! command -v gum >/dev/null 2>&1; then
+        log_info "Installing gum (Charmbracelet) v0.16.2"
+        # Use official Charm repository
+        echo '[charm]
+name=Charm
+baseurl=https://repo.charm.sh/yum/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
+        sudo rpm --import https://repo.charm.sh/yum/gpg.key
+
+        # Install based on package manager
+        if command -v yum >/dev/null 2>&1; then
+            sudo yum install gum
+        elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install gum
+        fi
+        log_success "gum installed successfully"
+    fi
+
     log_success "Tools installed successfully"
 }
 
@@ -93,6 +125,27 @@ install_tools_alpine() {
 
     # Install required packages
     sudo apk add jq curl gawk sed grep coreutils
+
+    # Install gum (Charmbracelet) - Binary download method for Alpine
+    if ! command -v gum >/dev/null 2>&1; then
+        log_info "Installing gum (Charmbracelet) v0.16.2"
+        local gum_version="v0.16.2"
+        local arch=$(uname -m)
+        case "$arch" in
+            x86_64) arch="amd64" ;;
+            aarch64) arch="arm64" ;;
+            *) log_error "Unsupported architecture: $arch"; return 1 ;;
+        esac
+
+        local gum_url="https://github.com/charmbracelet/gum/releases/download/${gum_version}/gum_${gum_version#v}_linux_${arch}.tar.gz"
+        local temp_dir=$(mktemp -d)
+
+        curl -sL "$gum_url" | tar -xz -C "$temp_dir"
+        sudo mv "$temp_dir/gum" /usr/local/bin/
+        rm -rf "$temp_dir"
+
+        log_success "gum installed successfully"
+    fi
 
     log_success "Tools installed successfully"
 }
@@ -109,6 +162,13 @@ install_tools_macos() {
 
     # Install required packages
     brew install jq curl gawk gnu-sed grep coreutils
+
+    # Install gum (Charmbracelet) - Official Homebrew method
+    if ! command -v gum >/dev/null 2>&1; then
+        log_info "Installing gum (Charmbracelet) v0.16.2"
+        brew install gum
+        log_success "gum installed successfully"
+    fi
 
     log_success "Tools installed successfully"
     log_warning "Note: Some tools may have different names on macOS (e.g., gsed for sed)"
@@ -194,6 +254,10 @@ check_dependencies() {
 
     if ! check_tool "stat"; then
         missing_tools+=("stat")
+    fi
+
+    if ! check_tool "gum"; then
+        missing_tools+=("gum")
     fi
 
     if [[ ${#missing_tools[@]} -eq 0 ]]; then
