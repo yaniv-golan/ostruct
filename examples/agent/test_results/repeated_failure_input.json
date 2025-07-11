@@ -1,0 +1,31 @@
+{
+        "task": "Process data",
+        "candidate_step": {
+            "tool": "grep",
+            "reasoning": "Search for pattern",
+            "parameters": [
+                {"name": "pattern", "value": "test"},
+                {"name": "file", "value": "data.txt"}
+            ]
+        },
+        "turn": 3,
+        "max_turns": 10,
+        "last_observation": "Previous grep failed",
+        "plan_remainder": [],
+        "execution_history_tail": [],
+        "tool_spec": {
+            "name": "grep",
+            "description": "Search for patterns in files"
+        },
+        "sandbox_path": "/tmp/sandbox",
+        "temporal_constraints": {
+            "files_created": [],
+            "files_expected": [],
+            "deadline_turns": null
+        },
+        "failure_patterns": {
+            "repeated_tool_failures": {"grep": 3},
+            "stuck_iterations": false
+        },
+        "safety_constraints": ["no_file_ops_outside_sandbox"]
+    }

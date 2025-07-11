@@ -1,0 +1,31 @@
+{
+        "task": "Create test.txt",
+        "candidate_step": {
+            "tool": "write_file",
+            "reasoning": "Create the requested file in sandbox",
+            "parameters": [
+                {"name": "path", "value": "test.txt"},
+                {"name": "content", "value": "Hello World"}
+            ]
+        },
+        "turn": 1,
+        "max_turns": 10,
+        "last_observation": "Starting task",
+        "plan_remainder": [],
+        "execution_history_tail": [],
+        "tool_spec": {
+            "name": "write_file",
+            "description": "Write content to a file"
+        },
+        "sandbox_path": ".",
+        "temporal_constraints": {
+            "files_created": [],
+            "files_expected": ["test.txt"],
+            "deadline_turns": null
+        },
+        "failure_patterns": {
+            "repeated_tool_failures": {},
+            "stuck_iterations": false
+        },
+        "safety_constraints": ["no_file_ops_outside_sandbox", "max_file_size_32kb"]
+    }

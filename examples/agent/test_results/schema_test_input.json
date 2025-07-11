@@ -1,0 +1,18 @@
+{
+        "task": "Test schema",
+        "candidate_step": {
+            "tool": "read_file",
+            "reasoning": "Read a file",
+            "parameters": [{"name": "path", "value": "test.txt"}]
+        },
+        "turn": 1,
+        "max_turns": 10,
+        "last_observation": "",
+        "plan_remainder": [],
+        "execution_history_tail": [],
+        "tool_spec": {"name": "read_file", "description": "Read file"},
+        "sandbox_path": "/tmp/sandbox",
+        "temporal_constraints": {"files_created": [], "files_expected": [], "deadline_turns": null},
+        "failure_patterns": {"repeated_tool_failures": {}, "stuck_iterations": false},
+        "safety_constraints": ["no_file_ops_outside_sandbox"]
+    }

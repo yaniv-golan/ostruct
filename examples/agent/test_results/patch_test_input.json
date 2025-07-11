@@ -1,0 +1,31 @@
+{
+        "task": "Create config.txt",
+        "candidate_step": {
+            "tool": "write_file",
+            "reasoning": "Create config file",
+            "parameters": [
+                {"name": "path", "value": "/etc/config.txt"},
+                {"name": "content", "value": "config data"}
+            ]
+        },
+        "turn": 1,
+        "max_turns": 10,
+        "last_observation": "Starting task",
+        "plan_remainder": [],
+        "execution_history_tail": [],
+        "tool_spec": {
+            "name": "write_file",
+            "description": "Write content to a file"
+        },
+        "sandbox_path": "/tmp/sandbox",
+        "temporal_constraints": {
+            "files_created": [],
+            "files_expected": ["config.txt"],
+            "deadline_turns": null
+        },
+        "failure_patterns": {
+            "repeated_tool_failures": {},
+            "stuck_iterations": false
+        },
+        "safety_constraints": ["no_file_ops_outside_sandbox"]
+    }

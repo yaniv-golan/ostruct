@@ -1,0 +1,13 @@
+{
+  "timestamp": "20250709_185731",
+  "input_tokens": 800,
+  "output_tokens": 200,
+  "input_cost_per_call": .024000,
+  "output_cost_per_call": .012000,
+  "total_cost_per_call": .036000,
+  "typical_steps_per_run": 10,
+  "total_cost_per_run": .360000,
+  "base_agent_cost_estimate": 0.20,
+  "cost_increase_percentage": 180.0,
+  "acceptable_threshold_percentage": 25.0
+}

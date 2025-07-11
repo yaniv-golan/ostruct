@@ -1,0 +1,8 @@
+{
+  "timestamp": "20250709_185731",
+  "task": "Create files A.txt, B.txt, C.txt with sequential numbers",
+  "without_critic_seconds": 18.832073000,
+  "with_critic_seconds": 50.898464000,
+  "overhead_percentage": "170.2",
+  "acceptable_threshold": 50.0
+}

@@ -1,0 +1,31 @@
+{
+        "task": "Performance benchmark",
+        "candidate_step": {
+            "tool": "write_file",
+            "reasoning": "Create a test file",
+            "parameters": [
+                {"name": "path", "value": "benchmark.txt"},
+                {"name": "content", "value": "Performance test content"}
+            ]
+        },
+        "turn": 1,
+        "max_turns": 10,
+        "last_observation": "Starting benchmark",
+        "plan_remainder": [],
+        "execution_history_tail": [],
+        "tool_spec": {
+            "name": "write_file",
+            "description": "Write content to a file"
+        },
+        "sandbox_path": "/tmp/sandbox",
+        "temporal_constraints": {
+            "files_created": [],
+            "files_expected": ["benchmark.txt"],
+            "deadline_turns": null
+        },
+        "failure_patterns": {
+            "repeated_tool_failures": {},
+            "stuck_iterations": false
+        },
+        "safety_constraints": ["no_file_ops_outside_sandbox", "max_file_size_32kb"]
+    }
