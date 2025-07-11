@@ -10,10 +10,33 @@ AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Repository root (two levels up from agent dir)
 REPO_ROOT="$(cd "$AGENT_DIR/../.." && pwd)"
 
-# Resolve ostruct executable once to avoid repeated Poetry startup overhead
-OSTRUCT_BIN="$(cd "$REPO_ROOT" && poetry run which ostruct 2>/dev/null)"
+# -----------------------------------------------------------------------------
+# Detect ostruct path *before* sourcing log4sh (which overrides `which`)
+# -----------------------------------------------------------------------------
+# We use `command -v` inside a subshell to avoid any shell alias/function shadow.
+# Using Poetry ensures we pick up the virtual-env executable.
+
+OSTRUCT_BIN="$(cd "$REPO_ROOT" && poetry run bash -c 'command -v ostruct' 2>/dev/null)"
 if [[ -z "$OSTRUCT_BIN" ]]; then
     echo "Error: Unable to locate ostruct executable via poetry" >&2
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# Shared logging setup – replace ad-hoc logging with scripts/logging.sh
+# -----------------------------------------------------------------------------
+LOG_DIR="$AGENT_DIR/logs"            # reuse agent-specific log folder
+LOG_LEVEL=${LOG_LEVEL:-INFO}          # allow override via env
+# shellcheck source=/dev/null
+source "$REPO_ROOT/scripts/logging.sh"
+log_start "runner.sh"
+
+# Load verifier helpers
+if [[ -f "$AGENT_DIR/verify.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$AGENT_DIR/verify.sh"
+else
+    echo "Error: verify.sh not found in $AGENT_DIR" >&2
     exit 1
 fi
 
@@ -25,7 +48,7 @@ TOOLS_FILE="$AGENT_DIR/tools.json"
 # Configuration
 readonly MAX_TURNS=10
 readonly MAX_OSTRUCT_CALLS=24
-readonly LOG_DIR="$AGENT_DIR/logs"
+## LOG_DIR is already defined earlier for logging.sh; remove duplicate constant
 readonly WORKDIR="workdir"
 
 # Will be set inside init_run after RUN_ID is defined
@@ -43,7 +66,6 @@ TURN_COUNT=0
 
 # Runtime variables
 RUN_ID=""
-LOG_FILE=""
 TASK=""
 CURRENT_STATE=""
 
@@ -56,27 +78,15 @@ file_size() {
     fi
 }
 
-# Logging function
-log() {
-    local level="$1"
-    shift
-    local message="$*"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    # Write to log file only, not stdout
-    echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
-    # Also echo to terminal for user feedback
-    echo "[$timestamp] [$level] $message" >&2
-}
-
-# Error handling
+# Error handling helper
 error_exit() {
-    log "ERROR" "$1"
+    log_error "$1"
     exit 1
 }
 
 # Generate schemas from templates
 generate_schemas() {
-    log "INFO" "Generating schemas from templates"
+    log_info "Generating schemas from templates"
 
     # Extract tool names from tools.json as JSON array
     local tool_names
@@ -90,21 +100,21 @@ generate_schemas() {
     if [[ -f "$SCHEMAS_DIR/state.schema.json.template" ]]; then
         sed "s/__TOOL_NAMES__/$tool_names/g" \
             "$SCHEMAS_DIR/state.schema.json.template" > "$SCHEMAS_DIR/state.schema.json"
-        log "DEBUG" "Generated state.schema.json with tools: $tool_names"
+        log_debug "Generated state.schema.json with tools: $tool_names"
     fi
 
     # Generate plan_step.schema.json from template
     if [[ -f "$SCHEMAS_DIR/plan_step.schema.json.template" ]]; then
         sed "s/__TOOL_NAMES__/$tool_names/g" \
             "$SCHEMAS_DIR/plan_step.schema.json.template" > "$SCHEMAS_DIR/plan_step.schema.json"
-        log "DEBUG" "Generated plan_step.schema.json with tools: $tool_names"
+        log_debug "Generated plan_step.schema.json with tools: $tool_names"
     fi
 
     # Generate replanner_out.schema.json from template
     if [[ -f "$SCHEMAS_DIR/replanner_out.schema.json.template" ]]; then
         sed "s/__TOOL_NAMES__/$tool_names/g" \
             "$SCHEMAS_DIR/replanner_out.schema.json.template" > "$SCHEMAS_DIR/replanner_out.schema.json"
-        log "DEBUG" "Generated replanner_out.schema.json with tools: $tool_names"
+        log_debug "Generated replanner_out.schema.json with tools: $tool_names"
     fi
 }
 
@@ -113,13 +123,12 @@ init_run() {
     # Generate unique run ID
     RUN_ID=$(date '+%Y%m%d_%H%M%S')_$$
 
-    # Create log directory
+    # Ensure log directory exists (logging.sh already created LOG_FILE)
     mkdir -p "$LOG_DIR"
-    LOG_FILE="$LOG_DIR/run_${RUN_ID}.log"
 
-    log "INFO" "Starting run $RUN_ID"
-    log "INFO" "Sandbox path: $SANDBOX_PATH"
-    log "INFO" "Log file: $LOG_FILE"
+    log_info "Starting run $RUN_ID"
+    log_info "Sandbox path: $SANDBOX_PATH"
+    log_info "Log file: $LOG_FILE"
 
     # Ensure workdir path is absolute
     WORKDIR_PATH="$AGENT_DIR/$WORKDIR"
@@ -135,8 +144,8 @@ init_run() {
     CURRENT_STATE_FILE="$SANDBOX_PATH/.agent_state.json"
 
     # Log sandbox info after paths are ready
-    log "INFO" "Sandbox path: $SANDBOX_PATH"
-    log "INFO" "Log file: $LOG_FILE"
+    log_info "Sandbox path: $SANDBOX_PATH"
+    log_info "Log file: $LOG_FILE"
 
     # Generate schemas from templates
     generate_schemas
@@ -381,7 +390,7 @@ record_blocked_step() {
     echo "$block_entry" >> "$block_history_file"
 
     if [[ $existing_count -gt 0 ]]; then
-        log "WARN" "Blocked step fingerprint $fingerprint seen $((existing_count + 1)) times"
+        log_warn "Blocked step fingerprint $fingerprint seen $((existing_count + 1)) times"
     fi
 }
 
@@ -403,7 +412,7 @@ is_step_previously_blocked() {
         local repeat_count
         repeat_count=$(grep "\"fingerprint\":\"$fingerprint\"" "$block_history_file" | tail -1 | jq -r '.repeat_count')
 
-        log "DEBUG" "Step fingerprint $fingerprint previously blocked $repeat_count times"
+        log_debug "Step fingerprint $fingerprint previously blocked $repeat_count times"
         return 0  # Previously blocked
     fi
 
@@ -578,7 +587,7 @@ EOF
 sort_steps_dag() {
     local steps_json="$1"
 
-    log "DEBUG" "DAG sorting steps based on dependencies"
+    log_debug "DAG sorting steps based on dependencies"
 
     # Extract dependencies for each step
     local tagged_steps="[]"
@@ -594,22 +603,22 @@ sort_steps_dag() {
         tagged_steps=$(echo "$tagged_steps" | jq -c ". + [$tagged_step]")
     done <<< "$(echo "$steps_json" | jq -c '.[]?')"
 
-    log "DEBUG" "DAG sorting processed $step_count steps"
-    log "DEBUG" "Tagged steps: $tagged_steps"
+    log_debug "DAG sorting processed $step_count steps"
+    log_debug "Tagged steps: $tagged_steps"
 
     # Run Kahn sort
     local sort_result
     sort_result=$(echo "$tagged_steps" | kahn_sort 2>&1)
 
-    log "DEBUG" "Kahn sort result: $sort_result"
+    log_debug "Kahn sort result: $sort_result"
 
     local error
     error=$(echo "$sort_result" | jq -r '.error // empty' 2>/dev/null || echo "parse_error")
 
-    log "DEBUG" "Kahn sort error: $error"
+    log_debug "Kahn sort error: $error"
 
     if [[ "$error" == "cycle_detected" ]]; then
-        log "ERROR" "Cycle detected in DAG, aborting turn"
+        log_error "Cycle detected in DAG, aborting turn"
         # Return empty array to trigger replanner
         echo "[]"
         return 1
@@ -618,8 +627,8 @@ sort_steps_dag() {
     local sorted_steps
     sorted_steps=$(echo "$sort_result" | jq -c '.steps')
 
-    log "DEBUG" "Extracted sorted steps: $sorted_steps"
-    log "INFO" "DAG sort completed successfully"
+    log_debug "Extracted sorted steps: $sorted_steps"
+    log_info "DAG sort completed successfully"
     echo "$sorted_steps"
 }
 
@@ -636,7 +645,7 @@ ostruct_call() {
         error_exit "Maximum ostruct calls ($MAX_OSTRUCT_CALLS) exceeded"
     fi
 
-    log "INFO" "Ostruct call $OSTRUCT_CALL_COUNT/$MAX_OSTRUCT_CALLS: $template"
+    log_info "Ostruct call $OSTRUCT_CALL_COUNT/$MAX_OSTRUCT_CALLS: $template"
 
     # Check if --output-file is already specified in args
     local output_file=""
@@ -657,7 +666,7 @@ ostruct_call() {
     local backoff_delays=(1 3 7)
 
     while [[ $attempt -le $max_attempts ]]; do
-        log "DEBUG" "Attempt $attempt/$max_attempts"
+        log_debug "Attempt $attempt/$max_attempts"
 
         # Use provided output file or create temporary one
         local temp_output
@@ -665,15 +674,15 @@ ostruct_call() {
 
         if [[ -n "$output_file" ]]; then
             temp_output="$output_file"
-            log "DEBUG" "Using provided output file: $temp_output"
+            log_debug "Using provided output file: $temp_output"
         else
             temp_output=$(mktemp 2>/dev/null)
             if [[ $? -ne 0 ]] || [[ -z "$temp_output" ]]; then
-                log "ERROR" "Failed to create temporary file"
+                log_error "Failed to create temporary file"
                 return 1
             fi
             cleanup_temp=true
-            log "DEBUG" "Created temporary output file: $temp_output"
+            log_debug "Created temporary output file: $temp_output"
         fi
 
         # Use cached ostruct executable to skip Poetry startup
@@ -681,7 +690,7 @@ ostruct_call() {
 
         # Build simple command string for logging (avoid complex quoting)
         local cmd_str="poetry run ostruct run $template $schema --file tools [tools.json] --output-file [output] [args...]"
-        log "DEBUG" "Running: ${cmd_str} (cwd: $REPO_ROOT)"
+        log_debug "Running: ${cmd_str} (cwd: $REPO_ROOT)"
 
         # Run ostruct with all output properly redirected
         local exit_code=0
@@ -698,10 +707,10 @@ ostruct_call() {
                     rm -f "$temp_output"
                 fi
 
-                log "INFO" "Ostruct call successful"
+                log_info "Ostruct call successful"
                 return 0
             else
-                log "WARN" "Ostruct completed but output file is empty or missing"
+                log_warn "Ostruct completed but output file is empty or missing"
                 exit_code=1
             fi
         fi
@@ -711,11 +720,11 @@ ostruct_call() {
             rm -f "$temp_output"
         fi
 
-        log "WARN" "Ostruct call failed (attempt $attempt/$max_attempts), exit code: $exit_code"
+        log_warn "Ostruct call failed (attempt $attempt/$max_attempts), exit code: $exit_code"
 
         if [[ $attempt -lt $max_attempts ]]; then
             local delay=${backoff_delays[$((attempt-1))]}
-            log "INFO" "Retrying in ${delay}s..."
+            log_info "Retrying in ${delay}s..."
             sleep $delay
         fi
 
@@ -730,7 +739,7 @@ execute_jq() {
     local filter="$1"
     local input_file="${2:-}"
 
-    log "DEBUG" "Executing jq filter: $filter"
+    log_debug "Executing jq filter: $filter"
 
     if [[ -n "$input_file" ]]; then
         local safe_input=$(safe_path "$input_file")
@@ -767,8 +776,27 @@ execute_grep() {
         return 1
     fi
 
-    log "DEBUG" "Executing grep pattern: $pattern on $file"
-    timeout 30s grep -n "$pattern" "$safe_file" 2>&1 | head -c $FILE_SIZE_LIMIT
+    # --------------------------------------------------------------
+    # Support passing grep options together with the pattern.
+    # Example pattern input: "-io kernel" → opts=(-i -o) search="kernel"
+    # --------------------------------------------------------------
+    local -a opts=()
+    local search_pattern="$pattern"
+    if [[ "$pattern" == -* ]]; then
+        # Split on whitespace preserving quoted substrings
+        # shellcheck disable=SC2206
+        local parts=( $pattern )
+        for part in "${parts[@]}"; do
+            if [[ "$part" == -* ]]; then
+                opts+=("$part")
+            else
+                search_pattern="$part"
+            fi
+        done
+    fi
+
+    log_debug "Executing grep pattern: $search_pattern opts: ${opts[*]} on $file"
+    timeout 30s grep -n "${opts[@]}" "$search_pattern" "$safe_file" 2>&1 | head -c $FILE_SIZE_LIMIT
 }
 
 execute_sed() {
@@ -787,7 +815,7 @@ execute_sed() {
         return 1
     fi
 
-    log "DEBUG" "Executing sed expression: $expression on $file"
+    log_debug "Executing sed expression: $expression on $file"
     timeout 30s sed -n "$expression" "$safe_file" 2>&1 | head -c $FILE_SIZE_LIMIT
 }
 
@@ -807,14 +835,14 @@ execute_awk() {
         return 1
     fi
 
-    log "DEBUG" "Executing awk script: $script on $file"
+    log_debug "Executing awk script: $script on $file"
     timeout 30s awk "$script" "$safe_file" 2>&1 | head -c $FILE_SIZE_LIMIT
 }
 
 execute_curl() {
     local url="$1"
 
-    log "DEBUG" "Executing curl: $url"
+    log_debug "Executing curl: $url"
     timeout 60s curl -s -L --max-filesize $DOWNLOAD_SIZE_LIMIT "$url" 2>&1 | head -c $DOWNLOAD_SIZE_LIMIT
 }
 
@@ -833,7 +861,7 @@ execute_write_file() {
     # Create directory if needed
     mkdir -p "$(dirname "$safe_file")"
 
-    log "DEBUG" "Writing to file: $path"
+    log_debug "Writing to file: $path"
     echo "$content" > "$safe_file"
 
     # Update temporal constraints
@@ -863,7 +891,7 @@ execute_append_file() {
     # Create directory if needed
     mkdir -p "$(dirname "$safe_file")"
 
-    log "DEBUG" "Appending to file: $path"
+    log_debug "Appending to file: $path"
     echo "$content" >> "$safe_file"
 
     # Update temporal constraints if file was created
@@ -900,7 +928,7 @@ execute_text_replace() {
     local temp_file="${safe_file}.tmp"
     local hit_count=0
 
-    log "DEBUG" "Executing text replace in: $file"
+    log_debug "Executing text replace in: $file"
 
     # Use sed to perform replacement and count hits
     if sed "s/${search}/${replace}/g" "$safe_file" > "$temp_file"; then
@@ -938,7 +966,7 @@ execute_read_file() {
         return 1
     fi
 
-    log "DEBUG" "Reading file: $path"
+    log_debug "Reading file: $path"
     cat "$safe_file"
 }
 
@@ -951,7 +979,7 @@ execute_download_file() {
     # Create directory if needed
     mkdir -p "$(dirname "$safe_file")"
 
-    log "DEBUG" "Downloading $url to $path"
+    log_debug "Downloading $url to $path"
 
     if timeout 60s curl -s -L --max-filesize $DOWNLOAD_SIZE_LIMIT -o "$safe_file" "$url"; then
         # Double-check actual file size
@@ -985,11 +1013,16 @@ execute_step() {
     local step_json="$1"
     local start_time=$(date +%s)
 
-    # Parse step JSON
+    # Normalize any file-path parameters so the critic always sees sandbox-relative paths
+    step_json=$(echo "$step_json" | jq '(.parameters) |= map(
+        if (.name=="path" or .name=="file" or .name=="output") and (.value|test("^(/|\\./)")|not)
+        then .value = ("./" + .value) else . end)')
+
+    # Parse normalized step JSON
     local tool=$(echo "$step_json" | jq -r '.tool')
     local reasoning=$(echo "$step_json" | jq -r '.reasoning')
 
-    log "INFO" "Executing step: $tool - $reasoning"
+    log_info "Executing step: $tool - $reasoning"
 
     # Check if critic is enabled (default: true)
     if [[ "${CRITIC_ENABLED:-true}" == "true" ]]; then
@@ -1002,13 +1035,13 @@ execute_step() {
         echo "$critic_input" > "$critic_input_file"
 
         # Call critic
-        log "DEBUG" "Calling critic for step validation"
+        log_debug "Calling critic for step validation"
         local critic_out
         critic_out=$(ostruct_call "critic.j2" "critic_out.schema.json" \
             --file critic_input "$critic_input_file")
 
         if [[ $? -ne 0 ]]; then
-            log "ERROR" "Critic call failed, proceeding without validation"
+            log_error "Critic call failed, proceeding without validation"
         else
             # Parse critic response
             local ok score comment
@@ -1016,24 +1049,65 @@ execute_step() {
             score=$(echo "$critic_out" | jq -r '.score')
             comment=$(echo "$critic_out" | jq -r '.comment')
 
-            log "CRITIC" "Score: $score, OK: $ok, Comment: $comment"
+            log_info "Score: $score, OK: $ok, Comment: $comment"
 
             # Apply blocking logic
             if [[ "$ok" == "false" ]] || (( score <= 2 )); then
-                log "CRITIC" "BLOCKING step execution (score=$score)"
+                log_info "BLOCKING step execution (score=$score)"
 
                 # Apply patch if available
                 local patch_len
                 patch_len=$(echo "$critic_out" | jq '.patch | length')
 
                 if (( patch_len > 0 )); then
-                    log "CRITIC" "Applying $patch_len patch steps"
+                    log_info "Applying $patch_len patch steps"
+
+                    # Extract raw patch array from critic_out
                     local patch
                     patch=$(echo "$critic_out" | jq '.patch')
 
-                    # Prepend patch to next_steps in current state
-                    CURRENT_STATE=$(echo "$CURRENT_STATE" | \
-                        jq --argjson patch "$patch" '.next_steps = ($patch + .next_steps)')
+                    # -----------------------------------------------------
+                    # Drop the blocked step itself from next_steps so it is
+                    # not attempted again on the next turn.
+                    # -----------------------------------------------------
+                    CURRENT_STATE=$(echo "$CURRENT_STATE" | jq '.next_steps |= .[1:]')
+
+                    # -----------------------------------------------------------------
+                    #   Filter out any patch steps that match a previously blocked
+                    #   fingerprint so we don\'t re-queue the exact same failing step.
+                    # -----------------------------------------------------------------
+                    local filtered_patch="[]"
+                    # Iterate over patch steps one-by-one
+                    while IFS= read -r patch_step; do
+                        # skip empty lines (safety)
+                        [[ -z "$patch_step" ]] && continue
+
+                        # Skip patch steps that have been blocked before OR already appear in next_steps
+                        if is_step_previously_blocked "$patch_step"; then
+                            log_debug "Omitting patch step already blocked by critic"
+                            continue
+                        fi
+
+                        # Skip if identical step is already queued in next_steps
+                        if echo "$CURRENT_STATE" | jq -e --argjson s "$patch_step" 'any(.next_steps[]?; . == $s)' >/dev/null; then
+                            log_debug "Omitting duplicate patch step already in plan"
+                            continue
+                        fi
+
+                        # Append to filtered_patch
+                        filtered_patch=$(echo "$filtered_patch" | \
+                            jq --argjson step "$patch_step" '. + [$step]')
+                    done < <(echo "$patch" | jq -c '.[]')
+
+                    # Only prepend if there are remaining (unique) patch steps
+                    local filtered_len
+                    filtered_len=$(echo "$filtered_patch" | jq 'length')
+                    if (( filtered_len > 0 )); then
+                        CURRENT_STATE=$(echo "$CURRENT_STATE" | \
+                            jq --argjson patch "$filtered_patch" '.next_steps = ($patch + .next_steps)')
+                    else
+                        log_debug "All critic patch steps were previously blocked; none queued"
+                    fi
 
                     # Save updated state
                     echo "$CURRENT_STATE" > "$CURRENT_STATE_FILE"
@@ -1058,7 +1132,7 @@ execute_step() {
 
             # Score 3: warn but proceed
             if (( score == 3 )); then
-                log "WARN" "Critic warning: $comment"
+                log_warn "Critic warning: $comment"
             fi
         fi
 
@@ -1071,7 +1145,7 @@ execute_step() {
 
     # Skip steps missing or null tool
     if [[ -z "$tool" || "$tool" == "null" ]]; then
-        log "WARN" "Skipping invalid step: missing tool"
+        log_warn "Skipping invalid step: missing tool"
         return 1
     fi
 
@@ -1169,12 +1243,12 @@ main() {
     # Initialize run environment
     init_run
 
-    log "INFO" "Task: $task"
-    log "INFO" "Max turns: $MAX_TURNS"
-    log "INFO" "Max ostruct calls: $MAX_OSTRUCT_CALLS"
+    log_info "Task: $task"
+    log_info "Max turns: $MAX_TURNS"
+    log_info "Max ostruct calls: $MAX_OSTRUCT_CALLS"
 
     # Step 1: Generate multiple candidate plans
-    log "INFO" "Generating 3 candidate plans in parallel"
+    log_info "Generating 3 candidate plans in parallel"
 
     # Function to launch one planner with diversity
     gen_plan() {
@@ -1216,7 +1290,7 @@ main() {
     fi
     for f in "${plan_files[@]}"; do
         # Skip missing or empty files
-        [[ -s "$f" ]] || { log "WARN" "plan $f missing, skipping"; continue; }
+        [[ -s "$f" ]] || { log_warn "plan $f missing, skipping"; continue; }
 
         # Create signature for deduplication
         sig=$(jq -S . "$f" 2>/dev/null | sha256sum | cut -d' ' -f1)
@@ -1244,7 +1318,7 @@ main() {
 
     # If only one unique plan, use it directly
     if [[ ${#unique_files[@]} -eq 1 ]]; then
-        log "INFO" "Only one unique plan generated, using it directly"
+        log_info "Only one unique plan generated, using it directly"
         planner_output=$(cat "${unique_files[0]}")
     else
         # Build JSON array of candidates for selector
@@ -1252,13 +1326,13 @@ main() {
         jq -s '.' "${unique_files[@]}" > "$plans_file"
 
         # Call plan selector
-        log "INFO" "Running plan selector on ${#unique_files[@]} candidates"
+        log_info "Running plan selector on ${#unique_files[@]} candidates"
         selector_out=$(ostruct_call "plan_selector.j2" "plan_selector_out.schema.json" \
             -V "task=$task" \
             --file plans "$plans_file")
 
         if [[ $? -ne 0 ]]; then
-            log "WARN" "Selector failed, using first plan"
+            log_warn "Selector failed, using first plan"
             planner_output=$(cat "${unique_files[0]}")
         else
             # Extract winner and use selected plan
@@ -1267,10 +1341,10 @@ main() {
 
             # Validate index bounds
             if [[ $winner_idx -ge 0 && $winner_idx -lt ${#unique_files[@]} ]]; then
-                log "INFO" "Selector chose plan index $winner_idx: $comment"
+                log_info "Selector chose plan index $winner_idx: $comment"
                 planner_output=$(cat "${unique_files[$winner_idx]}")
             else
-                log "WARN" "Invalid winner index $winner_idx, using first plan"
+                log_warn "Invalid winner index $winner_idx, using first plan"
                 planner_output=$(cat "${unique_files[0]}")
             fi
         fi
@@ -1282,12 +1356,12 @@ main() {
 
     # Save initial state
     echo "$planner_output" > "$CURRENT_STATE_FILE"
-    log "INFO" "Initial state saved"
+    log_info "Initial state saved"
 
     # Step 2: Turn-based execution loop
     while true; do
         TURN_COUNT=$((TURN_COUNT + 1))
-        log "INFO" "=== Turn $TURN_COUNT/$MAX_TURNS ==="
+        log_info "=== Turn $TURN_COUNT/$MAX_TURNS ==="
 
         # Load current state
         if [[ ! -f "$CURRENT_STATE_FILE" ]]; then
@@ -1301,7 +1375,7 @@ main() {
 
         # Check if task is completed
         if [[ "$completed" == "true" ]]; then
-            log "INFO" "Task completed!"
+            log_info "Task completed!"
             local final_answer=$(echo "$current_state" | jq -r '.final_answer')
             echo "=== FINAL ANSWER ==="
             echo "$final_answer"
@@ -1311,7 +1385,7 @@ main() {
 
         # Check if max turns reached
         if [[ $current_turn -gt $MAX_TURNS ]]; then
-            log "ERROR" "Maximum turns reached without completion"
+            log_error "Maximum turns reached without completion"
             break
         fi
 
@@ -1320,7 +1394,7 @@ main() {
         local next_steps=$(echo "$current_state" | jq -c '.next_steps[]?')
         # Bail if next_steps is empty (planner misbehaved)
         if [[ -z "$next_steps" ]]; then
-            log "WARN" "Planner returned empty next_steps; calling replanner"
+            log_warn "Planner returned empty next_steps; calling replanner"
         else
             # Sort steps using DAG if enabled
             local sorted_next_steps_array
@@ -1328,53 +1402,55 @@ main() {
 
             if [[ $? -ne 0 ]]; then
                 # If DAG sort failed, proceed with original next_steps
-                log "WARN" "DAG sort failed, proceeding with original next_steps"
+                log_warn "DAG sort failed, proceeding with original next_steps"
                 sorted_next_steps_array="$next_steps_array"
             fi
 
-            log "DEBUG" "sorted_next_steps_array: $sorted_next_steps_array"
+            log_debug "sorted_next_steps_array: $sorted_next_steps_array"
 
             # Convert back to individual steps for execution
             local sorted_next_steps=$(echo "$sorted_next_steps_array" | jq -c '.[]?')
-            log "DEBUG" "After jq conversion: $sorted_next_steps"
+            log_debug "After jq conversion: $sorted_next_steps"
 
             # Execute each step
             local step_results="[]"
             local attempted_count=0  # count every step we process (executed or skipped)
+            local succ_count=0
+            local fail_count=0
             local created_paths="[]"
             local modified_paths="[]"
-            log "DEBUG" "Starting step execution loop with sorted_next_steps: $sorted_next_steps"
+            log_debug "Starting step execution loop with sorted_next_steps: $sorted_next_steps"
             while IFS= read -r step; do
-                log "DEBUG" "Processing step: $step"
+                log_debug "Processing step: $step"
                 if [[ -z "$step" ]]; then
-                    log "DEBUG" "Skipping empty step"
+                    log_debug "Skipping empty step"
                     continue
                 fi
                 # Skip literal empty object
                 if [[ "$step" == "{}" ]]; then
-                    log "WARN" "Skipping empty step object {}"
+                    log_warn "Skipping empty step object {}"
                     continue
                 fi
 
                 # Ensure step is valid JSON
-                echo "$step" | jq empty 2>/dev/null || { log "WARN" "Skipping invalid step JSON"; continue; }
+                echo "$step" | jq empty 2>/dev/null || { log_warn "Skipping invalid step JSON"; continue; }
 
                 # Check if step has been previously blocked
                 if is_step_previously_blocked "$step"; then
-                    log "WARN" "Skipping previously blocked step: $(echo "$step" | jq -r '.tool')"
+                    log_warn "Skipping previously blocked step: $(echo "$step" | jq -r '.tool')"
                     # Count it as attempted so slicing drops it
                     attempted_count=$((attempted_count + 1))
                     continue
                 fi
 
                 attempted_count=$((attempted_count + 1))
-                log "INFO" "Executing step: $(echo "$step" | jq -r '.tool')"
+                log_info "Executing step: $(echo "$step" | jq -r '.tool')"
                 local result=$(execute_step "$step")
 
                 # Check if step was blocked by critic
                 local blocked_by_critic=$(echo "$result" | jq -r '.blocked_by_critic // false')
                 if [[ "$blocked_by_critic" == "true" ]]; then
-                    log "DEBUG" "Step blocked by critic"
+                    log_debug "Step blocked by critic"
                     # Do not decrement attempted_count; slicing will drop it
                 fi
 
@@ -1390,7 +1466,8 @@ main() {
                 # Log step result
                 local success=$(echo "$result" | jq -r '.success')
                 if [[ "$success" == "true" ]]; then
-                    log "INFO" "Step completed successfully"
+                    log_info "Step completed successfully"
+                    succ_count=$((succ_count + 1))
                     # Extract tool name once for tracking
                     local step_tool
                     step_tool=$(echo "$step" | jq -r '.tool')
@@ -1415,7 +1492,8 @@ main() {
                             ;;
                     esac
                 else
-                    log "WARN" "Step failed: $(echo "$result" | jq -r '.error')"
+                    log_warn "Step failed: $(echo "$result" | jq -r '.error')"
+                    fail_count=$((fail_count + 1))
                 fi
             done <<< "$sorted_next_steps"
 
@@ -1426,7 +1504,46 @@ main() {
                 --argjson attempted "$attempted_count" \
                 --argjson created "$created_paths" \
                 --argjson modified "$modified_paths" \
-                '.execution_history += $results | .next_steps = (.next_steps[$attempted:]) | .current_turn += 1 | .files_created += $created | .files_modified += $modified')
+                --argjson succ "$succ_count" \
+                --argjson fail "$fail_count" '
+                .execution_history += $results
+                | .next_steps = (.next_steps[$attempted:])
+                | .current_turn += 1
+                | .files_created += $created
+                | .files_modified += $modified
+                | .metrics = (.metrics // {})
+                | .metrics.successful_steps = (.metrics.successful_steps // 0) + $succ
+                | .metrics.failed_steps   = (.metrics.failed_steps   // 0) + $fail
+                | .last_successful_step_turn = (if $succ > 0 then .current_turn else (.last_successful_step_turn // .current_turn) end)
+            ')
+
+            # ---------------------------------------------------------------------------
+            # Goal-based completion check using verify_success helper
+            # ---------------------------------------------------------------------------
+            if [[ $(echo "$updated_state" | jq '.next_steps | length') -eq 0 ]]; then
+                criteria_json=$(echo "$updated_state" | jq -c '.success_criteria // null')
+
+                if verify_success "$SANDBOX_PATH" "$criteria_json"; then
+                    log_info "verify_success passed — marking task complete"
+                    updated_state=$(echo "$updated_state" | jq '.completed = true | .final_answer = "Task finished successfully"')
+                else
+                    rc=$?
+                    case $rc in
+                        1|3)
+                            log_debug "verify_success unmet or malformed (rc=$rc); keeping run active"
+                            ;; # continue looping
+                        2)
+                            log_warn "verify_success unknown primitive; falling back to conservative heuristic"
+                            if [[ $(echo "$updated_state" | jq '.files_created | length') -gt 0 ]]; then
+                                updated_state=$(echo "$updated_state" | jq '.completed = true | .final_answer = "Task finished successfully"')
+                            fi
+                            ;;
+                        *)
+                            log_error "verify_success fatal error (rc=$rc); leaving state unchanged"
+                            ;;
+                    esac
+                fi
+            fi
 
             echo "$updated_state" > "$CURRENT_STATE_FILE"
 
@@ -1435,13 +1552,13 @@ main() {
             local pending_count
             pending_count=$(echo "$updated_state" | jq '.next_steps | length')
             if [[ $pending_count -gt 0 ]]; then
-                log "INFO" "Skipping replanner – ${pending_count} pending step(s) from critic patch.";
+                log_info "Skipping replanner – ${pending_count} pending step(s) from critic patch.";
                 continue
             fi
         fi
 
         # Call replanner
-        log "INFO" "Calling replanner"
+        log_info "Calling replanner"
 
         # Get block history summary for replanner context
         local block_history_summary
@@ -1466,19 +1583,19 @@ main() {
         # Log state diff
         local prev_state="$current_state"
         local new_state="$replanner_output"
-        log "DEBUG" "State diff: $(echo "$prev_state" | jq -S . | diff -u - <(echo "$new_state" | jq -S .) || true)"
+        log_debug "State diff: $(echo "$prev_state" | jq -S . | diff -u - <(echo "$new_state" | jq -S .) || true)"
 
         # Check turn limit
         if [[ $TURN_COUNT -ge $MAX_TURNS ]]; then
-            log "ERROR" "Maximum turns reached"
+            log_error "Maximum turns reached"
             break
         fi
     done
 
     # Step 3: Final cleanup and reporting
-    log "INFO" "Execution completed"
-    log "INFO" "Total turns: $TURN_COUNT"
-    log "INFO" "Total ostruct calls: $OSTRUCT_CALL_COUNT"
+    log_info "Execution completed"
+    log_info "Total turns: $TURN_COUNT"
+    log_info "Total ostruct calls: $OSTRUCT_CALL_COUNT"
 
     if [[ -f "$CURRENT_STATE_FILE" ]]; then
         local final_state=$(cat "$CURRENT_STATE_FILE")
@@ -1486,15 +1603,15 @@ main() {
         local error=$(echo "$final_state" | jq -r '.error // empty')
 
         if [[ "$completed" == "true" ]]; then
-            log "INFO" "Task completed successfully"
+            log_info "Task completed successfully"
         elif [[ -n "$error" ]]; then
-            log "ERROR" "Task failed: $error"
+            log_error "Task failed: $error"
         else
-            log "WARN" "Task incomplete"
+            log_warn "Task incomplete"
         fi
     fi
 
-    log "INFO" "Run completed: $RUN_ID"
+    log_info "Run completed: $RUN_ID"
 }
 
 # Run main function
