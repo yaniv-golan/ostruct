@@ -176,6 +176,40 @@
                 "type": "string"
             }
         },
+        "success_criteria": {
+            "type": "array",
+            "description": "Success criteria that determine when the task is complete",
+            "maxItems": 5,
+            "items": {
+                "type": "object",
+                "oneOf": [
+                    {
+                        "required": ["type", "path"],
+                        "properties": {
+                            "type": { "const": "file_exists" },
+                            "path": { "type": "string" }
+                        }
+                    },
+                    {
+                        "required": ["type", "path", "substr"],
+                        "properties": {
+                            "type": { "const": "file_contains" },
+                            "path": { "type": "string" },
+                            "substr": { "type": "string", "maxLength": 128 }
+                        }
+                    },
+                    {
+                        "required": ["type", "path", "key", "value"],
+                        "properties": {
+                            "type": { "const": "json_key_equals" },
+                            "path": { "type": "string" },
+                            "key": { "type": "string" },
+                            "value": {}
+                        }
+                    }
+                ]
+            }
+        },
         "working_directory": {
             "type": "string",
             "description": "Current working directory relative to sandbox"

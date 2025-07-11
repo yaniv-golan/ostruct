@@ -40,6 +40,11 @@ Every step MUST have this exact structure:
 - **CRITICAL: Every step in next_steps MUST be a complete tool object** with all required fields
 - **NEVER include empty objects `{}` in next_steps** — this breaks the system
 - **For each tool**: Copy the parameter format from the examples above exactly
+- **After next_steps**, also populate a `success_criteria` array describing how the runner can verify the task is done. Use only these primitives:
+  - `{ "type":"file_exists", "path":"<file>" }`
+  - `{ "type":"file_contains", "path":"<file>", "substr":"<text up to 128 bytes>" }`
+  - `{ "type":"json_key_equals", "path":"<file>", "key":"<json key>", "value":"<scalar>" }`
+  Include at least one criterion; omit the field entirely if no clear criterion can be formed.
 - Keep all paths **relative** to `{{ sandbox_path }}`
 - Use download_file (not curl) to save web content to files
 
@@ -57,7 +62,8 @@ Every step MUST have this exact structure:
   "execution_history": [],
   "observations": [],
   "files_created": [],
-  "files_modified": []
+  "files_modified": [],
+  "success_criteria": []
 }
 ```
 

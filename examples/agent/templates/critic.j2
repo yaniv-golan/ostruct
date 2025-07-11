@@ -95,7 +95,7 @@ Evaluate the candidate step against these **four critical dimensions**:
 2. **Assign** a score (1-5) based on the scoring guide
 3. **Set ok=true** if score ≥3, **ok=false** if score ≤2
 4. **Provide** a clear comment explaining your reasoning (10-500 chars)
-5. **If blocking** (ok=false), generate up to 3 patch steps using only available tools:
+5. **If blocking** (ok=false), generate up to 3 patch steps using only available tools. If the block is caused by a **missing file error** (e.g., the last observation contains "No such file" or the candidate step references a file that does not yet exist), then your **first patch step MUST be a `download_file` action** that retrieves the needed file to the expected path. Omit this patch step if an equivalent `download_file` already appears at the start of the remaining plan.
 
 Available tools: {{ input_data.candidate_step.tool }}, append_file, awk, curl, download_file, grep, jq, read_file, sed, text_replace, write_file
 
