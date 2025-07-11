@@ -29,12 +29,17 @@ LOG_DIR="$AGENT_DIR/logs"            # reuse agent-specific log folder
 LOG_LEVEL=${LOG_LEVEL:-INFO}          # allow override via env
 # Library directory
 LIB_DIR="$AGENT_DIR/lib"
+# Load central configuration constants
+# shellcheck source=/dev/null
+source "$LIB_DIR/config.sh"
 # shellcheck source=/dev/null
 source "$LIB_DIR/retry.sh"
 # shellcheck source=/dev/null
 source "$LIB_DIR/ostruct_cli.sh"
 # shellcheck source=/dev/null
 source "$LIB_DIR/tools.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/ai_helpers.sh"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/scripts/logging.sh"
 log_start "runner.sh"
@@ -53,12 +58,7 @@ TEMPLATES_DIR="$AGENT_DIR/templates"
 SCHEMAS_DIR="$AGENT_DIR/schemas"
 TOOLS_FILE="$AGENT_DIR/tools.json"
 
-# Configuration
-readonly MAX_TURNS=10
-readonly MAX_OSTRUCT_CALLS=24
-## LOG_DIR is already defined earlier for logging.sh; remove duplicate constant
-readonly WORKDIR="workdir"
-
+# Constants now provided by config.sh (MAX_TURNS, MAX_OSTRUCT_CALLS, WORKDIR)
 # Will be set inside init_run after RUN_ID is defined
 WORKDIR_PATH=""
 SANDBOX_PATH=""
@@ -77,6 +77,47 @@ CURRENT_STATE=""
 error_exit() {
     log_error "$1"
     exit 1
+}
+
+# ----------------------------------------------------------------------------
+# extract_dependencies – heuristically determine provides/requires for a step
+# ----------------------------------------------------------------------------
+extract_dependencies() {
+    local step_json="$1"
+    local tool=$(echo "$step_json" | jq -r '.tool')
+    local provides="[]"
+    local requires="[]"
+
+    case "$tool" in
+        "write_file"|"append_file")
+            local path=$(get_param "$step_json" "path")
+            if [[ -n "$path" ]]; then
+                provides=$(jq -n --arg path "$path" '[$path]')
+            fi
+            ;;
+        "read_file"|"grep"|"sed"|"awk")
+            local file=$(get_param "$step_json" "file")
+            if [[ -n "$file" ]]; then
+                requires=$(jq -n --arg file "$file" '[$file]')
+            fi
+            ;;
+        "download_file")
+            local path=$(get_param "$step_json" "path")
+            if [[ -n "$path" ]]; then
+                provides=$(jq -n --arg path "$path" '[$path]')
+            fi
+            ;;
+        "text_replace")
+            local file=$(get_param "$step_json" "file")
+            if [[ -n "$file" ]]; then
+                requires=$(jq -n --arg file "$file" '[$file]')
+                provides=$(jq -n --arg file "$file" '[$file]')
+            fi
+            ;;
+    esac
+
+    echo "$step_json" | jq --argjson provides "$provides" --argjson requires "$requires" \
+        '. + {provides: $provides, requires: $requires}'
 }
 
 # generate_schemas now provided by lib/ostruct_cli.sh
@@ -112,318 +153,6 @@ init_run() {
 
     # Generate schemas from templates
     generate_schemas
-}
-
-# Critic system functions
-build_critic_input() {
-    local step="$1"
-    local turn="$2"
-
-    # Truncate last observation to 1000 chars
-    local last_obs_trunc=""
-    if [[ -f "$SANDBOX_PATH/.last_observation" ]]; then
-        last_obs_trunc=$(head -c 1000 "$SANDBOX_PATH/.last_observation")
-    fi
-
-    # Get plan remainder (first 3 steps)
-    local plan_tail
-    plan_tail=$(echo "$CURRENT_STATE" | jq '.next_steps[0:3]')
-
-    # Get execution history tail (last 3 items)
-    local hist_tail
-    hist_tail=$(echo "$CURRENT_STATE" | jq '.execution_history[-3:]')
-
-    # Get tool spec from tools.json
-    local tool_name
-    tool_name=$(echo "$step" | jq -r '.tool')
-    local tool_spec
-    tool_spec=$(jq --arg tool "$tool_name" \
-        '.[$tool] // {"name": $tool, "description": "Unknown tool", "limits": {}}' \
-        "$TOOLS_FILE")
-
-    # Build comprehensive input
-    jq -n \
-        --arg task "$TASK" \
-        --argjson candidate_step "$step" \
-        --arg turn "$turn" \
-        --arg max_turns "$MAX_TURNS" \
-        --arg last_observation "$last_obs_trunc" \
-        --argjson plan_remainder "$plan_tail" \
-        --argjson execution_history_tail "$hist_tail" \
-        --argjson tool_spec "$tool_spec" \
-        --arg sandbox_path "$SANDBOX_PATH" \
-        --argjson temporal_constraints "$(get_temporal_constraints)" \
-        --argjson failure_patterns "$(get_failure_patterns)" \
-        --argjson safety_constraints "$(get_safety_constraints)" \
-        '{
-            task: $task,
-            candidate_step: $candidate_step,
-            turn: ($turn | tonumber),
-            max_turns: ($max_turns | tonumber),
-            last_observation: $last_observation,
-            plan_remainder: $plan_remainder,
-            execution_history_tail: $execution_history_tail,
-            tool_spec: $tool_spec,
-            sandbox_path: $sandbox_path,
-            temporal_constraints: $temporal_constraints,
-            failure_patterns: $failure_patterns,
-            safety_constraints: $safety_constraints
-        }'
-}
-
-get_temporal_constraints() {
-    local temporal_file="$SANDBOX_PATH/.temporal_constraints.json"
-    if [[ -f "$temporal_file" ]]; then
-        cat "$temporal_file"
-    else
-        echo '{"files_created":[],"files_expected":[],"deadline_turns":null}'
-    fi
-}
-
-get_failure_patterns() {
-    local patterns_file="$SANDBOX_PATH/.failure_patterns.json"
-    if [[ -f "$patterns_file" ]]; then
-        cat "$patterns_file"
-    else
-        echo '{"repeated_tool_failures":{},"stuck_iterations":false}'
-    fi
-}
-
-get_safety_constraints() {
-    echo '["no_file_ops_outside_sandbox","no_network_internal_ips","max_file_size_32kb"]'
-}
-
-update_temporal_constraints() {
-    local action="$1"
-    local file_path="$2"
-    local temporal_file="$SANDBOX_PATH/.temporal_constraints.json"
-
-    local temporal
-    temporal=$(get_temporal_constraints)
-
-    case "$action" in
-        "file_created")
-            temporal=$(echo "$temporal" | \
-                jq --arg file "$file_path" '.files_created += [$file]')
-            ;;
-        "set_expected")
-            temporal=$(echo "$temporal" | \
-                jq --arg file "$file_path" '.files_expected += [$file]')
-            ;;
-        "set_deadline")
-            local deadline="$file_path"  # Reuse param for deadline
-            temporal=$(echo "$temporal" | \
-                jq --arg deadline "$deadline" '.deadline_turns = ($deadline | tonumber)')
-            ;;
-    esac
-
-    echo "$temporal" > "$temporal_file"
-}
-
-update_failure_patterns() {
-    local tool="$1"
-    local success="$2"
-    local turn="$3"
-    local patterns_file="$SANDBOX_PATH/.failure_patterns.json"
-
-    local patterns
-    patterns=$(get_failure_patterns)
-
-    if [[ "$success" == "false" ]]; then
-        # Increment failure count for tool
-        patterns=$(echo "$patterns" | \
-            jq --arg tool "$tool" \
-            '.repeated_tool_failures[$tool] = (.repeated_tool_failures[$tool] // 0) + 1')
-    fi
-
-    # Check for stuck iterations (simple heuristic)
-    if [[ -f "$SANDBOX_PATH/.prev_progress" ]]; then
-        local prev_progress
-        prev_progress=$(cat "$SANDBOX_PATH/.prev_progress")
-        local current_progress
-        current_progress=$(echo "$CURRENT_STATE" | jq '.execution_history | length')
-
-        if [[ "$current_progress" == "$prev_progress" ]]; then
-            patterns=$(echo "$patterns" | jq '.stuck_iterations = true')
-        fi
-    fi
-
-    echo "$patterns" > "$patterns_file"
-
-    # Update progress tracking
-    echo "$CURRENT_STATE" | jq '.execution_history | length' > "$SANDBOX_PATH/.prev_progress"
-}
-
-record_critic_intervention() {
-    local step_json="$1"
-    local critic_out="$2"
-
-    local intervention_file="$SANDBOX_PATH/.critic_interventions.jsonl"
-    local intervention_entry
-    intervention_entry=$(jq -n \
-        --argjson turn "$TURN_COUNT" \
-        --argjson step "$step_json" \
-        --argjson critic_out "$critic_out" \
-        '{turn: $turn, step: $step, critic_response: $critic_out, timestamp: (now | todate)}')
-
-    echo "$intervention_entry" >> "$intervention_file"
-}
-
-# Generate a fingerprint for a step to detect identical patterns
-generate_step_fingerprint() {
-    local step_json="$1"
-
-    # Create a normalized fingerprint that captures the essence of the step
-    # Include tool, key parameters, but exclude reasoning/timestamps
-    local fingerprint
-    fingerprint=$(echo "$step_json" | jq -c '{
-        tool: .tool,
-        parameters: (.parameters | sort_by(.name) | map({name, value}))
-    }' | shasum -a 256 | cut -d' ' -f1)
-
-    echo "$fingerprint"
-}
-
-# Record a blocked step in the block history
-record_blocked_step() {
-    local step_json="$1"
-    local critic_score="$2"
-    local block_reason="$3"
-
-    local block_history_file="$SANDBOX_PATH/.block_history.jsonl"
-    local fingerprint
-    fingerprint=$(generate_step_fingerprint "$step_json")
-
-    # Check if this fingerprint already exists
-    local existing_count=0
-    if [[ -f "$block_history_file" ]]; then
-        existing_count=$(grep -c "\"fingerprint\":\"$fingerprint\"" "$block_history_file" 2>/dev/null || echo "0")
-        # Ensure it's a valid number (strip any whitespace/newlines)
-        existing_count=$(echo "$existing_count" | tr -d '\n\r' | grep -E '^[0-9]+$' || echo "0")
-    fi
-
-    local block_entry
-    block_entry=$(jq -n \
-        --argjson turn "$TURN_COUNT" \
-        --arg fingerprint "$fingerprint" \
-        --argjson step "$step_json" \
-        --argjson score "$critic_score" \
-        --arg reason "$block_reason" \
-        --argjson count "$((existing_count + 1))" \
-        '{
-            turn: $turn,
-            fingerprint: $fingerprint,
-            step: $step,
-            critic_score: $score,
-            block_reason: $reason,
-            repeat_count: $count,
-            timestamp: (now | todate)
-        }')
-
-    echo "$block_entry" >> "$block_history_file"
-
-    if [[ $existing_count -gt 0 ]]; then
-        log_warn "Blocked step fingerprint $fingerprint seen $((existing_count + 1)) times"
-    fi
-}
-
-# Check if a step has been blocked before
-is_step_previously_blocked() {
-    local step_json="$1"
-    local block_history_file="$SANDBOX_PATH/.block_history.jsonl"
-
-    if [[ ! -f "$block_history_file" ]]; then
-        return 1  # Not blocked (file doesn't exist)
-    fi
-
-    local fingerprint
-    fingerprint=$(generate_step_fingerprint "$step_json")
-
-    # Check if this fingerprint exists in block history
-    if grep -q "\"fingerprint\":\"$fingerprint\"" "$block_history_file"; then
-        # Get the repeat count for this fingerprint
-        local repeat_count
-        repeat_count=$(grep "\"fingerprint\":\"$fingerprint\"" "$block_history_file" | tail -1 | jq -r '.repeat_count')
-
-        log_debug "Step fingerprint $fingerprint previously blocked $repeat_count times"
-        return 0  # Previously blocked
-    fi
-
-    return 1  # Not previously blocked
-}
-
-# Get block history summary for replanner context
-get_block_history_summary() {
-    local block_history_file="$SANDBOX_PATH/.block_history.jsonl"
-
-    if [[ ! -f "$block_history_file" ]]; then
-        echo "[]"
-        return
-    fi
-
-    # Get recent blocked patterns (last 10) with repeat counts
-    local summary
-    summary=$(tail -10 "$block_history_file" | jq -s 'map({
-        fingerprint,
-        tool: .step.tool,
-        parameters: .step.parameters,
-        block_reason,
-        repeat_count,
-        turn
-    }) | group_by(.fingerprint) | map({
-        fingerprint: .[0].fingerprint,
-        tool: .[0].tool,
-        parameters: .[0].parameters,
-        block_reason: .[0].block_reason,
-        total_repeats: (map(.repeat_count) | max),
-        first_seen_turn: (map(.turn) | min),
-        last_seen_turn: (map(.turn) | max)
-    }) | sort_by(.total_repeats) | reverse')
-
-    echo "$summary"
-}
-
-# Extract heuristic provides/requires from step JSON
-extract_dependencies() {
-    local step_json="$1"
-    local tool=$(echo "$step_json" | jq -r '.tool')
-    local provides="[]"
-    local requires="[]"
-
-    case "$tool" in
-        "write_file"|"append_file")
-            local path=$(get_param "$step_json" "path")
-            if [[ -n "$path" ]]; then
-                provides=$(jq -n --arg path "$path" '[$path]')
-            fi
-            ;;
-        "read_file"|"grep"|"sed"|"awk")
-            local file=$(get_param "$step_json" "file")
-            if [[ -n "$file" ]]; then
-                requires=$(jq -n --arg file "$file" '[$file]')
-            fi
-            ;;
-        "download_file")
-            local path=$(get_param "$step_json" "path")
-            if [[ -n "$path" ]]; then
-                provides=$(jq -n --arg path "$path" '[$path]')
-            fi
-            ;;
-        "text_replace")
-            local file=$(get_param "$step_json" "file")
-            if [[ -n "$file" ]]; then
-                # text_replace both requires and provides the same file
-                requires=$(jq -n --arg file "$file" '[$file]')
-                provides=$(jq -n --arg file "$file" '[$file]')
-            fi
-            ;;
-    esac
-
-    # Add synthetic dependencies for pipes/stdout (future enhancement)
-    # For now, keep it simple with file-based dependencies
-
-    echo "$step_json" | jq --argjson provides "$provides" --argjson requires "$requires" \
-        '. + {provides: $provides, requires: $requires}'
 }
 
 # Sort steps using DAG (calls lib/dag_sort.py)
@@ -476,273 +205,6 @@ sort_steps_dag() {
 }
 
 # ostruct_call now provided by lib/ostruct_cli.sh
-
-# Tool execution functions
-execute_jq() {
-    local filter="$1"
-    local input_file="${2:-}"
-
-    log_debug "Executing jq filter: $filter"
-
-    if [[ -n "$input_file" ]]; then
-        local safe_input=$(safe_path "$input_file")
-        if [[ ! -f "$safe_input" ]]; then
-            echo "Error: Input file not found: $input_file"
-            return 1
-        fi
-
-        # Check file size
-        if [[ $(file_size "$safe_input") -gt $FILE_SIZE_LIMIT ]]; then
-            echo "Error: Input file too large (max ${FILE_SIZE_LIMIT} bytes)"
-            return 1
-        fi
-
-        timeout 30s jq "$filter" "$safe_input" 2>&1 | head -c $FILE_SIZE_LIMIT
-    else
-        timeout 30s jq "$filter" 2>&1 | head -c $FILE_SIZE_LIMIT
-    fi
-}
-
-execute_grep() {
-    local pattern="$1"
-    local file="$2"
-
-    local safe_file=$(safe_path "$file")
-    if [[ ! -f "$safe_file" ]]; then
-        echo "Error: File not found: $file"
-        return 1
-    fi
-
-    # Check file size
-    if [[ $(file_size "$safe_file") -gt $FILE_SIZE_LIMIT ]]; then
-        echo "Error: File too large (max ${FILE_SIZE_LIMIT} bytes)"
-        return 1
-    fi
-
-    # --------------------------------------------------------------
-    # Support passing grep options together with the pattern.
-    # Example pattern input: "-io kernel" → opts=(-i -o) search="kernel"
-    # --------------------------------------------------------------
-    local -a opts=()
-    local search_pattern="$pattern"
-    if [[ "$pattern" == -* ]]; then
-        # Split on whitespace preserving quoted substrings
-        # shellcheck disable=SC2206
-        local parts=( $pattern )
-        for part in "${parts[@]}"; do
-            if [[ "$part" == -* ]]; then
-                opts+=("$part")
-            else
-                search_pattern="$part"
-            fi
-        done
-    fi
-
-    log_debug "Executing grep pattern: $search_pattern opts: ${opts[*]} on $file"
-    timeout 30s grep -n "${opts[@]}" "$search_pattern" "$safe_file" 2>&1 | head -c $FILE_SIZE_LIMIT
-}
-
-execute_sed() {
-    local expression="$1"
-    local file="$2"
-
-    local safe_file=$(safe_path "$file")
-    if [[ ! -f "$safe_file" ]]; then
-        echo "Error: File not found: $file"
-        return 1
-    fi
-
-    # Check file size
-    if [[ $(file_size "$safe_file") -gt $FILE_SIZE_LIMIT ]]; then
-        echo "Error: File too large (max ${FILE_SIZE_LIMIT} bytes)"
-        return 1
-    fi
-
-    log_debug "Executing sed expression: $expression on $file"
-    timeout 30s sed -n "$expression" "$safe_file" 2>&1 | head -c $FILE_SIZE_LIMIT
-}
-
-execute_awk() {
-    local script="$1"
-    local file="$2"
-
-    local safe_file=$(safe_path "$file")
-    if [[ ! -f "$safe_file" ]]; then
-        echo "Error: File not found: $file"
-        return 1
-    fi
-
-    # Check file size
-    if [[ $(file_size "$safe_file") -gt $FILE_SIZE_LIMIT ]]; then
-        echo "Error: File too large (max ${FILE_SIZE_LIMIT} bytes)"
-        return 1
-    fi
-
-    log_debug "Executing awk script: $script on $file"
-    timeout 30s awk "$script" "$safe_file" 2>&1 | head -c $FILE_SIZE_LIMIT
-}
-
-execute_curl() {
-    local url="$1"
-
-    log_debug "Executing curl: $url"
-    timeout 60s curl -s -L --max-filesize $DOWNLOAD_SIZE_LIMIT "$url" 2>&1 | head -c $DOWNLOAD_SIZE_LIMIT
-}
-
-execute_write_file() {
-    local path="$1"
-    local content="$2"
-
-    local safe_file=$(safe_path "$path")
-
-    # Check content size
-    if [[ ${#content} -gt $FILE_SIZE_LIMIT ]]; then
-        echo "Error: Content too large (max ${FILE_SIZE_LIMIT} bytes)"
-        return 1
-    fi
-
-    # Create directory if needed
-    mkdir -p "$(dirname "$safe_file")"
-
-    log_debug "Writing to file: $path"
-    echo "$content" > "$safe_file"
-
-    # Update temporal constraints
-    update_temporal_constraints "file_created" "$path"
-
-    echo "Successfully wrote ${#content} bytes to $path"
-}
-
-execute_append_file() {
-    local path="$1"
-    local content="$2"
-
-    local safe_file=$(safe_path "$path")
-
-    # Check total size after append
-    local current_size=0
-    if [[ -f "$safe_file" ]]; then
-        current_size=$(file_size "$safe_file")
-    fi
-
-    local total_size=$((current_size + ${#content}))
-    if [[ $total_size -gt $FILE_SIZE_LIMIT ]]; then
-        echo "Error: Total file size would exceed limit (max ${FILE_SIZE_LIMIT} bytes)"
-        return 1
-    fi
-
-    # Create directory if needed
-    mkdir -p "$(dirname "$safe_file")"
-
-    log_debug "Appending to file: $path"
-    echo "$content" >> "$safe_file"
-
-    # Update temporal constraints if file was created
-    if [[ $current_size -eq 0 ]]; then
-        update_temporal_constraints "file_created" "$path"
-    fi
-
-    echo "Successfully appended ${#content} bytes to $path (total: $total_size bytes)"
-}
-
-execute_text_replace() {
-    local file="$1"
-    local search="$2"
-    local replace="$3"
-
-    local safe_file=$(safe_path "$file")
-    if [[ ! -f "$safe_file" ]]; then
-        echo "Error: File not found: $file"
-        return 1
-    fi
-
-    # Check file size
-    if [[ $(file_size "$safe_file") -gt $FILE_SIZE_LIMIT ]]; then
-        echo "Error: File too large (max ${FILE_SIZE_LIMIT} bytes)"
-        return 1
-    fi
-
-    # Safety check for search pattern
-    if [[ -z "$search" ]]; then
-        echo "Error: Search pattern cannot be empty"
-        return 1
-    fi
-
-    local temp_file="${safe_file}.tmp"
-    local hit_count=0
-
-    log_debug "Executing text replace in: $file"
-
-    # Use sed to perform replacement and count hits
-    if sed "s/${search}/${replace}/g" "$safe_file" > "$temp_file"; then
-        # Count replacements
-        hit_count=$(grep -o "$replace" "$temp_file" | wc -l)
-
-        if [[ $hit_count -gt 1000 ]]; then
-            rm -f "$temp_file"
-            echo "Error: Too many replacements (max 1000, found $hit_count)"
-            return 1
-        fi
-
-        # Atomic replacement
-        mv "$temp_file" "$safe_file"
-        echo "Successfully replaced $hit_count occurrences of '$search' with '$replace'"
-    else
-        rm -f "$temp_file"
-        echo "Error: Text replacement failed"
-        return 1
-    fi
-}
-
-execute_read_file() {
-    local path="$1"
-
-    local safe_file=$(safe_path "$path")
-    if [[ ! -f "$safe_file" ]]; then
-        echo "Error: File not found: $path"
-        return 1
-    fi
-
-    # Check file size
-    if [[ $(file_size "$safe_file") -gt $FILE_SIZE_LIMIT ]]; then
-        echo "Error: File too large (max ${FILE_SIZE_LIMIT} bytes)"
-        return 1
-    fi
-
-    log_debug "Reading file: $path"
-    cat "$safe_file"
-}
-
-execute_download_file() {
-    local url="$1"
-    local path="$2"
-
-    local safe_file=$(safe_path "$path")
-
-    # Create directory if needed
-    mkdir -p "$(dirname "$safe_file")"
-
-    log_debug "Downloading $url to $path"
-
-    if timeout 60s curl -s -L --max-filesize $DOWNLOAD_SIZE_LIMIT -o "$safe_file" "$url"; then
-        # Double-check actual file size
-        if [[ -f "$safe_file" ]]; then
-            local actual_size=$(file_size "$safe_file")
-            if [[ $actual_size -gt $DOWNLOAD_SIZE_LIMIT ]]; then
-                rm -f "$safe_file"
-                echo "Error: Downloaded file exceeds size limit"
-                return 1
-            fi
-            echo "Successfully downloaded ${actual_size} bytes to $path"
-        else
-            echo "Error: Download failed - no file created"
-            return 1
-        fi
-    else
-        echo "Error: Download failed"
-        return 1
-    fi
-}
 
 # Helper function to extract parameter value by name
 get_param() {

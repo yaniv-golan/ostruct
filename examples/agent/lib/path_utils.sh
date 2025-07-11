@@ -17,8 +17,11 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     exit 1
 fi
 
-readonly FILE_SIZE_LIMIT=$((32 * 1024))           # 32 KiB
-readonly DOWNLOAD_SIZE_LIMIT=$((10 * 1024 * 1024)) # 10 MiB
+# shellcheck source=/dev/null
+source "${LIB_DIR:-$(dirname "${BASH_SOURCE[0]}")}/config.sh"
+# Defaults come from config.sh; ensure they are set (config.sh already marked them readonly)
+readonly FILE_SIZE_LIMIT
+readonly DOWNLOAD_SIZE_LIMIT
 
 # ----------------------------------------------------------------------------
 # file_size – portable stat wrapper (GNU / BSD)

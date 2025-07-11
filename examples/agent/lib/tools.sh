@@ -10,6 +10,8 @@ fi
 
 # shellcheck source=/dev/null
 source "${LIB_DIR:-$(dirname "${BASH_SOURCE[0]}")}/path_utils.sh"
+# path_utils.sh already sources config.sh, so FILE_SIZE_LIMIT and DOWNLOAD_SIZE_LIMIT
+# are available here.
 
 execute_jq() {
     local filter="$1"; local input_file="${2:-}"
@@ -61,15 +63,21 @@ execute_curl() {
 
 execute_write_file() {
     local path="$1" content="$2"; local safe_file; safe_file=$(safe_path "$path") || return 1
-    (( ${#content} > FILE_SIZE_LIMIT )) && { echo "Error: Content too large"; return 1; }
-    mkdir -p "$(dirname "$safe_file")"; echo "$content" > "$safe_file"; echo "Successfully wrote ${#content} bytes to $path"
+    if (( ${#content} > FILE_SIZE_LIMIT )); then echo "Error: Content too large"; return 1; fi
+    mkdir -p "$(dirname "$safe_file")"; echo "$content" > "$safe_file"
+    # Track temporal constraints if helper present
+    if declare -F update_temporal_constraints >/dev/null; then update_temporal_constraints "file_created" "$path"; fi
+    echo "Successfully wrote ${#content} bytes to $path"
 }
 
 execute_append_file() {
     local path="$1" content="$2"; local safe_file; safe_file=$(safe_path "$path") || return 1
     local current=0; [[ -f "$safe_file" ]] && current=$(file_size "$safe_file")
-    (( current + ${#content} > FILE_SIZE_LIMIT )) && { echo "Error: Total file size would exceed limit"; return 1; }
-    mkdir -p "$(dirname "$safe_file")"; echo "$content" >> "$safe_file"; echo "Successfully appended ${#content} bytes";
+    if (( current + ${#content} > FILE_SIZE_LIMIT )); then echo "Error: Total file size would exceed limit"; return 1; fi
+    mkdir -p "$(dirname "$safe_file")"; echo "$content" >> "$safe_file"
+    # If file newly created update constraints
+    if (( current == 0 )) && declare -F update_temporal_constraints >/dev/null; then update_temporal_constraints "file_created" "$path"; fi
+    echo "Successfully appended ${#content} bytes";
 }
 
 execute_text_replace() {
@@ -78,7 +86,9 @@ execute_text_replace() {
     [[ $(file_size "$safe_file") -gt $FILE_SIZE_LIMIT ]] && { echo "Error: File too large"; return 1; }
     [[ -z "$search" ]] && { echo "Error: search pattern empty"; return 1; }
     local tmp="${safe_file}.tmp"; sed "s/${search}/${replace}/g" "$safe_file" > "$tmp" || { rm -f "$tmp"; return 1; }
-    mv "$tmp" "$safe_file"; echo "Replacement done"
+    local hit_count; hit_count=$(grep -o "$replace" "$tmp" | wc -l)
+    if (( hit_count > 1000 )); then rm -f "$tmp"; echo "Error: Too many replacements (max 1000, found $hit_count)"; return 1; fi
+    mv "$tmp" "$safe_file"; echo "Successfully replaced $hit_count occurrences"
 }
 
 execute_read_file() {
@@ -90,8 +100,15 @@ execute_read_file() {
 
 execute_download_file() {
     local url="$1" path="$2"; local safe_file; safe_file=$(safe_path "$path") || return 1
-    mkdir -p "$(dirname "$safe_file")"; curl -s -L --max-filesize $DOWNLOAD_SIZE_LIMIT -o "$safe_file" "$url" || return 1
-    echo "Downloaded to $path"
+    mkdir -p "$(dirname "$safe_file")"
+    if ! curl -s -L --max-filesize $DOWNLOAD_SIZE_LIMIT -o "$safe_file" "$url"; then echo "Error: Download failed"; return 1; fi
+    if [[ -f "$safe_file" ]]; then
+        local actual; actual=$(file_size "$safe_file")
+        if (( actual > DOWNLOAD_SIZE_LIMIT )); then rm -f "$safe_file"; echo "Error: Downloaded file exceeds size limit"; return 1; fi
+        echo "Successfully downloaded ${actual} bytes to $path"
+    else
+        echo "Error: Download failed - no file created"; return 1
+    fi
 }
 
 # Dispatcher
