@@ -122,7 +122,7 @@ The analyzer uses web search to verify current requirements:
 
 - All fields must be required (no optional fields)
 - `additionalProperties: false` on all objects
-- Maximum 100 properties with 5-level nesting limit
+- Maximum 5,000 properties with 5-level nesting limit
 - Supported types only: string, number, boolean, integer, object, array, enum
 - Avoids unsupported keywords: minLength, maxLength, pattern, format, etc.
 

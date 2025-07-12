@@ -119,7 +119,7 @@ Generated schemas automatically adhere to current OpenAI requirements:
 - All fields must be required (no optional fields allowed)
 - `additionalProperties: false` on all objects
 - Root type must be object (no arrays, primitives, or unions at root)
-- Maximum 100 object properties with up to 5 levels of nesting
+- Maximum 5,000 object properties with up to 5 levels of nesting
 - Supported types only: string, number, boolean, integer, object, array, enum, anyOf
 - `$defs` and recursive schemas are supported
 

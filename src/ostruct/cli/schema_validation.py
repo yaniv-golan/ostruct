@@ -8,10 +8,13 @@ class SchemaLimits(IntEnum):
     """Limits for OpenAI schema validation."""
 
     MAX_NESTING_DEPTH = 5
-    MAX_PROPERTIES = 100
-    MAX_ENUM_VALUES = 500
-    MAX_ENUM_VALUES_CHAR_CHECK = 250
-    MAX_ENUM_TOTAL_CHARS = 7500
+    # Updated limits following OpenAI July 11 2025Structured Outputs announcement
+    MAX_PROPERTIES = 5000
+    MAX_ENUM_VALUES = 1000
+    MAX_ENUM_VALUES_CHAR_CHECK = (
+        250  # Threshold for total-char check remains at 250 values
+    )
+    MAX_ENUM_TOTAL_CHARS = 15000
 
 
 # Validates the schema against OpenAI's structured output requirements.

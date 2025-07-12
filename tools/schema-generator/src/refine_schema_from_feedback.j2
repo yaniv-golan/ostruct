@@ -30,7 +30,7 @@ Analyze the validation errors and create a corrected JSON schema that:
    - **All fields must be required**: No optional fields allowed - all properties must be in the `required` array
    - **additionalProperties: false**: Must be set on all objects
    - **Supported types only**: string, number, boolean, integer, object, array, enum, anyOf (but not root anyOf)
-   - **Property limits**: Maximum 100 object properties total with up to 5 levels of nesting
+   - **Property limits**: Maximum 5000 object properties total with up to 5 levels of nesting
    - **$defs and recursive schemas**: Are supported
    - **Unsupported keywords**: minLength, maxLength, pattern, format, minimum, maximum, etc.
    - **Root type**: Must be object (no arrays, primitives, or unions at root)
@@ -50,7 +50,7 @@ Analyze the validation errors and create a corrected JSON schema that:
    - Includes helpful descriptions for all properties
    - Uses only OpenAI-supported validation (enum values, type unions for nullability)
    - Maintains consistent naming conventions
-   - Stays within the 100 property and 5-level nesting limits
+   - Stays within the 5000 property and 5-level nesting limits
 
 ## Analysis Process
 
