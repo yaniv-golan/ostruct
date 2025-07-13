@@ -22,7 +22,7 @@
         {
             "severity": "warning",
             "category": "openai_compatibility",
-            "description": "Schema may exceed OpenAI's 100 property limit",
+            "description": "Schema may exceed OpenAI's 5000 property limit",
             "location": "Schema definition",
             "recommendation": "Review schema structure and consider consolidating related properties into nested objects to stay within OpenAI's limits"
         }
