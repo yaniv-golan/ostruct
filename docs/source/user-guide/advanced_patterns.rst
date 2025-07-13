@@ -143,6 +143,67 @@ This template works because it:
    ostruct automatically detects and downloads Code Interpreter-generated files using OpenAI's
    ``container_file_citation`` annotations. No special formatting is required in templates.
 
+Remote PDF Analysis with Vision Models
+=====================================
+
+Need to distill information from a **public pitch-deck PDF** without downloading it first?  Use the
+``user-data`` target with a remote URL:
+
+.. code-block:: bash
+
+   ostruct run distill_deck.j2 deck_schema.json \
+     --file ud:deck "https://example.com/path/StartupPitch.pdf"
+
+Key points:
+
+* **Dry-run reachability check** – ostruct sends a quick ``HEAD`` request; if the URL is reachable the
+  execution plan shows:
+
+  .. code-block:: text
+
+     📎 Attachments (1):
+        🌐 deck → user-data: https://example.com/path/StartupPitch.pdf
+
+  Unreachable links display ❌ so you can fix them before a live run.
+* **Template access** – the file appears as `deck` in the template but **only metadata** is available:
+
+  - `deck.name`, `deck.size`, `deck.is_url`
+  - **No** `deck.content` (raises TemplateBinaryError)
+
+* **Model choice** – ensure you pick a **vision-enabled** model (e.g. `gpt-4o` or `gpt-4.1`).  Using a
+  non-vision model triggers `UserDataNotSupportedError` during validation.
+
+Template snippet:
+
+.. code-block:: jinja
+
+   ---
+   system_prompt: "You are a VC analyst. Summarise the following deck."
+   ---
+
+   # Deck Metadata
+
+   * File name: {{ deck.name }}
+   * URL: {{ deck }}
+   * Size: {{ (deck.size or 0) // 1024 }} KB
+
+   # Task
+
+   Provide a concise summary covering:
+
+   1. Company overview
+   2. Problem & solution
+   3. Market size
+   4. Traction & metrics
+   5. Funding ask
+
+Best-practice reminders
+----------------------
+
+* **Don’t** embed the PDF text with `deck.content` – user-data files are opaque to the template.
+* Keep PDFs under **512 MB** (50 MB+ triggers a warning, >512 MB aborts the run).
+* Use HTTPS URLs or whitelist insecure links with ``--allow-insecure-url``.
+
 Progressive Disclosure Pattern
 ------------------------------
 

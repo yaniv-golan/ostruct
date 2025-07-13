@@ -409,6 +409,11 @@ Update documentation for all user-facing changes:
 - **Examples**: Code examples demonstrating new features
 - **Migration Guide**: For breaking changes
 
+Contributing Examples
+---------------------
+
+When adding or modifying examples in the ``examples/`` directory, follow the :doc:`examples_standard` which defines the required interface and structure. All examples must provide standardized ``make`` targets for testing and execution while preserving implementation flexibility.
+
 **Documentation Standards**:
 
 - Use clear, concise language

@@ -50,7 +50,12 @@ class TestFileRoutingIntent:
 
     def test_routing_intent_enum_members(self) -> None:
         """Test that all expected enum members exist."""
-        expected_members = {"TEMPLATE_ONLY", "CODE_INTERPRETER", "FILE_SEARCH"}
+        expected_members = {
+            "TEMPLATE_ONLY",
+            "CODE_INTERPRETER",
+            "FILE_SEARCH",
+            "USER_DATA",
+        }
         actual_members = {member.name for member in FileRoutingIntent}
         assert actual_members == expected_members
 
@@ -265,8 +270,12 @@ class TestLargeFileWarnings:
             )
 
             with caplog.at_level(logging.WARNING):
-                # Access content
-                _ = file_info.content
+                # Access content (except for USER_DATA which blocks content access)
+                if intent == FileRoutingIntent.USER_DATA:
+                    # USER_DATA files block content access - just check that no warning was logged
+                    pass
+                else:
+                    _ = file_info.content
 
             # Check that NO warning was logged
             warning_records: List[logging.LogRecord] = [

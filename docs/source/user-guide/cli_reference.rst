@@ -32,13 +32,14 @@ File and Directory Management
 - ``--dir [targets:]alias path``: Attach directory with explicit tool targeting
 - ``--collect [targets:]alias @filelist``: Attach file collection from list
 
-**Targets**: ``prompt`` (template-only, default), ``ci`` (code-interpreter), ``fs`` (file-search)
+**Targets**: ``prompt`` (template-only, default), ``ci`` (code-interpreter), ``fs`` (file-search), ``ud`` (user-data, PDF files for vision models), ``auto`` (auto-route based on content type)
 
 **Examples**:
 
 - ``--file config settings.yaml``: Template access only
 - ``--file ci:data analysis.csv``: Upload to Code Interpreter
 - ``--file fs:docs manual.pdf``: Upload to File Search
+- ``--file ud:deck pitch.pdf``: Attach PDF for vision model analysis (user-data)
 - ``--file ci,fs:shared data.json``: Multi-tool routing
 
 **Security & Path Control**:
@@ -48,6 +49,9 @@ File and Directory Management
 - ``-S, --path-security [permissive|warn|strict]``: Path security mode (default: warn)
 - ``--allow DIR``: Add an allowed directory for security (repeatable)
 - ``--allow-list FILE``: File containing allowed directory paths
+- ``--allow-insecure-url URL``: Explicitly allow a specific HTTP or private-IP URL (repeatable)
+- ``--strict-urls/--no-strict-urls``: Toggle strict URL validation (default: strict)
+- *User-data limits*: PDF uploads are capped at **512 MB** (warning above 50 MB)
 - ``--max-file-size SIZE``: Maximum file size for template processing (supports KB, MB, GB suffixes or "unlimited"/"none")
 
 **File Collection Options**:
@@ -414,6 +418,14 @@ Control file access with enhanced security options:
 
    Each line in the file should contain one directory path. Blank lines
    and lines starting with ``#`` are ignored.
+
+.. option:: --allow-insecure-url URL
+
+   Explicitly allow a specific HTTP or private-IP URL (repeatable).
+
+.. option:: --strict-urls/--no-strict-urls
+
+   Toggle strict URL validation (default: strict).
 
 Usage Examples
 ==============

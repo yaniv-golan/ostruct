@@ -229,6 +229,39 @@ When ostruct accesses files outside your project directory, it shows helpful sec
    * - Files are in project but still warned
      - Check if files are symlinks to external locations
 
+URL Validation & Remote Attachments
+===================================
+
+ostruct supports remote **HTTP/HTTPS URLs** as attachments (e.g. ``--file ud:deck https://…/pitch.pdf``).
+To keep you safe the following rules apply **by default**:
+
+* Only **HTTPS** URLs are allowed.  Plain‐HTTP or other schemes (``ftp:``, ``file:``, ``javascript:`` …) are rejected.
+* Private-network addresses (RFC-1918, loopback, link-local) are blocked to prevent `SSRF` style attacks.
+* A quick **``HEAD`` probe** is executed during **``--dry-run``** to catch broken links early; unreachable URLs are shown with ❌ in the plan printer.
+
+If a URL violates these rules ostruct raises :class:`~ostruct.cli.errors.InsecureURLRejected`.
+
+Tuning URL security
+-------------------
+
+``--allow-insecure-url URL``   Allow a specific non-HTTPS or private URL (repeatable).
+
+``--strict-urls / --no-strict-urls``   Globally enable/disable URL validation (default: strict).
+
+.. warning::  Disabling strict URL checks may expose your environment to SSRF or credential-leak risks. Prefer whitelisting with ``--allow-insecure-url``.
+
+User-Data (Vision Model) Uploads
+================================
+
+Attachments routed to the ``user-data`` target are **sent verbatim to vision-enabled models** (e.g. GPT-4o) and are **not** included in template text.  Security rules:
+
+* Only **PDF** files are currently accepted by OpenAI.
+* Hard limit : **512 MB** – larger files raise an error before upload.
+* Warning threshold : **50 MB** – ostruct logs an informational message.
+* Accessing ``.content`` in templates is blocked and raises :class:`~ostruct.cli.errors.TemplateBinaryError`.
+
+If a run includes user-data files but the chosen model lacks vision support ostruct aborts with :class:`~ostruct.cli.errors.UserDataNotSupportedError`.
+
 Data Upload and Tool Security
 =============================
 

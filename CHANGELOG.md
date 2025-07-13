@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raised OpenAI Structured Outputs schema limits to match July 11 2025 announcement: object properties 5,000 (was 100), enum values 1,000 (was 500), total enum characters 15,000 (was 7,500). Updated validator constants, templates, docs, and added boundary unit tests.
 
+### Added
+
+- **User-Data Workflow**: New ``ud:`` / ``user-data:`` attachment target for PDF uploads to vision-enabled models.  Features:
+  - Direct PDF processing using OpenAI's vision capabilities for both text and image-based PDF documents.
+  - Remote URL support for processing PDFs from web sources with security validation.
+  - 512 MB hard limit and 50 MB warning threshold with early validation.
+  - Model capability validation with descriptive errors for non-vision models.
+- **URL Security Controls**:
+  - Strict HTTPS & public-network enforcement for remote attachments.
+  - ``--allow-insecure-url`` flag to whitelist specific HTTP or private URLs.
+  - ``--strict-urls/--no-strict-urls`` toggle to globally enable/disable validation.
+- **Enhanced Dry-Run**: Improved execution plan display with URL reachability validation and clearer attachment routing information.
+
+### Documentation
+
+- Updated *CLI Reference* with new targets, flags, examples, and user-data limits.
+- Expanded *Security Overview* with URL validation rules and user-data safeguards.
+- Added remote PDF user-data example to *Advanced Patterns* guide.
+
 ## [1.2.0] - 2025-07-06
 
 (Minor-breaking change: default template file-size limit raised from 64 KB to unlimited; see "Changed" section.)

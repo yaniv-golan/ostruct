@@ -204,6 +204,9 @@ class TestTargetConstants:
             "file-search",
             "ci",
             "fs",
+            "user-data",
+            "ud",
+            "auto",
         }
         assert set(TARGET_NORMALISE.keys()) == expected_keys
 
