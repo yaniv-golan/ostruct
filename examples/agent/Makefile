@@ -47,6 +47,6 @@ run:
 
 clean:
 	@echo "🧹 Cleaning up generated files..."
-	rm -f *.json *.log
-	rm -rf workdir/sandbox_* logs/run_*.log
+	rm -f *.json *.log repomix-output.txt
+	rm -rf workdir/sandbox_* logs/run_*.log sandbox_test/ benchmark_results/ test_results/
 	@echo "✅ Cleanup completed"

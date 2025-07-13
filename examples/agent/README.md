@@ -78,7 +78,7 @@ The agent has access to 10 carefully selected tools:
 - **append_file**: Append to files
 - **text_replace**: Safe search and replace
 
-See [TOOLS.md](TOOLS.md) for detailed tool documentation.
+Detailed tool specifications live in `tools.json`.
 
 ## Security Features
 
@@ -113,9 +113,27 @@ See [TOOLS.md](TOOLS.md) for detailed tool documentation.
 ### Logging Levels
 
 - `INFO`: General execution flow
-- `DEBUG`: Detailed step information
+- `DEBUG`: Detailed step information (includes full tool arguments)
 - `WARN`: Non-fatal issues
 - `ERROR`: Critical failures
+
+Set the level for a single run:
+
+```bash
+LOG_LEVEL=DEBUG ./runner.sh "your task"
+```
+
+Color output is enabled automatically when the script detects an interactive
+terminal. Override with `LOG_COLORS=true|false` if you need deterministic
+output (e.g. in CI):
+
+```bash
+# Force plain-text logs inside CI containers
+LOG_COLORS=false ./runner.sh …
+```
+
+Log files are written automatically to the `logs/` folder with a timestamped
+filename: `run_YYYYMMDD_HHMMSS.log`.
 
 ## Usage Examples
 
@@ -228,10 +246,10 @@ See [TOOLS.md](TOOLS.md) for detailed tool documentation.
 
 ### Testing
 
-1. **Unit Tests**
+1. **Unit Tests (logging helper)**
 
    ```bash
-   ./test_agent.sh
+   ./test_simple_logging.sh
    ```
 
 2. **Integration Tests**

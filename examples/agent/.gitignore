@@ -5,3 +5,23 @@ workdir/
 # Exclude temporary files
 *.tmp
 *.temp
+
+# Exclude log files and debug artefacts
+*.log
+*.gz
+# Exclude run and benchmark outputs
+aif/
+benchmark_results/
+sandbox_test/
+test_results/
+# Ignore trace and debug outputs
+repomix-output.txt
+trace.log
+current_run.log
+complex_run.log
+calendar_task.txt
+# macOS metadata
+.DS_Store
+# IDE or tool metadata
+.cursor/
+.roo/
