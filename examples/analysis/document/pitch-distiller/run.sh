@@ -22,10 +22,9 @@ DECK_FILE="data/sample_pitch.txt"
 run_example() {
   case "$MODE" in
     "test-dry"|"test-live")
-      # Fast validation: only run Pass-1 on a tiny text fixture
+      # Fast validation: run Pass-1 on a small PDF fixture (txt no longer allowed for user-data)
       run_test templates/pass1_core.j2 schemas/pass1_core.json \
-        --file fs:deck data/test_pitch_small.txt \
-        --enable-tool file-search
+        --file user-data:deck examples/airbnb-pitch-deck-2009.pdf
       ;;
 
     "full")
@@ -35,8 +34,7 @@ run_example() {
       if [[ "$DRY" == *"--dry-run"* ]]; then
         echo "🔹 Pass 1: core extraction (dry-run)"
         run_ostruct templates/pass1_core.j2 schemas/pass1_core.json \
-          --file fs:deck "$DECK_FILE" \
-          --enable-tool file-search
+          --file user-data:deck "$DECK_FILE"
 
         echo "🔹 Pass 2: taxonomy classification (dry-run)"
         run_ostruct templates/pass2_taxonomy.j2 schemas/pass2_taxonomy_simple.json \
@@ -50,8 +48,7 @@ run_example() {
 
         echo "🔹 Pass 1: core extraction"
         run_ostruct templates/pass1_core.j2 schemas/pass1_core.json \
-          --file fs:deck "$DECK_FILE" \
-          --enable-tool file-search \
+          --file user-data:deck "$DECK_FILE" \
           > "$tmp_dir/pass1.json"
 
         echo "🔹 Pass 2: taxonomy classification"

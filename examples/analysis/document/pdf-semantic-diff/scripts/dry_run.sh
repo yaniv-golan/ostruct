@@ -8,12 +8,12 @@ set -euo pipefail
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-TEMPLATE_FILE="$PROJECT_DIR/prompts/pdf_semantic_diff.j2"
+TEMPLATE_FILE="$PROJECT_DIR/templates/pdf_semantic_diff.j2"
 SCHEMA_FILE="$PROJECT_DIR/schemas/semantic_diff.schema.json"
 
 # PDF files for testing
-OLD_PDF="$PROJECT_DIR/test_data/contracts/v1.pdf"
-NEW_PDF="$PROJECT_DIR/test_data/contracts/v2.pdf"
+OLD_PDF="$PROJECT_DIR/data/contracts/v1.pdf"
+NEW_PDF="$PROJECT_DIR/data/contracts/v2.pdf"
 
 echo "🧪 PDF Semantic Diff - Dry Run Test"
 echo "=================================="

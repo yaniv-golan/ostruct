@@ -6,15 +6,23 @@ Extract structured data from startup pitch decks including company basics, fundi
 
 This example demonstrates a **two-pass approach** to handle complex data extraction with industry classification:
 
-1. **Pass 1**: Extract core company data using File Search + structured output
+1. **Pass 1**: Extract core company data using direct PDF processing + structured output
 2. **Pass 2**: Add industry taxonomy classification using extracted data + taxonomy reference
 
 ## Why Two Passes?
 
 OpenAI's structured output mode has compatibility issues with File Search when using complex nested schemas. The two-pass approach solves this by:
 
-- Using File Search effectively for core data extraction (Pass 1)
-- Adding complex taxonomy classification without File Search conflicts (Pass 2)
+- Using direct PDF processing for core data extraction (Pass 1) - supports both text and image-based PDFs
+- Adding complex taxonomy classification using File Search for taxonomy reference (Pass 2)
+
+## Features
+
+- **Native PDF Support**: Direct PDF processing using OpenAI's vision capabilities
+- **Text + Image PDFs**: Works with both text-based and image-based pitch decks
+- **URL Support**: Can process PDFs from URLs with proper security validation
+- **Two-Pass Architecture**: Separates core extraction from complex taxonomy classification
+- **Structured Output**: Reliable JSON extraction with confidence scoring
 
 ## Usage
 
@@ -32,6 +40,9 @@ OpenAI's structured output mode has compatibility issues with File Search when u
 
 # 4️⃣ Full two-pass extraction on a PDF deck (Uber 2008)
 ./run.sh examples/uber-pitch-deck-2008.pdf
+
+# 5️⃣ Process PDF from URL (with security validation)
+./run.sh https://example.com/pitch-deck.pdf
 ```
 
 ### Manual Pass-by-Pass
@@ -39,10 +50,9 @@ OpenAI's structured output mode has compatibility issues with File Search when u
 If you want fine-grained control you can still run each pass yourself:
 
 ```bash
-# Pass 1 – Core data extraction
+# Pass 1 – Core data extraction (direct PDF processing)
 ostruct run templates/pass1_core.j2 schemas/pass1_core.json \
-    --enable-tool file-search \
-    --file fs:deck examples/uber-pitch-deck-2008.pdf > pass1.json
+    --file user-data:deck examples/uber-pitch-deck-2008.pdf > pass1.json
 
 # Pass 2 – Industry taxonomy classification
 ostruct run templates/pass2_taxonomy.j2 schemas/pass2_taxonomy_simple.json \
@@ -99,7 +109,8 @@ The final JSON includes:
 ## Requirements
 
 - OpenAI API key configured (`OPENAI_API_KEY`)
-- File Search tool enabled in your account
+- Vision-enabled model (gpt-4o, gpt-4o-mini, or gpt-4-turbo)
+- File Search tool enabled (for Pass 2 taxonomy classification)
 - `jq` installed for JSON merging
 
 ## Example Output
@@ -111,7 +122,10 @@ The system successfully extracts and classifies companies like:
 
 ## Technical Notes
 
-- Uses File Search for semantic document analysis
-- Handles text-based PDFs (image-only PDFs require OCR)
+- **Pass 1**: Uses direct PDF processing with OpenAI's native vision capabilities
+- **Pass 2**: Uses File Search for taxonomy reference lookup
+- Handles both text-based and image-based PDFs natively
+- URL processing with security validation (blocks private IPs by default)
 - Flattened taxonomy schema avoids OpenAI structured output validation issues
 - Confidence scoring and extraction metadata included
+- Automatic model capability validation ensures vision support
