@@ -112,6 +112,11 @@ sphinx-rtd-theme = ">=3.0,<4.0"
 [tool.flake8]
 max-line-length = 120
 extend-ignore = ["E203"]
+per-file-ignores = [
+    # generated or help files with unavoidable long lines
+    "src/ostruct/cli/*.py:E501",
+    "tests/*.py:E501",
+]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
