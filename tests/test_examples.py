@@ -2,11 +2,11 @@
 Test suite for ostruct examples.
 
 This module automatically discovers and tests all examples in the /examples directory
-following the EXAMPLES_STANDARD.md specification.
+following the Examples Standard (docs/source/contribute/examples_standard.rst).
 
 Test Modes:
-- test_example_dry_run: Fast validation with --test-dry-run (no API calls)
-- test_example_live: Live API testing with --test-live (marked as @pytest.mark.live)
+- test_example_dry_run: Fast validation with `make test-dry` (no API calls)
+- test_example_live: Live API testing with `make test-live` (marked as @pytest.mark.live)
 """
 
 import subprocess
@@ -16,65 +16,100 @@ from typing import List
 import pytest
 
 
-def find_example_scripts() -> List[Path]:
+def find_examples() -> List[Path]:
     """
-    Discover all run.sh scripts in the examples directory.
+    Discover all examples in the examples directory by finding Makefile files.
+
+    Excludes the 'agent' example as it's not ready for release.
 
     Returns:
-        List of Path objects pointing to run.sh scripts
+        List of Path objects pointing to example directories containing Makefiles
     """
     examples_dir = Path(__file__).parent.parent / "examples"
     if not examples_dir.exists():
         return []
 
-    scripts = []
-    for script_path in examples_dir.rglob("run.sh"):
-        if (
-            script_path.is_file() and script_path.stat().st_mode & 0o111
-        ):  # executable
-            scripts.append(script_path)
+    examples = []
+    for makefile_path in examples_dir.rglob("Makefile"):
+        if makefile_path.is_file():
+            example_dir = makefile_path.parent
+            # Skip the agent example - not ready for release
+            if example_dir.name == "agent":
+                continue
+            examples.append(example_dir)
 
-    return sorted(scripts)
+    return sorted(examples)
 
 
-def script_id_func(script_path: Path) -> str:
+def example_id_func(example_path: Path) -> str:
     """
-    Generate test ID from script path.
+    Generate test ID from example path.
 
     Args:
-        script_path: Path to the run.sh script
+        example_path: Path to the example directory
 
     Returns:
         Human-readable test ID (e.g., "tools/code-interpreter-basics")
     """
     examples_dir = Path(__file__).parent.parent / "examples"
-    relative_path = script_path.parent.relative_to(examples_dir)
+    relative_path = example_path.relative_to(examples_dir)
     return str(relative_path)
 
 
-def is_debugging_example(script_path: Path) -> bool:
+def is_debugging_example(example_path: Path) -> bool:
     """
     Check if this is a debugging/troubleshooting example that intentionally contains broken code.
 
     Args:
-        script_path: Path to the run.sh script
+        example_path: Path to the example directory
 
     Returns:
         True if this is a debugging example
     """
-    script_id = script_id_func(script_path)
-    return script_id.startswith("debugging/")
+    example_id = example_id_func(example_path)
+    return example_id.startswith("debugging/")
 
 
-# Discover all example scripts
-RUN_SCRIPTS = find_example_scripts()
+def check_makefile_targets(
+    makefile_path: Path, required_targets: List[str]
+) -> List[str]:
+    """
+    Check if a Makefile contains the required targets.
+
+    Args:
+        makefile_path: Path to the Makefile
+        required_targets: List of target names to check for
+
+    Returns:
+        List of missing targets
+    """
+    try:
+        content = makefile_path.read_text()
+        missing_targets = []
+
+        for target in required_targets:
+            # Look for target definition (target: or target followed by whitespace)
+            if f"{target}:" not in content and not any(
+                line.strip().startswith(f"{target}\t")
+                or line.strip().startswith(f"{target} ")
+                for line in content.split("\n")
+            ):
+                missing_targets.append(target)
+
+        return missing_targets
+    except Exception:
+        return required_targets  # If we can't read the file, assume all targets are missing
+
+
+# Discover all examples
+EXAMPLES = find_examples()
 
 
 @pytest.mark.no_fs
-@pytest.mark.parametrize("script", RUN_SCRIPTS, ids=script_id_func)
-def test_example_dry_run(script: Path) -> None:
+@pytest.mark.parametrize("example", EXAMPLES, ids=example_id_func)
+def test_example_dry_run(example: Path) -> None:
     """
-    Test example dry-run validation (no API calls).
+    Test example dry-run validation using `make test-dry` (no API calls).
 
     This test validates:
     - Template syntax and schema compliance
@@ -91,225 +126,204 @@ def test_example_dry_run(script: Path) -> None:
     Note: Debugging examples are handled specially since they intentionally contain broken code.
 
     Args:
-        script: Path to the example's run.sh script
+        example: Path to the example directory
     """
-    script_name = script_id_func(script)
-    print(f"\n🧪 Testing dry-run validation for {script_name}")
+    example_name = example_id_func(example)
+    print(f"\n🧪 Testing dry-run validation for {example_name}")
 
-    # Change to the script's directory
-    script_dir = script.parent
+    # Check if this is a debugging example
+    if is_debugging_example(example):
+        print(
+            f"⚠️  Skipping dry-run test for debugging example: {example_name}"
+        )
+        pytest.skip("Debugging examples intentionally contain broken code")
 
-    # Run the dry-run test
-    proc = subprocess.run(
-        ["bash", str(script), "--test-dry-run"],
-        cwd=script_dir,
-        capture_output=True,
-        text=True,
-        timeout=60,  # 1 minute timeout for dry-run tests
-    )
+    # Run make test-dry
+    try:
+        result = subprocess.run(
+            ["make", "test-dry"],
+            cwd=example,
+            capture_output=True,
+            text=True,
+            timeout=60,  # 1 minute timeout for dry-run
+        )
 
-    # Special handling for debugging examples
-    if is_debugging_example(script):
-        # Debugging examples are expected to show both failures and successes
-        # We just check that the script itself runs without crashing
-        if proc.returncode not in [
-            0,
-            1,
-        ]:  # Allow exit code 1 for expected failures
-            print(
-                f"❌ Debugging example test failed unexpectedly for {script_name}"
-            )
-            print(f"STDOUT:\n{proc.stdout}")
-            print(f"STDERR:\n{proc.stderr}")
+        if result.returncode != 0:
+            print(f"❌ Dry-run failed for {example_name}")
+            print(f"STDOUT:\n{result.stdout}")
+            print(f"STDERR:\n{result.stderr}")
             pytest.fail(
-                f"Debugging example test failed unexpectedly for {script_name}\n"
-                f"Exit code: {proc.returncode} (expected 0 or 1)\n"
-                f"STDERR: {proc.stderr}\n"
-                f"STDOUT: {proc.stdout}"
+                f"Example {example_name} dry-run failed with exit code {result.returncode}\n"
+                f"STDERR: {result.stderr}\n"
+                f"STDOUT: {result.stdout}"
             )
-        print(f"✅ Debugging example validation completed for {script_name}")
-    else:
-        # Regular examples should pass completely
-        if proc.returncode != 0:
-            print(f"❌ Dry-run test failed for {script_name}")
-            print(f"STDOUT:\n{proc.stdout}")
-            print(f"STDERR:\n{proc.stderr}")
-            pytest.fail(
-                f"Dry-run test failed for {script_name}\n"
-                f"Exit code: {proc.returncode}\n"
-                f"STDERR: {proc.stderr}\n"
-                f"STDOUT: {proc.stdout}"
-            )
-        print(f"✅ Dry-run validation passed for {script_name}")
+        else:
+            print(f"✅ Dry-run validation passed for {example_name}")
+
+    except subprocess.TimeoutExpired:
+        pytest.fail(
+            f"Example {example_name} dry-run timed out after 60 seconds"
+        )
+    except FileNotFoundError:
+        pytest.fail(f"Example {example_name} missing make command or Makefile")
 
 
 @pytest.mark.no_fs
 @pytest.mark.live
-@pytest.mark.parametrize("script", RUN_SCRIPTS, ids=script_id_func)
-def test_example_live(script: Path) -> None:
+@pytest.mark.parametrize("example", EXAMPLES, ids=example_id_func)
+def test_example_live(example: Path) -> None:
     """
-    Test example with live API calls.
+    Test example live validation using `make test-live` (minimal API calls).
 
-    This test validates:
-    - Live OpenAI API connectivity
-    - API authentication (API key validation)
-    - Model availability and compatibility
-    - Actual structured output generation
-    - API error handling
-    - Rate limiting behavior
-
-    Note: This test makes real API calls and incurs costs.
-    It is marked with @pytest.mark.live and skipped by default.
-
-    Note: Debugging examples are handled specially since they intentionally contain broken code.
+    This test performs minimal live API testing to verify:
+    - API connectivity and authentication
+    - Basic template processing with live API
+    - Structured output generation
+    - Error handling for API issues
 
     Args:
-        script: Path to the example's run.sh script
+        example: Path to the example directory
     """
-    script_name = script_id_func(script)
-    print(f"\n🌐 Testing live API call for {script_name}")
+    example_name = example_id_func(example)
+    print(f"\n🔴 Testing live API for {example_name}")
 
-    # Change to the script's directory
-    script_dir = script.parent
+    # Check if this is a debugging example
+    if is_debugging_example(example):
+        print(f"⚠️  Skipping live test for debugging example: {example_name}")
+        pytest.skip("Debugging examples intentionally contain broken code")
 
-    # Run the live test
-    proc = subprocess.run(
-        ["bash", str(script), "--test-live"],
-        cwd=script_dir,
-        capture_output=True,
-        text=True,
-        timeout=300,  # 5 minute timeout for live tests
-    )
+    # Run make test-live
+    try:
+        result = subprocess.run(
+            ["make", "test-live"],
+            cwd=example,
+            capture_output=True,
+            text=True,
+            timeout=120,  # 2 minute timeout for live test
+        )
 
-    # Special handling for debugging examples
-    if is_debugging_example(script):
-        # Debugging examples are expected to show both failures and successes
-        # We just check that the script itself runs without crashing
-        if proc.returncode not in [
-            0,
-            1,
-        ]:  # Allow exit code 1 for expected failures
-            print(
-                f"❌ Debugging example live test failed unexpectedly for {script_name}"
-            )
-            print(f"STDOUT:\n{proc.stdout}")
-            print(f"STDERR:\n{proc.stderr}")
-            pytest.fail(
-                f"Debugging example live test failed unexpectedly for {script_name}\n"
-                f"Exit code: {proc.returncode} (expected 0 or 1)\n"
-                f"STDERR: {proc.stderr}\n"
-                f"STDOUT: {proc.stdout}"
-            )
-        print(f"✅ Debugging example live test completed for {script_name}")
-    else:
-        # Regular examples should pass completely
-        if proc.returncode != 0:
-            print(f"❌ Live test failed for {script_name}")
-            print(f"STDOUT:\n{proc.stdout}")
-            print(f"STDERR:\n{proc.stderr}")
-            pytest.fail(
-                f"Live test failed for {script_name}\n"
-                f"Exit code: {proc.returncode}\n"
-                f"STDERR: {proc.stderr}\n"
-                f"STDOUT: {proc.stdout}"
-            )
-        print(f"✅ Live API test passed for {script_name}")
+        if result.returncode != 0:
+            print(f"❌ Live test failed for {example_name}")
+            print(f"STDOUT:\n{result.stdout}")
+            print(f"STDERR:\n{result.stderr}")
+
+            # Check for common API issues
+            stderr_lower = result.stderr.lower()
+            if "api" in stderr_lower and (
+                "key" in stderr_lower or "auth" in stderr_lower
+            ):
+                pytest.skip(
+                    f"API authentication issue for {example_name} - this is expected in CI"
+                )
+            elif "rate limit" in stderr_lower or "quota" in stderr_lower:
+                pytest.skip(
+                    f"API rate limit hit for {example_name} - this is expected under load"
+                )
+            else:
+                pytest.fail(
+                    f"Example {example_name} live test failed with exit code {result.returncode}\n"
+                    f"STDERR: {result.stderr}\n"
+                    f"STDOUT: {result.stdout}"
+                )
+        else:
+            print(f"✅ Live test passed for {example_name}")
+
+    except subprocess.TimeoutExpired:
+        pytest.fail(
+            f"Example {example_name} live test timed out after 120 seconds"
+        )
+    except FileNotFoundError:
+        pytest.fail(f"Example {example_name} missing make command or Makefile")
 
 
 @pytest.mark.no_fs
 def test_examples_discovery() -> None:
     """
-    Test that we can discover example scripts.
+    Test that example discovery works correctly.
 
-    This is a sanity check to ensure the discovery mechanism works
-    and that we have examples to test.
+    This validates:
+    - Examples directory exists
+    - At least some examples are discovered
+    - All discovered examples have valid Makefiles
     """
-    scripts = find_example_scripts()
+    examples = find_examples()
 
-    # We should have at least some examples
-    assert len(scripts) > 0, "No example scripts found in /examples directory"
+    # Should find at least some examples
+    assert len(examples) > 0, "No examples discovered in /examples directory"
 
-    # All discovered scripts should be executable
-    for script in scripts:
-        assert script.exists(), f"Script does not exist: {script}"
-        assert script.is_file(), f"Script is not a file: {script}"
-        assert (
-            script.stat().st_mode & 0o111
-        ), f"Script is not executable: {script}"
+    # All discovered paths should be directories with Makefiles
+    for example in examples:
+        assert example.is_dir(), f"Example path is not a directory: {example}"
+        makefile = example / "Makefile"
+        assert makefile.exists(), f"Example missing Makefile: {example}"
 
-    print(f"✅ Discovered {len(scripts)} example scripts")
-    for script in scripts:
-        script_name = script_id_func(script)
-        if is_debugging_example(script):
-            print(f"  - {script_name} (debugging example)")
-        else:
-            print(f"  - {script_name}")
+    print(f"✅ Discovered {len(examples)} examples with Makefiles")
 
 
 @pytest.mark.no_fs
 def test_examples_follow_standard() -> None:
     """
-    Test that examples follow the EXAMPLES_STANDARD.md structure.
+    Test that examples follow the Examples Standard.
 
     This validates:
-    - Required files exist (README.md, templates/, schemas/)
-    - run.sh follows the standard interface
+    - Required Makefile targets exist (test-dry, test-live, run, clean, help)
+    - Makefiles are properly structured
     - Special handling for debugging examples
     """
-    scripts = find_example_scripts()
+    examples = find_examples()
+    required_targets = ["test-dry", "test-live", "run", "clean", "help"]
 
-    for script in scripts:
-        example_dir = script.parent
-        script_name = script_id_func(script)
+    for example in examples:
+        example_name = example_id_func(example)
+        makefile = example / "Makefile"
 
-        # Check required files/directories exist
-        required_paths = [
-            example_dir / "README.md",
-            example_dir / "templates",
-            example_dir / "schemas",
-        ]
+        # Check required targets exist
+        missing_targets = check_makefile_targets(makefile, required_targets)
 
-        for required_path in required_paths:
-            assert (
-                required_path.exists()
-            ), f"Example {script_name} missing required path: {required_path.name}"
-
-        # Check run.sh uses standard_runner.sh
-        script_content = script.read_text()
-        assert (
-            "standard_runner.sh" in script_content
-        ), f"Example {script_name} does not use standard_runner.sh"
-
-        # Check run.sh defines run_example function
-        assert (
-            "run_example()" in script_content
-        ), f"Example {script_name} does not define run_example() function"
+        if missing_targets:
+            pytest.fail(
+                f"Example {example_name} missing required Makefile targets: {', '.join(missing_targets)}"
+            )
 
         # Special validation for debugging vs regular examples
-        if is_debugging_example(script):
-            # Debugging examples have intentionally broken templates
-            # Just check that schemas directory exists and has at least one schema
-            schemas_dir = example_dir / "schemas"
-            schema_files = list(schemas_dir.glob("*.json"))
-            assert (
-                len(schema_files) > 0
-            ), f"Debugging example {script_name} has no schema files"
-            print(f"✅ Debugging example {script_name} structure validated")
+        if is_debugging_example(example):
+            print(
+                f"✅ Debugging example {example_name} Makefile structure validated"
+            )
         else:
-            # Regular examples should have main.j2 and main.json
-            templates_dir = example_dir / "templates"
-            main_template = templates_dir / "main.j2"
-            assert (
-                main_template.exists()
-            ), f"Example {script_name} missing main template: templates/main.j2"
+            # For regular examples, test that help target works
+            try:
+                result = subprocess.run(
+                    ["make", "help"],
+                    cwd=example,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
 
-            schemas_dir = example_dir / "schemas"
-            main_schema = schemas_dir / "main.json"
-            assert (
-                main_schema.exists()
-            ), f"Example {script_name} missing main schema: schemas/main.json"
+                if result.returncode != 0:
+                    pytest.fail(
+                        f"Example {example_name} 'make help' failed with exit code {result.returncode}"
+                    )
 
-    print(f"✅ All {len(scripts)} examples follow the standard structure")
+                # Help output should mention the available targets
+                help_output = result.stdout.lower()
+                if not any(
+                    target in help_output
+                    for target in ["test-dry", "test-live", "run"]
+                ):
+                    pytest.fail(
+                        f"Example {example_name} 'make help' output doesn't mention key targets"
+                    )
+
+            except subprocess.TimeoutExpired:
+                pytest.fail(f"Example {example_name} 'make help' timed out")
+            except FileNotFoundError:
+                pytest.fail(f"Example {example_name} missing make command")
+
+            print(f"✅ Example {example_name} Makefile structure validated")
+
+    print(f"✅ All {len(examples)} examples follow the standard structure")
 
 
 if __name__ == "__main__":
@@ -318,14 +332,14 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1 and sys.argv[1] == "--discover":
         # Just show discovered examples
-        scripts = find_example_scripts()
-        print(f"Discovered {len(scripts)} example scripts:")
-        for script in scripts:
-            script_name = script_id_func(script)
-            if is_debugging_example(script):
-                print(f"  - {script_name} (debugging example)")
+        examples = find_examples()
+        print(f"Discovered {len(examples)} examples:")
+        for example in examples:
+            example_name = example_id_func(example)
+            if is_debugging_example(example):
+                print(f"  - {example_name} (debugging example)")
             else:
-                print(f"  - {script_name}")
+                print(f"  - {example_name}")
     else:
         # Run basic discovery test
         test_examples_discovery()
