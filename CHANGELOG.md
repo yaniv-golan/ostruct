@@ -7,28 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- Raised OpenAI Structured Outputs schema limits to match July 11 2025 announcement: object properties 5,000 (was 100), enum values 1,000 (was 500), total enum characters 15,000 (was 7,500). Updated validator constants, templates, docs, and added boundary unit tests.
-
 ### Added
 
-- **User-Data Workflow**: New ``ud:`` / ``user-data:`` attachment target for PDF uploads to vision-enabled models.  Features:
-  - Direct PDF processing using OpenAI's vision capabilities for both text and image-based PDF documents.
-  - Remote URL support for processing PDFs from web sources with security validation.
-  - 512 MB hard limit and 50 MB warning threshold with early validation.
-  - Model capability validation with descriptive errors for non-vision models.
-- **URL Security Controls**:
-  - Strict HTTPS & public-network enforcement for remote attachments.
-  - ``--allow-insecure-url`` flag to whitelist specific HTTP or private URLs.
-  - ``--strict-urls/--no-strict-urls`` toggle to globally enable/disable validation.
-- **Enhanced Dry-Run**: Improved execution plan display with URL reachability validation and clearer attachment routing information.
+- **User-Data Workflow**: New ``ud:`` / ``user-data:`` attachment target for PDF uploads to vision-enabled models:
+  - Direct PDF processing using OpenAI's vision capabilities for both text and image-based PDF documents
+  - Remote URL support for processing PDFs from web sources with security validation
+  - 512 MB hard limit and 50 MB warning threshold with early validation
+  - Model capability validation with descriptive errors for non-vision models
+
+- **URL Security Controls**: Comprehensive security for remote file attachments:
+  - Strict HTTPS & public-network enforcement for remote attachments
+  - ``--allow-insecure-url`` flag to whitelist specific HTTP or private URLs
+  - ``--strict-urls/--no-strict-urls`` toggle to globally enable/disable validation
+
+- **Enhanced Template Error Analysis**: Improved debugging and validation for template development:
+  - Advanced error detection and reporting for template syntax issues
+  - Integration with template validation system for better developer experience
+  - Enhanced error messages with actionable guidance for template fixes
+
+- **Pitch-Distiller Example**: Comprehensive startup pitch deck analysis example with two-pass analysis system and industry taxonomy integration
+
+### Changed
+
+- **Schema Limits**: Raised OpenAI Structured Outputs schema limits to match July 11 2025 announcement: object properties 5,000 (was 100), enum values 1,000 (was 500), total enum characters 15,000 (was 7,500). Updated validator constants, templates, docs, and added boundary unit tests.
+
+### Fixed
+
+- **Template Rendering**: Resolved various template rendering bugs and improved error handling
+- **Schema Validation**: Enhanced schema validation with dynamic model creation during dry-run
+- **File Routing**: Corrected file routing metadata for File Search attachments
+- **Schema Processing**: Fixed JSON serialization issues and improved schema definition propagation
+
+### Improved
+
+- **Dry-Run Display**: Enhanced execution plan display with URL reachability validation and clearer attachment routing information
+- **Binary Detection**: Added comprehensive binary file detection and handling
+- **Error Messages**: Improved user experience with better error messages and guidance
 
 ### Documentation
 
-- Updated *CLI Reference* with new targets, flags, examples, and user-data limits.
-- Expanded *Security Overview* with URL validation rules and user-data safeguards.
-- Added remote PDF user-data example to *Advanced Patterns* guide.
+- **CLI Reference**: Updated with new targets, flags, examples, and user-data limits
+- **Security Overview**: Expanded with URL validation rules and user-data safeguards
+- **Advanced Patterns**: Added remote PDF user-data example and enhanced template guidance
+- **Test Coverage**: Added comprehensive test coverage for new features and file routing scenarios
+
+### Internal
+
+- **Examples Infrastructure**: Standardized example testing with consistent Makefile interface across all examples
+- **Shared Logging Library**: Replaced problematic log4sh with modern `lib/simple_logging.sh` for reliable script logging
+- **Development Tools**: Enhanced example organization and removed private agent example from public documentation
 
 ## [1.2.0] - 2025-07-06
 
