@@ -147,5 +147,3 @@ yaniv-private/
 !lib/**
 !tests/lib/
 !tests/lib/**
-!examples/agent/lib/
-!examples/agent/lib/**

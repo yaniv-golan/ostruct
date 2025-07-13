@@ -5,6 +5,15 @@
 #   TASK, TURN_COUNT, CURRENT_STATE, SANDBOX_PATH, MAX_TURNS, LIB_DIR
 # They are intentionally pure-data (jq-based) operations so they are easy to unit-test.
 #
+# Enable strict mode for reliability
+set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
+
 # Guard against accidental execution
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   echo "ai_helpers.sh: source this file, do not execute" >&2
@@ -36,7 +45,7 @@ build_critic_input() {
 
     tool_name=$(echo "$step" | jq -r '.tool')
     tool_spec=$(jq --arg tool "$tool_name" \
-        '.[$tool] // {name: $tool, description: "Unknown tool", limits: {}}' \
+        '.[$tool] // {"name": $tool, "description": "Unknown tool", "limits": {}}' \
         "$TOOLS_FILE")
 
     jq -n \
@@ -52,20 +61,7 @@ build_critic_input() {
         --argjson temporal_constraints "$(get_temporal_constraints)" \
         --argjson failure_patterns "$(get_failure_patterns)" \
         --argjson safety_constraints "$(get_safety_constraints)" \
-        '{
-            task: $task,
-            candidate_step: $candidate_step,
-            turn: ($turn | tonumber),
-            max_turns: ($max_turns | tonumber),
-            last_observation: $last_observation,
-            plan_remainder: $plan_remainder,
-            execution_history_tail: $execution_history_tail,
-            tool_spec: $tool_spec,
-            sandbox_path: $sandbox_path,
-            temporal_constraints: $temporal_constraints,
-            failure_patterns: $failure_patterns,
-            safety_constraints: $safety_constraints
-        }'
+        '{"task": $task, "candidate_step": $candidate_step, "turn": ($turn | tonumber), "max_turns": ($max_turns | tonumber), "last_observation": $last_observation, "plan_remainder": $plan_remainder, "execution_history_tail": $execution_history_tail, "tool_spec": $tool_spec, "sandbox_path": $sandbox_path, "temporal_constraints": $temporal_constraints, "failure_patterns": $failure_patterns, "safety_constraints": $safety_constraints}'
 }
 export -f build_critic_input
 
@@ -139,13 +135,13 @@ export -f get_safety_constraints
 # -----------------------------------------------------------------------------
 record_critic_intervention() {
     local step_json="$1" critic_out="$2" f="$SANDBOX_PATH/.critic_interventions.jsonl"
-    jq -n --argjson turn "$TURN_COUNT" --argjson step "$step_json" --argjson critic_out "$critic_out" '{turn: $turn, step: $step, critic_response: $critic_out, timestamp: (now | todate)}' >> "$f"
+    jq -n --argjson turn "$TURN_COUNT" --argjson step "$step_json" --argjson critic_out "$critic_out" '{"turn": $turn, "step": $step, "critic_response": $critic_out, "timestamp": (now | todate)}' >> "$f"
 }
 export -f record_critic_intervention
 
 generate_step_fingerprint() {
     local step_json="$1"
-    echo "$step_json" | jq -c '{tool, parameters: (.parameters | sort_by(.name) | map({name, value}))}' | shasum -a 256 | cut -d' ' -f1
+    echo "$step_json" | jq -c '{"tool": .tool, "parameters": (.parameters | sort_by(.name) | map({"name": .name, "value": .value}))}' | shasum -a 256 | cut -d' ' -f1
 }
 export -f generate_step_fingerprint
 
@@ -157,7 +153,7 @@ record_blocked_step() {
         existing_count=$(grep -c "\"fingerprint\":\"$fingerprint\"" "$f" 2>/dev/null || echo 0)
         existing_count=$(echo "$existing_count" | tr -d '\n\r' | grep -E '^[0-9]+$' || echo 0)
     fi
-    block_entry=$(jq -n --argjson turn "$TURN_COUNT" --arg fingerprint "$fingerprint" --argjson step "$step_json" --argjson score "$critic_score" --arg reason "$block_reason" --argjson count "$((existing_count+1))" '{turn:$turn,fingerprint:$fingerprint,step:$step,critic_score:$score,block_reason:$reason,repeat_count:$count,timestamp:(now|todate)}')
+    block_entry=$(jq -n --argjson turn "$TURN_COUNT" --arg fingerprint "$fingerprint" --argjson step "$step_json" --argjson score "$critic_score" --arg reason "$block_reason" --argjson count "$((existing_count+1))" '{"turn":$turn,"fingerprint":$fingerprint,"step":$step,"critic_score":$score,"block_reason":$reason,"repeat_count":$count,"timestamp":(now|todate)}')
     echo "$block_entry" >> "$f"
 }
 export -f record_blocked_step
@@ -174,6 +170,6 @@ export -f is_step_previously_blocked
 get_block_history_summary() {
     local f="$SANDBOX_PATH/.block_history.jsonl"
     [[ -f "$f" ]] || { echo "[]"; return; }
-    tail -10 "$f" | jq -s 'map({fingerprint, tool: .step.tool, parameters: .step.parameters, block_reason, repeat_count, turn}) | group_by(.fingerprint) | map({fingerprint: .[0].fingerprint, tool: .[0].tool, parameters: .[0].parameters, block_reason: .[0].block_reason, total_repeats: (map(.repeat_count)|max), first_seen_turn: (map(.turn)|min), last_seen_turn: (map(.turn)|max)}) | sort_by(.total_repeats) | reverse'
+    tail -10 "$f" | jq -s 'map({"fingerprint": .fingerprint, "tool": .step.tool, "parameters": .step.parameters, "block_reason": .block_reason, "repeat_count": .repeat_count, "turn": .turn}) | group_by(.fingerprint) | map({"fingerprint": .[0].fingerprint, "tool": .[0].tool, "parameters": .[0].parameters, "block_reason": .[0].block_reason, "total_repeats": (map(.repeat_count)|max), "first_seen_turn": (map(.turn)|min), "last_seen_turn": (map(.turn)|max)}) | sort_by(.total_repeats) | reverse'
 }
 export -f get_block_history_summary

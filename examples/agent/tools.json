@@ -8,6 +8,20 @@
         "limits": {
             "max_output_size": "32KB"
         },
+        "reliability": {
+            "error_prone_params": [
+                "filter",
+                "input"
+            ],
+            "retryable": true,
+            "max_retries": 2,
+            "retry_delay": 1,
+            "common_errors": [
+                "Invalid JSON",
+                "Invalid filter syntax",
+                "File not found"
+            ]
+        },
         "example": {
             "tool": "jq",
             "parameters": [
@@ -31,6 +45,19 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "reliability": {
+            "error_prone_params": [
+                "file"
+            ],
+            "retryable": true,
+            "max_retries": 2,
+            "retry_delay": 1,
+            "common_errors": [
+                "File not found",
+                "Permission denied",
+                "File too large"
+            ]
         },
         "example": {
             "tool": "grep",
@@ -56,6 +83,20 @@
         "limits": {
             "max_file_size": "32KB"
         },
+        "reliability": {
+            "error_prone_params": [
+                "expression",
+                "file"
+            ],
+            "retryable": true,
+            "max_retries": 2,
+            "retry_delay": 1,
+            "common_errors": [
+                "Invalid expression",
+                "File not found",
+                "Permission denied"
+            ]
+        },
         "example": {
             "tool": "sed",
             "parameters": [
@@ -80,6 +121,20 @@
         "limits": {
             "max_file_size": "32KB"
         },
+        "reliability": {
+            "error_prone_params": [
+                "script",
+                "file"
+            ],
+            "retryable": true,
+            "max_retries": 2,
+            "retry_delay": 1,
+            "common_errors": [
+                "Invalid script syntax",
+                "File not found",
+                "Permission denied"
+            ]
+        },
         "example": {
             "tool": "awk",
             "parameters": [
@@ -103,6 +158,20 @@
         "limits": {
             "max_download_size": "10MB"
         },
+        "reliability": {
+            "error_prone_params": [
+                "url"
+            ],
+            "retryable": true,
+            "max_retries": 3,
+            "retry_delay": 2,
+            "common_errors": [
+                "Network timeout",
+                "Invalid URL",
+                "Server error",
+                "File too large"
+            ]
+        },
         "example": {
             "tool": "curl",
             "parameters": [
@@ -122,6 +191,20 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "reliability": {
+            "error_prone_params": [
+                "path"
+            ],
+            "retryable": false,
+            "max_retries": 0,
+            "retry_delay": 0,
+            "common_errors": [
+                "Permission denied",
+                "Disk full",
+                "Invalid path",
+                "Content too large"
+            ]
         },
         "example": {
             "tool": "write_file",
@@ -146,6 +229,20 @@
         },
         "limits": {
             "max_file_size": "32KB"
+        },
+        "reliability": {
+            "error_prone_params": [
+                "path"
+            ],
+            "retryable": false,
+            "max_retries": 0,
+            "retry_delay": 0,
+            "common_errors": [
+                "Permission denied",
+                "Disk full",
+                "Invalid path",
+                "File too large"
+            ]
         },
         "example": {
             "tool": "append_file",
@@ -172,6 +269,21 @@
         "limits": {
             "max_file_size": "32KB",
             "max_replacements": 1000
+        },
+        "reliability": {
+            "error_prone_params": [
+                "file",
+                "search"
+            ],
+            "retryable": false,
+            "max_retries": 0,
+            "retry_delay": 0,
+            "common_errors": [
+                "File not found",
+                "Permission denied",
+                "Too many replacements",
+                "Invalid search pattern"
+            ]
         },
         "example": {
             "tool": "text_replace",
@@ -200,6 +312,19 @@
         "limits": {
             "max_file_size": "32KB"
         },
+        "reliability": {
+            "error_prone_params": [
+                "path"
+            ],
+            "retryable": true,
+            "max_retries": 2,
+            "retry_delay": 1,
+            "common_errors": [
+                "File not found",
+                "Permission denied",
+                "File too large"
+            ]
+        },
         "example": {
             "tool": "read_file",
             "parameters": [
@@ -219,6 +344,22 @@
         },
         "limits": {
             "max_download_size": "10MB"
+        },
+        "reliability": {
+            "error_prone_params": [
+                "url",
+                "path"
+            ],
+            "retryable": true,
+            "max_retries": 3,
+            "retry_delay": 2,
+            "common_errors": [
+                "Network timeout",
+                "Invalid URL",
+                "Permission denied",
+                "File too large",
+                "Server error"
+            ]
         },
         "example": {
             "tool": "download_file",

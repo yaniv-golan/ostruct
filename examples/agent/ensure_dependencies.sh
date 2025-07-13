@@ -1,9 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Dependency Management Script
 # Ensures all required tools are installed for the agent system
 
+# Enable strict mode for reliability
 set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
 
 # Colors for output
 RED='\033[0;31m'

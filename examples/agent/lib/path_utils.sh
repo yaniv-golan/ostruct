@@ -11,6 +11,15 @@
 #   • Caller must export SANDBOX_PATH (absolute sandbox directory)
 #   • Optionally exports log_error / error_exit for logging; otherwise prints to stderr.
 #
+# Enable strict mode for reliability
+set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
+
 # Guard against accidental execution
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     echo "path_utils.sh: source this file, do not execute" >&2
@@ -56,15 +65,24 @@ _safe_path_error() {
 
 safe_path() {
     local input_path="$1"
-    local sandbox="$SANDBOX_PATH"
+    # Use default expansion to avoid unbound variable error when SANDBOX_PATH is not set
+    local sandbox="${SANDBOX_PATH:-}"
     if [[ -z "$sandbox" ]]; then
         _safe_path_error "safe_path: SANDBOX_PATH not set"
         return 1
     fi
 
+    # Resolve sandbox path to handle symlinks (e.g., /tmp -> /private/tmp on macOS)
+    local resolved_sandbox
+    if command -v realpath >/dev/null 2>&1; then
+        resolved_sandbox=$(realpath "$sandbox" 2>/dev/null || echo "$sandbox")
+    else
+        resolved_sandbox=$(readlink -f "$sandbox" 2>/dev/null || echo "$sandbox")
+    fi
+
     # Prepend sandbox for relative paths
     if [[ "$input_path" != /* ]]; then
-        input_path="$sandbox/$input_path"
+        input_path="$resolved_sandbox/$input_path"
     fi
 
     local resolved
@@ -77,8 +95,8 @@ safe_path() {
 
     [[ -z "$resolved" ]] && resolved="$input_path"
 
-    if [[ "$resolved" != "$sandbox"* ]]; then
-        _safe_path_error "Path escape attempt: $input_path -> $resolved"
+    if [[ "$resolved" != "$resolved_sandbox"* ]]; then
+        _safe_path_error "Path escape attempt: $input_path -> $resolved (sandbox: $resolved_sandbox)"
         return 1
     fi
 

@@ -3,6 +3,16 @@
 #
 # Source this file to populate sensible defaults.  Each constant can be
 # overridden by exporting the variable *before* sourcing this file.
+
+# Enable strict mode for reliability
+set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
+
 # Guard against accidental execution
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   echo "config.sh: source this file, do not execute" >&2

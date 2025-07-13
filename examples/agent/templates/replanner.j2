@@ -54,6 +54,7 @@ No previously blocked patterns found.
 
 ### Rules
 - **Return JSON only** — no markdown, comments, or extra text
+- **Always include at least one item in success_criteria if the task is not yet complete; never output `[{}]`. Plans with empty success_criteria will be rejected by the runner.**
 - **NEVER include empty objects `{}` in next_steps**
 - **Every step MUST have**: tool, reasoning, parameters array
 - **Copy parameter formats from examples above exactly**

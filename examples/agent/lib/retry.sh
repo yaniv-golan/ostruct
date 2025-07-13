@@ -8,6 +8,15 @@
 # • If delay list is shorter than attempts, the last delay is reused.
 # • Returns non-zero (last exit code) if all attempts fail.
 #
+# Enable strict mode for reliability
+set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
+
 # Guards
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   echo "retry.sh: source this file, do not execute" >&2

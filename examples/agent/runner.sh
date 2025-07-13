@@ -1,9 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Sandboxed Agent Runner
 # Provides safe, controlled execution of LLM-planned tasks using ostruct
 
+# Enable strict mode for reliability
 set -euo pipefail
+IFS=$'\n\t'
+
+# Ensure DEBUG and color vars propagate to child subshells and avoid set -u errors
+export DEBUG=${DEBUG:-false}
+export LOG_COLORS=${LOG_COLORS:-false}
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
 
 # Directory of this script (agent root)
 AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,25 +55,22 @@ source "$LIB_DIR/ai_helpers.sh"
 source "$LIB_DIR/ui_helpers.sh"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/scripts/logging.sh"
+# shellcheck source=/dev/null
+source "$LIB_DIR/json_utils.sh"
 
-# Configure logging for cleaner UI
+# Configure logging level using simple_logging.sh helper
 if [[ "${LOG_LEVEL:-INFO}" == "INFO" && "${AGENT_UI_DISABLE:-false}" != "true" ]]; then
-    # In normal operation with UI enabled, only show warnings and errors on console
-    # Full logging still goes to file (already configured by scripts/logging.sh)
-
-    # Just adjust the stderr appender level to WARN for cleaner UI
-    appender_setLevel stderr WARN
-    appender_activateOptions stderr
-
-    log_info "UI mode: Console shows warnings/errors only, full logging to: $LOG_FILE"
+    # Normal UI: suppress INFO on console – set global level to WARN
+    set_log_level "WARN"
+    log_info "UI mode: Console shows warnings/errors only (WARN+). Full logging disabled for INFO/DEBUG due to single-level logger."
 elif [[ "${LOG_LEVEL:-INFO}" == "VERBOSE" ]]; then
-    # Verbose mode - show info and above
-    appender_setLevel stderr INFO
-    appender_activateOptions stderr
-    log_info "Verbose mode: Detailed logging to console and file: $LOG_FILE"
+    # Verbose mode
+    set_log_level "INFO"
+    log_info "Verbose mode: INFO+ messages will appear on console and in log file."
 else
-    # Debug/verbose mode - show everything (default configuration)
-    log_info "Debug mode: Full logging to console and file: $LOG_FILE"
+    # Debug mode or explicit DEBUG env var
+    set_log_level "DEBUG"
+    log_info "Debug mode: Full DEBUG logging enabled on console and file."
 fi
 
 # Template debugging configuration
@@ -114,6 +122,116 @@ error_exit() {
 }
 
 # ----------------------------------------------------------------------------
+# Pre-execution validation - check error_prone_params before tool execution
+# ----------------------------------------------------------------------------
+validate_tool_execution() {
+    local step_json="$1"
+    local tool=$(echo "$step_json" | jq -r '.tool')
+
+    # Load tool metadata from tools.json
+    local tool_metadata
+    if ! tool_metadata=$(jq -r --arg tool "$tool" '.[$tool]' "$TOOLS_FILE" 2>/dev/null); then
+        log_error "Failed to load tool metadata for: $tool"
+        return 1
+    fi
+
+    # Check if tool has reliability metadata
+    local has_reliability
+    has_reliability=$(echo "$tool_metadata" | jq -r '.reliability != null')
+
+    if [[ "$has_reliability" == "true" ]]; then
+        # Get error-prone parameters
+        local error_prone_params
+        error_prone_params=$(echo "$tool_metadata" | jq -r '.reliability.error_prone_params[]?' 2>/dev/null || echo "")
+
+        if [[ -n "$error_prone_params" ]]; then
+            log_info "Validating error-prone parameters for $tool: $error_prone_params"
+
+            # Check each error-prone parameter
+            while IFS= read -r param_name; do
+                [[ -z "$param_name" ]] && continue
+
+                local param_value
+                param_value=$(get_param "$step_json" "$param_name")
+
+                case "$param_name" in
+                    "path"|"file"|"output")
+                        # Validate file paths
+                        if [[ -n "$param_value" ]]; then
+                            # Check for suspicious path patterns
+                            if [[ "$param_value" =~ \.\./|^/|~/ ]]; then
+                                log_warn "Suspicious path detected in $param_name: $param_value"
+                                format_error_json "$tool" "suspicious_path" "Path contains potentially unsafe patterns: $param_value"
+                                return 1
+                            fi
+
+                            # Check for overly long paths
+                            if [[ ${#param_value} -gt 255 ]]; then
+                                log_warn "Path too long in $param_name: ${#param_value} characters"
+                                format_error_json "$tool" "path_too_long" "Path exceeds maximum length (255 chars): $param_value"
+                                return 1
+                            fi
+                        fi
+                        ;;
+                    "url")
+                        # Validate URLs
+                        if [[ -n "$param_value" ]]; then
+                            if ! [[ "$param_value" =~ ^https?:// ]]; then
+                                log_warn "Invalid URL format in $param_name: $param_value"
+                                format_error_json "$tool" "invalid_url_format" "URL must start with http:// or https://: $param_value"
+                                return 1
+                            fi
+
+                            # Check for localhost/internal addresses
+                            if [[ "$param_value" =~ localhost|127\.0\.0\.1|0\.0\.0\.0|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\. ]]; then
+                                log_warn "Internal/localhost URL detected in $param_name: $param_value"
+                                format_error_json "$tool" "internal_url" "Internal or localhost URLs are not allowed: $param_value"
+                                return 1
+                            fi
+                        fi
+                        ;;
+                    "pattern"|"search"|"filter"|"expression"|"script")
+                        # Validate patterns/expressions
+                        if [[ -n "$param_value" ]]; then
+                            # Check for overly complex patterns
+                            if [[ ${#param_value} -gt 1000 ]]; then
+                                log_warn "Pattern too long in $param_name: ${#param_value} characters"
+                                format_error_json "$tool" "pattern_too_long" "Pattern exceeds maximum length (1000 chars): $param_value"
+                                return 1
+                            fi
+
+                            # Check for potentially dangerous patterns
+                            if [[ "$param_value" =~ \$\(|\`|\;|\||\&\& ]]; then
+                                log_warn "Potentially dangerous pattern in $param_name: $param_value"
+                                format_error_json "$tool" "dangerous_pattern" "Pattern contains potentially unsafe characters: $param_value"
+                                return 1
+                            fi
+                        fi
+                        ;;
+                    "content")
+                        # Validate content size
+                        if [[ -n "$param_value" ]]; then
+                            if [[ ${#param_value} -gt $FILE_SIZE_LIMIT ]]; then
+                                log_warn "Content too large in $param_name: ${#param_value} bytes"
+                                format_error_json "$tool" "content_too_large" "Content exceeds file size limit ($FILE_SIZE_LIMIT bytes): ${#param_value} bytes"
+                                return 1
+                            fi
+                        fi
+                        ;;
+                esac
+            done <<< "$error_prone_params"
+        fi
+
+        # Log validation success
+        log_info "Pre-execution validation passed for $tool"
+    else
+        log_debug "No reliability metadata for $tool, skipping validation"
+    fi
+
+    return 0
+}
+
+# ----------------------------------------------------------------------------
 # extract_dependencies – heuristically determine provides/requires for a step
 # ----------------------------------------------------------------------------
 extract_dependencies() {
@@ -131,6 +249,9 @@ extract_dependencies() {
             ;;
         "read_file"|"grep"|"sed"|"awk")
             local file=$(get_param "$step_json" "file")
+            if [[ -z "$file" ]]; then
+                file=$(get_param "$step_json" "path")
+            fi
             if [[ -n "$file" ]]; then
                 requires=$(jq -n --arg file "$file" '[$file]')
             fi
@@ -151,7 +272,7 @@ extract_dependencies() {
     esac
 
     echo "$step_json" | jq --argjson provides "$provides" --argjson requires "$requires" \
-        '. + {provides: $provides, requires: $requires}'
+        '. + {"provides": $provides, "requires": $requires}'
 }
 
 # generate_schemas now provided by lib/ostruct_cli.sh
@@ -177,6 +298,8 @@ init_run() {
     # Create sandbox for this run
     SANDBOX_PATH="$WORKDIR_PATH/sandbox_${RUN_ID}"
     mkdir -p "$SANDBOX_PATH"
+    # Export so tool subprocesses can resolve paths
+    export SANDBOX_PATH
 
     # State file
     CURRENT_STATE_FILE="$SANDBOX_PATH/.agent_state.json"
@@ -212,8 +335,11 @@ sort_steps_dag() {
     log_debug "DAG sorting processed $step_count steps"
     log_debug "Tagged steps: $tagged_steps"
 
-    if [[ $step_count -eq 0 ]]; then
-        echo '{"error": null, "steps": []}'
+    # If there are zero or one steps we can skip all DAG logic –
+    # no dependencies means the original order is already valid.
+    if [[ $step_count -le 1 ]]; then
+        log_debug "DAG trivial case ($step_count step), returning original order"
+        echo '{"error": null, "steps": '"$tagged_steps"'}'
         return 0
     fi
 
@@ -228,6 +354,13 @@ sort_steps_dag() {
         else empty end]
         | .[]'
     )
+
+    # If no dependency edges exist, the original order is already valid
+    if [[ -z "$edges" ]]; then
+        log_debug "No dependency edges found, returning original step order"
+        echo '{"error": null, "steps": '"$tagged_steps"'}'
+        return 0
+    fi
 
     # Run tsort
     local sorted_nodes cycle_detected=0
@@ -263,6 +396,43 @@ get_param() {
     local step_json="$1"
     local param_name="$2"
     echo "$step_json" | jq -r ".parameters[] | select(.name == \"$param_name\") | .value"
+}
+
+# ----------------------------------------------------------------------------
+# Tool execution with retry logic
+# ----------------------------------------------------------------------------
+execute_tool_with_retry() {
+    local tool="$1"
+    shift
+    local -a targs=("$@")
+
+    # Load tool metadata from tools.json
+    local tool_metadata
+    if ! tool_metadata=$(jq -r --arg tool "$tool" '.[$tool]' "$TOOLS_FILE" 2>/dev/null); then
+        log_error "Failed to load tool metadata for: $tool"
+        return 1
+    fi
+
+    # Check if tool is retryable
+    local is_retryable
+    is_retryable=$(echo "$tool_metadata" | jq -r '.reliability.retryable // false')
+
+    if [[ "$is_retryable" == "true" ]]; then
+        # Get retry configuration
+        local max_retries
+        max_retries=$(echo "$tool_metadata" | jq -r '.reliability.max_retries // 2')
+        local retry_delay
+        retry_delay=$(echo "$tool_metadata" | jq -r '.reliability.retry_delay // 1')
+
+        log_info "Executing $tool with retry (max_retries: $max_retries, delay: ${retry_delay}s)"
+
+        # Use with_retry for retryable tools
+        with_retry "$max_retries" "$retry_delay" -- tool_exec "$tool" "${targs[@]}"
+    else
+        log_info "Executing $tool (non-retryable)"
+        # Execute directly for non-retryable tools
+        tool_exec "$tool" "${targs[@]}"
+    fi
 }
 
 # Execute a single step
@@ -398,7 +568,7 @@ execute_step() {
                     --arg comment "$comment" \
                     --argjson score "$score" \
                     --argjson duration "0" \
-                    '{success: false, error: ("Critic blocked: " + $comment), critic_score: $score, duration: $duration, blocked_by_critic: true}')
+                    '{"success": false, "error": ("Critic blocked: " + $comment), "critic_score": $score, "duration": $duration, "blocked_by_critic": true}')
                 echo "$result_json"
                 return 2  # Special return code for critic block
             fi
@@ -422,12 +592,21 @@ execute_step() {
         return 1
     fi
 
-    # Dispatch to library
+    # Pre-execution validation
+    if ! validate_tool_execution "$step_json"; then
+        log_warn "Pre-execution validation failed for tool: $tool"
+        local result_json
+        result_json=$(json_error "Pre-execution validation failed" 0)
+        echo "$result_json"
+        return 1
+    fi
+
+    # Dispatch to library with retry logic
     case "$tool" in jq|grep|sed|awk|curl|write_file|append_file|text_replace|read_file|download_file)
         # Build positional args array from parameters order
         local -a targs=()
         while IFS= read -r p; do targs+=("$(jq -r '.value' <<<"$p")"); done < <(echo "$step_json" | jq -c '.parameters[]')
-        output=$(tool_exec "$tool" "${targs[@]}")
+        output=$(execute_tool_with_retry "$tool" "${targs[@]}")
         ;;
         *)
         output="Error: Unknown tool: $tool"; success=false ;;
@@ -441,17 +620,24 @@ execute_step() {
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
 
+    # Sanitize duration to ensure it is a valid JSON number (jq --argjson requires
+    # strictly numeric input). Fallback to 0 on any parsing issue.
+    local duration_json
+    if [[ "$duration" =~ ^[0-9]+$ ]]; then
+        duration_json="$duration"
+    else
+        duration_json=0
+    fi
+
     # Update failure patterns
     update_failure_patterns "$tool" "$success" "$TURN_COUNT"
 
     # Create result JSON
     local result_json
     if [[ "$success" == "true" ]]; then
-        result_json=$(jq -n --arg output "$output" --argjson duration "$duration" \
-            '{success: true, output: $output, duration: $duration}')
+        result_json=$(json_success "$output" "$duration_json")
     else
-        result_json=$(jq -n --arg error "$output" --argjson duration "$duration" \
-            '{success: false, error: $error, duration: $duration}')
+        result_json=$(json_error "$output" "$duration_json")
     fi
 
     echo "$result_json"
@@ -515,6 +701,8 @@ main() {
     #   -n, --num-plans <N>   Number of plans to generate (default 3)
     #   -h, --help           Show usage
     # ----------------------------------------------
+    local DRY_RUN=false  # flag: only validate & dry-run first ostruct call
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -n|--num-plans)
@@ -525,8 +713,12 @@ main() {
                 NUM_PLANS="$2"
                 shift 2
                 ;;
+            -d|--dry-run)
+                DRY_RUN=true
+                shift
+                ;;
             -h|--help)
-                echo "Usage: $0 [-n NUM_PLANS] <task_description>"
+                echo "Usage: $0 [-d|--dry-run] [-n NUM_PLANS] <task_description>"
                 echo "Example: $0 -n 2 'Download and analyze the latest weather data'"
                 return 0
                 ;;
@@ -542,7 +734,7 @@ main() {
     done
 
     if [[ $# -eq 0 ]]; then
-        echo "Usage: $0 [-n NUM_PLANS] <task_description>" >&2
+        echo "Usage: $0 [-d|--dry-run] [-n NUM_PLANS] <task_description>" >&2
         exit 1
     fi
 
@@ -557,12 +749,31 @@ main() {
     ui_status "Task" "$task"
     ui_status "Run ID" "$RUN_ID"
     ui_status "Max turns" "$MAX_TURNS"
-    ui_status "Max ostruct calls" "$MAX_OSTRUCT_CALLS"
-    ui_status "Sandbox" "$SANDBOX_PATH"
 
-    log_info "Task: $task"
-    log_info "Max turns: $MAX_TURNS"
     log_info "Max ostruct calls: $MAX_OSTRUCT_CALLS"
+
+    # ---------------------------------------------------------
+    # Dry-run mode: validate planner template only then exit
+    # ---------------------------------------------------------
+    if [[ "$DRY_RUN" == "true" ]]; then
+        ui_step_start "Dry-Run" "" "" "Validating planner template only"
+
+        # Perform ostruct dry-run (no network call) – errors will abort script
+        if (cd "$REPO_ROOT" && \
+            "$OSTRUCT_BIN" run "$TEMPLATES_DIR/planner.j2" "$SCHEMAS_DIR/state.schema.json" \
+            --file tools "$TOOLS_FILE" \
+            --dry-run \
+            -V "task=$task" \
+            -V "sandbox_path=/tmp" \
+            -V "max_turns=$MAX_TURNS" >>"$LOG_FILE" 2>&1); then
+            ui_step_success "Dry-Run" "Planner template validated successfully"
+            log_info "Dry-run succeeded – exiting"
+            exit 0
+        else
+            ui_step_error "Dry-Run" "Planner template validation failed"
+            error_exit "Dry-run failed"
+        fi
+    fi
 
     # Step 1: Generate multiple candidate plans
     ui_planning_phase "Creating Plan" "Creating ${NUM_PLANS} alternative plans"
@@ -572,7 +783,8 @@ main() {
     gen_plan() {
         local idx="$1"
         local tmp="$SANDBOX_PATH/plan_${idx}.json"
-        ui_plan_status "$((idx + 1))" "generating"
+        # Send status message to stderr so stdout stays clean
+        ui_plan_status "$((idx + 1))" "generating" >&2
         # Add diversity via temperature and random token
         OSTRUCT_MODEL_PARAMS='{"temperature":0.9}' \
         ostruct_call "planner.j2" "state.schema.json" \
@@ -582,14 +794,15 @@ main() {
             -V "diversity_token=$(uuidgen | head -c 8)" \
             --output-file "$tmp" \
             --file plan_schema "$SCHEMAS_DIR/plan_step.schema.json" &
-        # Return PID for process management
-        echo $!
+        # Store PID in global variable for caller
+        GEN_PLAN_PID=$!
     }
 
     # Launch planners in parallel as per NUM_PLANS
     pids=(); plan_files=()
     for ((i=0; i<NUM_PLANS; i++)); do
-        pids[$i]=$(gen_plan "$i")
+        gen_plan "$i"
+        pids[$i]="${GEN_PLAN_PID}"
         plan_files[$i]="$SANDBOX_PATH/plan_${i}.json"
     done
 
@@ -602,20 +815,33 @@ main() {
         local pid="${pids[$i]}"
         local file="${plan_files[$i]}"
 
-        if wait "$pid"; then
+        # Skip if pid is empty or not a number
+        if [[ -z "$pid" || ! "$pid" =~ ^[0-9]+$ ]]; then
+            ui_plan_status "$((i + 1))" "failed" "Planner not started"
+            ((++failed_count))
+            continue
+        fi
+        # Temporarily disable errexit around wait because non-child PIDs
+        # return 127 which we want to handle gracefully without aborting.
+        set +e
+        wait "$pid"
+        wait_rc=$?
+        set -e
+
+        if (( wait_rc == 0 )); then
             # Simple success status without shallow details
             if [[ -f "$file" && -s "$file" ]] && jq empty "$file" 2>/dev/null; then
                 ui_plan_status "$((i + 1))" "completed"
-                ((completed_count++))
+                ((++completed_count))
                 log_info "Plan $((i + 1)) generated successfully"
             else
                 ui_plan_status "$((i + 1))" "failed" "Invalid or empty output"
-                ((failed_count++))
+                ((++failed_count))
                 log_warn "Plan $((i + 1)) generated invalid output"
             fi
         else
             ui_plan_status "$((i + 1))" "failed" "Planner process failed"
-            ((failed_count++))
+            ((++failed_count))
             log_warn "Plan $((i + 1)) generation failed"
         fi
     done
@@ -636,13 +862,13 @@ main() {
                     log_info "Valid plan file: $file"
                 else
                     ui_plan_status "$((i + 1))" "duplicate"
-                    ((duplicate_count++))
+                    ((++duplicate_count))
                     ((completed_count--))  # Adjust completed count
                     log_info "Duplicate plan detected, skipping: $file"
                 fi
             else
                 ui_plan_status "$((i + 1))" "failed" "Invalid JSON output"
-                ((failed_count++))
+                ((++failed_count))
                 ((completed_count--))  # Adjust completed count
                 log_warn "Invalid JSON in plan file: $file"
             fi
@@ -650,7 +876,7 @@ main() {
             if [[ $failed_count -eq 0 ]]; then
                 # Only mark as failed if we haven't already counted this failure
                 ui_plan_status "$((i + 1))" "failed" "No output file generated"
-                ((failed_count++))
+                ((++failed_count))
                 ((completed_count--))  # Adjust completed count
             fi
             log_warn "Plan file missing or empty: $file"
@@ -856,7 +1082,7 @@ main() {
                     --argjson turn "$current_turn" \
                     --argjson step "$step" \
                     --argjson result "$result" \
-                    '{turn: $turn, step: $step, result: $result}')
+                    '{"turn": $turn, "step": $step, "result": $result}')
 
                 step_results=$(echo "$step_results" | jq ". + [$history_entry]")
 
@@ -930,20 +1156,7 @@ main() {
                     updated_state=$(echo "$updated_state" | jq '.completed = true | .final_answer = "Task finished successfully"')
                 else
                     rc=$?
-                    case $rc in
-                        1|3)
-                            log_debug "verify_success unmet or malformed (rc=$rc); keeping run active"
-                            ;; # continue looping
-                        2)
-                            log_warn "verify_success unknown primitive; falling back to conservative heuristic"
-                            if [[ $(echo "$updated_state" | jq '.files_created | length') -gt 0 ]]; then
-                                updated_state=$(echo "$updated_state" | jq '.completed = true | .final_answer = "Task finished successfully"')
-                            fi
-                            ;;
-                        *)
-                            log_error "verify_success fatal error (rc=$rc); leaving state unchanged"
-                            ;;
-                    esac
+                    log_debug "verify_success unmet or error (rc=$rc); keeping run active"
                 fi
             fi
 

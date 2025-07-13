@@ -8,6 +8,15 @@
 #   3  – malformed JSON (fallback allowed)
 # >=128 – fatal runtime/IO errors
 
+# Enable strict mode for reliability
+set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
+
 # ---------------------------------------------------------------------------
 # Internal: resolve path relative to sandbox, re-use runner's safe_path if set
 # ---------------------------------------------------------------------------
@@ -68,7 +77,8 @@ verify_success() {
                 fi
                 ;;
             *)
-                return 2  # unknown primitive
+                # Unknown primitive → treat as unmet criterion (do not succeed)
+                all_ok=1
                 ;;
         esac
     done < <(jq -c '.[]' <<<"$criteria_json")

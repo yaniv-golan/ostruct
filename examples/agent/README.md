@@ -2,6 +2,11 @@
 
 A safe, controlled execution environment for LLM-planned tasks using ostruct. This system provides an autonomous agent that can break down complex tasks into executable steps using a curated set of tools.
 
+> **Status: Preliminary / Work in Progress**
+> The core libraries and tool wrappers are production-ready, but the overall
+> autonomous workflow is still evolving.  Expect breaking changes as we
+> continue improving performance, error-handling, and safety.
+
 ## Overview
 
 The sandboxed agent system consists of:

@@ -19,6 +19,15 @@
 #
 # Dependencies: path_utils.sh, retry.sh, log_* helpers
 
+# Enable strict mode for reliability
+set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   echo "ostruct_cli.sh: source this file, do not execute" >&2
   exit 1

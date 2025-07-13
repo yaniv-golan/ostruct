@@ -16,6 +16,15 @@
 #   ui_status            – Display status information
 #   ui_final_result      – Display final result with formatting
 
+# Enable strict mode for reliability
+set -euo pipefail
+IFS=$'\n\t'
+
+# Enable trace mode if DEBUG is set
+if [[ "${DEBUG:-false}" == "true" ]]; then
+    set -x
+fi
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     echo "ui_helpers.sh: source this file, do not execute" >&2
     exit 1
@@ -277,34 +286,34 @@ ui_critic_feedback() {
     if [[ "$UI_ENABLED" == "true" && "$GUM_AVAILABLE" == "true" ]]; then
         case "$action" in
             "approved")
-                gum style --foreground="#00D4AA" --bold "👍 Critic Score: $score"
+                gum style --foreground="#00D4AA" --bold "👍 Critic Score: $score" >&2
                 ;;
             "warning")
-                gum style --foreground="#FFB000" --bold "⚠ Critic Score: $score"
+                gum style --foreground="#FFB000" --bold "⚠ Critic Score: $score" >&2
                 ;;
             "blocked")
-                gum style --foreground="#FF6B6B" --bold "🚫 Critic Score: $score"
+                gum style --foreground="#FF6B6B" --bold "🚫 Critic Score: $score" >&2
                 ;;
         esac
 
         if [[ -n "$comment" ]]; then
-            gum style --foreground="#A0A0A0" "  $comment"
+            gum style --foreground="#A0A0A0" "  $comment" >&2
         fi
     else
         case "$action" in
             "approved")
-                echo "👍 Critic Score: $score"
+                echo "👍 Critic Score: $score" >&2
                 ;;
             "warning")
-                echo "⚠ Critic Score: $score"
+                echo "⚠ Critic Score: $score" >&2
                 ;;
             "blocked")
-                echo "🚫 Critic Score: $score"
+                echo "🚫 Critic Score: $score" >&2
                 ;;
         esac
 
         if [[ -n "$comment" ]]; then
-            echo "  $comment"
+            echo "  $comment" >&2
         fi
     fi
 }
