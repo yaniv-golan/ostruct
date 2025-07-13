@@ -141,9 +141,11 @@ old-examples/
 memory-bank/
 yaniv-private/
 
-# --- Overrides for agent refactor libs ---
-# Allow checked-in library helpers under examples/agent and tests
-!examples/agent/lib/
-!examples/agent/lib/**
+# --- Overrides for shared libraries ---
+# Allow checked-in library helpers under lib/, tests/, and examples/agent (temporary)
+!lib/
+!lib/**
 !tests/lib/
 !tests/lib/**
+!examples/agent/lib/
+!examples/agent/lib/**
