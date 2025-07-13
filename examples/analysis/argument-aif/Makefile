@@ -14,7 +14,8 @@ MODEL_NAME := $(if $(MODEL),$(MODEL),$(DEFAULT_MODEL))
 
 # Default target - now includes visualization
 .PHONY: run
-run: visualize
+run:
+	./run.sh
 
 # Console output only (original behavior)
 .PHONY: console
@@ -52,10 +53,18 @@ generate-all-json:
 		echo "Generated: output/$$base.aif.json"; \
 	done
 
-# Dry run to test template without API call
+# Standard targets for examples test suite
+.PHONY: test-dry
+test-dry:
+	./run.sh --test-dry-run
+
+.PHONY: test-live
+test-live:
+	./run.sh --test-live
+
+# Dry run to test template without API call (legacy alias)
 .PHONY: dry-run
-dry-run:
-	ostruct run prompt.j2 schema.json --file argument_text texts/$(TEXT_FILE) --model $(MODEL_NAME) --dry-run
+dry-run: test-dry
 
 # List available texts
 .PHONY: list-texts
