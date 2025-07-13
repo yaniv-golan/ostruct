@@ -9,6 +9,10 @@ class DefaultPaths:
     # Code Interpreter defaults
     CODE_INTERPRETER_OUTPUT_DIR = "./downloads"
 
+    # User-data upload limits
+    USER_DATA_FILE_LIMIT_BYTES = 512 * 1024 * 1024  # 512 MB
+    USER_DATA_LARGE_WARNING_BYTES = 50 * 1024 * 1024  # 50 MB
+
     # Configuration file paths
     CONFIG_FILE_NAME = "ostruct.yaml"
     HOME_CONFIG_DIR = ".ostruct"
@@ -53,6 +57,12 @@ class DefaultConfig:
     # Limits defaults - individual values for direct access
     LIMITS_MAX_COST_PER_RUN: float = 10.00
     LIMITS_WARN_EXPENSIVE_OPERATIONS: bool = True
+
+    # User-data upload limits (surfaced for other modules)
+    USER_DATA_FILE_LIMIT_BYTES: int = DefaultPaths.USER_DATA_FILE_LIMIT_BYTES
+    USER_DATA_LARGE_WARNING_BYTES: int = (
+        DefaultPaths.USER_DATA_LARGE_WARNING_BYTES
+    )
 
     # Template processing defaults
     TEMPLATE: Dict[str, Any] = {

@@ -57,6 +57,10 @@ class ProcessedAttachments:
     fs_files: List[AttachmentSpec] = field(default_factory=list)
     fs_dirs: List[AttachmentSpec] = field(default_factory=list)
 
+    # Files/dirs for user-data uploads (vision models)
+    ud_files: List[AttachmentSpec] = field(default_factory=list)
+    ud_dirs: List[AttachmentSpec] = field(default_factory=list)
+
     # Mapping of aliases to their specs for template context
     alias_map: Dict[str, AttachmentSpec] = field(default_factory=dict)
 
@@ -105,10 +109,17 @@ class AttachmentProcessor:
                     processed.alias_map[spec.alias] = spec
                     self._route_attachment(spec, processed)
             else:
-                # Regular file/directory attachment
+                # Regular file/directory attachment OR remote URL
+                is_remote_url = isinstance(path_value, str) and str(
+                    path_value
+                ).startswith(("http://", "https://"))
+
+                # Preserve raw URL strings for remote attachments so we don't lose the double slash
+                spec_path = path_value if is_remote_url else Path(path_value)
+
                 spec = AttachmentSpec(
                     alias=attachment_dict["alias"],
-                    path=Path(path_value),
+                    path=spec_path,
                     targets=set(attachment_dict["targets"]),
                     recursive=attachment_dict.get("recursive", False),
                     pattern=attachment_dict.get("pattern"),
@@ -121,11 +132,14 @@ class AttachmentProcessor:
                     gitignore_file=attachment_dict.get("gitignore_file"),
                 )
 
-                # Validate file/directory with security manager
-                validated_path = self.security_manager.validate_file_access(
-                    spec.path, context=f"attachment {spec.alias}"
-                )
-                spec.path = validated_path
+                # Local filesystem validation only for non-URL paths
+                if not is_remote_url:
+                    validated_path = (
+                        self.security_manager.validate_file_access(
+                            spec.path, context=f"attachment {spec.alias}"
+                        )
+                    )
+                    spec.path = validated_path
 
                 # Add to alias map
                 processed.alias_map[spec.alias] = spec
@@ -135,13 +149,16 @@ class AttachmentProcessor:
 
         logger.debug(
             "Processed attachments: %d template files, %d template dirs, "
-            "%d CI files, %d CI dirs, %d FS files, %d FS dirs",
+            "%d CI files, %d CI dirs, %d FS files, %d FS dirs, "
+            "%d UD files, %d UD dirs",
             len(processed.template_files),
             len(processed.template_dirs),
             len(processed.ci_files),
             len(processed.ci_dirs),
             len(processed.fs_files),
             len(processed.fs_dirs),
+            len(processed.ud_files),
+            len(processed.ud_dirs),
         )
 
         return processed
@@ -155,7 +172,30 @@ class AttachmentProcessor:
             spec: Attachment specification to route
             processed: ProcessedAttachments to update
         """
-        is_dir = Path(spec.path).is_dir()
+        # Remote URLs cannot be probed via filesystem; treat them as files.
+        is_remote_url = isinstance(spec.path, str) and str(
+            spec.path
+        ).startswith(("http://", "https://"))
+        is_dir = False if is_remote_url else Path(spec.path).is_dir()
+
+        # Handle auto routing first
+        if "auto" in spec.targets:
+            # Replace auto with actual target based on file type detection
+            actual_targets = set(spec.targets)
+            actual_targets.remove("auto")
+
+            if not is_dir:
+                # Use Magika detection for files
+                from .binary_detector import get_routing_recommendation
+
+                recommended_target = get_routing_recommendation(str(spec.path))
+                actual_targets.add(recommended_target)
+            else:
+                # Directories default to prompt for auto
+                actual_targets.add("prompt")
+
+            # Update spec targets
+            spec.targets = actual_targets
 
         for target in spec.targets:
             if target == "prompt":
@@ -173,6 +213,11 @@ class AttachmentProcessor:
                     processed.fs_dirs.append(spec)
                 else:
                     processed.fs_files.append(spec)
+            elif target == "user-data":
+                if is_dir:
+                    processed.ud_dirs.append(spec)
+                else:
+                    processed.ud_files.append(spec)
             else:
                 logger.warning(
                     "Unknown target '%s' for attachment %s", target, spec.alias

@@ -11,6 +11,9 @@ TARGET_NORMALISE = {
     "ci": "code-interpreter",
     "file-search": "file-search",
     "fs": "file-search",
+    "user-data": "user-data",
+    "ud": "user-data",
+    "auto": "auto",
 }
 
 

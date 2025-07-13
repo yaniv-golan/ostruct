@@ -11,11 +11,24 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from openai import AsyncOpenAI
 
 from .attachment_processor import AttachmentSpec, ProcessedAttachments
+
+# Centralized constants
+from .constants import DefaultConfig
 from .errors import CLIError
 
 if TYPE_CHECKING:
@@ -36,7 +49,9 @@ class UploadStatus(Enum):
 class UploadRecord:
     """Record of a file upload with status tracking."""
 
-    path: Path  # Original file path
+    path: Union[
+        str, Path
+    ]  # Original file path (pathlib.Path or raw URL string)
     upload_id: Optional[str] = None  # OpenAI file ID after upload
     tools_pending: Set[str] = field(
         default_factory=set
@@ -49,6 +64,7 @@ class UploadRecord:
     upload_status: Optional[UploadStatus] = (
         None  # Status of last upload attempt
     )
+    is_url: bool = False  # Whether this is a remote URL vs local file
 
 
 class UploadError(CLIError):
@@ -93,6 +109,7 @@ class SharedUploadManager:
         self._upload_queue: Dict[str, Set[Tuple[int, int]]] = {
             "code-interpreter": set(),
             "file-search": set(),
+            "user-data": set(),
         }
 
         # Track all uploaded file IDs for cleanup
@@ -109,6 +126,9 @@ class SharedUploadManager:
 
         # Add per-file upload locks to prevent race conditions
         self._upload_locks: Dict[Tuple[int, int], asyncio.Lock] = {}
+
+        # URL registry for remote files
+        self._url_registry: Dict[str, str] = {}  # URL -> unique_id mapping
 
     def register_attachments(
         self, processed_attachments: ProcessedAttachments
@@ -127,7 +147,8 @@ class SharedUploadManager:
         logger.debug(
             f"Registered {len(self._uploads)} unique files for upload, "
             f"CI queue: {len(self._upload_queue['code-interpreter'])}, "
-            f"FS queue: {len(self._upload_queue['file-search'])}"
+            f"FS queue: {len(self._upload_queue['file-search'])}, "
+            f"UD queue: {len(self._upload_queue['user-data'])}"
         )
 
     def _register_attachment_spec(self, spec: AttachmentSpec) -> None:
@@ -136,7 +157,14 @@ class SharedUploadManager:
         Args:
             spec: Attachment specification to register
         """
-        # Get file identity
+        # Detect remote URLs and register them separately
+        if isinstance(spec.path, str) and str(spec.path).startswith(
+            ("http://", "https://")
+        ):
+            self._register_remote_url(str(spec.path), spec.targets)
+            return
+
+        # Get file identity for local files
         file_id = self._get_file_identity(Path(spec.path))
 
         # Create upload record if it doesn't exist
@@ -215,6 +243,9 @@ class SharedUploadManager:
             elif target == "file-search":
                 record.tools_pending.add(target)
                 self._upload_queue[target].add(file_id)
+            elif target == "user-data":
+                record.tools_pending.add(target)
+                self._upload_queue[target].add(file_id)
             # "prompt" target doesn't need uploads, just template access
 
     def _get_file_identity(self, path: Path) -> Tuple[int, int]:
@@ -248,6 +279,47 @@ class SharedUploadManager:
             logger.error(f"Cannot get file identity for {path}: {e}")
             raise
 
+    def _register_remote_url(self, url: str, targets: Set[str]) -> None:
+        """Register a remote URL for processing.
+
+        Args:
+            url: Remote URL to register
+            targets: Set of target tool names that need this URL
+        """
+        from .url_validation import validate_url_security
+
+        # Validate URL security first
+        validate_url_security(url)
+
+        # Create a unique identifier for the URL
+        import hashlib
+
+        url_hash = hashlib.sha256(url.encode()).hexdigest()[:16]
+        unique_id = f"url_{url_hash}"
+
+        # Store URL mapping
+        self._url_registry[url] = unique_id
+
+        # Create a synthetic file identity for the URL
+        # Use hash of URL as both device and inode
+        url_identity = (
+            hash(url) & 0x7FFFFFFF,
+            hash(url + "_inode") & 0x7FFFFFFF,
+        )
+
+        # Create upload record for URL – keep raw string to avoid // truncation
+        self._uploads[url_identity] = UploadRecord(
+            path=url,
+            tools_pending=set(),
+            tools_completed=set(),
+            is_url=True,
+        )
+
+        # Register with target tools
+        self._register_file_for_targets(url_identity, targets)
+
+        logger.debug(f"Registered remote URL: {url} -> {unique_id}")
+
     async def upload_for_tool(self, tool: str) -> Dict[str, str]:
         """Upload all queued files for a specific tool.
 
@@ -278,9 +350,16 @@ class SharedUploadManager:
                 # Use per-file lock to prevent concurrent uploads
                 async with self._upload_locks[file_id]:
                     if record.upload_id is None:
+                        # Determine purpose based on tool and whether it's user-data
+                        purpose: Literal["assistants", "user_data"] = (
+                            "user_data"
+                            if tool == "user-data"
+                            else "assistants"
+                        )
+
                         # First upload for this file
                         record.upload_id = await self._perform_upload(
-                            record.path
+                            record.path, purpose=purpose
                         )
                         self._all_uploaded_ids.add(record.upload_id)
                         logger.info(
@@ -320,11 +399,16 @@ class SharedUploadManager:
         logger.debug(f"Completed {len(uploaded)} uploads for {tool}")
         return uploaded
 
-    async def _perform_upload(self, file_path: Path) -> str:
+    async def _perform_upload(
+        self,
+        file_path: Union[str, Path],
+        purpose: Literal["assistants", "user_data"] = "assistants",
+    ) -> str:
         """Perform actual file upload with error handling.
 
         Args:
-            file_path: Path to file to upload
+            file_path: Path to file to upload or URL string
+            purpose: OpenAI file purpose ("assistants" or "user_data")
 
         Returns:
             OpenAI file ID
@@ -333,21 +417,69 @@ class SharedUploadManager:
             UploadError: If upload fails
         """
         try:
-            # Validate file exists and get info
-            if not file_path.exists():
+            # Check if this is a URL
+            file_path_str = str(file_path)
+            if file_path_str.startswith(("http://", "https://")):
+                # Handle URL upload - no local file validation needed
+                logger.debug(f"[upload] Processing URL: {file_path_str}")
+
+                # Validate URL security
+                from .url_validation import validate_url_security
+
+                validate_url_security(file_path_str)
+
+                # For URLs, we don't upload - we return the URL as a special identifier
+                # The actual file_url element will be created in message building
+                return f"url:{file_path_str}"
+
+            # Handle local file upload
+            if not Path(file_path).exists():
                 raise FileNotFoundError(f"File not found: {file_path}")
 
-            file_size = file_path.stat().st_size
+            file_size = Path(file_path).stat().st_size
+
+            # Validate file size for user_data purpose (512MB limit)
+            if (
+                purpose == "user_data"
+                and file_size > DefaultConfig.USER_DATA_FILE_LIMIT_BYTES
+            ):
+                raise UploadError(
+                    f"File {file_path} ({file_size / (1024 * 1024):.1f}MB) exceeds "
+                    f"the {DefaultConfig.USER_DATA_FILE_LIMIT_BYTES / (1024 * 1024):.0f}MB limit for user-data files. Consider using File Search "
+                    f"or Code Interpreter for large files."
+                )
+
+            # Validate file type for user_data uploads – OpenAI currently supports PDFs only
+            if purpose == "user_data":
+                allowed_extensions = {".pdf"}
+                if Path(file_path).suffix.lower() not in allowed_extensions:
+                    raise UploadError(
+                        f"User-data attachments currently support PDF files only. "
+                        f"Detected '{Path(file_path).suffix}' for {file_path}. "
+                        "Please convert the document to PDF or use a different attachment target, "
+                        "such as 'code-interpreter' or 'file-search', for non-PDF content."
+                    )
+
+            # Warn for large user_data files
+            if (
+                purpose == "user_data"
+                and file_size > DefaultConfig.USER_DATA_LARGE_WARNING_BYTES
+            ):
+                logger.info(
+                    f"Large user-data file: {file_path} ({file_size / (1024 * 1024):.1f}MB). "
+                    f"This may impact processing speed and costs."
+                )
+
             file_hash = None  # Compute once and reuse
 
             # Check cache first if available
             if self._cache:
                 try:
                     file_hash = self._cache.compute_file_hash(
-                        file_path
+                        Path(file_path)
                     )  # Only once
                     cached_file_id = self._cache.lookup_with_validation(
-                        file_path, file_hash
+                        Path(file_path), file_hash
                     )
                     if cached_file_id:
                         # Report cache hit to the user via progress reporter
@@ -392,7 +524,7 @@ class SharedUploadManager:
                                     )
                                 else:
                                     click.echo(
-                                        f"✔ {file_path.name} (cached)",
+                                        f"✔ {Path(file_path).name} (cached)",
                                         err=True,
                                     )
                         except Exception:  # pragma: no cover
@@ -414,10 +546,10 @@ class SharedUploadManager:
 
             logger.debug(f"[upload] Uploading file: {file_path}")
 
-            # Upload file
+            # Upload file with specified purpose
             with open(file_path, "rb") as f:
                 file_obj = await self.client.files.create(
-                    file=f, purpose="assistants"
+                    file=f, purpose=purpose
                 )
                 logger.debug(
                     f"[upload] Successfully uploaded {file_path} as {file_obj.id}"
@@ -426,7 +558,7 @@ class SharedUploadManager:
             # Store in cache if available (reuse computed hash)
             if self._cache and file_hash:  # Reuse existing hash
                 try:
-                    file_stat = file_path.stat()
+                    file_stat = Path(file_path).stat()
                     self._cache.store(
                         file_hash,  # Use previously computed hash
                         file_obj.id,
@@ -447,7 +579,7 @@ class SharedUploadManager:
         except Exception as e:
             # Parse OpenAI API errors for better user experience
             # Note: We don't log here as the error will be handled at a higher level
-            user_friendly_error = self._parse_upload_error(file_path, e)
+            user_friendly_error = self._parse_upload_error(Path(file_path), e)
             raise UploadError(user_friendly_error)
 
     def _parse_upload_error(self, file_path: Path, error: Exception) -> str:

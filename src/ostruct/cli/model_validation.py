@@ -17,6 +17,7 @@ from .errors import (
     ModelCreationError,
     SchemaFileError,
     SchemaValidationError,
+    UserDataNotSupportedError,
 )
 from .exit_codes import ExitCode
 from .file_info import FileRoutingIntent
@@ -26,6 +27,61 @@ from .token_validation import validate_token_limits
 from .types import CLIParams
 
 logger = logging.getLogger(__name__)
+
+
+def validate_user_data_support(model: str, has_user_data_files: bool) -> None:
+    """Validate that the model supports user-data files if they are present.
+
+    Args:
+        model: The model name to validate
+        has_user_data_files: Whether user-data files are being used
+
+    Raises:
+        UserDataNotSupportedError: If user-data files are used with non-vision model
+    """
+    if not has_user_data_files:
+        return
+
+    try:
+        registry = ModelRegistry.get_instance()
+        capabilities = registry.get_capabilities(model)
+
+        # Check if model has vision capability
+        # If the vision attribute is missing from the registry, be optimistic
+        # and let the API validate the capability
+        if hasattr(capabilities, "vision"):
+            vision_supported = capabilities.vision
+            if (
+                vision_supported is False
+            ):  # Explicitly False (not None or missing)
+                raise UserDataNotSupportedError(
+                    f"Model '{model}' does not support user-data files. "
+                    f"User-data files require a vision-enabled model.",
+                    model_id=model,
+                )
+            logger.debug(
+                f"Model '{model}' supports user-data files (vision: {vision_supported})"
+            )
+        else:
+            # Vision capability not defined in registry - be optimistic
+            logger.debug(
+                f"Model '{model}' vision capability not defined in registry. "
+                f"Assuming support - API will validate if needed."
+            )
+
+    except ModelNotSupportedError:
+        # If model not in registry, fall back to optimistic approach
+        # Let the API call fail with appropriate error
+        logger.warning(
+            f"Model '{model}' not found in registry. "
+            f"User-data support validation skipped - will be validated by API."
+        )
+    except Exception as e:
+        # For other errors, log warning but don't fail
+        logger.warning(
+            f"Could not validate user-data support for model '{model}': {e}. "
+            f"Validation will be performed by the API."
+        )
 
 
 def validate_model_parameters(model: str, params: Dict[str, Any]) -> None:
@@ -151,14 +207,21 @@ async def validate_model_and_schema(
     ]
 
     # Token validation - only count files with TEMPLATE_ONLY routing intent
+    # Also check for user-data files to validate model compatibility
     files = template_context.get("files", [])
     template_files = []
+    has_user_data_files = False
 
     for file_info in files:
         routing_intent = getattr(file_info, "routing_intent", None)
         if routing_intent == FileRoutingIntent.TEMPLATE_ONLY:
             template_files.append(str(file_info.path))
+        elif routing_intent == FileRoutingIntent.USER_DATA:
+            has_user_data_files = True
         # Tool files (FILE_SEARCH, CODE_INTERPRETER) are ignored for token validation
+
+    # Validate user-data support if user-data files are present
+    validate_user_data_support(args["model"], has_user_data_files)
 
     combined_template_content = system_prompt + user_prompt
     validate_token_limits(

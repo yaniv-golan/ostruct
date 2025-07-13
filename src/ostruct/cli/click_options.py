@@ -769,6 +769,20 @@ def security_options(f: Union[Command, Callable[..., Any]]) -> Command:
             ),
             help="🔒 Path security mode: permissive (allow all), warn (log warnings), strict (allowlist only)",
         ),
+        click.option(
+            "--allow-insecure-url",
+            "allow_insecure_urls",
+            multiple=True,
+            type=str,
+            help="🌐 Allow specific insecure URLs (bypasses security validation, repeatable)",
+            envvar="OSTRUCT_ALLOW_INSECURE_URLS",
+        ),
+        click.option(
+            "--strict-urls/--no-strict-urls",
+            default=None,  # Will use config default or fallback to True
+            help="🔒 Enable/disable strict URL security validation (default: enabled)",
+            envvar="OSTRUCT_STRICT_URLS",
+        ),
     ):
         cmd = deco(cmd)
 

@@ -231,6 +231,7 @@ class FileInfoProxy:
             "parent",
             "stem",
             "suffix",
+            "is_url",  # New attribute for URL files
             "__html__",
             "__html_format__",
         }
@@ -522,7 +523,7 @@ class DotDict:
 
 
 def create_validation_context(
-    template_context: Dict[str, Any]
+    template_context: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Create validation context with proxy objects.
 

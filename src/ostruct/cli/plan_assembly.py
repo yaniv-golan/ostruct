@@ -12,6 +12,32 @@ from typing import Any, Dict, List, Optional
 
 from .attachment_processor import ProcessedAttachments
 
+# Optional dependency – requests may not be available in minimal installs
+# We import lazily inside the helper to avoid hard dependency.
+
+
+class _NetUtils:  # noqa: D101 naming
+    """Network utility helpers (intentionally private to this module)."""
+
+    @staticmethod
+    def url_accessible(url: str, timeout: float = 3.0) -> bool:  # noqa: D401
+        """Return True if the remote URL responds with <400 status on HEAD.
+
+        A very small timeout keeps dry-run snappy. If *requests* is unavailable
+        or any exception occurs we conservatively return **False** so the plan
+        printer can flag potential issues early.
+        """
+
+        try:
+            import requests
+
+            resp = requests.head(  # pragma: no cover – network
+                url, allow_redirects=True, timeout=timeout
+            )
+            return resp.status_code < 400
+        except Exception:  # pylint: disable=broad-except
+            return False
+
 
 class PlanAssembler:
     """Single source of truth for execution plan data structure.
@@ -300,9 +326,15 @@ class PlanAssembler:
                     list(spec.targets)
                 ),  # Ensure consistent ordering
                 "type": attachment_type,
-                "exists": os.path.exists(
-                    str(spec.path)
-                ),  # Convert Path to string
+                # For remote URLs perform a quick HEAD request so dry-run can
+                # surface broken links early. Local paths still use
+                # os.path.exists.
+                "exists": (
+                    _NetUtils.url_accessible(str(spec.path))
+                    if isinstance(spec.path, str)
+                    and str(spec.path).startswith(("http://", "https://"))
+                    else os.path.exists(str(spec.path))
+                ),
                 "recursive": spec.recursive,
                 "pattern": spec.pattern,
             }

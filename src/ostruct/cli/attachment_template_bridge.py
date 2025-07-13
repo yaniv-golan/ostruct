@@ -5,6 +5,7 @@ while maintaining compatibility with existing template patterns.
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
@@ -82,6 +83,16 @@ class LazyFileContent:
     def path(self) -> str:
         """Get the file path without loading content."""
         return self.file_info.path
+
+    @property
+    def size(self) -> Optional[int]:
+        """Get the file size without loading content."""
+        return self.file_info.size
+
+    @property
+    def is_url(self) -> bool:
+        """Check if this is a URL file."""
+        return self.file_info.is_url
 
     @property
     def content(self) -> str:
@@ -812,6 +823,37 @@ class AttachmentTemplateContext:
         Returns:
             Template variable (file content, file list, or directory info)
         """
+        # Detect remote URL attachments (http/https) – treat as virtual file
+        if isinstance(spec.path, str) and str(spec.path).startswith(
+            ("http://", "https://")
+        ):
+            routing_type = (
+                "user-data" if "user-data" in spec.targets else "template"
+            )
+            routing_intent = (
+                FileRoutingIntent.USER_DATA
+                if "user-data" in spec.targets
+                else FileRoutingIntent.TEMPLATE_ONLY
+            )
+
+            file_info = FileInfo.from_path(
+                spec.path,
+                self.security_manager,
+                routing_type=routing_type,
+                routing_intent=routing_intent,
+                parent_alias=spec.alias,
+                relative_path=os.path.basename(spec.path),
+                base_path="",
+                from_collection=False,
+                attachment_type=spec.attachment_type,
+            )
+
+            return LazyFileContent(
+                file_info,
+                max_size=self.max_file_size,
+                strict_mode=True,
+            )
+
         path = Path(spec.path)
 
         if path.is_file():
@@ -843,6 +885,12 @@ class AttachmentTemplateContext:
                 # File Search files don't need content loaded into prompt
                 lazy_strict_mode = True
                 preload_priority = 3  # Medium priority for file search files
+            elif "user-data" in spec.targets and "prompt" not in spec.targets:
+                routing_type = "user-data"
+                routing_intent = FileRoutingIntent.USER_DATA
+                # User-data files don't need content loaded into prompt (will raise error)
+                lazy_strict_mode = True
+                preload_priority = 4  # Medium-low priority for user-data files
             else:
                 routing_type = "template"
                 routing_intent = FileRoutingIntent.TEMPLATE_ONLY
@@ -1016,6 +1064,25 @@ class AttachmentTemplateContext:
                     all_files.append(file_info)
                 except Exception as e:
                     logger.warning(f"Could not add FS file {spec.path}: {e}")
+
+        # Include user-data files for template access (metadata only, content blocked)
+        for spec in processed_attachments.ud_files:
+            if Path(spec.path).is_file():
+                try:
+                    file_info = FileInfo.from_path(
+                        str(spec.path),
+                        self.security_manager,
+                        routing_type="user-data",
+                        routing_intent=FileRoutingIntent.USER_DATA,
+                        parent_alias=spec.collection_base_alias or spec.alias,
+                        relative_path=Path(spec.path).name,
+                        base_path=str(Path(spec.path).parent),
+                        from_collection=spec.from_collection,
+                        attachment_type=spec.attachment_type,
+                    )
+                    all_files.append(file_info)
+                except Exception as e:
+                    logger.warning(f"Could not add UD file {spec.path}: {e}")
 
         return FileInfoList(all_files)
 

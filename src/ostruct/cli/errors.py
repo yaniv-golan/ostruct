@@ -337,6 +337,124 @@ class SystemPromptError(TaskTemplateError):
         )
 
 
+# PDF and User Data support error classes
+
+
+class TemplateBinaryError(TaskTemplateError):
+    """Raised when template tries to access .content on a binary/user-data file."""
+
+    def __init__(
+        self,
+        message: str,
+        alias: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize template binary error.
+
+        Args:
+            message: Error message
+            alias: File alias that caused the error
+            context: Additional error context
+        """
+        context = context or {}
+        if alias:
+            context["alias"] = alias
+            context.setdefault(
+                "details",
+                f"Template variable '{alias}.content' is not available for binary files",
+            )
+            context.setdefault(
+                "troubleshooting",
+                [
+                    f"Use '{alias}.name' to access the filename",
+                    f"Use '{alias}.size' to access the file size",
+                    "Mention the file verbally in your template instead",
+                    "Consider using 'prompt:' target for text files",
+                ],
+            )
+
+        super().__init__(message, context=context)
+
+
+class InsecureURLRejected(SecurityErrorBase):
+    """Raised when a URL violates security constraints."""
+
+    def __init__(
+        self,
+        message: str,
+        url: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize insecure URL error.
+
+        Args:
+            message: Error message
+            url: URL that was rejected
+            context: Additional error context
+        """
+        context = context or {}
+        if url:
+            context["url"] = url
+            context.setdefault(
+                "details",
+                "The URL violates security constraints and was rejected",
+            )
+            context.setdefault(
+                "troubleshooting",
+                [
+                    "Use HTTPS URLs only",
+                    "Avoid private IP ranges (RFC-1918, loopback, link-local)",
+                    "Use --allow-insecure-url to explicitly allow specific URLs",
+                    "Set OSTRUCT_STRICT_URLS=0 to disable URL validation",
+                ],
+            )
+
+        super().__init__(
+            message,
+            context=context,
+        )
+
+
+class UserDataNotSupportedError(CLIError):
+    """Raised when user-data files are used with non-vision models."""
+
+    def __init__(
+        self,
+        message: str,
+        model_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize user data not supported error.
+
+        Args:
+            message: Error message
+            model_id: Model that doesn't support user data
+            context: Additional error context
+        """
+        context = context or {}
+        if model_id:
+            context["model_id"] = model_id
+            context.setdefault(
+                "details",
+                f"Model '{model_id}' does not support user-data files",
+            )
+            context.setdefault(
+                "troubleshooting",
+                [
+                    "Use a vision-enabled model (e.g., gpt-4o, gpt-4.1)",
+                    "Convert files to text and use 'prompt:' target instead",
+                    "Use 'fs:' target for File Search RAG workflow",
+                    "Check model capabilities with 'ostruct list-models'",
+                ],
+            )
+
+        super().__init__(
+            message,
+            context=context,
+            exit_code=ExitCode.VALIDATION_ERROR,
+        )
+
+
 class SchemaError(CLIError):
     """Base class for schema-related errors."""
 

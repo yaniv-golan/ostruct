@@ -162,13 +162,27 @@ class PlanPrinter:
             print("   (none)", file=file)
         else:
             for att in attachments:
-                exists_status = (
-                    safe_emoji("✅", "[OK]")
-                    if att.get("exists", False)
-                    else safe_emoji("❌", "[ERROR]")
-                )
-                targets = ", ".join(att.get("targets", []))
                 path = att.get("path", "unknown")
+
+                # Determine icon based on attachment nature
+                if isinstance(path, str) and path.startswith(
+                    ("http://", "https://")
+                ):
+                    # For remote URLs we already performed a HEAD check during
+                    # plan assembly. Use 🌐 when reachable, ❌ otherwise.
+                    exists_status = (
+                        safe_emoji("🌐", "[URL]")
+                        if att.get("exists", False)
+                        else safe_emoji("❌", "[ERROR]")
+                    )
+                else:
+                    exists_status = (
+                        safe_emoji("✅", "[OK]")
+                        if att.get("exists", False)
+                        else safe_emoji("❌", "[ERROR]")
+                    )
+
+                targets = ", ".join(att.get("targets", []))
                 alias = att.get("alias", "unknown")
 
                 print(

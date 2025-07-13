@@ -21,6 +21,9 @@ class FileRoutingIntent(Enum):
     TEMPLATE_ONLY = "template_only"  # --file [alias] (template access only)
     CODE_INTERPRETER = "code_interpreter"  # --file ci:[alias]
     FILE_SEARCH = "file_search"  # --file fs:[alias]
+    USER_DATA = (
+        "user_data"  # --file ud:[alias] (user-data files for vision models)
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -91,15 +94,26 @@ class FileInfo:
             "file"  # Original attachment type: "file", "dir", or "collection"
         )
 
+        # For URL files, add is_url property
+        self._is_url: bool = False
+
         logger.debug(
             "Creating FileInfo for path: %s, routing_type: %s",
             path,
             self.routing_type,
         )
 
-        # Validate path
+        # Validate path – skip local checks for remote URLs
         if not path:
             raise ValueError("Path cannot be empty")
+
+        if str(path).startswith(("http://", "https://")):
+            # Remote URL – mark as such and bypass local filesystem validation
+            self._is_url = True
+            logger.debug(
+                "Remote URL detected, skipping filesystem validation: %s", path
+            )
+            return
 
         try:
             # This will raise PathSecurityError if path is not allowed
@@ -290,6 +304,9 @@ class FileInfo:
     @property
     def size(self) -> Optional[int]:
         """Get file size in bytes."""
+        if self.is_url:
+            return None
+
         if self.__size is None:
             try:
                 size = os.path.getsize(self.abs_path)
@@ -307,6 +324,9 @@ class FileInfo:
     @property
     def mtime(self) -> Optional[float]:
         """Get file modification time as Unix timestamp."""
+        if self.is_url:
+            return None
+
         if self.__mtime is None:
             try:
                 mtime = os.path.getmtime(self.abs_path)
@@ -331,7 +351,22 @@ class FileInfo:
         Raises:
             FileReadError: If the file cannot be read, wrapping the underlying cause
                          (FileNotFoundError, UnicodeDecodeError, etc)
+            TemplateBinaryError: If trying to access content of a user-data file
         """
+        # Check for user-data files and block content access
+        if self.routing_intent == FileRoutingIntent.USER_DATA:
+            from .errors import TemplateBinaryError
+
+            # Try to get the alias from parent_alias if available
+            alias = getattr(self, "parent_alias", None) or "file"
+
+            raise TemplateBinaryError(
+                f"Cannot access .content on user-data file '{self.path}'. "
+                f"User-data files are sent directly to vision models and not "
+                f"included in the template text.",
+                alias=alias,
+            )
+
         # Add warning for large template-only files accessed via .content
         # Use intent-based logic with fallback to routing_type for backward compatibility
         template_only_intents = {FileRoutingIntent.TEMPLATE_ONLY}
@@ -411,6 +446,11 @@ class FileInfo:
     def hash(self, value: str) -> None:
         """Prevent setting hash directly."""
         raise AttributeError("Cannot modify hash directly")
+
+    @property
+    def is_url(self) -> bool:
+        """Check if this is a URL file."""
+        return self._is_url
 
     @property
     def exists(self) -> bool:
@@ -560,6 +600,11 @@ class FileInfo:
             "from_collection",
             "attachment_type",
         ):
+            object.__setattr__(self, name, value)
+            return
+
+        # Allow setting _is_url at any time (idempotent)
+        if name == "_is_url":
             object.__setattr__(self, name, value)
             return
 

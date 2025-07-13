@@ -503,6 +503,80 @@ async def process_file_search_configuration(
         raise mapped_error
 
 
+def _build_message_content(
+    system_prompt: str,
+    user_prompt: str,
+    shared_upload_manager: Optional[Any] = None,
+    **kwargs: Any,
+) -> Any:
+    """Build message content with user-data file elements if needed.
+
+    Args:
+        system_prompt: System prompt text
+        user_prompt: User prompt text
+        shared_upload_manager: Upload manager for user-data files
+        **kwargs: Additional arguments (ignored)
+
+    Returns:
+        Message content (string or structured content with file elements)
+    """
+    # If no upload manager or no user-data files, return simple combined prompt
+    if not shared_upload_manager:
+        return f"{system_prompt}\n\n{user_prompt}"
+
+    # Check if we have user-data files
+    try:
+        user_data_files = shared_upload_manager.get_files_for_tool("user-data")
+    except (AttributeError, ValueError):
+        # No user-data support or files
+        return f"{system_prompt}\n\n{user_prompt}"
+
+    if not user_data_files:
+        return f"{system_prompt}\n\n{user_prompt}"
+
+    # Build structured message content with file elements for Responses API
+    content_elements = []
+
+    # Add text content first using input_text type
+    combined_text = f"{system_prompt}\n\n{user_prompt}"
+    content_elements.append({"type": "input_text", "text": combined_text})
+
+    # Add user-data file elements
+    # `user_data_files` may be either:
+    #   1. A dict mapping file_path -> upload_id (legacy behaviour)
+    #   2. A list of upload_id strings or "url:..." references (current behaviour)
+    # Handle both shapes defensively so interface drifts do not break the flow.
+
+    if isinstance(user_data_files, dict):
+        # Legacy: iterate over mapping to get each upload id
+        for file_id in user_data_files.values():
+            if isinstance(file_id, str) and file_id.startswith("url:"):
+                # URL reference: strip prefix and store as file_url
+                url = file_id[4:]
+                content_elements.append(
+                    {"type": "input_file", "file_url": url}
+                )
+            else:
+                content_elements.append(
+                    {"type": "input_file", "file_id": file_id}
+                )
+    else:
+        # Current implementation: simple iterable of ids / url-prefixed strings
+        for file_id in user_data_files:
+            if isinstance(file_id, str) and file_id.startswith("url:"):
+                url = file_id[4:]
+                content_elements.append(
+                    {"type": "input_file", "file_url": url}
+                )
+            else:
+                content_elements.append(
+                    {"type": "input_file", "file_id": file_id}
+                )
+
+    # Return structured content in proper Responses API format
+    return [{"role": "user", "content": content_elements}]
+
+
 async def create_structured_output(
     client: AsyncOpenAI,
     model: str,
@@ -548,6 +622,9 @@ async def create_structured_output(
         # Extract non-model parameters
         on_log = kwargs.pop("on_log", None)
 
+        # Extract shared_upload_manager early so it does not appear in parameter validation
+        shared_upload_manager = kwargs.pop("shared_upload_manager", None)
+
         # Handle model-specific parameters
         api_kwargs = {}
         registry = ModelRegistry.get_instance()
@@ -572,13 +649,17 @@ async def create_structured_output(
         # Generate schema name from model class name
         schema_name = output_schema.__name__.lower()
 
-        # Combine system and user prompts into a single input string
-        combined_prompt = f"{system_prompt}\n\n{user_prompt}"
+        # Build message content with user-data file elements if needed
+        message_content = _build_message_content(
+            system_prompt,
+            user_prompt,
+            shared_upload_manager=shared_upload_manager,
+        )
 
         # Prepare API call parameters
         api_params = {
             "model": model,
-            "input": combined_prompt,
+            "input": message_content,
             "text": {
                 "format": {
                     "type": "json_schema",
@@ -626,7 +707,7 @@ async def create_structured_output(
         # Log the API request details
         logger.debug("Making OpenAI Responses API request with:")
         logger.debug("Model: %s", model)
-        logger.debug("Combined prompt: %s", combined_prompt)
+        logger.debug("Message content: %s", message_content)
         logger.debug("Parameters: %s", json.dumps(api_kwargs, indent=2))
         logger.debug("Schema: %s", json.dumps(strict_schema, indent=2))
         logger.debug("Tools being passed to API: %s", tools)
@@ -1445,6 +1526,15 @@ async def execute_model(
                     }
                     tools.append(fs_tool_config)
 
+        # Process user-data uploads if we have a shared upload manager
+        if shared_upload_manager:
+            try:
+                await shared_upload_manager.upload_for_tool("user-data")
+                logger.debug("Completed user-data uploads")
+            except Exception as e:
+                logger.error(f"Failed to upload user-data files: {e}")
+                raise
+
         # Process Web Search configuration if enabled
         # Apply universal tool toggle overrides for web-search
         from typing import cast
@@ -1588,6 +1678,7 @@ async def execute_model(
                     if args.get("tool_choice")
                     else None
                 ),
+                shared_upload_manager=shared_upload_manager,
             )
         output_buffer.append(response)
 
