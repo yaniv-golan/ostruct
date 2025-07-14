@@ -144,7 +144,7 @@ This template works because it:
    ``container_file_citation`` annotations. No special formatting is required in templates.
 
 Remote PDF Analysis with Vision Models
-=====================================
+======================================
 
 Need to distill information from a **public pitch-deck PDF** without downloading it first?  Use the
 ``user-data`` target with a remote URL:
@@ -198,7 +198,7 @@ Template snippet:
    5. Funding ask
 
 Best-practice reminders
-----------------------
+-----------------------
 
 * **Don’t** embed the PDF text with `deck.content` – user-data files are opaque to the template.
 * Keep PDFs under **512 MB** (50 MB+ triggers a warning, >512 MB aborts the run).

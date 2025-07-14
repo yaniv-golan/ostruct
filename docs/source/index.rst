@@ -107,6 +107,7 @@ Documentation
    contribute/how_to_contribute
    contribute/style_guide
    contribute/release_workflow
+   contribute/examples_standard
 
 .. toctree::
    :maxdepth: 1
