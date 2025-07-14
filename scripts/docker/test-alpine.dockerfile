@@ -12,6 +12,8 @@ RUN apk add --no-cache \
     make \
     rust \
     cargo
+RUN curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH="$HOME/.local/bin:$PATH"
 
 # Create a non-root user for testing
 RUN adduser -D -s /bin/bash testuser

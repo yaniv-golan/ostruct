@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+RUN curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH="$HOME/.local/bin:$PATH"
+
 # Create a non-root user for testing
 RUN useradd -m -s /bin/bash testuser
 USER testuser
