@@ -11,7 +11,16 @@ RUN apk add --no-cache \
     libffi-dev \
     make \
     rust \
-    cargo
+    cargo \
+    g++ \
+    cmake \
+    protobuf-dev \
+    linux-headers \
+    py3-pip \
+    py3-setuptools \
+    py3-wheel \
+    build-base \
+    openssl-dev
 RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="$HOME/.local/bin:$PATH"
 
