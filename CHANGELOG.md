@@ -27,6 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Pitch-Distiller Example**: Comprehensive startup pitch deck analysis example with two-pass analysis system and industry taxonomy integration
 
+- **Enhanced File Type Detection**: Optional magika integration for improved auto-routing accuracy:
+  - Added `enhanced-detection` optional dependency for advanced file type detection using Google's magika library
+  - Intelligent fallback to extension-based detection when magika is unavailable
+  - Improves auto-routing accuracy for `--file auto:` target with content-based detection
+  - Cross-platform compatibility with graceful degradation on Alpine Linux and other environments
+  - Install with `pip install ostruct-cli[enhanced-detection]` for enhanced capabilities
+  - Works seamlessly with existing extension-based detection as fallback
+
 ### Changed
 
 - **Schema Limits**: Raised OpenAI Structured Outputs schema limits to match July 11 2025 announcement: object properties 5,000 (was 100), enum values 1,000 (was 500), total enum characters 15,000 (was 7,500). Updated validator constants, templates, docs, and added boundary unit tests.
