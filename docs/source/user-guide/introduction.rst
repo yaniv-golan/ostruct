@@ -128,10 +128,19 @@ The result will be valid JSON matching your schema, ready for further processing
 Next Steps
 ----------
 
-- :doc:`quickstart` - Follow the step-by-step tutorial
+- :doc:`quickstart` - Follow the step-by-step tutorial (includes optional dependencies)
 - :doc:`cli_reference` - Explore all CLI options and features
 - :doc:`template_guide` - Learn comprehensive template techniques
 - :doc:`../security/overview` - Understand security considerations
+
+.. tip::
+   **Enhanced File Detection**: For better auto-routing accuracy, install the optional enhanced-detection package:
+
+   .. code-block:: bash
+
+      pip install ostruct-cli[enhanced-detection]
+
+   This provides machine learning-based file type detection (Magika) instead of extension-based fallback.
 
 .. note::
    If you use the standalone binary release, download the `.zip` file for your OS from the release page, extract it, and run the executable from within the extracted folder (e.g., ``ostruct-windows-amd64``, ``ostruct-macos-amd64``, ``ostruct-linux-amd64``). Do not move the executable out of the folder, as it depends on bundled libraries in the same directory.

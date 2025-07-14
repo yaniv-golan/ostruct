@@ -75,6 +75,31 @@ Set up your OpenAI API key:
    # Or create a .env file
    echo 'OPENAI_API_KEY=your-api-key-here' > .env
 
+Optional Dependencies
+---------------------
+
+Enhanced File Type Detection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For improved file type detection when using the ``auto`` routing target, install the enhanced-detection package:
+
+.. code-block:: bash
+
+   pip install ostruct-cli[enhanced-detection]
+
+**What it does**: When you use ``--file auto:alias file.txt``, ostruct needs to determine whether files should be routed to the template (for text files) or treated as binary data. Enhanced detection uses machine learning (Magika) for more accurate file type identification.
+
+**Benefits**:
+
+- **More accurate routing**: Better detection of file types beyond simple extensions
+- **Handles edge cases**: Correctly identifies files without extensions or with misleading extensions
+- **Automatic fallback**: Falls back to extension-based detection if unavailable
+
+**Without enhanced-detection**: ostruct uses extension-based detection for common file types (.txt, .md, .json, .py, .csv, .html, .css, .sql, .sh, .log, .env, and 20+ others).
+
+.. note::
+   **Alpine Linux**: Enhanced detection may not install on Alpine Linux due to compilation requirements. ostruct automatically falls back to extension-based detection with a helpful warning message.
+
 Tutorial: Meet Juno the Beagle
 -------------------------------
 

@@ -15,6 +15,32 @@ ostruct supports four main tool categories:
 
 All tools can be used individually or combined in the same request for comprehensive analysis workflows.
 
+Automatic File Routing
+-----------------------
+
+ostruct can automatically route files to appropriate tools based on file type detection:
+
+**Auto-routing Target**: Use ``--file auto:alias file.txt`` to let ostruct decide:
+
+- **Text files** → Template access (``prompt``)
+- **Binary files** → User-data for vision models (``ud``)
+
+**File Type Detection**:
+
+- **Enhanced detection**: Uses machine learning (Magika) for accurate file type identification
+- **Extension fallback**: Recognizes 30+ common file extensions (.txt, .md, .json, .py, .csv, etc.)
+- **Installation**: ``pip install ostruct-cli[enhanced-detection]`` for enhanced detection
+
+**Example**:
+
+.. code-block:: bash
+
+   # Auto-route based on file type
+   ostruct run analysis.j2 schema.json \
+     --file auto:doc1 report.pdf \      # → user-data (binary)
+     --file auto:doc2 summary.txt \     # → prompt (text)
+     --file auto:doc3 data.json         # → prompt (text)
+
 Shared File Usage
 -----------------
 

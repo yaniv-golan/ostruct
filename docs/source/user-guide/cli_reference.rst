@@ -34,12 +34,20 @@ File and Directory Management
 
 **Targets**: ``prompt`` (template-only, default), ``ci`` (code-interpreter), ``fs`` (file-search), ``ud`` (user-data, PDF files for vision models), ``auto`` (auto-route based on content type)
 
+**Auto-routing**: The ``auto`` target uses file type detection to automatically route files:
+
+- **Text files** → ``prompt`` (template access)
+- **Binary files** → ``ud`` (user-data for vision models)
+- **Detection method**: Uses enhanced detection (Magika) if available, otherwise extension-based detection
+- **Install enhanced detection**: ``pip install ostruct-cli[enhanced-detection]``
+
 **Examples**:
 
 - ``--file config settings.yaml``: Template access only
 - ``--file ci:data analysis.csv``: Upload to Code Interpreter
 - ``--file fs:docs manual.pdf``: Upload to File Search
 - ``--file ud:deck pitch.pdf``: Attach PDF for vision model analysis (user-data)
+- ``--file auto:content document.txt``: Auto-route based on file type (text → prompt, binary → user-data)
 - ``--file ci,fs:shared data.json``: Multi-tool routing
 
 **Security & Path Control**:
@@ -938,6 +946,42 @@ Control progress display during execution with a single ``--progress`` option.
 - ``--progress none``: Silent operation (ideal for CI/CD pipelines)
 - ``--progress basic``: Key progress steps (default)
 - ``--progress detailed``: Detailed progress with additional information
+
+Troubleshooting
+===============
+
+File Type Detection Issues
+---------------------------
+
+**"Magika not available" Warning**:
+
+If you see warnings about Magika not being available, this affects auto-routing accuracy but doesn't break functionality:
+
+.. code-block:: text
+
+   WARNING: Magika not available - falling back to extension detection.
+   Install with: pip install ostruct-cli[enhanced-detection]
+
+**Solutions**:
+
+1. **Install enhanced detection** (recommended):
+
+   .. code-block:: bash
+
+      pip install ostruct-cli[enhanced-detection]
+
+2. **Use explicit routing** instead of ``auto``:
+
+   .. code-block:: bash
+
+      # Instead of --file auto:content file.txt
+      ostruct run template.j2 schema.json --file content file.txt
+
+3. **Alpine Linux users**: Enhanced detection may not install due to compilation requirements. The extension-based fallback works reliably for common file types.
+
+**Supported Extensions (Fallback Mode)**:
+
+Text files automatically routed to template: ``.txt``, ``.md``, ``.rst``, ``.json``, ``.yaml``, ``.yml``, ``.toml``, ``.ini``, ``.cfg``, ``.py``, ``.js``, ``.html``, ``.css``, ``.sql``, ``.sh``, ``.log``, ``.csv``, ``.env``, and 15+ others.
 
 See Also
 ========
