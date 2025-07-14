@@ -57,10 +57,7 @@ class TestDynamicModelChoice:
         from ostruct.cli.cli import cli
 
         runner = CliRunner()
-        # Test with invalid model - should fail with our custom error message
-        _result = runner.invoke(
-            cli, ["run", "--help"], catch_exceptions=False
-        )  # noqa: F841
+        _ = runner.invoke(cli, ["run", "--help"], catch_exceptions=False)
 
         # Test the actual ModelChoice behavior by checking if invalid models are rejected
         # This tests the real Click integration rather than mocked behavior
