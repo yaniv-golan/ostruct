@@ -58,7 +58,9 @@ class TestDynamicModelChoice:
 
         runner = CliRunner()
         # Test with invalid model - should fail with our custom error message
-        _result = runner.invoke(cli, ["run", "--help"], catch_exceptions=False)
+        _result = runner.invoke(
+            cli, ["run", "--help"], catch_exceptions=False
+        )  # noqa: F841
 
         # Test the actual ModelChoice behavior by checking if invalid models are rejected
         # This tests the real Click integration rather than mocked behavior
@@ -80,7 +82,7 @@ class TestDynamicModelChoice:
 
     def test_model_choice_case_sensitivity(self):
         """Test case sensitivity handling."""
-        _choice = ModelChoice(["gpt-4o"], case_sensitive=True)
+        _choice = ModelChoice(["gpt-4o"], case_sensitive=True)  # noqa: F841
         # Test case sensitivity with None context - this behavior is tested in integration tests
         # since mock contexts don't behave reliably with Click
         pass  # Skip this test - case sensitivity is better tested through CLI integration
