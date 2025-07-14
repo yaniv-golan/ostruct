@@ -26,6 +26,12 @@ Quick Start
 
       pip install ostruct-cli
 
+   For enhanced file type detection (optional):
+
+   .. code-block:: bash
+
+      pip install ostruct-cli[enhanced-detection]
+
 2. Define your schema (``schema.json``):
 
    .. code-block:: json
