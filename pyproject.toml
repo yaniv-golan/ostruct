@@ -33,7 +33,6 @@ dependencies = [
     "rich-click>=1.8.9,<2.0.0",
     "rich>=13.0.0,<14.0.0",
     "pathspec>=0.12.1,<0.13.0",
-    "magika>=0.5.0,<1.0",
 ]
 
 [project.scripts]
@@ -53,6 +52,9 @@ docs = [
 examples = [
     "tenacity>=8.2.3,<9.0",
     "asyncio-throttle>=1.0.2,<2.0",
+]
+enhanced-detection = [
+    "magika>=0.5.0,<1.0",
 ]
 
 [tool.poetry]
