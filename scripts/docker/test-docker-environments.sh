@@ -80,7 +80,7 @@ for env in "${ENVIRONMENTS[@]}"; do
 
     # Build Docker image
     echo "Building Docker image..."
-    if docker build -f "$dockerfile" -t "ostruct-test-$env_name" . > /dev/null 2>&1; then
+    if docker build -f "$dockerfile" -t "ostruct-test-$env_name" .; then
         echo -e "${GREEN}✅ Build successful${NC}"
     else
         echo -e "${RED}❌ Build failed${NC}"
