@@ -2,11 +2,15 @@ import json
 import re
 from typing import Tuple
 
-# Regex to match JSON fenced blocks, handling newlines and indentation flexibly
-# Uses non-greedy matching but ensures we get the complete JSON block
-JSON_RE = re.compile(
-    r"```json\s*\n?([\s\S]*?)\n?\s*```", re.DOTALL | re.MULTILINE
+from .safe_regex import (
+    SAFE_JSON_BLOCK_PATTERN,
+    RegexTimeoutError,
+    safe_regex_search,
 )
+
+# Regex to match JSON fenced blocks, handling newlines and indentation flexibly
+# Uses ReDoS-safe pattern with limited nesting depth
+JSON_RE = SAFE_JSON_BLOCK_PATTERN
 
 
 def split_json_and_text(raw: str) -> Tuple[dict, str]:
@@ -38,6 +42,31 @@ def split_json_and_text(raw: str) -> Tuple[dict, str]:
         >>> markdown.strip()
         '[Download file.txt](sandbox:/mnt/data/file.txt)'
     """
+    # Try safe regex pattern first (ReDoS protection)
+    try:
+        match = safe_regex_search(JSON_RE, raw, timeout=2.0)
+        if match:
+            # Extract JSON content and parse with security limits
+            from .json_limits import parse_json_secure
+
+            potential_json = match.group(1).strip()
+            data = parse_json_secure(potential_json)
+
+            # Find markdown content after the JSON block
+            json_end = match.end()
+            markdown_text = raw[json_end:].lstrip()
+
+            return data, markdown_text
+    except RegexTimeoutError:
+        # Potential ReDoS attack detected
+        raise ValueError("JSON extraction timed out - potential ReDoS attack")
+    except (json.JSONDecodeError, ValueError) as e:
+        # JSON parsing failed or security limits exceeded
+        if "JSON extraction timed out" in str(e):
+            raise  # Re-raise timeout errors
+        # Fall through to original logic for complex cases
+
+    # Fallback to original iterative approach for complex cases
     # Find the start of the JSON block
     start_pattern = re.compile(r"```json\s*", re.MULTILINE)
     start_match = start_pattern.search(raw)
@@ -56,14 +85,17 @@ def split_json_and_text(raw: str) -> Tuple[dict, str]:
         potential_json = raw[content_start : end_match.start()].strip()
 
         try:
-            # Try to parse as JSON
-            data = json.loads(potential_json)
+            # Try to parse as JSON with security limits
+            from .json_limits import parse_json_secure
+
+            data = parse_json_secure(potential_json)
             # If successful, we found the right closing ```
             markdown_text = raw[end_match.end() :].lstrip()
             return data, markdown_text
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             # This ``` might be inside a JSON string, continue looking
             # But if this is the only ``` we found, it's likely invalid JSON
+            # ValueError includes JSONSizeError, JSONDepthError, JSONComplexityError
             continue
 
     # If we get here, check if we found any closing ``` at all

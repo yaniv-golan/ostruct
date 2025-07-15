@@ -179,8 +179,20 @@ def validate_json_variable(
         if not name.isidentifier():
             raise VariableNameError(f"Invalid variable name: {name}")
         try:
-            json_value = json.loads(json_str)
+            from .json_limits import (
+                JSONComplexityError,
+                JSONDepthError,
+                JSONSizeError,
+                parse_json_secure,
+            )
+
+            json_value = parse_json_secure(json_str)
             result.append((name, json_value))
+        except (JSONSizeError, JSONDepthError, JSONComplexityError) as e:
+            raise InvalidJSONError(
+                f"JSON value for variable {name!r} exceeds security limits: {e}",
+                context={"variable_name": name},
+            ) from e
         except json.JSONDecodeError as e:
             raise InvalidJSONError(
                 f"Invalid JSON value for variable {name!r}: {json_str!r}",
@@ -243,7 +255,19 @@ def parse_json_var(var_str: str) -> Tuple[str, Any]:
             )
 
         try:
-            value = json.loads(json_str)
+            from .json_limits import (
+                JSONComplexityError,
+                JSONDepthError,
+                JSONSizeError,
+                parse_json_secure,
+            )
+
+            value = parse_json_secure(json_str)
+        except (JSONSizeError, JSONDepthError, JSONComplexityError) as e:
+            raise InvalidJSONError(
+                f"JSON value for variable '{name}' exceeds security limits: {e}",
+                context={"variable_name": name},
+            )
         except json.JSONDecodeError as e:
             raise InvalidJSONError(
                 f"Error parsing JSON for variable '{name}': {str(e)}. Input was: {json_str}",
