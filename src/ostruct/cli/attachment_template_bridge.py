@@ -108,6 +108,8 @@ class LazyFileContent:
         """
         import os
 
+        from .constants import DefaultConfig
+
         # Check OSTRUCT_TEMPLATE_FILE_LIMIT environment variable
         template_file_limit = os.getenv("OSTRUCT_TEMPLATE_FILE_LIMIT")
         if template_file_limit is not None:
@@ -118,13 +120,26 @@ class LazyFileContent:
                 return int(template_file_limit)
             except ValueError:
                 logger.warning(
-                    f"Invalid OSTRUCT_TEMPLATE_FILE_LIMIT value '{template_file_limit}', using no limit"
+                    f"Invalid OSTRUCT_TEMPLATE_FILE_LIMIT value '{template_file_limit}', using default limit"
                 )
-                return None
+                # Fall through to default
 
-        # Default: no limit (changed from 64KB in v1.1.0)
-        # BREAKING CHANGE: Previous versions defaulted to 65536 bytes (64KB)
-        return None
+        # Check OSTRUCT_MAX_FILE_SIZE environment variable (new)
+        max_file_size_env = os.getenv("OSTRUCT_MAX_FILE_SIZE")
+        if max_file_size_env is not None:
+            if max_file_size_env.lower() in ("none", "unlimited", ""):
+                return None
+            try:
+                return int(max_file_size_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_MAX_FILE_SIZE value '{max_file_size_env}', using default limit"
+                )
+                # Fall through to default
+
+        # Default: 100MB limit for DoS protection
+        default_size = DefaultConfig.TEMPLATE["max_file_size"]
+        return int(default_size) if default_size is not None else None
 
     def check_size(self) -> bool:
         """Check if file size is within limits.
@@ -358,6 +373,8 @@ class FileSizeValidator:
         """
         import os
 
+        from .constants import DefaultConfig
+
         total_limit_env = os.getenv("OSTRUCT_TEMPLATE_TOTAL_LIMIT")
         if total_limit_env is not None:
             if total_limit_env.lower() in ("none", "unlimited", ""):
@@ -366,11 +383,13 @@ class FileSizeValidator:
                 return int(total_limit_env)
             except ValueError:
                 logger.warning(
-                    f"Invalid OSTRUCT_TEMPLATE_TOTAL_LIMIT value '{total_limit_env}', using no limit"
+                    f"Invalid OSTRUCT_TEMPLATE_TOTAL_LIMIT value '{total_limit_env}', using default limit"
                 )
+                # Fall through to default
 
-        # Default: no limit (removes the old 1MB restriction)
-        return None
+        # Default: 500MB total limit for DoS protection
+        default_total = DefaultConfig.TEMPLATE["max_total_size"]
+        return int(default_total) if default_total is not None else None
 
     def validate_file_list(self, files: List[Path]) -> ValidationResult:
         """Validate list of files against size limits.

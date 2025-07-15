@@ -57,11 +57,11 @@ class TemplateConfig(BaseModel):
     """Configuration for template processing behavior."""
 
     max_file_size: Optional[int] = Field(
-        default=None,
+        default=100 * 1024 * 1024,  # 100MB default for DoS protection
         description="Maximum individual file size for template access in bytes. None means no limit.",
     )
     max_total_size: Optional[int] = Field(
-        default=None,
+        default=500 * 1024 * 1024,  # 500MB default for DoS protection
         description="Maximum total file size for all template files in bytes. None means no limit.",
     )
     preview_limit: int = Field(
