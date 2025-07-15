@@ -137,6 +137,10 @@ class SharedUploadManager:
 
         # URL registry for remote files
         self._url_registry: Dict[str, str] = {}  # URL -> unique_id mapping
+        self._max_url_registry_size = 10000  # Maximum URL registry entries
+        self._url_registry_cleanup_threshold = (
+            8000  # Trigger cleanup when this many URLs exist
+        )
 
     def register_attachments(
         self, processed_attachments: ProcessedAttachments
@@ -308,6 +312,10 @@ class SharedUploadManager:
         # Store URL mapping
         self._url_registry[url] = unique_id
 
+        # Check if we need to clean up URL registry to prevent memory exhaustion
+        if len(self._url_registry) > self._url_registry_cleanup_threshold:
+            self._cleanup_url_registry()
+
         # Create a synthetic file identity for the URL
         # Use hash of URL as both device and inode
         url_identity = (
@@ -407,6 +415,15 @@ class SharedUploadManager:
                 for i, (path, error) in enumerate(failed_uploads, 1):
                     error_msg += f"{i}. {error}\n\n"
                 raise UploadError(error_msg.rstrip())
+
+        # Perform periodic memory cleanup after completing uploads
+        total_memory_usage = (
+            len(self._uploads)
+            + len(self._upload_locks)
+            + len(self._url_registry)
+        )
+        if total_memory_usage > 5000:  # Cleanup if total memory usage is high
+            await self.cleanup_memory()
 
         logger.debug(f"Completed {len(uploaded)} uploads for {tool}")
         return uploaded
@@ -834,6 +851,86 @@ class SharedUploadManager:
                 f"[upload] Removed {excess_count} locks due to memory limit, "
                 f"remaining: {len(self._upload_locks)}"
             )
+
+    def _cleanup_url_registry(self) -> None:
+        """Clean up URL registry to prevent memory leaks."""
+        logger.debug(
+            f"[upload] Cleaning up URL registry, current count: {len(self._url_registry)}"
+        )
+
+        # Find URLs that are no longer being tracked or have completed upload
+        urls_to_remove: List[str] = []
+        for url, unique_id in list(self._url_registry.items()):
+            # Create the same synthetic file identity used when storing
+            url_identity = (
+                hash(url) & 0x7FFFFFFF,
+                hash(url + "_inode") & 0x7FFFFFFF,
+            )
+
+            # Remove URL if upload record doesn't exist or upload is completed
+            if (
+                url_identity not in self._uploads
+                or self._uploads[url_identity].upload_id is not None
+            ):
+                urls_to_remove.append(url)
+
+        # Remove unused URL mappings
+        for url in urls_to_remove:
+            del self._url_registry[url]
+
+        logger.debug(
+            f"[upload] Cleaned up {len(urls_to_remove)} URL registry entries, "
+            f"remaining: {len(self._url_registry)}"
+        )
+
+        # If we're still over the limit, remove oldest entries (simple FIFO)
+        if len(self._url_registry) > self._max_url_registry_size:
+            excess_count = (
+                len(self._url_registry) - self._max_url_registry_size
+            )
+            urls_to_remove = list(self._url_registry.keys())[:excess_count]
+
+            for url in urls_to_remove:
+                del self._url_registry[url]
+
+            logger.warning(
+                f"[upload] Removed {excess_count} URL registry entries due to memory limit, "
+                f"remaining: {len(self._url_registry)}"
+            )
+
+    async def cleanup_memory(self) -> None:
+        """Perform comprehensive memory cleanup to prevent leaks."""
+        logger.debug("[upload] Performing comprehensive memory cleanup")
+
+        # Clean up upload locks
+        await self._cleanup_unused_locks()
+
+        # Clean up URL registry
+        self._cleanup_url_registry()
+
+        # Clean up completed uploads that are no longer needed
+        uploads_to_remove: List[Tuple[int, int]] = []
+        for file_id, record in list(self._uploads.items()):
+            # Remove completed uploads that have been processed
+            if record.upload_id is not None and record.upload_status in (
+                UploadStatus.HIT,
+                UploadStatus.MISS,
+            ):
+                uploads_to_remove.append(file_id)
+
+        for file_id in uploads_to_remove:
+            del self._uploads[file_id]
+            # Also remove any remaining locks for these files
+            if file_id in self._upload_locks:
+                del self._upload_locks[file_id]
+
+        logger.debug(
+            f"[upload] Memory cleanup completed - removed {len(uploads_to_remove)} upload records"
+        )
+        logger.debug(
+            f"[upload] Current memory usage - uploads: {len(self._uploads)}, "
+            f"locks: {len(self._upload_locks)}, urls: {len(self._url_registry)}"
+        )
 
     def get_cache_stats(self) -> Optional[Dict[str, Any]]:
         """Get cache statistics if enabled."""
