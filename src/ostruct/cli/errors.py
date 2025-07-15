@@ -720,32 +720,40 @@ class APIErrorMapper:
             "context_length_exceeded" in error_msg
             or "maximum context length" in error_msg
         ):
+            from .security.credential_sanitizer import CredentialSanitizer
+
             return PromptTooLargeError(
                 f"Prompt exceeds model context window (128,000 token limit). "
                 f"Tip: Use explicit file routing (--file ci:data for code, --file fs:docs for docs, --file config for config). "
-                f"Original error: {error}"
+                f"Original error: {CredentialSanitizer.sanitize_exception(error)}"
             )
 
         # Authentication errors (confirmed pattern)
         if "invalid_api_key" in error_msg or "incorrect api key" in error_msg:
+            from .security.credential_sanitizer import CredentialSanitizer
+
             return AuthenticationError(
                 f"Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable. "
-                f"Original error: {error}"
+                f"Original error: {CredentialSanitizer.sanitize_exception(error)}"
             )
 
         # Rate limiting (standard pattern)
         if "rate_limit" in error_msg:
+            from .security.credential_sanitizer import CredentialSanitizer
+
             return RateLimitError(
                 f"OpenAI API rate limit exceeded. Please wait and try again. "
-                f"Original error: {error}"
+                f"Original error: {CredentialSanitizer.sanitize_exception(error)}"
             )
 
         # Schema validation errors (Responses API specific)
         if "invalid schema for response_format" in error_msg:
+            from .security.credential_sanitizer import CredentialSanitizer
+
             return SchemaValidationError(
                 f"Schema validation failed for Responses API. "
                 f"Ensure your schema is compatible with strict mode. "
-                f"Original error: {error}"
+                f"Original error: {CredentialSanitizer.sanitize_exception(error)}"
             )
 
         # Container expiration errors (Code Interpreter specific)

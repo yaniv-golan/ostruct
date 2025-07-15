@@ -704,16 +704,33 @@ async def create_structured_output(
                     "tool_choice applied: %s", api_params["tool_choice"]
                 )
 
-        # Log the API request details
+        # Log the API request details with credential sanitization
+        from .security.credential_sanitizer import CredentialSanitizer
+
         logger.debug("Making OpenAI Responses API request with:")
         logger.debug("Model: %s", model)
-        logger.debug("Message content: %s", message_content)
-        logger.debug("Parameters: %s", json.dumps(api_kwargs, indent=2))
+        logger.debug(
+            "Message content: %s",
+            CredentialSanitizer.sanitize_string(message_content),
+        )
+        logger.debug(
+            "Parameters: %s",
+            json.dumps(
+                CredentialSanitizer.sanitize_dict(api_kwargs), indent=2
+            ),
+        )
         logger.debug("Schema: %s", json.dumps(strict_schema, indent=2))
-        logger.debug("Tools being passed to API: %s", tools)
+        logger.debug(
+            "Tools being passed to API: %s",
+            CredentialSanitizer.sanitize_for_logging(tools),
+        )
         logger.debug(
             "Complete API params: %s",
-            json.dumps(api_params, indent=2, default=str),
+            json.dumps(
+                CredentialSanitizer.sanitize_dict(api_params),
+                indent=2,
+                default=str,
+            ),
         )
 
         # Use the Responses API
@@ -866,20 +883,24 @@ async def create_structured_output(
             or "maximum context length" in error_msg
         ):
             raise CLIError(
-                f"Context length exceeded: {str(e)}",
+                f"Context length exceeded: {CredentialSanitizer.sanitize_exception(e)}",
                 exit_code=ExitCode.API_ERROR,
             )
         elif "rate_limit" in error_msg or "429" in str(e):
             raise CLIError(
-                f"Rate limit exceeded: {str(e)}", exit_code=ExitCode.API_ERROR
+                f"Rate limit exceeded: {CredentialSanitizer.sanitize_exception(e)}",
+                exit_code=ExitCode.API_ERROR,
             )
         elif "invalid_api_key" in error_msg:
             raise CLIError(
-                f"Invalid API key: {str(e)}", exit_code=ExitCode.API_ERROR
+                f"Invalid API key: {CredentialSanitizer.sanitize_exception(e)}",
+                exit_code=ExitCode.API_ERROR,
             )
         else:
-            logger.error(f"Unmapped API error: {e}")
-            raise APIResponseError(str(e))
+            logger.error(
+                f"Unmapped API error: {CredentialSanitizer.sanitize_exception(e)}"
+            )
+            raise APIResponseError(CredentialSanitizer.sanitize_exception(e))
 
 
 # Note: validation functions are defined in cli.py to avoid circular imports
