@@ -3,28 +3,35 @@
 import re
 from typing import Any, Dict
 
+# Import safe regex patterns
+from ..safe_regex import (
+    SAFE_API_KEY_PATTERN,
+    SAFE_BEARER_TOKEN_PATTERN,
+    SAFE_URL_CREDENTIALS_PATTERN,
+)
+
 
 class CredentialSanitizer:
     """Sanitizes sensitive credentials from logs, error messages, and debug output."""
 
-    # Patterns for detecting API keys and other sensitive data
+    # Patterns for detecting API keys and other sensitive data (ReDoS-safe)
     API_KEY_PATTERNS = [
         # OpenAI API keys (sk-...)
-        re.compile(r"sk-[a-zA-Z0-9]{20,}", re.IGNORECASE),
-        # Generic API key patterns
+        SAFE_API_KEY_PATTERN,
+        # Generic API key patterns (length limited)
         re.compile(
-            r'api[_-]?key["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_-]{20,})',
+            r'api[_-]?key["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_-]{20,100})',
             re.IGNORECASE,
         ),
         # Bearer tokens
-        re.compile(r"bearer\s+([a-zA-Z0-9_-]{20,})", re.IGNORECASE),
-        # Authorization headers
+        SAFE_BEARER_TOKEN_PATTERN,
+        # Authorization headers (length limited)
         re.compile(
-            r'authorization["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_\-+=\/]{20,})',
+            r'authorization["\']?\s*[:=]\s*["\']?([a-zA-Z0-9_\-+=\/]{20,200})',
             re.IGNORECASE,
         ),
         # MCP server URLs with embedded credentials
-        re.compile(r"https?://[^:]+:([^@]+)@", re.IGNORECASE),
+        SAFE_URL_CREDENTIALS_PATTERN,
     ]
 
     # Environment variable names that contain sensitive data
