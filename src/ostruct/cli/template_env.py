@@ -8,6 +8,7 @@ from typing import Any, List, Optional, Tuple, Type, Union
 import jinja2
 from jinja2 import Environment
 from jinja2.ext import Extension
+from jinja2.sandbox import SandboxedEnvironment
 
 from .template_extensions import CommentExtension
 from .template_filters import (
@@ -54,7 +55,8 @@ def create_jinja_env(
     if debug_mode:
         extensions.append("jinja2.ext.debug")  # Enable {% debug %} tag
 
-    env = Environment(
+    # Use sandboxed environment for security
+    env = SandboxedEnvironment(
         loader=loader,
         undefined=undefined,
         autoescape=False,  # Disable HTML escaping by default
