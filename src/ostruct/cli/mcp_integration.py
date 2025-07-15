@@ -275,7 +275,12 @@ class MCPClient:
             )
 
             response.raise_for_status()
-            response_data = response.json()
+
+            # Parse response with security limits
+            from .json_limits import parse_json_secure
+
+            response_text = response.text
+            response_data = parse_json_secure(response_text)
 
             # Always sanitize response before returning
             return self._sanitize_response(response_data)
@@ -302,6 +307,8 @@ class MCPClient:
         import json
 
         try:
+            # Use standard json.dumps for serialization (not parsing)
+            # The security limits are for parsing JSON, not generating it
             request_str = json.dumps(request_data)
         except (TypeError, ValueError):
             request_str = str(request_data)
