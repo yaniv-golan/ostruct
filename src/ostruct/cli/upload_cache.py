@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import sqlite3
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,6 +21,17 @@ class UploadCache:
         self.cache_path = Path(cache_path)
         self.hash_algo = hash_algo
         self._ensure_db_exists()
+
+        # Add thread-safe locking for cache operations
+        self._lock = threading.RLock()
+        self._file_locks: Dict[str, threading.RLock] = {}
+
+    def _get_file_lock(self, file_hash: str) -> threading.RLock:
+        """Get or create a per-file lock to prevent race conditions."""
+        with self._lock:
+            if file_hash not in self._file_locks:
+                self._file_locks[file_hash] = threading.RLock()
+            return self._file_locks[file_hash]
 
     def _ensure_db_exists(self) -> None:
         """Create database and tables if they don't exist."""
@@ -166,34 +178,38 @@ class UploadCache:
         mtime: int,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Store file upload record in cache."""
-        try:
-            with self._get_connection() as conn:
-                conn.execute("BEGIN IMMEDIATE")
-                current_time = int(time.time())
-                conn.execute(
-                    """
-                    INSERT OR REPLACE INTO files
-                    (hash, file_id, algo, size, mtime, created_at, last_accessed, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        file_hash,
-                        file_id,
-                        self.hash_algo,
-                        size,
-                        mtime,
-                        current_time,
-                        current_time,  # Set last_accessed to creation time
-                        json.dumps(metadata) if metadata else None,
-                    ),
-                )
-                conn.commit()
-                logger.debug(
-                    f"[cache] Stored: {file_hash[:8]}... -> {file_id}"
-                )
-        except Exception as e:
-            logger.warning(f"[cache] Failed to store cache entry: {e}")
+        """Store file upload record in cache (thread-safe)."""
+        # Use per-file locking to prevent race conditions
+        file_lock = self._get_file_lock(file_hash)
+
+        with file_lock:
+            try:
+                with self._get_connection() as conn:
+                    conn.execute("BEGIN IMMEDIATE")
+                    current_time = int(time.time())
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO files
+                        (hash, file_id, algo, size, mtime, created_at, last_accessed, metadata)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                        (
+                            file_hash,
+                            file_id,
+                            self.hash_algo,
+                            size,
+                            mtime,
+                            current_time,
+                            current_time,  # Set last_accessed to creation time
+                            json.dumps(metadata) if metadata else None,
+                        ),
+                    )
+                    conn.commit()
+                    logger.debug(
+                        f"[cache] Stored: {file_hash[:8]}... -> {file_id}"
+                    )
+            except Exception as e:
+                logger.warning(f"[cache] Failed to store cache entry: {e}")
 
     def is_file_changed(
         self, file_path: Path, cached_size: int, cached_mtime: int
@@ -223,39 +239,51 @@ class UploadCache:
     def lookup_with_validation(
         self, file_path: Path, file_hash: str
     ) -> Optional[str]:
-        """Look up file_id with size/mtime validation."""
-        try:
-            with self._get_connection() as conn:
-                result = conn.execute(
-                    "SELECT file_id, size, mtime FROM files WHERE hash = ? AND algo = ?",
-                    (file_hash, self.hash_algo),
-                ).fetchone()
+        """Look up file_id with size/mtime validation (thread-safe)."""
+        # Use per-file locking to prevent race conditions
+        file_lock = self._get_file_lock(file_hash)
 
-                if not result:
+        with file_lock:
+            try:
+                with self._get_connection() as conn:
+                    result = conn.execute(
+                        "SELECT file_id, size, mtime FROM files WHERE hash = ? AND algo = ?",
+                        (file_hash, self.hash_algo),
+                    ).fetchone()
+
+                    if not result:
+                        logger.debug(
+                            f"[cache] No cache entry for {file_hash[:8]}..."
+                        )
+                        return None
+
+                    # Validate file hasn't changed (while holding the lock)
+                    if self.is_file_changed(
+                        file_path, result["size"], result["mtime"]
+                    ):
+                        # File changed, invalidate cache entry atomically
+                        logger.info(
+                            f"[cache] File {file_path} changed, invalidating cache"
+                        )
+                        # Invalidate within the same transaction to prevent race conditions
+                        conn.execute("BEGIN IMMEDIATE")
+                        conn.execute(
+                            "DELETE FROM files WHERE hash = ?", (file_hash,)
+                        )
+                        conn.commit()
+                        logger.debug(
+                            f"[cache] Invalidated: {file_hash[:8]}..."
+                        )
+                        return None
+
+                    file_id = str(result["file_id"])
                     logger.debug(
-                        f"[cache] No cache entry for {file_hash[:8]}..."
+                        f"[cache] Validated hit: {file_hash[:8]}... -> {file_id}"
                     )
-                    return None
-
-                # Validate file hasn't changed
-                if self.is_file_changed(
-                    file_path, result["size"], result["mtime"]
-                ):
-                    # File changed, invalidate cache entry
-                    logger.info(
-                        f"[cache] File {file_path} changed, invalidating cache"
-                    )
-                    self.invalidate(file_hash)
-                    return None
-
-                file_id = str(result["file_id"])
-                logger.debug(
-                    f"[cache] Validated hit: {file_hash[:8]}... -> {file_id}"
-                )
-                return file_id
-        except Exception as e:
-            logger.warning(f"[cache] Cache validation lookup failed: {e}")
-            return None
+                    return file_id
+            except Exception as e:
+                logger.warning(f"[cache] Cache validation lookup failed: {e}")
+                return None
 
     def invalidate(self, file_hash: str) -> None:
         """Remove entry from cache."""
@@ -444,3 +472,33 @@ class UploadCache:
         except Exception as e:
             logger.warning(f"[cache] Failed to get cache stats: {e}")
             return {"error": str(e), "entries": 0, "total_entries": 0}
+
+    def cleanup_file_locks(self) -> None:
+        """Clean up unused file locks to prevent memory leaks."""
+        with self._lock:
+            # Get all current file hashes in the cache
+            try:
+                with self._get_connection() as conn:
+                    result = conn.execute(
+                        "SELECT DISTINCT hash FROM files WHERE algo = ?",
+                        (self.hash_algo,),
+                    ).fetchall()
+
+                    active_hashes = {row["hash"] for row in result}
+
+                    # Remove locks for files no longer in cache
+                    locks_to_remove = []
+                    for file_hash in self._file_locks:
+                        if file_hash not in active_hashes:
+                            locks_to_remove.append(file_hash)
+
+                    for file_hash in locks_to_remove:
+                        del self._file_locks[file_hash]
+
+                    if locks_to_remove:
+                        logger.debug(
+                            f"[cache] Cleaned up {len(locks_to_remove)} unused file locks"
+                        )
+
+            except Exception as e:
+                logger.warning(f"[cache] Failed to cleanup file locks: {e}")
