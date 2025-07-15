@@ -128,7 +128,9 @@ class TestMCPSecurity:
         """Test MCP request parameter sanitization."""
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"result": "success"}
+        mock_response.text = (
+            '{"result": "success"}'  # Mock response.text instead of json()
+        )
         mock_requests.post.return_value = mock_response
 
         client = MCPClient("https://mcp.deepwiki.com/sse")
