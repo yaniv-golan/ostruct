@@ -515,7 +515,23 @@ def collect_json_variables(args: CLIParams) -> Dict[str, Any]:
                             f"Invalid JSON variable mapping format: {mapping}. Expected name=json"
                         )
                     try:
-                        value = json.loads(json_str)
+                        from .json_limits import (
+                            JSONComplexityError,
+                            JSONDepthError,
+                            JSONSizeError,
+                            parse_json_secure,
+                        )
+
+                        value = parse_json_secure(json_str)
+                    except (
+                        JSONSizeError,
+                        JSONDepthError,
+                        JSONComplexityError,
+                    ) as e:
+                        raise InvalidJSONError(
+                            f"JSON value for variable '{name}' exceeds security limits: {e}",
+                            context={"variable_name": name},
+                        ) from e
                     except json.JSONDecodeError as e:
                         raise InvalidJSONError(
                             f"Invalid JSON value for variable '{name}': {json_str}",
