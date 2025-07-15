@@ -20,10 +20,27 @@ from ostruct.cli.security import SecurityManager
 @pytest.fixture
 def security_manager():
     """Create security manager for testing."""
+    from ostruct.cli.security.context import (
+        get_current_security_manager,
+        reset_security_context,
+        set_current_security_manager,
+    )
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Resolve symlinks to ensure consistent path resolution
         resolved_tmp_dir = Path(tmp_dir).resolve()
-        yield SecurityManager(resolved_tmp_dir)
+
+        # Reset context to ensure clean state
+        reset_security_context()
+
+        # Create and configure the security manager
+        sm = SecurityManager(resolved_tmp_dir)
+
+        # Set it as the global context
+        set_current_security_manager(sm)
+
+        # Return the global instance
+        yield get_current_security_manager()
 
 
 @pytest.fixture

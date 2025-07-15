@@ -85,9 +85,25 @@ def fs() -> Generator[FakeFilesystem, None, None]:
 @pytest.fixture
 def security_manager(fs: FakeFilesystem) -> SecurityManager:
     """Create a security manager for testing."""
+    from ostruct.cli.security.context import (
+        get_current_security_manager,
+        reset_security_context,
+        set_current_security_manager,
+    )
+
     from tests.conftest import MockSecurityManager
 
-    return MockSecurityManager(base_dir="/test_workspace")
+    # Reset context to ensure clean state
+    reset_security_context()
+
+    # Create and configure the security manager
+    mock_sm = MockSecurityManager(base_dir="/test_workspace")
+
+    # Set it as the global context
+    set_current_security_manager(mock_sm)
+
+    # Return the global instance
+    return get_current_security_manager()
 
 
 def test_validate_fileinfo_attributes(

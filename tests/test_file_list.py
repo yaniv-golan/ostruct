@@ -12,7 +12,23 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 @pytest.fixture
 def security_manager() -> SecurityManager:
     """Create a SecurityManager instance for testing."""
-    return SecurityManager(base_dir="/test_workspace/base")
+    from ostruct.cli.security.context import (
+        get_current_security_manager,
+        reset_security_context,
+        set_current_security_manager,
+    )
+
+    # Reset context to ensure clean state
+    reset_security_context()
+
+    # Create and configure the security manager
+    sm = SecurityManager(base_dir="/test_workspace/base")
+
+    # Set it as the global context
+    set_current_security_manager(sm)
+
+    # Return the global instance
+    return get_current_security_manager()
 
 
 def test_file_list_single_file(

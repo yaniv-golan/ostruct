@@ -558,7 +558,7 @@ class MockSecurityManager(SecurityManager):
 
 @pytest.fixture
 def security_manager(fs: FakeFilesystem) -> SecurityManager:
-    """Create a security manager for testing.
+    """Create a security manager for testing using global context pattern.
 
     Args:
         fs: The pyfakefs fixture
@@ -566,12 +566,28 @@ def security_manager(fs: FakeFilesystem) -> SecurityManager:
     Returns:
         A SecurityManager instance configured for testing
     """
-    return MockSecurityManager()
+    from ostruct.cli.security.context import (
+        get_current_security_manager,
+        reset_security_context,
+        set_current_security_manager,
+    )
+
+    # Reset context to ensure clean state
+    reset_security_context()
+
+    # Create and configure the security manager
+    mock_sm = MockSecurityManager()
+
+    # Set it as the global context
+    set_current_security_manager(mock_sm)
+
+    # Return the global instance
+    return get_current_security_manager()
 
 
 @pytest.fixture
 def strict_security_manager(fs: FakeFilesystem) -> SecurityManager:
-    """Create a security manager for testing with STRICT mode.
+    """Create a security manager for testing with STRICT mode using global context pattern.
 
     Args:
         fs: The pyfakefs fixture
@@ -579,16 +595,60 @@ def strict_security_manager(fs: FakeFilesystem) -> SecurityManager:
     Returns:
         A SecurityManager instance configured for testing with STRICT security mode
     """
+    from ostruct.cli.security.context import (
+        get_current_security_manager,
+        reset_security_context,
+        set_current_security_manager,
+    )
     from ostruct.cli.security.types import PathSecurity
 
-    sm = MockSecurityManager()
-    sm.security_mode = PathSecurity.STRICT
-    return sm
+    # Reset context to ensure clean state
+    reset_security_context()
+
+    # Create and configure the security manager
+    mock_sm = MockSecurityManager()
+    mock_sm.security_mode = PathSecurity.STRICT
+
+    # Set it as the global context
+    set_current_security_manager(mock_sm)
+
+    # Return the global instance
+    return get_current_security_manager()
+
+
+@pytest.fixture(autouse=True)
+def setup_global_security_context(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
+    """Set up global security context for tests and ensure clean teardown.
+
+    This fixture ensures that the global security context is properly reset
+    between tests and that the deprecation warning is not triggered during
+    legitimate test operations.
+
+    Args:
+        monkeypatch: The pytest monkeypatch fixture
+        request: The pytest request fixture
+    """
+    from ostruct.cli.security.context import reset_security_context
+
+    # Reset context before each test
+    reset_security_context()
+
+    # Yield to run the test
+    yield
+
+    # Reset context after each test to ensure clean state
+    reset_security_context()
 
 
 @pytest.fixture(autouse=True)
 def patch_security_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch the SecurityManager class to use the mock version.
+
+    This fixture is now simplified since we're using the global context pattern.
+    It only patches the SecurityManager constructor to use test-friendly defaults
+    when SecurityManager is instantiated directly (which should be rare).
 
     Args:
         monkeypatch: The pytest monkeypatch fixture
@@ -606,7 +666,14 @@ def patch_security_manager(monkeypatch: pytest.MonkeyPatch) -> None:
         """Patch the SecurityManager init to use a fixed base directory."""
         if base_dir is None:
             base_dir = "/test_workspace/base"
-        original_init(self, base_dir, *args, **kwargs)
+
+        # Temporarily suppress the deprecation warning during tests
+        # since tests legitimately create SecurityManager instances for mocking
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            original_init(self, base_dir, *args, **kwargs)
 
     monkeypatch.setattr(SecurityManager, "__init__", patched_init)
 
