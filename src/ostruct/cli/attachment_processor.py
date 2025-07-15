@@ -93,59 +93,108 @@ class AttachmentProcessor:
         logger.debug("Processing %d attachments", len(attachments))
         processed = ProcessedAttachments()
 
+        # Track processing errors for comprehensive error reporting
+        processing_errors = []
+
         for attachment_dict in attachments:
-            # Handle filelist syntax: path can be ("@", "filelist.txt") tuple
-            path_value = attachment_dict["path"]
-            if (
-                isinstance(path_value, tuple)
-                and len(path_value) == 2
-                and path_value[0] == "@"
-            ):
-                # Process filelist collection
-                filelist_specs = self._process_filelist(
-                    path_value[1], attachment_dict
-                )
-                for spec in filelist_specs:
-                    processed.alias_map[spec.alias] = spec
-                    self._route_attachment(spec, processed)
-            else:
-                # Regular file/directory attachment OR remote URL
-                is_remote_url = isinstance(path_value, str) and str(
-                    path_value
-                ).startswith(("http://", "https://"))
-
-                # Preserve raw URL strings for remote attachments so we don't lose the double slash
-                spec_path = path_value if is_remote_url else Path(path_value)
-
-                spec = AttachmentSpec(
-                    alias=attachment_dict["alias"],
-                    path=spec_path,
-                    targets=set(attachment_dict["targets"]),
-                    recursive=attachment_dict.get("recursive", False),
-                    pattern=attachment_dict.get("pattern"),
-                    attachment_type=attachment_dict.get(
-                        "attachment_type", "file"
-                    ),
-                    ignore_gitignore=attachment_dict.get(
-                        "ignore_gitignore", False
-                    ),
-                    gitignore_file=attachment_dict.get("gitignore_file"),
-                )
-
-                # Local filesystem validation only for non-URL paths
-                if not is_remote_url:
-                    validated_path = (
-                        self.security_manager.validate_file_access(
-                            spec.path, context=f"attachment {spec.alias}"
-                        )
+            try:
+                # Handle filelist syntax: path can be ("@", "filelist.txt") tuple
+                path_value = attachment_dict["path"]
+                if (
+                    isinstance(path_value, tuple)
+                    and len(path_value) == 2
+                    and path_value[0] == "@"
+                ):
+                    # Process filelist collection
+                    filelist_specs = self._process_filelist(
+                        path_value[1], attachment_dict
                     )
-                    spec.path = validated_path
+                    for spec in filelist_specs:
+                        processed.alias_map[spec.alias] = spec
+                        self._route_attachment(spec, processed)
+                else:
+                    # Regular file/directory attachment OR remote URL
+                    is_remote_url = isinstance(path_value, str) and str(
+                        path_value
+                    ).startswith(("http://", "https://"))
 
-                # Add to alias map
-                processed.alias_map[spec.alias] = spec
+                    # Preserve raw URL strings for remote attachments so we don't lose the double slash
+                    spec_path = (
+                        path_value if is_remote_url else Path(path_value)
+                    )
 
-                # Route to appropriate target collections
-                self._route_attachment(spec, processed)
+                    spec = AttachmentSpec(
+                        alias=attachment_dict["alias"],
+                        path=spec_path,
+                        targets=set(attachment_dict["targets"]),
+                        recursive=attachment_dict.get("recursive", False),
+                        pattern=attachment_dict.get("pattern"),
+                        attachment_type=attachment_dict.get(
+                            "attachment_type", "file"
+                        ),
+                        ignore_gitignore=attachment_dict.get(
+                            "ignore_gitignore", False
+                        ),
+                        gitignore_file=attachment_dict.get("gitignore_file"),
+                    )
+
+                    # Local filesystem validation only for non-URL paths
+                    if not is_remote_url:
+                        validated_path = (
+                            self.security_manager.validate_file_access(
+                                spec.path, context=f"attachment {spec.alias}"
+                            )
+                        )
+                        spec.path = validated_path
+
+                    # Add to alias map
+                    processed.alias_map[spec.alias] = spec
+
+                    # Route to appropriate target collections
+                    self._route_attachment(spec, processed)
+
+            except Exception as e:
+                # Log the error and track it for comprehensive reporting
+                alias = attachment_dict.get("alias", "unknown")
+                path = attachment_dict.get("path", "unknown")
+                error_msg = f"Failed to process attachment '{alias}' (path: {path}): {e}"
+                logger.error(error_msg)
+                processing_errors.append(error_msg)
+
+                # In strict mode, fail immediately
+                if hasattr(self.security_manager, "security_mode"):
+                    from .security.types import PathSecurity
+
+                    if (
+                        getattr(
+                            self.security_manager,
+                            "security_mode",
+                            None,
+                        )
+                        == PathSecurity.STRICT
+                    ):
+                        # Re-raise the original exception to preserve its type
+                        # This is critical for proper error handling in dry-run mode
+                        raise
+                # Otherwise continue processing other attachments
+
+        # Report processing errors if any occurred
+        if processing_errors:
+            logger.warning(
+                "Attachment processing completed with %d errors:",
+                len(processing_errors),
+            )
+            for error in processing_errors:
+                logger.warning("  - %s", error)
+
+            # In non-strict modes, warn user about partial processing
+            if processing_errors and not hasattr(
+                self.security_manager, "security_mode"
+            ):
+                logger.warning(
+                    "Some attachments failed to process. Run with --path-security=strict "
+                    "to fail immediately on attachment errors."
+                )
 
         logger.debug(
             "Processed attachments: %d template files, %d template dirs, "
@@ -329,6 +378,36 @@ class AttachmentProcessor:
         except IOError as e:
             logger.error("Failed to read filelist %s: %s", filelist_path, e)
             raise ValueError(f"Cannot read filelist {filelist_path}: {e}")
+        except Exception as e:
+            logger.error(
+                "Unexpected error processing filelist %s: %s", filelist_path, e
+            )
+            raise ValueError(
+                f"Failed to process filelist {filelist_path}: {e}"
+            )
+
+        # Check if we processed any files successfully
+        if not specs:
+            logger.warning(
+                "No files were successfully processed from filelist %s",
+                filelist_path,
+            )
+            # In strict mode, this should be an error
+            if hasattr(self.security_manager, "security_mode"):
+                from .security.types import PathSecurity
+
+                if (
+                    getattr(
+                        self.security_manager,
+                        "security_mode",
+                        None,
+                    )
+                    == PathSecurity.STRICT
+                ):
+                    raise ValueError(
+                        f"No valid files found in filelist {filelist_path}. "
+                        "All files failed validation or the filelist is empty."
+                    )
 
         logger.debug(
             "Processed filelist %s: %d files loaded", filelist_path, len(specs)
