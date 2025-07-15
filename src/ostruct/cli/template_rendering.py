@@ -299,11 +299,40 @@ def render_template(
                             "  %s: %s (%r)", key, type(value).__name__, value
                         )
 
+                # Validate template size before rendering
+                from .template_limits import (
+                    TemplateSizeError,
+                    TemplateTotalSizeError,
+                    validate_rendered_template_size,
+                    validate_template_size,
+                )
+
+                template_name = (
+                    template_str
+                    if template_str.endswith((".j2", ".jinja2", ".md"))
+                    else "template"
+                )
+                try:
+                    validate_template_size(template_str, template_name)
+                except (TemplateSizeError, TemplateTotalSizeError) as e:
+                    raise TemplateValidationError(
+                        f"Template size validation failed: {e}"
+                    ) from e
+
                 result = template.render(**wrapped_context)
                 if not isinstance(result, str):
                     raise TemplateValidationError(
                         f"Template rendered to non-string type: {type(result)}"
                     )
+
+                # Validate rendered template size
+                try:
+                    validate_rendered_template_size(result)
+                except TemplateSizeError as e:
+                    raise TemplateValidationError(
+                        f"Rendered template size validation failed: {e}"
+                    ) from e
+
                 logger.info(
                     "Template render result (first 100 chars): %r",
                     result[:100],
