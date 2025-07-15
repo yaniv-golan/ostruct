@@ -1,10 +1,15 @@
 """Sentinel JSON extraction utility for two-pass Code Interpreter workaround."""
 
 import json
-import re
 from typing import Any, Dict, Optional
 
-_SENT_RE = re.compile(r"===BEGIN_JSON===\s*(\{.*?})\s*===END_JSON===", re.S)
+from .safe_regex import (
+    SAFE_SENTINEL_PATTERN,
+    RegexTimeoutError,
+    safe_regex_search,
+)
+
+_SENT_RE = SAFE_SENTINEL_PATTERN
 
 
 def extract_json_block(text: str) -> Optional[Dict[str, Any]]:
@@ -16,14 +21,19 @@ def extract_json_block(text: str) -> Optional[Dict[str, Any]]:
     Returns:
         Parsed JSON dict if found, None otherwise
     """
-    m = _SENT_RE.search(text)
-    if not m:
-        return None
     try:
-        result = json.loads(m.group(1))
+        m = safe_regex_search(_SENT_RE, text, timeout=2.0)
+        if not m:
+            return None
+
+        from .json_limits import parse_json_secure
+
+        result = parse_json_secure(m.group(1))
         # Ensure we return a dict, not other JSON types
         if isinstance(result, dict):
             return result
         return None
-    except json.JSONDecodeError:
+    except (RegexTimeoutError, json.JSONDecodeError, ValueError):
+        # ValueError includes JSONSizeError, JSONDepthError, JSONComplexityError
+        # RegexTimeoutError indicates potential ReDoS attack
         return None

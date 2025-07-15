@@ -273,6 +273,8 @@ def to_json(obj: Any) -> str:
             return f"<unserialisable:{type(value).__name__}>"
 
     try:
+        # Use standard json.dumps for serialization (not parsing)
+        # The security limits are for parsing JSON, not generating it
         return json.dumps(obj, default=_default_fallback)
     except Exception as e:  # pragma: no cover – shouldn't happen now
         logger.debug("to_json serialisation fallback hit: %s", e)

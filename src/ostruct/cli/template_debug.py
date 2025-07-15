@@ -129,6 +129,8 @@ def preview_snip(val: Any, max_size: int | None = None) -> str:
     elif isinstance(val, (dict, list)):
         import json
 
+        # Use standard json.dumps for serialization (not parsing)
+        # The security limits are for parsing JSON, not generating it
         txt = json.dumps(val, indent=2)
         type_info = f" ({type(val).__name__} with {len(val)} items)"
     else:

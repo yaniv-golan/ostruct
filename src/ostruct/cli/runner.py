@@ -112,22 +112,35 @@ def parse_json_with_duplication_handling(content: str) -> Any:
 
     Raises:
         json.JSONDecodeError: If JSON parsing fails completely
+        JSONSizeError: If JSON content exceeds size limits
+        JSONDepthError: If JSON content exceeds depth limits
+        JSONComplexityError: If JSON content exceeds complexity limits
 
     References:
         - https://community.openai.com/t/gpt-4o-structured-outputs-json-extra-data/884253
         - https://community.openai.com/t/gpt-4o-structured-outputs-duplicate-json/883156
     """
+    from .json_limits import (
+        JSONComplexityError,
+        JSONDepthError,
+        JSONSizeError,
+        parse_json_secure,
+    )
+
     config = get_config()
     strategy = config.json_parsing_strategy
 
     if strategy == "strict":
-        # Strict mode: fail on any malformed JSON
-        return json.loads(content)
+        # Strict mode: fail on any malformed JSON, with security limits
+        return parse_json_secure(content)
 
-    # Robust mode: handle duplication bugs
+    # Robust mode: handle duplication bugs with security limits
     try:
-        # Try normal parsing first
-        return json.loads(content)
+        # Try secure parsing first
+        return parse_json_secure(content)
+    except (JSONSizeError, JSONDepthError, JSONComplexityError):
+        # Security limit exceeded - don't attempt recovery
+        raise
     except json.JSONDecodeError as e:
         # Check if this is the specific "Extra data" error indicating duplication
         if "Extra data" in str(e) and hasattr(e, "pos"):
@@ -141,7 +154,7 @@ def parse_json_with_duplication_handling(content: str) -> Any:
             # Split at the error position and try to parse the first JSON object
             try:
                 first_json = content[: e.pos].strip()
-                result = json.loads(first_json)
+                result = parse_json_secure(first_json)
                 logger.info(
                     f"Successfully recovered from JSON duplication bug by parsing first {e.pos} characters. "
                     f"Discarded {len(content) - e.pos} duplicate characters."
@@ -152,6 +165,9 @@ def parse_json_with_duplication_handling(content: str) -> Any:
                     f"Failed to recover from JSON duplication - first part is also malformed: {inner_e}"
                 )
                 raise e  # Re-raise original error
+            except (JSONSizeError, JSONDepthError, JSONComplexityError):
+                # Security limit exceeded even in first part - don't attempt further recovery
+                raise
         else:
             # Different JSON error, re-raise as-is
             raise
