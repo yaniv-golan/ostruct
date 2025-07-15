@@ -56,6 +56,16 @@ import re
 from pathlib import Path, WindowsPath
 from typing import Optional, Union
 
+from ..safe_regex import (
+    SAFE_WINDOWS_ADS_PATTERN,
+    SAFE_WINDOWS_DEVICE_PATTERN,
+    SAFE_WINDOWS_DRIVE_PATTERN,
+    SAFE_WINDOWS_INCOMPLETE_UNC_PATTERN,
+    SAFE_WINDOWS_INVALID_CHARS_PATTERN,
+    SAFE_WINDOWS_RESERVED_PATTERN,
+    SAFE_WINDOWS_TRAILING_PATTERN,
+    SAFE_WINDOWS_UNC_PATTERN,
+)
 from .errors import PathSecurityError, SecurityErrorReasons
 
 logger = logging.getLogger(__name__)
@@ -64,46 +74,15 @@ logger = logging.getLogger(__name__)
 MAX_PATH = 260
 EXTENDED_MAX_PATH = 32767
 
-# Regex patterns for Windows path features
-_WINDOWS_DEVICE_PATH = re.compile(
-    r"^(?:\\\\|//)[?.](?:\\|/)(?!UNC(?:\\|/))",  # Match device paths but exclude UNC
-    flags=re.IGNORECASE,
-)
-
-_WINDOWS_DRIVE_RELATIVE = re.compile(
-    r"(?:^|[/\\])[A-Za-z]:(?![/\\])|"  # C:folder or \C:folder but not C:\folder
-    r"^/[A-Za-z]:(?![/\\])"  # /C:folder variants
-)
-
-_WINDOWS_RESERVED_NAMES = re.compile(
-    r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])"  # Base names
-    r"(\.[^\\/:*?\"<>|]*)?$",  # Optional extension
-    re.IGNORECASE,
-)
-
-_WINDOWS_UNC = re.compile(
-    r"^\\\\[^?.\\/][^\\/]*\\[^\\/]+(?:\\.*)?|"  # \\server\share[\anything]
-    r"^//[^?./][^/]*/[^/]+(?:/.*)?$"  # //server/share[/anything]
-)
-
-_WINDOWS_INCOMPLETE_UNC = re.compile(
-    r"^\\\\[^?.\\/][^\\/]*(?:\\[^\\/]+)?$|"  # \\server or \\server\incomplete
-    r"^//[^?./][^/]*(?:/[^/]+)?$"  # //server or //server/incomplete variants
-)
-
-_WINDOWS_ADS = re.compile(
-    r":[^/\\<>:\"|?*]+$|"  # Basic ADS
-    r":Zone\.Identifier$|"  # Zone.Identifier
-    r":[^/\\<>:\"|?*]+:[^/\\]+$"  # Multiple stream segments
-)
-
-_WINDOWS_INVALID_CHARS = re.compile(
-    r'[<>"|?*]|'  # Standard invalid chars except colon
-    r"(?<!^[A-Za-z]):|"  # Colon except after drive letter at start
-    r"[\x00-\x1F]"  # Control chars
-)
-
-_WINDOWS_TRAILING = re.compile(r"[. ]+$")  # Trailing dots/spaces
+# Regex patterns for Windows path features (ReDoS-safe)
+_WINDOWS_DEVICE_PATH = SAFE_WINDOWS_DEVICE_PATTERN
+_WINDOWS_DRIVE_RELATIVE = SAFE_WINDOWS_DRIVE_PATTERN
+_WINDOWS_RESERVED_NAMES = SAFE_WINDOWS_RESERVED_PATTERN
+_WINDOWS_UNC = SAFE_WINDOWS_UNC_PATTERN
+_WINDOWS_INCOMPLETE_UNC = SAFE_WINDOWS_INCOMPLETE_UNC_PATTERN
+_WINDOWS_ADS = SAFE_WINDOWS_ADS_PATTERN
+_WINDOWS_INVALID_CHARS = SAFE_WINDOWS_INVALID_CHARS_PATTERN
+_WINDOWS_TRAILING = SAFE_WINDOWS_TRAILING_PATTERN
 
 
 def is_windows_path(path: Union[str, Path]) -> bool:
@@ -309,14 +288,21 @@ def validate_windows_path(path: Union[str, Path]) -> Optional[str]:
         )
         logger.debug("Path components: %r", parts)
 
-        for part in parts:
+        for i, part in enumerate(parts):
             # Check for reserved names
             if _WINDOWS_RESERVED_NAMES.match(part):
                 logger.debug("Reserved name detected: %r", part)
                 return "Windows reserved names not allowed"
 
             # Check for invalid characters
-            if _WINDOWS_INVALID_CHARS.search(part):
+            # Special case: allow colon in drive letter (first component like "C:")
+            is_drive_letter = (
+                i == 0
+                and len(part) == 2
+                and part[1] == ":"
+                and part[0].isalpha()
+            )
+            if not is_drive_letter and _WINDOWS_INVALID_CHARS.search(part):
                 msg = f"Invalid characters in path component '{part}'"
                 logger.debug("Invalid characters: %s", msg)
                 return msg
