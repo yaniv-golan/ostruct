@@ -307,6 +307,22 @@ def validate_task_template(
     else:
         template_content = task  # type: ignore  # We know task is str here due to the checks above
 
+    # Sanitize template content for security
+    from .template_sanitizer import TemplateSanitizer
+
+    try:
+        template_content = TemplateSanitizer.validate_template_content(
+            template_content
+        )
+    except ValueError as e:
+        raise TaskTemplateSyntaxError(
+            f"Template security validation failed: {e}",
+            context={
+                "template_file": task_file,
+                "template_preview": template_content[:200],
+            },
+        )
+
     try:
         env = jinja2.Environment(undefined=jinja2.StrictUndefined)
         env.parse(template_content)
