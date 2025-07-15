@@ -28,11 +28,12 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Any, List, Optional, Set
 
 from .allowed_checker import is_path_in_allowed_dirs
 from .errors import PathSecurityError, SecurityErrorReasons
 from .normalization import normalize_path
+from .symlink_depth_protection import get_symlink_depth_protector
 from .windows_paths import is_windows_path, validate_windows_path
 
 logger = logging.getLogger(__name__)
@@ -296,29 +297,27 @@ def _resolve_symlink(
             - SYMLINK_LOOP: Cyclic reference detected
             - SYMLINK_BROKEN: Target doesn't exist
     """
-    logger.debug(
-        "\n=== Starting symlink resolution ===\n"
-        "Path: %s\n"
-        "Depth: %d\n"
-        "Seen paths: %s",
-        path,
-        current_depth,
-        sorted(list(seen or set())),
-    )
+    # Use enhanced depth protection to prevent DoS attacks
+    # Create a single context for the entire resolution process
+    protector = get_symlink_depth_protector()
+    with protector._request_context():
+        return _resolve_symlink_internal(
+            path, max_depth, allowed_dirs, seen, current_depth, protector
+        )
+
+
+def _resolve_symlink_internal(
+    path: Path,
+    max_depth: int,
+    allowed_dirs: List[Path],
+    seen: Optional[Set[Path]] = None,
+    current_depth: int = 0,
+    protector: Optional[Any] = None,
+) -> Path:
+    """Internal symlink resolution with protector context already established."""
 
     # 1. Check maximum recursion depth first (highest precedence)
     if current_depth >= max_depth:
-        logger.warning(
-            "\n=== Maximum symlink depth exceeded ===\n"
-            "Path: %s\n"
-            "Current depth: %d\n"
-            "Max depth: %d\n"
-            "Chain: %s",
-            path,
-            current_depth,
-            max_depth,
-            sorted(list(seen or set())),
-        )
         raise PathSecurityError(
             "Symlink security violation: maximum depth exceeded",
             path=str(path),
@@ -326,11 +325,14 @@ def _resolve_symlink(
                 "reason": SecurityErrorReasons.SYMLINK_MAX_DEPTH,
                 "depth": current_depth,
                 "max_depth": max_depth,
-                "chain": [str(p) for p in (seen or set())],
             },
         )
 
-    # 2. Initialize seen set if not provided
+    # 2. Use protector for additional DoS protection
+    if protector:
+        protector.validate_depth(current_depth, path)
+
+    # 3. Initialize seen set if not provided
     if seen is None:
         seen = set()
         logger.debug("Initialized new seen set")
@@ -466,8 +468,13 @@ def _resolve_symlink(
             current_depth + 1,
             sorted(list(seen)),
         )
-        return _resolve_symlink(
-            normalized_target, max_depth, allowed_dirs, seen, current_depth + 1
+        return _resolve_symlink_internal(
+            normalized_target,
+            max_depth,
+            allowed_dirs,
+            seen,
+            current_depth + 1,
+            protector,
         )
 
     except OSError as e:
