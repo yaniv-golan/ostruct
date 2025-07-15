@@ -127,6 +127,14 @@ class SharedUploadManager:
         # Add per-file upload locks to prevent race conditions
         self._upload_locks: Dict[Tuple[int, int], asyncio.Lock] = {}
 
+        # Lock management settings
+        self._max_locks = (
+            1000  # Maximum number of locks to prevent memory exhaustion
+        )
+        self._lock_cleanup_threshold = (
+            800  # Trigger cleanup when this many locks exist
+        )
+
         # URL registry for remote files
         self._url_registry: Dict[str, str] = {}  # URL -> unique_id mapping
 
@@ -346,6 +354,10 @@ class SharedUploadManager:
                 # Ensure we have a lock for this file
                 if file_id not in self._upload_locks:
                     self._upload_locks[file_id] = asyncio.Lock()
+
+                # Check if we need to clean up locks to prevent memory exhaustion
+                if len(self._upload_locks) > self._lock_cleanup_threshold:
+                    await self._cleanup_unused_locks()
 
                 # Use per-file lock to prevent concurrent uploads
                 async with self._upload_locks[file_id]:
@@ -745,12 +757,24 @@ class SharedUploadManager:
         # Only clear deleted files, keep preserved ones for future cleanup
         self._all_uploaded_ids = preserved_files
 
-        # Note: Lock cleanup logic omitted for simplicity
-        # Locks will be cleaned up when the manager is destroyed
+        # Clean up upload locks for files that are no longer tracked
+        # This prevents memory leaks in long-running processes
+        files_to_remove_locks: List[Tuple[int, int]] = []
+        for lock_file_id in list(self._upload_locks.keys()):
+            if (
+                lock_file_id not in self._uploads
+                or self._uploads[lock_file_id].upload_id is None
+            ):
+                files_to_remove_locks.append(lock_file_id)
+
+        for lock_file_id in files_to_remove_locks:
+            del self._upload_locks[lock_file_id]
+            logger.debug(f"[upload] Cleaned up lock for file: {lock_file_id}")
 
         logger.debug(
             f"[upload] Cleanup complete, {len(preserved_files)} files preserved, "
-            f"{len(self._all_uploaded_ids)} files remaining in tracking"
+            f"{len(self._all_uploaded_ids)} files remaining in tracking, "
+            f"cleaned up {len(files_to_remove_locks)} locks"
         )
 
     def get_files_for_tool(self, tool: str) -> List[str]:
@@ -772,6 +796,44 @@ class SharedUploadManager:
                 file_ids.append(record.upload_id)
 
         return file_ids
+
+    async def _cleanup_unused_locks(self) -> None:
+        """Clean up unused upload locks to prevent memory leaks."""
+        logger.debug(
+            f"[upload] Cleaning up unused locks, current count: {len(self._upload_locks)}"
+        )
+
+        # Find locks for files that are no longer being tracked or have completed upload
+        files_to_remove_locks: List[Tuple[int, int]] = []
+        for file_id in list(self._upload_locks.keys()):
+            if (
+                file_id not in self._uploads
+                or self._uploads[file_id].upload_id
+                is not None  # Upload completed
+            ):
+                files_to_remove_locks.append(file_id)
+
+        # Remove unused locks
+        for file_id in files_to_remove_locks:
+            del self._upload_locks[file_id]
+
+        logger.debug(
+            f"[upload] Cleaned up {len(files_to_remove_locks)} unused locks, "
+            f"remaining: {len(self._upload_locks)}"
+        )
+
+        # If we're still over the limit, remove oldest locks (simple FIFO)
+        if len(self._upload_locks) > self._max_locks:
+            excess_count = len(self._upload_locks) - self._max_locks
+            locks_to_remove = list(self._upload_locks.keys())[:excess_count]
+
+            for file_id in locks_to_remove:
+                del self._upload_locks[file_id]
+
+            logger.warning(
+                f"[upload] Removed {excess_count} locks due to memory limit, "
+                f"remaining: {len(self._upload_locks)}"
+            )
 
     def get_cache_stats(self) -> Optional[Dict[str, Any]]:
         """Get cache statistics if enabled."""
