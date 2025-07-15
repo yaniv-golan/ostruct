@@ -113,7 +113,8 @@ def safe_join(directory: str, *pathnames: str) -> Optional[str]:
         return None
 
     if not directory:
-        directory = "."
+        # Empty base directory should return None for security
+        return None
 
     # Handle None values in pathnames
     if any(p is None for p in pathnames):
@@ -171,6 +172,15 @@ def safe_join(directory: str, *pathnames: str) -> Optional[str]:
             if _WINDOWS_UNC.search(filename):
                 return None
 
+        # Enhanced path traversal checks with Unicode normalization
+        import unicodedata
+
+        try:
+            # Normalize Unicode to prevent bypass attempts
+            filename = unicodedata.normalize("NFKC", filename)
+        except Exception:
+            return None
+
         # Reject absolute paths and parent directory traversal
         if (
             filename.startswith("/")
@@ -178,7 +188,14 @@ def safe_join(directory: str, *pathnames: str) -> Optional[str]:
             or filename.startswith("../")
             or filename.endswith("/..")
             or "/../" in filename
+            or filename.startswith("..\\")  # Windows backslash variant
+            or filename.endswith("\\..")
+            or "\\..\\\\" in filename
         ):
+            return None
+
+        # Check for null bytes and other dangerous characters
+        if "\x00" in filename or any(ord(c) < 32 for c in filename):
             return None
 
         # Normalize the component
@@ -193,10 +210,42 @@ def safe_join(directory: str, *pathnames: str) -> Optional[str]:
     else:
         result = posixpath.join(base_dir, *normalized_parts)
 
-    # Final security check on the complete path
-    normalized_result = posixpath.normpath(result)
-    if not normalized_result.startswith(base_dir):
-        return None
+    # Enhanced final security check using canonical path resolution
+    try:
+        from pathlib import Path
+
+        # Convert to Path objects for canonical resolution
+        base_path = Path(base_dir).resolve()
+        result_path = Path(result).resolve()
+
+        # Check if result is within base directory using relative_to
+        try:
+            relative_path = result_path.relative_to(base_path)
+            # Additional check: ensure no path traversal occurred
+            if ".." in str(relative_path):
+                return None
+        except ValueError:
+            # Path is outside base directory
+            return None
+
+        normalized_result = str(result_path)
+
+    except Exception:
+        # Fallback to string-based check if Path resolution fails
+        normalized_result = posixpath.normpath(result)
+
+        # More robust prefix checking
+        if not base_dir.endswith("/"):
+            base_dir_check = base_dir + "/"
+        else:
+            base_dir_check = base_dir
+
+        if not normalized_result.startswith(base_dir_check):
+            return None
+
+        # Additional traversal check
+        if "/../" in normalized_result or normalized_result.endswith("/.."):
+            return None
 
     # Final Windows-specific checks on complete path
     if os.name == "nt":
