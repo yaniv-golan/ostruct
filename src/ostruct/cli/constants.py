@@ -67,8 +67,8 @@ class DefaultConfig:
     # Template processing defaults
     TEMPLATE: Dict[str, Any] = {
         "system_prompt": "You are a helpful assistant.",
-        "max_file_size": None,  # No limit by default (was 64KB)
-        "max_total_size": None,  # No limit by default (was 1MB)
+        "max_file_size": 100 * 1024 * 1024,  # 100MB default limit (was None)
+        "max_total_size": 500 * 1024 * 1024,  # 500MB total limit (was None)
         "preview_limit": 4096,  # 4KB
     }
 
