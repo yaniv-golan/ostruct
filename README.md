@@ -834,6 +834,285 @@ ostruct run template.j2 schema.json --ignore-task-sysprompt
 
 </details>
 
+## Turning Templates into Executables (OST)
+
+🚀 **New Feature**: OST (Self-Executing Templates) transforms your templates into standalone executables with embedded schemas and custom CLI interfaces. Perfect for sharing AI-powered tools without requiring users to understand ostruct's complex syntax.
+
+### What are OST Templates?
+
+OST templates are `.ost` files that combine:
+
+- **Jinja2 template content** for the AI prompt
+- **JSON schema** embedded in YAML front-matter
+- **CLI metadata** defining custom arguments and help text
+- **Global argument policies** for controlling ostruct flags
+
+### Creating Your First OST Template
+
+Generate a complete OST template with the scaffold command:
+
+```bash
+# Create a self-executing template
+ostruct scaffold template my_tool.ost --cli --name "text-analyzer" --description "Analyzes text content"
+
+# Make it executable (Unix/Linux/macOS)
+chmod +x my_tool.ost
+
+# Run it directly
+./my_tool.ost "Hello world" --format json --verbose
+```
+
+### OST Template Structure
+
+Here's what a complete OST template looks like:
+
+```yaml
+#!/usr/bin/env -S ostruct runx
+---
+cli:
+  name: text-analyzer
+  description: Analyzes text content and extracts insights
+  positional:
+    - name: input_text
+      help: Text to analyze
+  options:
+    format:
+      names: ["--format", "-f"]
+      help: Output format
+      default: "json"
+      choices: ["json", "yaml", "text"]
+    verbose:
+      names: ["--verbose", "-v"]
+      help: Enable verbose output
+      action: "store_true"
+    # File routing examples
+    config:
+      names: ["--config"]
+      help: Configuration file (template access)
+      type: "file"
+      target: "prompt"
+    data:
+      names: ["--data"]
+      help: Data file for Code Interpreter analysis
+      type: "file"
+      target: "ci"
+
+schema: |
+  {
+    "type": "object",
+    "properties": {
+      "analysis": {
+        "type": "object",
+        "properties": {
+          "sentiment": {"type": "string"},
+          "key_themes": {"type": "array", "items": {"type": "string"}},
+          "word_count": {"type": "integer"}
+        },
+        "required": ["sentiment", "key_themes", "word_count"]
+      }
+    },
+    "required": ["analysis"]
+  }
+
+defaults:
+  format: "json"
+  verbose: false
+
+global_args:
+  pass_through_global: true
+  --model:
+    mode: "allowed"
+    allowed: ["gpt-4o", "gpt-4.1", "o1"]
+    default: "gpt-4.1"
+  --temperature:
+    mode: "fixed"
+    value: "0.7"
+  --enable-tool:
+    mode: "blocked"  # Prevent users from enabling tools
+---
+# Analyze the following text
+
+Text to analyze: {{ input_text }}
+Format requested: {{ format }}
+Verbose mode: {{ verbose }}
+
+{% if config is defined %}
+Configuration: {{ config.content }}
+{% endif %}
+
+{% if data is defined %}
+Data file available for analysis: {{ data.name }}
+{% endif %}
+
+Please analyze this text and provide insights about sentiment, key themes, and word count.
+```
+
+### Usage Examples
+
+Once created, OST templates work like native CLI tools:
+
+```bash
+# Basic usage
+./my_tool.ost "This is amazing!" --format json
+
+# With file attachments
+./my_tool.ost "Analyze this" --config settings.yaml --data report.csv
+
+# Get help (automatically generated)
+./my_tool.ost --help
+
+# Dry run to test without API calls
+ostruct runx my_tool.ost "test input" --dry-run
+```
+
+### Global Argument Policies
+
+Control how users can interact with ostruct's global flags:
+
+```yaml
+global_args:
+  pass_through_global: true  # Allow unknown flags
+  --model:
+    mode: "allowed"          # Restrict to specific models
+    allowed: ["gpt-4o", "gpt-4.1"]
+    default: "gpt-4.1"
+  --temperature:
+    mode: "fixed"            # Lock to specific value
+    value: "0.7"
+  --enable-tool:
+    mode: "blocked"          # Completely prevent usage
+  --verbose:
+    mode: "pass-through"     # Allow any value
+```
+
+**Policy Modes:**
+
+- **`allowed`**: Restrict to whitelisted values
+- **`fixed`**: Lock to a specific value, reject overrides
+- **`blocked`**: Completely prevent flag usage
+- **`pass-through`**: Allow any value (default)
+
+### Cross-Platform Execution
+
+#### Unix/Linux/macOS
+
+```bash
+# Direct execution via shebang
+./my_tool.ost "input text"
+
+# Or via ostruct command
+ostruct runx my_tool.ost "input text"
+```
+
+#### Windows Support
+
+On Windows, OST templates can be executed using:
+
+```cmd
+# Via ostruct command (works everywhere)
+ostruct runx my_tool.ost "input text"
+
+# With Windows launcher (optional)
+ostruct scaffold template my_tool.ost --cli --windows-launcher
+my_tool_launcher.exe "input text"
+```
+
+The Windows launcher uses the same distlib binary that every pip user already has, minimizing antivirus false positives and ensuring reliability.
+
+**Security Note**: The Windows launcher executable is generated using distlib's simple-launcher technology. This is the same trusted binary infrastructure that pip itself uses for console scripts. Since this binary is already present on every system with pip installed, it significantly reduces the likelihood of antivirus false positives compared to custom executable generation. For more details, see the [distlib documentation](https://github.com/pypa/distlib/issues/192) and [PyPI project page](https://pypi.org/project/distlib/).
+
+### File Routing in OST Templates
+
+OST templates support all ostruct file routing targets:
+
+```yaml
+options:
+  template_file:
+    names: ["--template-file"]
+    type: "file"
+    target: "prompt"          # Template access only
+
+  analysis_data:
+    names: ["--data"]
+    type: "file"
+    target: "ci"              # Code Interpreter analysis
+
+  documentation:
+    names: ["--docs"]
+    type: "file"
+    target: "fs"              # File Search retrieval
+
+  user_document:
+    names: ["--pdf"]
+    type: "file"
+    target: "ud"              # User-data for vision models
+
+  auto_file:
+    names: ["--auto"]
+    type: "file"
+    target: "auto"            # Auto-route by file type
+```
+
+### Advanced Features
+
+#### Multi-Tool Integration
+
+```bash
+# OST template with multiple tools enabled
+ostruct runx analysis.ost data.csv --enable-tool code-interpreter --enable-tool file-search
+```
+
+#### Environment Setup
+
+```bash
+# Register OST file associations on Windows
+ostruct setup windows-register
+
+# Unregister when no longer needed
+ostruct setup windows-unregister
+```
+
+#### Template Debugging
+
+```bash
+# Test template rendering without API calls
+ostruct runx my_tool.ost "test input" --dry-run
+
+# Verbose debugging
+ostruct runx my_tool.ost "test input" --verbose --debug
+```
+
+### Migration from Regular Templates
+
+Convert existing templates to OST format:
+
+```bash
+# Start with your existing template
+ostruct scaffold template my_existing.ost --cli
+
+# Copy your template content after the --- separator
+# Add your schema to the front-matter
+# Define CLI arguments that match your use case
+```
+
+### Best Practices
+
+1. **Use descriptive CLI names**: `--input-file` instead of `--file`
+2. **Provide helpful descriptions**: Users see these in `--help`
+3. **Set sensible defaults**: Reduce required arguments
+4. **Use appropriate file targets**: `ci` for analysis, `fs` for search, `prompt` for templates
+5. **Test with `--dry-run`**: Validate before live execution
+6. **Version your templates**: OST files are self-contained and portable
+
+### Security Considerations
+
+- **Path validation**: OST templates respect ostruct's security policies
+- **Policy enforcement**: Global argument policies prevent unauthorized access
+- **Sandboxed execution**: Templates run in isolated environments
+- **Audit trail**: All executions are logged and traceable
+
+OST templates make AI-powered tools accessible to non-technical users while maintaining the full power and flexibility of ostruct underneath.
+
 ## Model Registry Management
 
 ostruct-cli maintains a registry of OpenAI models and their capabilities, which includes:
