@@ -329,7 +329,7 @@ def validate_task_template(
         return template_content
     except jinja2.TemplateSyntaxError as e:
         raise TaskTemplateSyntaxError(
-            f"Invalid Jinja2 template syntax: {e.message}",
+            f"Invalid template syntax: {e.message}",
             context={
                 "line": e.lineno,
                 "template_file": task_file,
