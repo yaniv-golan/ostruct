@@ -3485,4 +3485,4 @@ examples = ["asyncio-throttle", "tenacity"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "65ff42a51513a654e3281bf62703e0947fedeb8a57e51270bfb945daf362ecf3"
+content-hash = "eebf74636cb5a496db928b320d74a240a48186378b54feb1986ada3e71432aad"
