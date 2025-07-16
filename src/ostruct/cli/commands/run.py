@@ -55,6 +55,10 @@ def run(
 
     --file fs:docs manual.pdf         File Search upload
 
+    --file ud:deck pitch.pdf          User-data for vision models
+
+    --file auto:doc report.pdf        Auto-route by file type
+
     🔧 TOOL INTEGRATION
 
     --enable-tool code-interpreter    Code execution & analysis

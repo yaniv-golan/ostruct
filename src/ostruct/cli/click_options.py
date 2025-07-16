@@ -1016,7 +1016,7 @@ Default: enabled (set in config or via OSTRUCT_CACHE_UPLOADS)""",
             nargs=2,
             callback=validate_attachment_dir,
             metavar="[TARGETS:]ALIAS PATH",
-            help="Attach directory: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+            help="Attach directory: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs, user-data/ud, auto",
         ),
         click.option(
             "-F",
@@ -1026,7 +1026,7 @@ Default: enabled (set in config or via OSTRUCT_CACHE_UPLOADS)""",
             nargs=2,
             callback=validate_attachment_file,
             metavar="[TARGETS:]ALIAS PATH",
-            help="Attach file: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs",
+            help="Attach file: '[targets:]alias path'. Targets: prompt (default), code-interpreter/ci, file-search/fs, user-data/ud, auto",
         ),
     ):
         cmd = deco(cmd)

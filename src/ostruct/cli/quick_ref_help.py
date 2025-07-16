@@ -23,6 +23,8 @@ def show_quick_ref_help() -> None:
     attachment_content = """[bold bright_blue]--file[/bold bright_blue] alias file.txt                     📄 Template access (default target)
 [bold bright_blue]--file[/bold bright_blue] ci:data file.csv                   💻 Code Interpreter upload
 [bold bright_blue]--file[/bold bright_blue] fs:docs file.pdf                   🔍 File Search vector store
+[bold bright_blue]--file[/bold bright_blue] ud:deck pitch.pdf                  👁️ User-data for vision models
+[bold bright_blue]--file[/bold bright_blue] auto:doc report.pdf                🤖 Auto-route by file type
 [bold bright_blue]--file[/bold bright_blue] prompt:config config.yaml         📄 Template access (explicit)
 
 [bold bright_blue]--dir[/bold bright_blue] alias ./src                         📁 Directory attachment (template)

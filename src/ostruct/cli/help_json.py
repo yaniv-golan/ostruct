@@ -65,6 +65,8 @@ def _get_target_description(target: str) -> str:
         "prompt": "Template access only (default)",
         "code-interpreter": "Code execution & analysis",
         "file-search": "Document search & retrieval",
+        "user-data": "User-data files for vision models",
+        "auto": "Auto-route based on file type detection",
     }
     return descriptions.get(target, f"Unknown target: {target}")
 
