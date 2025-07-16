@@ -21,7 +21,21 @@ Basic Usage
 Command Structure
 -----------------
 
-The CLI revolves around a single subcommand called ``run``. All file processing, model configuration, and tool integration happens through this command with various options.
+ostruct provides several commands for different use cases:
+
+**Main Commands:**
+
+- ``ostruct run TEMPLATE_FILE SCHEMA_FILE [OPTIONS]`` - Execute templates with separate schema files
+- ``ostruct runx TEMPLATE_FILE [ARGS]`` - Execute OST (Self-Executing Templates) with embedded schemas
+- ``ostruct setup COMMAND`` - Environment setup and configuration
+- ``ostruct list-models`` - List available OpenAI models
+- ``ostruct update-registry`` - Update model registry
+
+**Command Details:**
+
+The ``run`` command is the primary interface for traditional ostruct usage. All file processing, model configuration, and tool integration happens through this command with various options.
+
+The ``runx`` command executes OST (Self-Executing Templates) that contain embedded schemas and CLI metadata in their YAML front-matter.
 
 File and Directory Management
 -----------------------------
@@ -211,6 +225,135 @@ Quick Reference Commands
    - **Use with caution** in production scripts or automation
    - **Format may change** between versions without backward compatibility
    - **Intended for development** and testing purposes only
+
+OST (Self-Executing Templates) Commands
+=======================================
+
+The ``runx`` command executes OST (Self-Executing Templates) that contain embedded schemas and CLI metadata in their YAML front-matter.
+
+ostruct runx
+------------
+
+Execute an OST (Self-Executing Template) file.
+
+.. code-block:: text
+
+   Usage: ostruct runx [OPTIONS] TEMPLATE_FILE [ARGS]...
+
+   Execute an OST (Self-Executing Template) file.
+   This command executes .ost template files that contain embedded schemas and CLI metadata in their
+   YAML front-matter. The template acts as a self-contained mini-CLI with its own argument parsing
+   and policy enforcement.
+
+   TEMPLATE_FILE: Path to the .ost template file to execute
+   ARGS: Arguments to pass to the template
+
+   Examples:
+     ostruct runx hello.ost --name "World"
+     ostruct runx analysis.ost data.csv --format json
+
+   Options:
+     TEMPLATE_FILE  (PATH) [required]
+     ARGS           (TEXT)
+     --help    -h   Show this message and exit.
+
+**Key Features:**
+
+- **Embedded Schema**: Schema is defined in the template's YAML front-matter
+- **Custom CLI**: Each template defines its own command-line interface
+- **Policy Enforcement**: Global argument policies control ostruct flag usage
+- **Cross-Platform**: Works on Unix/Linux/macOS via shebang, Windows via command
+- **Self-Contained**: Templates are portable and include all necessary metadata
+
+**Usage Examples:**
+
+.. code-block:: bash
+
+   # Execute OST template directly
+   ostruct runx my_tool.ost "input text" --format json
+
+   # Unix/Linux/macOS: Direct execution via shebang
+   ./my_tool.ost "input text" --format json
+
+   # Get help for the template (auto-generated)
+   ostruct runx my_tool.ost --help
+
+   # Dry run to test without API calls
+   ostruct runx my_tool.ost "test input" --dry-run
+
+Environment Setup Commands
+==========================
+
+The ``setup`` command provides environment configuration for ostruct.
+
+ostruct setup
+-------------
+
+Environment setup and configuration commands.
+
+.. code-block:: text
+
+   Usage: ostruct setup [OPTIONS] COMMAND [ARGS]...
+
+   Environment setup and configuration commands.
+
+   Options:
+     --help    Show this message and exit.
+
+   Commands:
+     windows-register    Register OST file associations and PATHEXT on Windows.
+     windows-unregister  Unregister OST file associations and PATHEXT on Windows.
+
+**Subcommands:**
+
+ostruct setup windows-register
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register OST file associations and PATHEXT on Windows.
+
+This command configures Windows to recognize ``.ost`` files and allows them to be executed directly from the command line.
+
+**What it does:**
+
+- Registers ``.ost`` file association with ostruct
+- Adds ``.OST`` to the ``PATHEXT`` environment variable
+- Enables direct execution of OST files in Command Prompt and PowerShell
+
+**Usage:**
+
+.. code-block:: bash
+
+   # Register OST file associations (Windows only)
+   ostruct setup windows-register
+
+**Requirements:**
+
+- Windows operating system
+- Administrator privileges (for system-wide registration)
+- ostruct-cli installed and available in PATH
+
+.. note::
+   **Security Note**: The Windows launcher executable is generated using distlib's simple-launcher technology. This is the same trusted binary infrastructure that pip itself uses for console scripts. Since this binary is already present on every system with pip installed, it significantly reduces the likelihood of antivirus false positives compared to custom executable generation. For more details, see the `distlib documentation <https://github.com/pypa/distlib/issues/192>`_ and `PyPI project page <https://pypi.org/project/distlib/>`_.
+
+ostruct setup windows-unregister
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unregister OST file associations and PATHEXT on Windows.
+
+This command removes the Windows file associations and PATHEXT modifications created by ``windows-register``.
+
+**Usage:**
+
+.. code-block:: bash
+
+   # Unregister OST file associations (Windows only)
+   ostruct setup windows-unregister
+
+**Use Cases:**
+
+- Uninstalling ostruct
+- Switching to a different OST handler
+- Troubleshooting file association issues
 
 Attachment System
 =================
