@@ -4,6 +4,9 @@ import click
 
 from .list_models import list_models
 from .run import run
+from .runx import runx
+from .scaffold import scaffold
+from .setup import setup
 from .update_registry import update_registry
 
 
@@ -14,6 +17,9 @@ def create_command_group() -> click.Group:
 
     # Add all commands to the group
     group.add_command(run)
+    group.add_command(runx)
+    group.add_command(scaffold)
+    group.add_command(setup)
     group.add_command(update_registry)
     group.add_command(list_models)
 
@@ -23,6 +29,9 @@ def create_command_group() -> click.Group:
 # Export commands for easy importing
 __all__ = [
     "run",
+    "runx",
+    "scaffold",
+    "setup",
     "update_registry",
     "list_models",
     "create_command_group",

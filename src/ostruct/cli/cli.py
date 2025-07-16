@@ -186,6 +186,10 @@ code-interpreter, ci             Code execution & analysis
 
 file-search, fs                  Document search & retrieval
 
+user-data, ud                    User-data files for vision models
+
+auto                             Auto-route based on file type detection
+
 {book} **GETTING HELP**
 
 ostruct --help                   Command overview
@@ -264,6 +268,27 @@ def main() -> None:
 
     # Load environment variables from .env file
     load_dotenv()
+
+    # Check if this is an OST (Self-Executing Template) execution
+    # This happens when a .ost file is executed via shebang: #!/usr/bin/env -S ostruct runx
+    if (
+        len(sys.argv) >= 3
+        and sys.argv[1] == "runx"
+        and sys.argv[2].endswith(".ost")
+    ):
+        # Import runx_main to handle OST execution
+        from .runx.runx_main import runx_main
+
+        # Extract the .ost file and remaining arguments
+        ost_file = sys.argv[2]
+        remaining_args = sys.argv[3:]
+
+        # Construct argv for runx_main: [ost_file, *remaining_args]
+        runx_argv = [ost_file] + remaining_args
+
+        # Execute via runx_main and exit with its return code
+        exit_code = runx_main(runx_argv)
+        sys.exit(exit_code)
 
     try:
         cli(standalone_mode=False)
