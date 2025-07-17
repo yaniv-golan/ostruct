@@ -2,7 +2,6 @@
 
 import json
 import logging
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -703,35 +702,6 @@ def _build_tool_context(
         context["code_interpreter_config"] = {}
 
     return context
-
-
-def _generate_template_variable_name(file_path: str) -> str:
-    """Generate a template variable name from a file path.
-
-    Converts filename to a valid template variable name by:
-    1. Taking the full filename (with extension)
-    2. Replacing dots and other special characters with underscores
-    3. Ensuring it starts with a letter or underscore
-
-    Examples:
-        data.csv -> data_csv
-        data.json -> data_json
-        my-file.txt -> my_file_txt
-        123data.xml -> _123data_xml
-
-    Args:
-        file_path: Path to the file
-
-    Returns:
-        Valid template variable name
-    """
-    filename = Path(file_path).name
-    # Replace special characters with underscores
-    var_name = re.sub(r"[^a-zA-Z0-9_]", "_", filename)
-    # Ensure it starts with letter or underscore
-    if var_name and var_name[0].isdigit():
-        var_name = "_" + var_name
-    return var_name
 
 
 async def create_template_context_from_routing(
