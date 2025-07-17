@@ -50,6 +50,50 @@ class LazyLoadSizeError(LazyLoadError):
 class LazyFileContent:
     """Enhanced lazy loading file content with configurable size limits and caching."""
 
+    # Attributes that should be transparently forwarded to the underlying
+    # ``FileInfo`` instance so template validation recognises them.  Keep this
+    # list in sync with ``FileInfoProxy._valid_attrs``.
+    _FILE_ATTRS: set[str] = {
+        "name",
+        "path",
+        "abs_path",
+        "content",
+        "size",
+        "mtime",
+        "encoding",
+        "hash",
+        "extension",
+        "basename",
+        "dirname",
+        "parent",
+        "stem",
+        "suffix",
+        "exists",
+        "is_file",
+        "is_dir",
+        "is_url",
+        "__html__",
+        "__html_format__",
+    }
+
+    # ------------------------------------------------------------------
+    #  Forward missing attributes to the wrapped ``FileInfo``
+    # ------------------------------------------------------------------
+
+    def __getattr__(self, name: str) -> Any:  # noqa: D401,E501
+        """Delegate common file attributes to *file_info*.
+
+        This allows template expressions like ``{{ my_file.extension }}`` to
+        pass validation when *my_file* is a ``LazyFileContent`` placeholder
+        created during dry-run.
+        """
+
+        if name in self._FILE_ATTRS:
+            return getattr(self.file_info, name)
+
+        # Fallback: preserve normal attribute-error semantics
+        raise AttributeError(name)
+
     def __init__(
         self,
         file_info: FileInfo,
