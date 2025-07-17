@@ -149,67 +149,75 @@ Files are routed to different tools using the ``--file`` flag with target specif
      - Upload for semantic search and retrieval
      - Search results and document context
 
-Variable Naming Rules
----------------------
+File Attachment Syntax
+----------------------
 
-ostruct automatically generates variable names from file paths following these rules:
+When attaching files, you provide a meaningful alias that becomes the template variable name:
 
-.. list-table::
+.. code-block:: bash
+
+   ostruct run template.j2 schema.json --file ALIAS FILE_PATH
+
+The alias you choose becomes the variable name in your template:
+
+.. list-table:: File Attachment Examples
    :header-rows: 1
    :widths: 40 35 25
 
-   * - File Path
-     - Generated Variable
-     - Pattern Applied
-   * - ``config.yaml``
-     - ``config_yaml``
-     - Replace dots with underscores
-   * - ``my-file.txt``
-     - ``my_file_txt``
-     - Replace hyphens with underscores
-   * - ``hello.world.json``
-     - ``hello_world_json``
-     - Replace all non-alphanumeric with underscores
-   * - ``123data.csv``
-     - ``_123data_csv``
-     - Prepend underscore if starts with digit
+   * - CLI Command
+     - Template Variable
+     - Use Case
+   * - ``--file config config.yaml``
+     - ``config``
+     - Configuration file
+   * - ``--file ci:data sales.csv``
+     - ``data``
+     - Data for analysis
+   * - ``--file fs:docs manual.pdf``
+     - ``docs``
+     - Document for search
+   * - ``--dir source ./src/``
+     - ``source``
+     - Source code directory
 
-Auto-Naming Examples
---------------------
+Template Usage
+--------------
 
-.. code-block:: bash
-
-   # Auto-naming syntax
-   ostruct run template.j2 schema.json --file config config.yaml
-   # Creates variable: config_yaml
-
-   ostruct run template.j2 schema.json --file ci:data sales-data.csv
-   # Creates variable: sales_data_csv
+Access file content using the alias you provided:
 
 .. code-block:: jinja
 
-   # Access in template (IMPORTANT: use .content)
    Configuration settings:
-   {{ config_yaml.content }}
+   {{ config.content }}
 
-   Sales data summary:
-   {{ sales_data_csv.content | word_count }} characters
+   Process the data:
+   {% for file in source %}
+   File: {{ file.name }}
+   Content: {{ file.content }}
+   {% endfor %}
 
-Custom Variable Names
----------------------
+Choosing Good Aliases
+----------------------
 
-Override auto-naming with explicit variable names:
+Use descriptive names that make your templates readable:
 
 .. code-block:: bash
 
-   # Two-argument alias syntax
-   ostruct run template.j2 schema.json --file app_config config.yaml
+   # Clear, descriptive aliases
+   ostruct run template.j2 schema.json \
+     --file app_config config.yaml \
+     --file ci:sales_data quarterly_sales.csv \
+     --file fs:user_manual documentation.pdf
 
 .. code-block:: jinja
 
-   # Access with custom name (IMPORTANT: use .content)
+   # Templates are self-documenting
    Application configuration:
    {{ app_config.content }}
+
+   Sales analysis shows {{ sales_data.content | word_count }} data points.
+
+   Search the user manual: {{ user_manual.content }}
 
 **Important: File Content Access**
 
@@ -419,36 +427,41 @@ This template works with either:
 - ``ostruct run template.j2 schema.json --file code main.py`` (single file)
 - ``ostruct run template.j2 schema.json --dir code ./src/`` (multiple files)
 
-Directory Routing Strategies
------------------------------
+Directory Attachments
+--------------------
 
-ostruct provides two approaches for directory routing, each suited to different template use cases:
-
-**Auto-Naming for Specific Structures:**
-
-Use auto-naming when your template is designed for a specific directory structure:
+Attach entire directories using the same alias pattern:
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json --dir config ./config_files     # → config_files variable
-   ostruct run template.j2 schema.json --dir ci:data ./datasets        # → datasets variable
+   ostruct run template.j2 schema.json --dir ALIAS DIRECTORY_PATH
+
+Directory examples:
+
+.. code-block:: bash
+
+   # Different routing targets
+   ostruct run template.j2 schema.json --dir config ./config_files
+   ostruct run template.j2 schema.json --dir ci:data ./datasets
+   ostruct run template.j2 schema.json --dir fs:docs ./documentation
 
 .. code-block:: jinja
 
-   {# Template must know actual directory names #}
+   {# Process all files in a directory #}
    Configuration files:
-   {% for file in config_files %}
+   {% for file in config %}
    - {{ file.name }}: {{ file.content | word_count }} words
    {% endfor %}
 
-**Aliases for Reusable Templates:**
+**Template Reusability:**
 
-Use aliases when your template needs to work with different directory structures:
+Choose aliases that work across different projects:
 
 .. code-block:: bash
 
-   ostruct run template.j2 schema.json --dir app_config ./settings      # → app_config variable
-   ostruct run template.j2 schema.json --dir ci:source_code ./src       # → source_code variable
+   # Generic aliases work anywhere
+   ostruct run template.j2 schema.json --dir source_code ./src
+   ostruct run template.j2 schema.json --dir test_data ./test_files
 
 .. code-block:: jinja
 

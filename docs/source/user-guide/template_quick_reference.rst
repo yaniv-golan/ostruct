@@ -60,9 +60,9 @@ File Routing Flags
    * - Flag
      - Purpose
      - Template Variable
-   * - ``--file``
+   * - ``--file alias``
      - Template access only
-     - ``filename`` variable
+     - ``alias`` variable
    * - ``--file ci:data``
      - Code Interpreter upload
      - ``data`` variable with analysis context
@@ -70,16 +70,15 @@ File Routing Flags
      - File Search upload
      - ``docs`` variable with search context
 
-Custom Variable Names
----------------------
+File Aliases
+------------
+
+Choose meaningful aliases for your files:
 
 .. code-block:: bash
 
-   # Auto-naming
-   --file config config.yaml                    # → config_yaml
-
-   # Custom naming
-   --file app_config config.yaml       # → app_config
+   --file config config.yaml                    # → config
+   --file app_config config.yaml               # → app_config
 
 File Content Access
 -------------------
