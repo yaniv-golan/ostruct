@@ -95,9 +95,23 @@ File Properties
 
    {{ file.name }}          <!-- filename.txt -->
    {{ file.path }}          <!-- relative/path/filename.txt -->
+   {{ file.abs_path }}      <!-- /full/path/filename.txt -->
    {{ file.size }}          <!-- 1024 (bytes) -->
    {{ file.extension }}     <!-- txt -->
-   {{ file.mtime }}         <!-- modification time -->
+   {{ file.suffix }}        <!-- .txt -->
+   {{ file.stem }}          <!-- filename without extension -->
+   {{ file.mtime }}         <!-- modification time (Unix timestamp) -->
+   {{ file.first }}         <!-- first file (itself for single files) -->
+   {{ file.is_collection }} <!-- false for single files -->
+
+Boolean Properties
+------------------
+
+.. code-block:: jinja
+
+   {% if file.exists %}     <!-- file exists -->
+   {% if file.is_file %}    <!-- is regular file -->
+   {% if file.is_url %}     <!-- is remote URL -->
 
 Multiple Files
 --------------
@@ -108,6 +122,32 @@ Multiple Files
    ## {{ file.name }}
    {{ file.content }}
    {% endfor %}
+
+Tool Variables
+==============
+
+.. code-block:: jinja
+
+   {% if code_interpreter_enabled %}
+   {% if file_search_enabled %}
+   {% if web_search_enabled %}
+   {% if auto_download_enabled %}
+
+   {{ current_model }}              <!-- gpt-4o -->
+   {{ code_interpreter_config }}    <!-- CI configuration object -->
+
+.. note:: Advanced only
+
+   ``auto_download_enabled`` and ``code_interpreter_config`` are useful when you
+   write *meta*-templates that must adapt to different Code-Interpreter settings.
+   Most templates can ignore them.
+
+Standard Input
+==============
+
+.. code-block:: jinja
+
+   {% if stdin %}{{ stdin }}{% endif %}
 
 CLI Variables
 =============
