@@ -62,7 +62,7 @@ OST files have three main sections:
 Basic Structure
 ---------------
 
-.. code-block:: yaml
+.. code-block:: text
 
    #!/usr/bin/env -S ostruct runx
    ---
@@ -713,7 +713,7 @@ Complete Example
 
 Here's a complete OST template that demonstrates all features:
 
-.. code-block:: yaml
+.. code-block:: text
 
    #!/usr/bin/env -S ostruct runx
    ---
