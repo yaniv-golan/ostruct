@@ -475,7 +475,7 @@ This template works with either:
 - ``ostruct run template.j2 schema.json --dir code ./src/`` (multiple files)
 
 Directory Attachments
---------------------
+---------------------
 
 Attach entire directories using the same alias pattern:
 

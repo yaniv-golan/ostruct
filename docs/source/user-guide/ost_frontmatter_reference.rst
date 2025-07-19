@@ -1186,7 +1186,7 @@ Argument Parsing Rules
 This matches behavior in many CLI tools for predictable parsing.
 
 Argument Parsing Tips
-====================
+=====================
 
 - **Recommended**: Use `--flag=value` format for flags with values to avoid order issues (e.g., --progress=basic input.txt).
 - **Order**: Prefer flags before positionals for best compatibility.
