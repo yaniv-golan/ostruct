@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -129,7 +130,9 @@ Enabled: {{ enabled }}
         ost_path = create_test_ost_file(fs, ost_content)
 
         # Mock execvp to capture the command that would be executed
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             # Call runx_main with explicit argv
             argv = [ost_path, "--text", "world", "--count", "5", "--enabled"]
             try:
@@ -235,7 +238,9 @@ Hello world
         ost_path = create_test_ost_file(fs, ost_content)
 
         # Test that allowed value passes
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 ost_path,
                 "--model",
@@ -281,7 +286,9 @@ Hello world
 """
         ost_path = create_test_ost_file(fs, ost_content)
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [ost_path, "--model", "any-model", "--temperature", "0.123"]
             try:
                 runx_main(argv)
@@ -356,7 +363,9 @@ Temperature: {{ temp_setting }}
 """
         ost_path = create_test_ost_file(fs, ost_content)
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [ost_path]
             try:
                 runx_main(argv)
@@ -398,7 +407,9 @@ Quiet: {{ quiet }}
 """
         ost_path = create_test_ost_file(fs, ost_content)
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [ost_path, "--verbose"]
             try:
                 runx_main(argv)
@@ -443,7 +454,9 @@ Data from: {{ data_dir }}
         )
         fs.create_dir("/test_workspace/base/data")
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 ost_path,
                 "--input-file",
@@ -552,7 +565,9 @@ Hello world
 """
         ost_path = create_test_ost_file(fs, ost_content)
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [ost_path]
             try:
                 runx_main(argv)
@@ -602,7 +617,9 @@ Message: {{ message }}
         assert "runx" in result.output
 
         # Test running the command (will fail due to mocking, but should parse correctly)
-        with patch("ostruct.cli.runx.runx_main.os.execvp"):
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ):
             result = self.runner.invoke(
                 self.cli, ["runx", ost_path, "--message", "world"]
             )
@@ -785,7 +802,9 @@ Create the greeting now.
         os.chmod(hello_cli_path, 0o755)
 
         # Test 1: Basic execution with dry-run to validate template and schema
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 hello_cli_path,
                 "--dry-run",
@@ -893,7 +912,9 @@ Create the greeting now.
         ]
 
         for test_args, expected_vars in test_cases:
-            with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+            with patch.object(
+                sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+            ) as mock_execvp:
                 argv = [hello_cli_path] + test_args + ["--dry-run"]
                 try:
                     runx_main(argv)
@@ -1009,7 +1030,9 @@ Result: {{ pdf_file.path if pdf_file else 'no pdf' }}
         )
 
         # Test user-data file target
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 ost_path,
                 "--pdf-file",
@@ -1031,7 +1054,9 @@ Result: {{ pdf_file.path if pdf_file else 'no pdf' }}
             ), f"Missing user-data file flag in {file_args}"
 
         # Test auto file target
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 ost_path,
                 "--doc-file",
@@ -1053,7 +1078,9 @@ Result: {{ pdf_file.path if pdf_file else 'no pdf' }}
             ), f"Missing auto file flag in {file_args}"
 
         # Test user-data directory target
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 ost_path,
                 "--data-dir",
@@ -1075,7 +1102,9 @@ Result: {{ pdf_file.path if pdf_file else 'no pdf' }}
             ), f"Missing user-data dir flag in {dir_args}"
 
         # Test auto directory target
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 ost_path,
                 "--auto-dir",
@@ -1097,7 +1126,9 @@ Result: {{ pdf_file.path if pdf_file else 'no pdf' }}
             ), f"Missing auto dir flag in {dir_args}"
 
         # Test user-data collection target
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 ost_path,
                 "--collection",
@@ -1324,7 +1355,9 @@ Verbose: {{ verbose }}
             fs, ost_content_repeatable, "repeatable.ost"
         )
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 repeatable_path,
                 "--tag",
@@ -1391,7 +1424,9 @@ Hello {{ name }}
             fs, ost_content_pass_through, "pass_through.ost"
         )
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 pass_through_path,
                 "--name",
@@ -1446,7 +1481,9 @@ Hello {{ name }}
         )
 
         # Should exit with code 2 when unknown flag is provided
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 no_pass_through_path,
                 "--name",
@@ -1513,7 +1550,9 @@ Special: "{{ special }}"
             fs, ost_content_edge_cases, "edge_cases.ost"
         )
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 edge_cases_path,
                 "--empty",
@@ -1543,7 +1582,9 @@ Special: "{{ special }}"
             assert "special=test=value&more" in var_args
 
         # Test 5: Default values are applied when arguments not provided
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [edge_cases_path]  # No arguments provided
             try:
                 runx_main(argv)
@@ -1619,7 +1660,9 @@ Process: {{ input }}
         )
 
         # Test 1: FIXED mode - should reject attempts to override fixed value
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 policy_path,
                 "--input",
@@ -1638,7 +1681,9 @@ Process: {{ input }}
         # NOTE: Currently the policy enforcer only processes explicitly provided flags
         # Fixed values are not automatically added when the flag is not provided
         # This might be the intended behavior or a limitation to be addressed later
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 policy_path,
                 "--input",
@@ -1706,7 +1751,9 @@ User input: {{ user_input }}
 
         # In the new architecture, template-generated --var flags are always allowed
         # Only user-provided flags are subject to policy enforcement
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(blocked_path)]
             runx_main(argv)
 
@@ -1720,7 +1767,9 @@ User input: {{ user_input }}
             assert "user_input=default_value" in cmd_args[var_idx + 1]
 
         # But if user tries to provide --var directly, it should be blocked
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(blocked_path), "--var", "custom=value"]
             try:
                 runx_main(argv)
@@ -1769,7 +1818,9 @@ File: {% if input_file is defined %}{{ input_file }}{% endif %}
         test_file = Path("/test/input.txt")
         fs.create_file(test_file, contents="test input")
 
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(file_path), "--input-file", str(test_file)]
             try:
                 runx_main(argv)
@@ -1824,7 +1875,9 @@ Using model: {{ user_model }}
         fs.create_file(fixed_path, contents=template_content_fixed)
 
         # Test 3a: Fixed mode without explicit flag (current behavior: no auto-injection)
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(fixed_path)]
             try:
                 runx_main(argv)
@@ -1841,7 +1894,9 @@ Using model: {{ user_model }}
             assert "--model" not in cmd_args
 
             # Test 3b: Fixed mode with explicit flag (should reject override attempt)
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 str(fixed_path),
                 "--model",
@@ -1855,7 +1910,9 @@ Using model: {{ user_model }}
                 assert not mock_execvp.called
 
         # Test 3c: Fixed mode with matching explicit flag (should succeed)
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 str(fixed_path),
                 "--model",
@@ -1914,7 +1971,9 @@ Temperature: {{ temp_setting }}
         fs.create_file(allowed_path, contents=template_content_allowed)
 
         # Test 4a: Valid template default should pass
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(allowed_path)]
             try:
                 runx_main(argv)
@@ -1967,7 +2026,9 @@ Temperature: {{ temp_setting }}
 
         # In the new architecture, template-generated flags are always allowed
         # regardless of policy - only user-provided flags are subject to policy
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(invalid_path)]
             runx_main(argv)
 
@@ -2038,7 +2099,9 @@ Collection: {% if collection_file is defined %}{{ collection_file }}{% endif %}
         fs.create_file(test_collection, contents="item1\nitem2")
 
         # Test 5b: Allowed operations should work
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 str(complex_path),
                 "--config-file",
@@ -2100,7 +2163,9 @@ Var: {{ user_var }}
         fs.create_file(mixed_path, contents=template_content_mixed)
 
         # Should succeed - template-generated flags bypass policy
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(mixed_path), "--model", "gpt-4.1"]
             runx_main(argv)
 
@@ -2158,7 +2223,9 @@ Result: Analysis complete
         tool_path = create_test_ost_file(fs, ost_content, "tool_template.ost")
 
         # Test 1: User tries to override template-set --enable-tool
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(tool_path), "--enable-tool", "web-search"]
             try:
                 runx_main(argv)
@@ -2168,7 +2235,9 @@ Result: Analysis complete
                 assert not mock_execvp.called
 
         # Test 2: User tries to override template-set --model
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(tool_path), "--model", "gpt-4o-mini"]
             try:
                 runx_main(argv)
@@ -2178,7 +2247,9 @@ Result: Analysis complete
                 assert not mock_execvp.called
 
         # Test 3: User provides same value as template (should succeed)
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(tool_path), "--model", "gpt-4o", "--task", "review"]
             runx_main(argv)
 
@@ -2241,7 +2312,9 @@ Response: Processed
         )
 
         # Test 1: User tries to use blocked --debug flag
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(secure_path), "--debug", "--query", "test"]
             try:
                 runx_main(argv)
@@ -2251,7 +2324,9 @@ Response: Processed
                 assert not mock_execvp.called
 
         # Test 2: User can use allowed flags alongside template-set flags
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(secure_path), "--query", "test", "--verbose"]
             runx_main(argv)
 
@@ -2311,7 +2386,9 @@ Result: Done
         )
 
         # Test 1: User tries disallowed model value
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(restricted_path), "--model", "gpt-3.5-turbo"]
             try:
                 runx_main(argv)
@@ -2321,7 +2398,9 @@ Result: Done
                 assert not mock_execvp.called
 
         # Test 2: User tries disallowed temperature value
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(restricted_path), "--temperature", "0.7"]
             try:
                 runx_main(argv)
@@ -2331,7 +2410,9 @@ Result: Done
                 assert not mock_execvp.called
 
         # Test 3: User provides allowed values (should succeed)
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 str(restricted_path),
                 "--model",
@@ -2415,7 +2496,9 @@ Analysis: Complete
         fs.create_file(input_file_path, contents="test data")
 
         # Test successful execution with template-set flags and user additions
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [
                 str(complex_path),
                 "--input-file",
@@ -2456,7 +2539,9 @@ Analysis: Complete
             assert "--file" in cmd_args
 
         # Test blocked temperature flag
-        with patch("ostruct.cli.runx.runx_main.os.execvp") as mock_execvp:
+        with patch.object(
+            sys.modules["ostruct.cli.runx.runx_main"].os, "execvp"
+        ) as mock_execvp:
             argv = [str(complex_path), "--temperature", "0.7"]
             try:
                 runx_main(argv)
