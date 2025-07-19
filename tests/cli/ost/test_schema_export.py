@@ -93,18 +93,22 @@ class TestSchemaExporter:
         schema_content = '{"type": "object"}'
 
         with patch.dict("os.environ", {"XDG_RUNTIME_DIR": "/custom/runtime"}):
-            with patch("tempfile.NamedTemporaryFile") as mock_temp:
-                mock_file = mock_temp.return_value.__enter__.return_value
-                mock_file.name = "/custom/runtime/ost_schema_test.json"
-                mock_file.flush.return_value = None
+            with patch(
+                "ostruct.cli.ost.schema_export.os.path.exists",
+                return_value=True,
+            ):  # Mock directory exists
+                with patch("tempfile.NamedTemporaryFile") as mock_temp:
+                    mock_file = mock_temp.return_value.__enter__.return_value
+                    mock_file.name = "/custom/runtime/ost_schema_test.json"
+                    mock_file.flush.return_value = None
 
-                exporter = SchemaExporter()
-                exporter.export_inline_schema(schema_content)
+                    exporter = SchemaExporter()
+                    exporter.export_inline_schema(schema_content)
 
-                # Verify tempfile was called with custom directory
-                mock_temp.assert_called_once()
-                call_kwargs = mock_temp.call_args[1]
-                assert call_kwargs["dir"] == "/custom/runtime"
+                    # Verify tempfile was called with custom directory
+                    mock_temp.assert_called_once()
+                    call_kwargs = mock_temp.call_args[1]
+                    assert call_kwargs["dir"] == "/custom/runtime"
 
     def test_export_file_creation_error(self) -> None:
         """Test error handling when file creation fails."""
@@ -159,7 +163,7 @@ class TestSchemaExporter:
         schema_content = '{"type": "object"}'
 
         exporter = SchemaExporter()
-        _path = exporter.export_inline_schema(schema_content)
+        exporter.export_inline_schema(schema_content)
 
         # Mock unlink to raise OSError
         with patch.object(

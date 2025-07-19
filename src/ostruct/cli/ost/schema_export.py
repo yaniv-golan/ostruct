@@ -55,10 +55,13 @@ class SchemaExporter:
 
         # Create temporary file
         try:
-            # Use system temp directory or XDG_RUNTIME_DIR if available
-            temp_dir = (
-                os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()
-            )
+            # Use system temp directory or XDG_RUNTIME_DIR if available and exists
+            temp_dir = None
+            xdg_runtime = os.environ.get("XDG_RUNTIME_DIR")
+            if xdg_runtime and os.path.exists(xdg_runtime):
+                temp_dir = xdg_runtime
+            else:
+                temp_dir = tempfile.gettempdir()
 
             # Create named temporary file
             temp_file = tempfile.NamedTemporaryFile(
