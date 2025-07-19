@@ -1,5 +1,6 @@
 """Tests for enhanced symlink depth protection."""
 
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -234,8 +235,9 @@ class TestSymlinkDepthProtectionIntegration:
         reset_symlink_depth_protector()
 
         # Patch the global protector
-        with patch(
-            "ostruct.cli.security.symlink_resolver.get_symlink_depth_protector",
+        with patch.object(
+            sys.modules["ostruct.cli.security.symlink_resolver"],
+            "get_symlink_depth_protector",
             return_value=protector,
         ):
             results = []
