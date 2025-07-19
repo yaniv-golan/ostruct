@@ -453,6 +453,57 @@ class ListProxy(ValidationProxy):
                 return DictProxy(f"{self._var_name}{key_str}", value)
             return ValidationProxy(f"{self._var_name}{key_str}")
 
+    # ---------------------------------------------------------------------
+    # Attribute Access Helpers
+    # ---------------------------------------------------------------------
+
+    def __getattr__(self, name: str) -> Union["ValidationProxy", "DictProxy"]:
+        """Provide attribute access for file lists during validation.
+
+        If this ListProxy represents a list of FileInfo objects (i.e. it was
+        created from a ``FileInfoList`` in the template context), expose the
+        common ``FileInfo`` attributes directly so that template expressions
+        like ``{{ files.extension }}`` (for single-file lists) validate
+        correctly.
+
+        Only allow direct attribute access when the list contains exactly one
+        file (matching runtime semantics of ``FileInfoList``). For multi-file
+        lists, raise an error guiding users to index the list or use the
+        ``|single`` filter – mirroring the behaviour of ``FileInfoList`` at
+        runtime.
+        """
+
+        # Handle HTML escaping attrs early (keep parity with ValidationProxy)
+        if name in {"__html__", "__html_format__"}:
+            return ValidationProxy(f"{self._var_name}.{name}", value="")
+
+        # If this is a list of FileInfo objects expose the whitelisted attrs
+        if self._is_file_list and name in self._file_attrs:
+            if len(self._value) == 0:
+                raise ValueError(
+                    f"No files in '{self._var_name}'. Cannot access .{name} property."
+                )
+
+            if len(self._value) > 1:
+                raise ValueError(
+                    f"'{self._var_name}' contains {len(self._value)} files. "
+                    f"Use '{{{{ {self._var_name}[0].{name} }}}}' for the first file, "
+                    f"'{{{{ {self._var_name}|single.{name} }}}}' if expecting exactly one file, "
+                    f"or loop over files with '{{%% for file in {self._var_name} %%}}{{{{ file.{name} }}}}{{%% endfor %%}}'."
+                )
+
+            # Exactly one file – delegate attribute access to FileInfoProxy so
+            # that nested validation continues to work.
+            # Validate attribute via FileInfoProxy, but return a ValidationProxy
+            proxy = FileInfoProxy(f"{self._var_name}[0]", self._value[0])
+            _ = getattr(proxy, name)  # validation only
+            return ValidationProxy(
+                f"{self._var_name}[0].{name}", allow_nested=False
+            )
+
+        # Fallback to the base ValidationProxy behaviour for all other cases
+        return super().__getattr__(name)
+
 
 class StdinProxy:
     """Proxy for lazy stdin access.

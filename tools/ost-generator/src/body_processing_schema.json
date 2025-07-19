@@ -1,0 +1,301 @@
+{
+    "type": "object",
+    "properties": {
+        "enhanced_template_body": {
+            "type": "string",
+            "description": "The enhanced template body with CLI integration and comments"
+        },
+        "processing_summary": {
+            "type": "object",
+            "properties": {
+                "variable_mappings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "original_name": {
+                                "type": "string",
+                                "description": "Original variable name in template"
+                            },
+                            "new_name": {
+                                "type": "string",
+                                "description": "New variable name (if changed)"
+                            },
+                            "cli_flag": {
+                                "type": "string",
+                                "description": "Corresponding CLI flag"
+                            },
+                            "mapping_type": {
+                                "type": "string",
+                                "enum": [
+                                    "direct",
+                                    "alias",
+                                    "transformed"
+                                ],
+                                "description": "Type of mapping performed"
+                            },
+                            "transformation_notes": {
+                                "type": "string",
+                                "description": "Notes about any transformations applied"
+                            }
+                        },
+                        "required": [
+                            "original_name",
+                            "cli_flag",
+                            "mapping_type"
+                        ]
+                    }
+                },
+                "comments_added": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                                "description": "Location where comment was added"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "header",
+                                    "inline",
+                                    "block",
+                                    "usage_example"
+                                ],
+                                "description": "Type of comment added"
+                            },
+                            "content": {
+                                "type": "string",
+                                "description": "Content of the comment"
+                            },
+                            "purpose": {
+                                "type": "string",
+                                "description": "Purpose of the comment"
+                            }
+                        },
+                        "required": [
+                            "location",
+                            "type",
+                            "content",
+                            "purpose"
+                        ]
+                    }
+                },
+                "preserved_features": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "feature_type": {
+                                "type": "string",
+                                "enum": [
+                                    "conditional",
+                                    "loop",
+                                    "filter",
+                                    "function",
+                                    "inheritance",
+                                    "include",
+                                    "macro"
+                                ],
+                                "description": "Type of feature preserved"
+                            },
+                            "location": {
+                                "type": "string",
+                                "description": "Location in template"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Description of the preserved feature"
+                            },
+                            "modifications": {
+                                "type": "string",
+                                "description": "Any modifications made to the feature"
+                            }
+                        },
+                        "required": [
+                            "feature_type",
+                            "location",
+                            "description"
+                        ]
+                    }
+                },
+                "file_routing_updates": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "variable_name": {
+                                "type": "string",
+                                "description": "File variable name"
+                            },
+                            "routing_target": {
+                                "type": "string",
+                                "enum": [
+                                    "prompt",
+                                    "code_interpreter",
+                                    "file_search"
+                                ],
+                                "description": "File routing target"
+                            },
+                            "alias": {
+                                "type": "string",
+                                "description": "Routing alias"
+                            },
+                            "original_reference": {
+                                "type": "string",
+                                "description": "Original file reference in template"
+                            },
+                            "updated_reference": {
+                                "type": "string",
+                                "description": "Updated file reference"
+                            }
+                        },
+                        "required": [
+                            "variable_name",
+                            "routing_target",
+                            "alias",
+                            "original_reference",
+                            "updated_reference"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "variable_mappings",
+                "comments_added",
+                "preserved_features",
+                "file_routing_updates"
+            ]
+        },
+        "validation_results": {
+            "type": "object",
+            "properties": {
+                "syntax_valid": {
+                    "type": "boolean",
+                    "description": "Whether the enhanced template has valid Jinja2 syntax"
+                },
+                "all_variables_mapped": {
+                    "type": "boolean",
+                    "description": "Whether all variables were successfully mapped"
+                },
+                "original_functionality_preserved": {
+                    "type": "boolean",
+                    "description": "Whether original functionality is preserved"
+                },
+                "comments_comprehensive": {
+                    "type": "boolean",
+                    "description": "Whether comments are comprehensive and helpful"
+                },
+                "file_routing_correct": {
+                    "type": "boolean",
+                    "description": "Whether file routing is correctly implemented"
+                },
+                "issues_found": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Any issues found during processing"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Warnings about potential issues"
+                }
+            },
+            "required": [
+                "syntax_valid",
+                "all_variables_mapped",
+                "original_functionality_preserved",
+                "comments_comprehensive",
+                "file_routing_correct",
+                "issues_found",
+                "warnings"
+            ]
+        },
+        "enhancement_notes": {
+            "type": "object",
+            "properties": {
+                "improvements_made": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of improvements made to the template"
+                },
+                "backward_compatibility": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Notes about backward compatibility"
+                },
+                "usage_recommendations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Recommendations for using the enhanced template"
+                },
+                "maintenance_notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Notes for future maintenance"
+                }
+            },
+            "required": [
+                "improvements_made",
+                "backward_compatibility",
+                "usage_recommendations",
+                "maintenance_notes"
+            ]
+        },
+        "quality_metrics": {
+            "type": "object",
+            "properties": {
+                "readability_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Readability score (0.0 to 1.0)"
+                },
+                "maintainability_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Maintainability score (0.0 to 1.0)"
+                },
+                "comment_coverage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Comment coverage score (0.0 to 1.0)"
+                },
+                "cli_integration_completeness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "CLI integration completeness score (0.0 to 1.0)"
+                }
+            },
+            "required": [
+                "readability_score",
+                "maintainability_score",
+                "comment_coverage",
+                "cli_integration_completeness"
+            ]
+        }
+    },
+    "required": [
+        "enhanced_template_body",
+        "processing_summary",
+        "validation_results",
+        "enhancement_notes",
+        "quality_metrics"
+    ]
+}

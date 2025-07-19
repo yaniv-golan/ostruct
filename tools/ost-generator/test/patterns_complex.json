@@ -1,0 +1,160 @@
+{
+  "file_patterns": {
+    "file_attachments": [
+      {
+        "variable_name": "config",
+        "attachment_type": "single_file",
+        "routing_target": "template",
+        "file_types": [
+          "json",
+          "yaml",
+          "ini"
+        ],
+        "confidence": 0.95,
+        "evidence": [
+          "Variable type 'file', used for configuration, strong CLI flag suggestion.",
+          "Pattern type indicates single_file with direct access and template routing."
+        ]
+      },
+      {
+        "variable_name": "doc",
+        "attachment_type": "multiple_files",
+        "routing_target": "code_interpreter",
+        "file_types": [
+          "pdf",
+          "txt",
+          "json"
+        ],
+        "confidence": 0.9,
+        "evidence": [
+          "Complex loop variable referencing file attributes (name, size, content).",
+          "Template analysis and classification indicate file access in a loop, suited for analysis/processing."
+        ]
+      }
+    ],
+    "directory_operations": [
+      {
+        "variable_name": "documents",
+        "operation_type": "directory_iteration",
+        "suggested_flags": [
+          "--documents",
+          "-d"
+        ],
+        "confidence": 0.97
+      }
+    ]
+  },
+  "tool_hints": {
+    "code_interpreter": {
+      "suggested": true,
+      "confidence": 0.75,
+      "reasons": [
+        "Presence of file size, content analysis, and required structured output.",
+        "Schema analysis suggests strict typing and structured output appropriate for code/data handling."
+      ],
+      "use_cases": [
+        "Batch processing of documents for summary and extraction.",
+        "Transforming or analyzing file contents."
+      ]
+    },
+    "file_search": {
+      "suggested": true,
+      "confidence": 0.7,
+      "reasons": [
+        "User enables document search via enable_search and search_query.",
+        "Evidence indicates large document sets and need for content extraction."
+      ],
+      "document_types": [
+        "pdf",
+        "txt",
+        "json"
+      ]
+    },
+    "web_search": {
+      "suggested": true,
+      "confidence": 0.7,
+      "reasons": [
+        "Conditional logic to trigger web search based on user query.",
+        "Search query variable in template.",
+        "Potential for real-time information augmentation."
+      ],
+      "search_contexts": [
+        "Document enrichment",
+        "Querying external knowledge"
+      ]
+    }
+  },
+  "security_patterns": {
+    "input_validation": {
+      "required": true,
+      "validation_types": [
+        "file path validation",
+        "directory existence/readability checks",
+        "enum value validation",
+        "boolean flag validation"
+      ],
+      "risk_level": "medium",
+      "evidence": [
+        "File and directory paths accepted as arguments from user.",
+        "Enumerated fields (analysis_mode, output_format) require value restrictions.",
+        "Booleans (include_metadata, enable_search) need validation as flags."
+      ]
+    },
+    "file_safety": {
+      "file_access_patterns": [
+        "Read access to config file.",
+        "Batch access of files in provided directory.",
+        "Content parsing of possibly unsafe file types."
+      ],
+      "safety_recommendations": [
+        "Check that provided paths exist and are readable before access.",
+        "Restrict processing to safe file types (e.g., no .exe, .bat).",
+        "Implement robust error handling for file access exceptions."
+      ],
+      "restricted_operations": [
+        "Blocking any file writes to user directories.",
+        "Forbid execution of files."
+      ]
+    }
+  },
+  "integration_patterns": {
+    "mcp_servers": [
+      {
+        "server_type": "document-analysis",
+        "use_case": "Batch processing and summarization of documents.",
+        "confidence": 0.7
+      }
+    ],
+    "external_apis": [
+      {
+        "api_type": "web-search",
+        "purpose": "Add context or new information to document analysis results.",
+        "confidence": 0.7
+      }
+    ]
+  },
+  "pattern_summary": {
+    "complexity_score": 0.8,
+    "primary_patterns": [
+      "Directory iteration for file batch processing.",
+      "Config file attachment and parsing.",
+      "Dynamic selection of analysis modes and output formats.",
+      "Conditional search (internal and web search).",
+      "Structured, validated JSON output."
+    ],
+    "recommended_features": [
+      "Required directory and file CLI arguments with validation.",
+      "Looped file processing and content extraction.",
+      "Switches for metadata inclusion and search enabling.",
+      "Automatic output formatting into structured JSON.",
+      "Tool integration: code-interpreter, file-search, web-search."
+    ],
+    "implementation_notes": [
+      "Enforce strict file and directory path validation to prevent path traversal and ensure file safety.",
+      "Force explicit output formats and schemas; check all required output fields.",
+      "Consider search extensibility—allow for additional search providers in the future.",
+      "Utilize batch-friendly APIs or processing methods for handling large document volumes.",
+      "Implement robust exceptions and user feedback for missing/invalid files."
+    ]
+  }
+}

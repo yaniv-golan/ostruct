@@ -1,0 +1,20 @@
+# Simple Data Extraction
+
+Extract information from the following text:
+
+Text: {{ input_text }}
+
+{% if format == "json" %}
+Return the result as JSON.
+{% else %}
+Return the result as plain text.
+{% endif %}
+
+{% if verbose %}
+Include detailed analysis.
+{% endif %}
+
+Please analyze and extract:
+- Key entities
+- Main topics
+- Sentiment: {{ sentiment | default("neutral") }}

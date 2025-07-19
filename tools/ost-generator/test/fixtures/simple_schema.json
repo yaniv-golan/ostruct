@@ -1,0 +1,38 @@
+{
+    "type": "object",
+    "properties": {
+        "entities": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Key entities found in the text"
+        },
+        "topics": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Main topics identified"
+        },
+        "sentiment": {
+            "type": "string",
+            "enum": [
+                "positive",
+                "negative",
+                "neutral"
+            ],
+            "description": "Overall sentiment of the text"
+        },
+        "format": {
+            "type": "string",
+            "description": "Output format used"
+        }
+    },
+    "required": [
+        "entities",
+        "topics",
+        "sentiment",
+        "format"
+    ]
+}

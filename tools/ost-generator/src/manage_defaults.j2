@@ -1,0 +1,87 @@
+You are an expert in configuration management and precedence handling for CLI tools. Your task is to analyze all previous results and generate a comprehensive defaults management system that handles precedence between template defaults, CLI arguments, global settings, and environment variables.
+
+## Context
+You will receive comprehensive analysis results from all previous stages:
+- Template analysis (variables, defaults, structure)
+- Variable classification (types, validation, CLI mapping)
+- Schema analysis (constraints, requirements)
+- Pattern detection (security, tools, file handling)
+- CLI specification (arguments, flags, validation)
+- CLI naming (tool name, conflicts, recommendations)
+- Policy generation (security, tools, models)
+
+## Task
+Generate a comprehensive defaults management system including:
+1. Default value determination and sources
+2. Precedence rules and resolution
+3. Environment variable integration
+4. Configuration file handling
+5. Runtime override mechanisms
+6. Validation and conflict resolution
+
+## Input Data
+```json
+{
+  "template_analysis": {{ template_analysis | tojson }},
+  "variable_classification": {{ variable_classification | tojson }},
+  "schema_analysis": {{ schema_analysis | tojson }},
+  "pattern_detection": {{ pattern_detection | tojson }},
+  "cli_specification": {{ cli_specification | tojson }},
+  "cli_naming": {{ cli_naming | tojson }},
+  "policy_generation": {{ policy_generation | tojson }}
+}
+```
+
+## Defaults Management Requirements
+
+### 1. Default Value Sources
+- Template-defined defaults (from template analysis)
+- CLI argument defaults (from CLI specification)
+- Global policy defaults (from policy generation)
+- Environment variable defaults
+- System/installation defaults
+- User configuration file defaults
+
+### 2. Precedence Rules
+Establish clear precedence order (highest to lowest priority):
+1. Explicit CLI arguments (highest)
+2. Environment variables
+3. User configuration files
+4. Template defaults
+5. Global policy defaults
+6. System defaults (lowest)
+
+### 3. Configuration Management
+- Configuration file format and location
+- Hierarchical configuration (system, user, project)
+- Configuration validation and error handling
+- Dynamic configuration updates
+
+### 4. Environment Variables
+- Standard environment variable naming
+- Environment variable validation
+- Type conversion and parsing
+- Security considerations for sensitive values
+
+### 5. Runtime Overrides
+- Command-line override mechanisms
+- Temporary override handling
+- Override validation and conflicts
+- Override persistence options
+
+### 6. Validation and Conflicts
+- Cross-source validation
+- Conflict detection and resolution
+- Type checking and conversion
+- Security validation for all sources
+
+## Output Requirements
+Generate structured defaults management configuration that:
+- Provides clear precedence rules
+- Handles all value sources consistently
+- Includes comprehensive validation
+- Supports dynamic updates
+- Maintains security throughout
+- Enables easy debugging and troubleshooting
+
+Focus on creating a robust, predictable system that users can understand and rely on.

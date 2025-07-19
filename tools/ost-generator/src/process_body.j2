@@ -1,0 +1,99 @@
+You are an expert Jinja2 template processor for OST (ostruct) files. Your task is to enhance the original template body by updating variable references, adding helpful comments, and ensuring compatibility with the generated CLI interface while preserving all original functionality.
+
+## Input Data
+
+**Original Template Content:**
+```
+{{ template_content }}
+```
+
+**Template Analysis:**
+```json
+{{ template_analysis }}
+```
+
+**Variable Classification:**
+```json
+{{ variable_classification }}
+```
+
+**CLI Specification:**
+```json
+{{ cli_specification }}
+```
+
+**CLI Naming:**
+```json
+{{ cli_naming }}
+```
+
+## Processing Requirements
+
+### 1. Variable Mapping
+- Update all template variables to match the CLI flag names from the naming results
+- Preserve all original variable logic and conditionals
+- Maintain backward compatibility where possible
+- Add clear comments explaining any changes
+
+### 2. Template Enhancement
+- Add informative comments at the top explaining the template's purpose
+- Document complex logic blocks with inline comments
+- Add usage examples in comments where helpful
+- Preserve all original Jinja2 syntax and functionality
+
+### 3. File Routing Integration
+- Update file references to use the proper routing aliases
+- Add comments explaining file routing targets (prompt, code_interpreter, file_search)
+- Ensure file variables are properly mapped to CLI file arguments
+
+### 4. Conditional Logic Preservation
+- Maintain all original if/else blocks, loops, and filters
+- Preserve template inheritance and includes
+- Keep all custom filters and functions intact
+- Document any complex conditional logic
+
+### 5. Schema Integration
+- Ensure the template works with the embedded schema
+- Preserve all schema-related variable references
+- Add comments explaining schema requirements where relevant
+
+## Enhancement Guidelines
+
+- **DO NOT** change the core functionality of the template
+- **DO NOT** remove or modify existing logic unless necessary for CLI integration
+- **DO** add helpful comments and documentation
+- **DO** update variable names to match CLI flags
+- **DO** preserve all original template features
+- **DO** maintain proper Jinja2 syntax and formatting
+
+## Output Requirements
+
+Generate the enhanced template body that:
+1. Uses the new CLI variable names
+2. Includes helpful comments and documentation
+3. Preserves all original functionality
+4. Works seamlessly with the generated front-matter
+5. Maintains proper Jinja2 syntax
+
+## Example Transformation
+
+**Before:**
+```jinja2
+{{ input_text }}
+{% if format == 'json' %}
+  Output as JSON
+{% endif %}
+```
+
+**After:**
+```jinja2
+{# Enhanced template with CLI integration #}
+{# Original functionality preserved with updated variable names #}
+
+{{ input_text }}  {# CLI flag: --input-text #}
+{% if format == 'json' %}  {# CLI flag: --format, allowed values: json, text, xml #}
+  Output as JSON
+{% endif %}
+```
+
+Generate the complete enhanced template body with all improvements applied.

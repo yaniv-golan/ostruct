@@ -1,0 +1,158 @@
+# CLI Specification Generation
+
+You are an expert in command-line interface design and ostruct tool development. Your task is to analyze the results from template analysis, variable classification, schema analysis, and pattern detection to generate a comprehensive CLI specification that provides an intuitive and powerful interface for users.
+
+## Input Analysis Data
+
+### Template Analysis
+{{ template_analysis.content }}
+
+### Variable Classification
+{{ variable_classification.content }}
+
+### Schema Analysis
+{{ schema_analysis.content }}
+
+### Pattern Detection
+{{ pattern_detection.content }}
+
+## CLI Generation Instructions
+
+Create a comprehensive CLI specification that transforms the analyzed template into a user-friendly command-line tool. Focus on:
+
+### 1. Tool Identity and Purpose
+
+**Tool Naming**: Generate a descriptive tool name based on:
+- Template purpose and functionality
+- Variable patterns and use cases
+- Output schema requirements
+- Use kebab-case convention (e.g., `document-analyzer`, `text-processor`)
+
+**Description**: Write a clear, concise description that explains:
+- What the tool does
+- Primary use cases
+- Expected inputs and outputs
+
+### 2. Argument Mapping
+
+For each classified variable, create appropriate CLI arguments:
+
+**Flag Generation**:
+- Use descriptive, kebab-case long flags (`--input-text`, `--enable-debug`)
+- Generate intuitive short flags where appropriate (`-i`, `-d`, `-v`)
+- Avoid conflicts and maintain consistency
+
+**Argument Types**:
+- `flag`: Boolean options (--verbose, --enable-search)
+- `single_value`: Single string/number values (--model, --format)
+- `multiple_values`: Arrays or lists (--keywords, --files)
+- `key_value`: JSON objects or key-value pairs (--metadata)
+- `file_attachment`: File inputs requiring routing
+- `directory_attachment`: Directory inputs for batch processing
+
+**Required vs Optional**:
+- Mark core functionality arguments as required
+- Make enhancement/configuration arguments optional
+- Provide sensible defaults where possible
+
+### 3. File Attachment Handling
+
+Based on pattern detection, create file attachment specifications:
+
+**File Routing**:
+- `template`: Basic file content access in templates
+- `code_interpreter`: Files requiring computational processing
+- `file_search`: Documents for search and retrieval
+
+**File Types**: Suggest appropriate file extensions based on:
+- Variable names and usage patterns
+- Schema requirements
+- Detected file operations
+
+**Multiple Files**: Determine if single or multiple file attachment is appropriate
+
+### 4. Tool Integration
+
+Based on pattern detection results, specify tool integrations:
+
+**Code Interpreter**: Enable for:
+- Data analysis and processing
+- File generation and manipulation
+- Mathematical calculations
+- Complex data transformations
+
+**File Search**: Enable for:
+- Document processing and analysis
+- Content extraction and summarization
+- Large document collections
+
+**Web Search**: Enable for:
+- Real-time information needs
+- External data validation
+- Current events or recent information
+
+### 5. Validation and Security
+
+Implement appropriate validation based on:
+- Security pattern detection results
+- Schema constraints and requirements
+- File handling safety considerations
+
+**Input Validation**:
+- Type checking (string, integer, boolean, etc.)
+- Format validation (email, URL, file paths)
+- Allowed values (enums and constrained sets)
+- Length and range constraints
+
+**Security Considerations**:
+- File path validation and sanitization
+- Input sanitization for injection prevention
+- Safe file handling practices
+- Restricted operations identification
+
+### 6. Usage Examples
+
+Generate practical usage examples that demonstrate:
+- Basic usage with minimal arguments
+- Advanced usage with multiple features
+- File attachment scenarios
+- Tool integration examples
+
+## Design Principles
+
+### User Experience
+- **Intuitive**: Flags should be self-explanatory
+- **Consistent**: Follow established CLI conventions
+- **Discoverable**: Good help text and examples
+- **Flexible**: Support various usage patterns
+
+### Technical Excellence
+- **Robust**: Comprehensive validation and error handling
+- **Secure**: Safe handling of user inputs and files
+- **Performant**: Efficient argument processing
+- **Maintainable**: Clear structure and documentation
+
+### ostruct Integration
+- **Tool-Aware**: Leverage appropriate ostruct tools
+- **File-Smart**: Intelligent file routing decisions
+- **Schema-Aligned**: CLI matches output requirements
+- **Feature-Rich**: Utilize ostruct's full capabilities
+
+## Output Requirements
+
+Generate a complete CLI specification including:
+
+1. **Tool Metadata**: Name, description, version
+2. **Argument Definitions**: Complete argument specifications with validation
+3. **File Attachments**: File handling requirements and routing
+4. **Tool Integrations**: Recommended tool enablement
+5. **Usage Examples**: Practical command-line examples
+6. **Implementation Notes**: Security, validation, and complexity guidance
+
+Ensure the CLI specification is:
+- **Complete**: Covers all template variables and requirements
+- **Practical**: Users can immediately understand and use it
+- **Secure**: Incorporates appropriate security measures
+- **Extensible**: Can be enhanced with additional features
+
+Focus on creating a CLI that feels natural to use while leveraging the full power of ostruct's capabilities.

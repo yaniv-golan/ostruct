@@ -1,0 +1,304 @@
+{
+  "classified_variables": [
+    {
+      "name": "config",
+      "type": "file",
+      "subtype": "single_file",
+      "confidence": 0.95,
+      "usage_context": [
+        "conditional",
+        "substitution",
+        "file_path",
+        "file_access",
+        "configuration"
+      ],
+      "cli_suggestion": {
+        "flag": "--config",
+        "short_flag": "-c",
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": "file path",
+        "pattern": null,
+        "constraints": [
+          "Must exist if specified",
+          "File must be readable"
+        ]
+      },
+      "examples": null
+    },
+    {
+      "name": "documents",
+      "type": "directory",
+      "subtype": "directory_path",
+      "confidence": 0.97,
+      "usage_context": [
+        "loop_iteration",
+        "file_path",
+        "file_access",
+        "data_processing"
+      ],
+      "cli_suggestion": {
+        "flag": "--documents",
+        "short_flag": "-d",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": "directory path",
+        "pattern": null,
+        "constraints": [
+          "Should exist and be readable",
+          "Should contain documents for processing"
+        ]
+      },
+      "examples": null
+    },
+    {
+      "name": "doc",
+      "type": "json",
+      "subtype": "file_reference_object",
+      "confidence": 0.88,
+      "usage_context": [
+        "loop variable",
+        "substitution",
+        "file_access",
+        "conditional",
+        "data_processing"
+      ],
+      "cli_suggestion": {
+        "flag": "(internal)",
+        "short_flag": null,
+        "argument_type": "none",
+        "required": false,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "Loop variable, not set by user"
+        ]
+      },
+      "examples": null
+    },
+    {
+      "name": "analysis_mode",
+      "type": "scalar",
+      "subtype": "string|enum",
+      "confidence": 0.95,
+      "usage_context": [
+        "substitution",
+        "configuration",
+        "filter"
+      ],
+      "cli_suggestion": {
+        "flag": "--analysis-mode",
+        "short_flag": "-m",
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": "standard"
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "One of: 'standard', 'deep', or other supported modes"
+        ]
+      },
+      "examples": [
+        "standard",
+        "deep"
+      ]
+    },
+    {
+      "name": "include_metadata",
+      "type": "boolean",
+      "subtype": "bool",
+      "confidence": 0.99,
+      "usage_context": [
+        "substitution",
+        "configuration",
+        "output_formatting"
+      ],
+      "cli_suggestion": {
+        "flag": "--include-metadata",
+        "short_flag": null,
+        "argument_type": "flag",
+        "required": false,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "Boolean value",
+          "Use flag to set true"
+        ]
+      },
+      "examples": null
+    },
+    {
+      "name": "output_format",
+      "type": "scalar",
+      "subtype": "string|enum",
+      "confidence": 0.97,
+      "usage_context": [
+        "substitution",
+        "configuration",
+        "output_formatting"
+      ],
+      "cli_suggestion": {
+        "flag": "--output-format",
+        "short_flag": "-o",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "Allowed values: 'pdf', 'txt', 'json', etc."
+        ]
+      },
+      "examples": [
+        "pdf",
+        "txt",
+        "json"
+      ]
+    },
+    {
+      "name": "enable_search",
+      "type": "boolean",
+      "subtype": "bool",
+      "confidence": 0.97,
+      "usage_context": [
+        "conditional",
+        "configuration",
+        "data_processing"
+      ],
+      "cli_suggestion": {
+        "flag": "--enable-search",
+        "short_flag": null,
+        "argument_type": "flag",
+        "required": false,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "Boolean flag"
+        ]
+      },
+      "examples": null
+    },
+    {
+      "name": "search_query",
+      "type": "scalar",
+      "subtype": "string",
+      "confidence": 0.92,
+      "usage_context": [
+        "substitution",
+        "data_processing",
+        "search"
+      ],
+      "cli_suggestion": {
+        "flag": "--search-query",
+        "short_flag": "-q",
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "String; optional"
+        ]
+      },
+      "examples": [
+        "document management",
+        "invoice 2022"
+      ]
+    },
+    {
+      "name": "processing_instructions",
+      "type": "list",
+      "subtype": "string_array",
+      "confidence": 0.96,
+      "usage_context": [
+        "loop_iteration",
+        "configuration",
+        "data_processing"
+      ],
+      "cli_suggestion": {
+        "flag": "--processing-instructions",
+        "short_flag": "-p",
+        "argument_type": "multiple_values",
+        "required": true,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "At least one instruction required"
+        ]
+      },
+      "examples": [
+        "extract_text",
+        "summarize",
+        "ocr"
+      ]
+    },
+    {
+      "name": "instruction",
+      "type": "scalar",
+      "subtype": "string",
+      "confidence": 0.92,
+      "usage_context": [
+        "loop variable",
+        "substitution",
+        "data_processing"
+      ],
+      "cli_suggestion": {
+        "flag": "(internal)",
+        "short_flag": null,
+        "argument_type": "none",
+        "required": false,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": null,
+        "pattern": null,
+        "constraints": [
+          "Loop variable, not user-settable"
+        ]
+      },
+      "examples": null
+    }
+  ],
+  "classification_summary": {
+    "total_variables": 10,
+    "type_distribution": {
+      "scalar": 4,
+      "boolean": 2,
+      "file": 1,
+      "directory": 1,
+      "list": 1,
+      "json": 1,
+      "unknown": 0
+    },
+    "complexity_indicators": {
+      "has_file_operations": true,
+      "has_complex_data_structures": true,
+      "has_conditional_logic": true,
+      "requires_validation": true
+    }
+  }
+}

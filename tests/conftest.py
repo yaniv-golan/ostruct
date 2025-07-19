@@ -1,3 +1,39 @@
+"""Global pytest configuration and hooks.
+
+Ensures that the parent directory used by pytest's tmpdir / tmp_path fixtures
+exists on all operating systems.  macOS sometimes sets TMPDIR to a per-user
+path like ``/var/folders/.../T/`` and pytest appends ``test`` – if that
+sub-directory is missing the tmp fixture crashes before a test even begins.
+
+Creating it once here guarantees robustness without touching individual tests.
+"""
+
+import errno
+import json
+import os
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional, Set, Union
+
+import pytest
+import tiktoken
+from _pytest.config import Config
+from _pytest.terminal import TerminalReporter
+from dotenv import load_dotenv
+from ostruct.cli.base_errors import OstructFileNotFoundError
+from ostruct.cli.errors import PathSecurityError
+from ostruct.cli.security import SecurityManager
+from pyfakefs.fake_filesystem import FakeFilesystem
+
+# Create <TMPDIR>/test if missing (idempotent, works on all OSes)
+for base in {os.getenv("TMPDIR"), tempfile.gettempdir()}:
+    if base:
+        try:
+            Path(base).joinpath("test").mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            # Non-critical – fall back to pytest's normal behaviour
+            pass
+
 """Test configuration and fixtures.
 
 Test File Structure Rules:
@@ -27,23 +63,6 @@ Test File Structure Rules:
    - Use absolute paths when testing explicit security boundaries
    - Security errors should be caught and verified
 """
-
-import errno
-import json
-import os
-import tempfile
-from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Set, Union
-
-import pytest
-import tiktoken
-from _pytest.config import Config
-from _pytest.terminal import TerminalReporter
-from dotenv import load_dotenv
-from ostruct.cli.base_errors import OstructFileNotFoundError
-from ostruct.cli.errors import PathSecurityError
-from ostruct.cli.security import SecurityManager
-from pyfakefs.fake_filesystem import FakeFilesystem
 
 pytest_plugins = ["pytest_asyncio"]
 
@@ -448,6 +467,34 @@ class MockSecurityManager(SecurityManager):
             *args: Any,
             **kwargs: Any,
         ) -> IO[Any]:
+            # If `file` is a low-level fd (int) or some non-pathlike object (e.g. when
+            # subprocess pipes are created), delegate directly to the real open().
+            if not isinstance(file, (str, Path, bytes, os.PathLike)):
+                # If it's an integer file descriptor, use os.fdopen to bypass pyfakefs.
+                if isinstance(file, int):
+                    import io
+
+                    # Use a raw FileIO object to avoid pyfakefs tracking; wrap in TextIOWrapper for text mode.
+                    raw = io.FileIO(file, mode="r" if "r" in mode else "w")
+                    if "b" in mode:
+                        return raw  # type: ignore[return-value]
+                    return io.TextIOWrapper(
+                        raw, encoding=encoding or "utf-8", newline=newline
+                    )
+                # For any other non-pathlike, fall back to original open (safe).
+                return original_open(
+                    file,  # type: ignore[arg-type]
+                    mode=mode,
+                    buffering=buffering,
+                    encoding=encoding,
+                    errors=errors,
+                    newline=newline,
+                    closefd=closefd,
+                    opener=opener,
+                    *args,
+                    **kwargs,
+                )
+
             try:
                 # First resolve relative paths against cwd
                 p = Path(file)
@@ -619,7 +666,7 @@ def strict_security_manager(fs: FakeFilesystem) -> SecurityManager:
 @pytest.fixture(autouse=True)
 def setup_global_security_context(
     monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
-) -> None:
+) -> Generator[None, None, None]:
     """Set up global security context for tests and ensure clean teardown.
 
     This fixture ensures that the global security context is properly reset

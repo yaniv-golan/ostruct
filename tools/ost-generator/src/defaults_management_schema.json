@@ -1,0 +1,1069 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "default_value_sources": {
+            "type": "object",
+            "properties": {
+                "template_defaults": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "variable_name": {
+                                "type": "string"
+                            },
+                            "default_value": {
+                                "type": "string"
+                            },
+                            "source_location": {
+                                "type": "string",
+                                "description": "Where in template this default is defined"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "validation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "variable_name",
+                            "default_value",
+                            "source_location",
+                            "type"
+                        ]
+                    }
+                },
+                "cli_argument_defaults": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "argument_name": {
+                                "type": "string"
+                            },
+                            "cli_flag": {
+                                "type": "string"
+                            },
+                            "default_value": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "required": {
+                                "type": "boolean"
+                            },
+                            "validation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "argument_name",
+                            "cli_flag",
+                            "default_value",
+                            "type",
+                            "required"
+                        ]
+                    }
+                },
+                "global_policy_defaults": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "policy_area": {
+                                "type": "string",
+                                "enum": [
+                                    "model",
+                                    "security",
+                                    "tools",
+                                    "performance",
+                                    "error_handling"
+                                ]
+                            },
+                            "parameter": {
+                                "type": "string"
+                            },
+                            "default_value": {
+                                "type": "string"
+                            },
+                            "rationale": {
+                                "type": "string"
+                            },
+                            "override_allowed": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "policy_area",
+                            "parameter",
+                            "default_value",
+                            "rationale",
+                            "override_allowed"
+                        ]
+                    }
+                },
+                "environment_variable_defaults": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "env_var_name": {
+                                "type": "string"
+                            },
+                            "mapped_parameter": {
+                                "type": "string"
+                            },
+                            "default_value": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "sensitive": {
+                                "type": "boolean"
+                            },
+                            "validation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "env_var_name",
+                            "mapped_parameter",
+                            "default_value",
+                            "type",
+                            "sensitive"
+                        ]
+                    }
+                },
+                "system_defaults": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "parameter": {
+                                "type": "string"
+                            },
+                            "default_value": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "installation_dependent": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "parameter",
+                            "default_value",
+                            "description",
+                            "installation_dependent"
+                        ]
+                    }
+                },
+                "user_config_defaults": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "config_key": {
+                                "type": "string"
+                            },
+                            "default_value": {
+                                "type": "string"
+                            },
+                            "config_section": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "validation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "config_key",
+                            "default_value",
+                            "config_section",
+                            "type"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "template_defaults",
+                "cli_argument_defaults",
+                "global_policy_defaults",
+                "environment_variable_defaults",
+                "system_defaults",
+                "user_config_defaults"
+            ]
+        },
+        "precedence_rules": {
+            "type": "object",
+            "properties": {
+                "precedence_order": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "priority": {
+                                "type": "integer",
+                                "minimum": 1
+                            },
+                            "source": {
+                                "type": "string",
+                                "enum": [
+                                    "cli_arguments",
+                                    "environment_variables",
+                                    "user_config",
+                                    "template_defaults",
+                                    "global_policy",
+                                    "system_defaults"
+                                ]
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "override_conditions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "priority",
+                            "source",
+                            "description"
+                        ]
+                    }
+                },
+                "conflict_resolution": {
+                    "type": "object",
+                    "properties": {
+                        "resolution_strategy": {
+                            "type": "string",
+                            "enum": [
+                                "highest_priority",
+                                "merge",
+                                "fail",
+                                "warn_and_use_default"
+                            ]
+                        },
+                        "merge_rules": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "parameter_type": {
+                                        "type": "string"
+                                    },
+                                    "merge_strategy": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "parameter_type",
+                                    "merge_strategy",
+                                    "description"
+                                ]
+                            }
+                        },
+                        "validation_on_conflict": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "resolution_strategy",
+                        "merge_rules",
+                        "validation_on_conflict"
+                    ]
+                },
+                "special_cases": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "parameter": {
+                                "type": "string"
+                            },
+                            "special_rule": {
+                                "type": "string"
+                            },
+                            "rationale": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "parameter",
+                            "special_rule",
+                            "rationale"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "precedence_order",
+                "conflict_resolution"
+            ]
+        },
+        "environment_variable_integration": {
+            "type": "object",
+            "properties": {
+                "naming_convention": {
+                    "type": "object",
+                    "properties": {
+                        "prefix": {
+                            "type": "string",
+                            "description": "Standard prefix for environment variables"
+                        },
+                        "separator": {
+                            "type": "string",
+                            "description": "Separator character (e.g., underscore)"
+                        },
+                        "case_convention": {
+                            "type": "string",
+                            "enum": [
+                                "upper",
+                                "lower",
+                                "mixed"
+                            ]
+                        },
+                        "examples": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "parameter": {
+                                        "type": "string"
+                                    },
+                                    "env_var": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "parameter",
+                                    "env_var"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "prefix",
+                        "separator",
+                        "case_convention",
+                        "examples"
+                    ]
+                },
+                "type_conversion": {
+                    "type": "object",
+                    "properties": {
+                        "string_to_boolean": {
+                            "type": "object",
+                            "properties": {
+                                "true_values": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "false_values": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "case_sensitive": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "true_values",
+                                "false_values",
+                                "case_sensitive"
+                            ]
+                        },
+                        "string_to_number": {
+                            "type": "object",
+                            "properties": {
+                                "validation": {
+                                    "type": "string"
+                                },
+                                "error_handling": {
+                                    "type": "string",
+                                    "enum": [
+                                        "fail",
+                                        "warn",
+                                        "use_default"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "validation",
+                                "error_handling"
+                            ]
+                        },
+                        "string_to_array": {
+                            "type": "object",
+                            "properties": {
+                                "delimiter": {
+                                    "type": "string"
+                                },
+                                "trim_whitespace": {
+                                    "type": "boolean"
+                                },
+                                "remove_empty": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "delimiter",
+                                "trim_whitespace",
+                                "remove_empty"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "string_to_boolean",
+                        "string_to_number",
+                        "string_to_array"
+                    ]
+                },
+                "security_considerations": {
+                    "type": "object",
+                    "properties": {
+                        "sensitive_variables": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Environment variables containing sensitive data"
+                        },
+                        "masking_rules": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "variable_pattern": {
+                                        "type": "string"
+                                    },
+                                    "mask_strategy": {
+                                        "type": "string",
+                                        "enum": [
+                                            "full",
+                                            "partial",
+                                            "hash"
+                                        ]
+                                    },
+                                    "log_policy": {
+                                        "type": "string",
+                                        "enum": [
+                                            "never",
+                                            "masked",
+                                            "development_only"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "variable_pattern",
+                                    "mask_strategy",
+                                    "log_policy"
+                                ]
+                            }
+                        },
+                        "validation_requirements": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": [
+                        "sensitive_variables",
+                        "masking_rules",
+                        "validation_requirements"
+                    ]
+                }
+            },
+            "required": [
+                "naming_convention",
+                "type_conversion",
+                "security_considerations"
+            ]
+        },
+        "configuration_file_handling": {
+            "type": "object",
+            "properties": {
+                "file_formats": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "format": {
+                                "type": "string",
+                                "enum": [
+                                    "yaml",
+                                    "json",
+                                    "toml",
+                                    "ini"
+                                ]
+                            },
+                            "priority": {
+                                "type": "integer"
+                            },
+                            "filename_patterns": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "validation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "format",
+                            "priority",
+                            "filename_patterns"
+                        ]
+                    }
+                },
+                "search_locations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string"
+                            },
+                            "priority": {
+                                "type": "integer"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "platform_specific": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "location",
+                            "priority",
+                            "description",
+                            "platform_specific"
+                        ]
+                    }
+                },
+                "hierarchical_merging": {
+                    "type": "object",
+                    "properties": {
+                        "merge_strategy": {
+                            "type": "string",
+                            "enum": [
+                                "override",
+                                "merge",
+                                "append"
+                            ]
+                        },
+                        "section_handling": {
+                            "type": "string",
+                            "enum": [
+                                "flatten",
+                                "preserve",
+                                "merge"
+                            ]
+                        },
+                        "conflict_resolution": {
+                            "type": "string",
+                            "enum": [
+                                "higher_priority",
+                                "explicit_override",
+                                "user_prompt"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "merge_strategy",
+                        "section_handling",
+                        "conflict_resolution"
+                    ]
+                },
+                "validation_rules": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "rule_type": {
+                                "type": "string",
+                                "enum": [
+                                    "schema",
+                                    "custom",
+                                    "cross_reference"
+                                ]
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "validation_logic": {
+                                "type": "string"
+                            },
+                            "error_handling": {
+                                "type": "string",
+                                "enum": [
+                                    "fail",
+                                    "warn",
+                                    "ignore"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "rule_type",
+                            "description",
+                            "validation_logic",
+                            "error_handling"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "file_formats",
+                "search_locations",
+                "hierarchical_merging",
+                "validation_rules"
+            ]
+        },
+        "runtime_override_mechanisms": {
+            "type": "object",
+            "properties": {
+                "cli_overrides": {
+                    "type": "object",
+                    "properties": {
+                        "override_flags": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "flag": {
+                                        "type": "string"
+                                    },
+                                    "target_parameter": {
+                                        "type": "string"
+                                    },
+                                    "override_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "replace",
+                                            "append",
+                                            "prepend"
+                                        ]
+                                    },
+                                    "validation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "flag",
+                                    "target_parameter",
+                                    "override_type"
+                                ]
+                            }
+                        },
+                        "global_overrides": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "flag": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "scope": {
+                                        "type": "string",
+                                        "enum": [
+                                            "all",
+                                            "security",
+                                            "performance",
+                                            "tools"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "flag",
+                                    "description",
+                                    "scope"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "override_flags",
+                        "global_overrides"
+                    ]
+                },
+                "temporary_overrides": {
+                    "type": "object",
+                    "properties": {
+                        "session_overrides": {
+                            "type": "boolean",
+                            "description": "Whether session-level overrides are supported"
+                        },
+                        "override_persistence": {
+                            "type": "string",
+                            "enum": [
+                                "none",
+                                "session",
+                                "permanent"
+                            ]
+                        },
+                        "override_storage": {
+                            "type": "string",
+                            "description": "Where temporary overrides are stored"
+                        }
+                    },
+                    "required": [
+                        "session_overrides",
+                        "override_persistence"
+                    ]
+                },
+                "dynamic_updates": {
+                    "type": "object",
+                    "properties": {
+                        "hot_reload": {
+                            "type": "boolean",
+                            "description": "Whether configuration can be reloaded without restart"
+                        },
+                        "update_mechanisms": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Methods for updating configuration"
+                        },
+                        "validation_on_update": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "hot_reload",
+                        "update_mechanisms",
+                        "validation_on_update"
+                    ]
+                }
+            },
+            "required": [
+                "cli_overrides",
+                "temporary_overrides",
+                "dynamic_updates"
+            ]
+        },
+        "validation_and_conflict_resolution": {
+            "type": "object",
+            "properties": {
+                "cross_source_validation": {
+                    "type": "object",
+                    "properties": {
+                        "validation_rules": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "rule_name": {
+                                        "type": "string"
+                                    },
+                                    "sources_involved": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "validation_logic": {
+                                        "type": "string"
+                                    },
+                                    "error_message": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "rule_name",
+                                    "sources_involved",
+                                    "validation_logic",
+                                    "error_message"
+                                ]
+                            }
+                        },
+                        "validation_timing": {
+                            "type": "string",
+                            "enum": [
+                                "startup",
+                                "runtime",
+                                "both"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "validation_rules",
+                        "validation_timing"
+                    ]
+                },
+                "conflict_detection": {
+                    "type": "object",
+                    "properties": {
+                        "detection_strategies": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "strategy": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "applicable_types": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "strategy",
+                                    "description",
+                                    "applicable_types"
+                                ]
+                            }
+                        },
+                        "conflict_reporting": {
+                            "type": "object",
+                            "properties": {
+                                "report_format": {
+                                    "type": "string",
+                                    "enum": [
+                                        "detailed",
+                                        "summary",
+                                        "minimal"
+                                    ]
+                                },
+                                "include_resolution": {
+                                    "type": "boolean"
+                                },
+                                "user_interaction": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "report_format",
+                                "include_resolution",
+                                "user_interaction"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "detection_strategies",
+                        "conflict_reporting"
+                    ]
+                },
+                "type_checking": {
+                    "type": "object",
+                    "properties": {
+                        "type_conversion_rules": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "from_type": {
+                                        "type": "string"
+                                    },
+                                    "to_type": {
+                                        "type": "string"
+                                    },
+                                    "conversion_logic": {
+                                        "type": "string"
+                                    },
+                                    "validation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "from_type",
+                                    "to_type",
+                                    "conversion_logic"
+                                ]
+                            }
+                        },
+                        "strict_typing": {
+                            "type": "boolean"
+                        },
+                        "type_error_handling": {
+                            "type": "string",
+                            "enum": [
+                                "fail",
+                                "warn",
+                                "convert",
+                                "use_default"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "type_conversion_rules",
+                        "strict_typing",
+                        "type_error_handling"
+                    ]
+                }
+            },
+            "required": [
+                "cross_source_validation",
+                "conflict_detection",
+                "type_checking"
+            ]
+        },
+        "debugging_and_troubleshooting": {
+            "type": "object",
+            "properties": {
+                "debug_modes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "mode": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "output_format": {
+                                "type": "string"
+                            },
+                            "security_considerations": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "mode",
+                            "description",
+                            "output_format"
+                        ]
+                    }
+                },
+                "tracing_capabilities": {
+                    "type": "object",
+                    "properties": {
+                        "value_source_tracing": {
+                            "type": "boolean"
+                        },
+                        "precedence_tracing": {
+                            "type": "boolean"
+                        },
+                        "validation_tracing": {
+                            "type": "boolean"
+                        },
+                        "trace_output_format": {
+                            "type": "string",
+                            "enum": [
+                                "json",
+                                "yaml",
+                                "table",
+                                "tree"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "value_source_tracing",
+                        "precedence_tracing",
+                        "validation_tracing",
+                        "trace_output_format"
+                    ]
+                },
+                "diagnostic_tools": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "tool": {
+                                "type": "string"
+                            },
+                            "purpose": {
+                                "type": "string"
+                            },
+                            "usage": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "tool",
+                            "purpose",
+                            "usage"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "debug_modes",
+                "tracing_capabilities",
+                "diagnostic_tools"
+            ]
+        },
+        "quality_metrics": {
+            "type": "object",
+            "properties": {
+                "robustness_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Overall robustness of defaults management"
+                },
+                "usability_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Ease of use and understanding"
+                },
+                "predictability_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Predictability of behavior"
+                },
+                "maintainability_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Ease of maintenance and updates"
+                },
+                "recommendations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Recommendations for improvement"
+                }
+            },
+            "required": [
+                "robustness_score",
+                "usability_score",
+                "predictability_score",
+                "maintainability_score"
+            ]
+        }
+    },
+    "required": [
+        "default_value_sources",
+        "precedence_rules",
+        "environment_variable_integration",
+        "configuration_file_handling",
+        "runtime_override_mechanisms",
+        "validation_and_conflict_resolution",
+        "debugging_and_troubleshooting",
+        "quality_metrics"
+    ]
+}

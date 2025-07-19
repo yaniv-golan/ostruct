@@ -1,0 +1,152 @@
+{
+  "naming_results": {
+    "tool_name": {
+      "original": "text-entity-sentiment-extractor",
+      "kebab_case": "text-entity-sentiment-extractor",
+      "validated": "text-entity-sentiment-extractor",
+      "conflicts_resolved": null
+    },
+    "flag_names": [
+      {
+        "variable_name": "input_text",
+        "long_flag": "--input-text",
+        "short_flag": "-i",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": null,
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": null
+      },
+      {
+        "variable_name": "format",
+        "long_flag": "--format",
+        "short_flag": "-f",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": null,
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": null
+      },
+      {
+        "variable_name": "verbose",
+        "long_flag": "--verbose",
+        "short_flag": "-v",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": null,
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": [
+          {
+            "long_flag": "--verbosity",
+            "short_flag": "-V",
+            "reason": "If -v is reserved for version in other tools, consider -V for verbose; not needed here as -v is intuitive and not conflicting."
+          }
+        ]
+      },
+      {
+        "variable_name": "sentiment",
+        "long_flag": "--sentiment",
+        "short_flag": null,
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": [
+            "format",
+            "input_text",
+            "verbose"
+          ],
+          "resolution_method": "no_short_flag",
+          "resolution_details": "All intuitive letters (s, e, n, t) could conflict with common or more primary flags; omitting short flag to prevent ambiguity."
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": [
+            "No short flag is assigned to avoid conflicting with more critical or intuitive flags."
+          ]
+        },
+        "alternatives": [
+          {
+            "long_flag": "--sentiment",
+            "short_flag": "-S",
+            "reason": "Capital S could be used in other tools that allow case-sensitive short flags, but standard CLI best practice is to avoid confusion and stay lowercase."
+          }
+        ]
+      }
+    ]
+  },
+  "naming_conventions": {
+    "kebab_case_rules": [
+      "All words lowercase, separated by hyphens.",
+      "Remove special characters and underscores.",
+      "No consecutive, leading, or trailing hyphens.",
+      "Numbers are kept only if meaningful and never lead.",
+      "Word boundaries detected by camelCase, underscores, or numbers."
+    ],
+    "short_flag_strategy": "First letter prioritized for required/frequent-use arguments; intuitive mapping for memorability; if conflicts, omit short flag for secondary/optional flags.",
+    "conflict_resolution_strategy": "Detect conflicts early; required/intuitive flags are given priority short flags; secondary/optional flags without clear short flag are assigned none; consider alternative letters only if no overlap with reserved or intuitive flags.",
+    "reserved_flags": [
+      "-h",
+      "--help",
+      "-v",
+      "--verbose",
+      "-o",
+      "--output",
+      "-m",
+      "--model",
+      "--dry-run",
+      "--debug",
+      "-f",
+      "--force",
+      "-V",
+      "--version",
+      "-q",
+      "--quiet",
+      "-r",
+      "--recursive",
+      "-n",
+      "--dry-run"
+    ]
+  },
+  "quality_metrics": {
+    "naming_consistency": 1.0,
+    "conflict_resolution_success": 1.0,
+    "usability_score": 0.95,
+    "total_conflicts": 1,
+    "resolved_conflicts": 1
+  },
+  "recommendations": {
+    "naming_improvements": [
+      "For future versions, consider reserving -S for sentiment if functionality is critical and if no new flag would conflict.",
+      "Document short flag omissions and alternatives in user documentation for clarity."
+    ],
+    "conflict_prevention": [
+      "When adding new arguments, always check reserved and currently used short flags.",
+      "Prioritize short flags for required and high-frequency arguments; use alternatives or omit for less frequent ones."
+    ],
+    "usability_enhancements": [
+      "In help output, list all flags, including those without short flags, for transparency.",
+      "Encourage users to use long flags for clarity when scripting or integrating into other workflows."
+    ]
+  }
+}

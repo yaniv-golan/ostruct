@@ -177,8 +177,6 @@ Analyze {{ file_ref("source-code") }} and {{ file_ref("config") }}.
 
 {% endfor %}
 
-```
-
 The optional `file_ref()` function provides clean references with automatic XML appendix generation. Alternatively, access files directly for custom formatting and placement control. Perfect for code reviews, documentation analysis, and multi-file processing workflows.
 
 ## Features
@@ -356,8 +354,6 @@ ostruct-cli respects the following environment variables:
 
 > **Note**: Template limits only apply to files accessed via `--file alias path` (template-only routing). Files routed to Code Interpreter (`--file ci:`) or File Search (`--file fs:`) are not subject to these limits. The default behavior now allows unlimited file sizes to take full advantage of the context window.
 
-> **Breaking Change in v3.2.0**: `OSTRUCT_TEMPLATE_FILE_LIMIT` now defaults to unlimited (was 64KB). Set `OSTRUCT_TEMPLATE_FILE_LIMIT=65536` to restore the previous behavior.
-
 **💡 Tip**: ostruct automatically loads `.env` files from the current directory. Environment variables take precedence over `.env` file values.
 
 <details>
@@ -401,20 +397,9 @@ Shell completion will help you with:
 
 ## Enhanced CLI with Multi-Tool Integration
 
-### Breaking Changes in v0.9.0
+### File Attachment System
 
-**⚠️ Important:** ostruct v0.9.0 introduces breaking changes to the file attachment system. The legacy file routing syntax has been completely replaced with a new explicit target/alias attachment system.
-
-**New capabilities in v0.9.0:**
-
-- **Explicit Tool Targeting**: Direct control over which tools receive files
-- **Enhanced Security**: Three-tier security modes with path validation
-- **Improved Multi-Tool Integration**: Better file sharing between tools
-- **JSON Help Output**: Programmatic access to command help
-- **Migration Guide**: Automated migration scripts for bulk updates
-
-<details>
-<summary><strong>New Attachment System (v0.9.0)</strong> (Click to expand)</summary>
+ostruct provides a flexible file attachment system with explicit tool targeting:
 
 #### Basic File Attachments
 
@@ -460,7 +445,7 @@ ostruct run analyze.j2 schema.json --collect ci:data @datasets.txt
 
 #### Tool Targeting
 
-The new system uses explicit targets for precise control:
+The system uses explicit targets for precise control:
 
 - **`prompt`** (default): Template access only, no upload
 - **`code-interpreter`** or **`ci`**: Upload for Python execution and analysis
@@ -503,8 +488,6 @@ ostruct run template.j2 schema.json \
 # Connect to MCP servers for extended capabilities
 ostruct run template.j2 schema.json --mcp-server deepwiki@https://mcp.deepwiki.com/sse
 ```
-
-</details>
 
 ### Configuration System
 
@@ -565,14 +548,6 @@ ostruct update-registry
 # Check available models
 ostruct list-models
 ```
-
-**Migration from Free-form Model Names:**
-
-If you have existing scripts with hardcoded model names, they will continue to work as long as the model names are valid. Common issues and solutions:
-
-- **Typos**: `gpt4o` → `gpt-4o`
-- **Old names**: `gpt-4-turbo` → `gpt-4o`
-- **Custom names**: Use `ostruct list-models` to see what's available
 
 ### Code Interpreter File Downloads
 
@@ -724,7 +699,7 @@ Provide comprehensive analysis and actionable insights.
 }
 ```
 
-3. Use the new attachment system for precise tool targeting:
+3. Use the attachment system for precise tool targeting:
 
 ```bash
 # Basic multi-tool analysis
@@ -751,26 +726,6 @@ ostruct run code_review.j2 review_schema.json \
   --dir fs:docs ./documentation \
   --file config .eslintrc.json
 ```
-
-### Example 3: Migration from v0.8.x
-
-Legacy commands need to be updated to the new syntax:
-
-```bash
-# Legacy (v0.8.x) - NO LONGER SUPPORTED
-# ostruct run extract_from_file.j2 schema.json --file text input.txt -d configs
-
-# New (v0.9.0) - Updated syntax
-ostruct run extract_from_file.j2 schema.json --file text input.txt --dir configs ./configs
-
-# Legacy pattern matching - NO LONGER SUPPORTED
-# ostruct run template.j2 schema.json --dir "*.py" source --pattern "*.py" -V env=prod
-
-# New pattern matching with directory attachment
-ostruct run template.j2 schema.json --dir source ./source --pattern "*.py" -V env=prod
-```
-
-**Migration Help:** See `MIGRATION_GUIDE.md` for automated migration scripts and detailed examples.
 
 <details>
 <summary><strong>System Prompt Handling</strong> (Click to expand)</summary>
@@ -834,18 +789,43 @@ ostruct run template.j2 schema.json --ignore-task-sysprompt
 
 </details>
 
-## Turning Templates into Executables (OST)
+## Self-Executing ostruct Prompts (OST)
 
-🚀 **New Feature**: OST (Self-Executing Templates) transforms your templates into standalone executables with embedded schemas and custom CLI interfaces. Perfect for sharing AI-powered tools without requiring users to understand ostruct's complex syntax.
+🚀 **New Feature**: OST files are **self-executing ostruct prompts** that package templates into standalone executables with embedded schemas and custom CLI interfaces. Perfect for sharing AI-powered tools without requiring users to understand ostruct's complex syntax.
 
-### What are OST Templates?
+### What are OST Files?
 
-OST templates are `.ost` files that combine:
+**OST files are self-executing ostruct prompts** - `.ost` files that combine:
 
 - **Jinja2 template content** for the AI prompt
 - **JSON schema** embedded in YAML front-matter
 - **CLI metadata** defining custom arguments and help text
 - **Global argument policies** for controlling ostruct flags
+
+### Regular ostruct vs OST Files
+
+**Regular ostruct workflow:**
+```bash
+# Requires separate files and manual configuration
+ostruct run template.j2 schema.json --var name="John" --file data.csv --model gpt-4o
+```
+- Template and schema are separate files
+- User must know variable names and types
+- Command-line becomes complex with many options
+- No built-in help for template-specific usage
+
+**OST file workflow:**
+```bash
+# Self-contained with custom CLI
+./text-analyzer.ost "Hello world" --format json --help
+```
+- Everything bundled in one executable file
+- Custom command-line arguments defined by template author
+- Built-in help system: `./tool.ost --help` shows template-specific options
+- User-friendly interface hides ostruct complexity
+
+**Configuration Parameters:**
+OST files determine which variables become command-line arguments, which files can be attached, and what customizations users can make. The template author pre-configures the experience while still allowing user flexibility.
 
 ### Creating Your First OST Template
 
@@ -1080,19 +1060,6 @@ ostruct runx my_tool.ost "test input" --dry-run
 
 # Verbose debugging
 ostruct runx my_tool.ost "test input" --verbose --debug
-```
-
-### Migration from Regular Templates
-
-Convert existing templates to OST format:
-
-```bash
-# Start with your existing template
-ostruct scaffold template my_existing.ost --cli
-
-# Copy your template content after the --- separator
-# Add your schema to the front-matter
-# Define CLI arguments that match your use case
 ```
 
 ### Best Practices

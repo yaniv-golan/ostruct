@@ -1,0 +1,159 @@
+# CLI Naming Generation and Conflict Resolution
+
+You are an expert in command-line interface design and naming conventions. Your task is to analyze CLI specifications and generate consistent, intuitive, and conflict-free naming for tools and flags, following established CLI conventions and best practices.
+
+## Input CLI Specification
+
+{{ cli_specification.content }}
+
+## Naming Generation Instructions
+
+Process the CLI specification to generate optimal naming with conflict resolution:
+
+### 1. Tool Name Processing
+
+**Kebab-Case Conversion**:
+- Convert tool names to kebab-case (lowercase with hyphens)
+- Replace spaces, underscores, and camelCase with hyphens
+- Remove special characters and numbers (unless meaningful)
+- Ensure names are descriptive but concise
+
+**Examples**:
+- `TextSentimentExtractor` → `text-sentiment-extractor`
+- `Document_Batch_Analyzer` → `document-batch-analyzer`
+- `PDFProcessor2024` → `pdf-processor`
+
+**Validation Rules**:
+- Must start with a letter
+- Only lowercase letters, numbers, and hyphens
+- No consecutive hyphens
+- No leading/trailing hyphens
+- Maximum 50 characters for usability
+
+### 2. Long Flag Generation
+
+**Kebab-Case Conversion**:
+- Convert variable names to kebab-case long flags
+- Add `--` prefix for long flags
+- Handle compound words and abbreviations intelligently
+
+**Examples**:
+- `inputText` → `--input-text`
+- `enableDebug` → `--enable-debug`
+- `maxRetries` → `--max-retries`
+- `apiKey` → `--api-key`
+
+**Special Cases**:
+- Boolean variables: Use `--enable-X` or `--disable-X` format
+- File variables: Use `--X-file` or `--X-path` format
+- Directory variables: Use `--X-dir` or `--X-directory` format
+
+### 3. Short Flag Generation
+
+**Generation Strategy**:
+1. **First Letter**: Try the first letter of the variable name
+2. **First Consonant**: If first letter conflicts, try first consonant
+3. **Meaningful Letter**: Use a meaningful letter from the variable name
+4. **Alternative Letters**: Try other letters in order of meaningfulness
+5. **No Short Flag**: If all letters conflict, omit short flag
+
+**Priority Rules**:
+- Prefer intuitive letters (`-i` for input, `-o` for output, `-v` for verbose)
+- Avoid confusing combinations (`-l` vs `-1`, `-O` vs `-0`)
+- Reserve common flags (`-h` for help, `-v` for version/verbose)
+
+### 4. Conflict Resolution
+
+**Long Flag Conflicts**:
+- Add descriptive prefixes or suffixes
+- Use more specific terminology
+- Combine with context (e.g., `--input-file` vs `--output-file`)
+
+**Short Flag Conflicts**:
+- Use alternative meaningful letters
+- Apply consistent resolution patterns
+- Document resolution strategy
+
+**Resolution Methods**:
+- `prefix_addition`: Add context prefix (`--user-name` vs `--file-name`)
+- `suffix_addition`: Add context suffix (`--input-data` vs `--output-data`)
+- `alternative_letter`: Use different letter (`-i` → `-n` for input)
+- `no_short_flag`: Remove short flag if no good alternatives
+
+### 5. Reserved Flags
+
+**ostruct Reserved Flags**:
+- `-h, --help`: Help information
+- `-v, --verbose`: Verbose output
+- `-m, --model`: Model selection
+- `-o, --output`: Output file
+- `--dry-run`: Dry run mode
+- `--debug`: Debug mode
+
+**Common CLI Conventions**:
+- `-V, --version`: Version information
+- `-q, --quiet`: Quiet mode
+- `-f, --force`: Force operation
+- `-r, --recursive`: Recursive operation
+- `-n, --dry-run`: Dry run
+
+### 6. Quality Assessment
+
+**Naming Consistency**:
+- Consistent patterns across all flags
+- Logical grouping of related flags
+- Predictable naming conventions
+- Assign "low", "medium", or "high" based on overall consistency
+
+**Conflict Resolution Success**:
+- All conflicts resolved satisfactorily
+- Minimal impact on usability
+- Clear documentation of resolutions
+- Assign "low", "medium", or "high" based on resolution success
+
+**Usability Score**:
+- Intuitive and memorable flag names
+- Appropriate short flag assignments
+- Clear semantic meaning
+- Assign "low", "medium", or "high" based on overall usability
+
+## Analysis Guidelines
+
+### Kebab-Case Rules
+
+1. **Word Boundaries**: Identify word boundaries in variable names
+2. **Abbreviation Handling**: Expand common abbreviations when helpful
+3. **Number Handling**: Keep meaningful numbers, remove version numbers
+4. **Special Characters**: Remove or replace with hyphens appropriately
+
+### Short Flag Strategy
+
+1. **Frequency Analysis**: Prioritize frequently used flags for best short flags
+2. **Semantic Meaning**: Choose letters that relate to the flag's purpose
+3. **Memorability**: Select letters that are easy to remember
+4. **Consistency**: Apply consistent patterns across similar flags
+
+### Conflict Resolution Strategy
+
+1. **Detection**: Identify all potential conflicts early
+2. **Prioritization**: Resolve conflicts for most important flags first
+3. **Documentation**: Record resolution methods and reasoning
+4. **Validation**: Ensure resolutions don't create new conflicts
+
+## Output Requirements
+
+Generate comprehensive naming results including:
+
+1. **Tool Name Processing**: Original, kebab-case, and validated names
+2. **Flag Name Generation**: Long and short flags with conflict analysis
+3. **Conflict Resolution**: Detailed resolution methods and alternatives
+4. **Quality Metrics**: Consistency, success rates, and usability scores
+5. **Recommendations**: Improvements and prevention strategies
+
+Focus on creating names that are:
+- **Intuitive**: Easy to understand and remember
+- **Consistent**: Follow established patterns
+- **Conflict-Free**: No ambiguous or duplicate flags
+- **Professional**: Adhere to CLI best practices
+
+Ensure all generated names follow standard CLI conventions while being specific to the tool's purpose and functionality.

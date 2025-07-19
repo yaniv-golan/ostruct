@@ -147,3 +147,12 @@ yaniv-private/
 !lib/**
 !tests/lib/
 !tests/lib/**
+
+# OST Generator artefacts
+/tools/ost-generator/output*/
+/tools/ost-generator/output_optimized/
+/tools/ost-generator/output_new/
+/tools/ost-generator/output_test_fixed/
+/tools/ost-generator/test_output/
+/tools/ost-generator/*.log
+/tools/ost-generator/ostruct_json_debug_*.txt

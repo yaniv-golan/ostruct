@@ -1,0 +1,149 @@
+{% if input is defined and input.content is defined %}
+{% set _json = input.content | from_json %}
+{% set template_content = _json.template_content %}
+{% set schema_content = _json.schema_content %}
+{% set cli_specification = _json.cli_specification %}
+{% set cli_naming = _json.cli_naming %}
+{% set help_documentation = _json.help_documentation %}
+{% set policy_configuration = _json.policy_configuration %}
+{% set defaults_management = _json.defaults_management %}
+{% endif %}
+
+You are an expert OST (ostruct) file generator. Your task is to assemble a complete, production-ready OST file by combining all the analysis and generation results from the previous phases.
+
+## Input Data
+
+**Original Template Content:**
+```
+{{ template_content }}
+```
+
+**Original Schema Content:**
+```
+{{ schema_content }}
+```
+
+**CLI Specification:**
+```json
+{{ cli_specification }}
+```
+
+**CLI Naming:**
+```json
+{{ cli_naming }}
+```
+
+**Help Documentation:**
+```json
+{{ help_documentation }}
+```
+
+**Policy Configuration:**
+```json
+{{ policy_configuration }}
+```
+
+**Defaults Management:**
+```json
+{{ defaults_management }}
+```
+
+## Assembly Instructions
+
+Create a complete OST file that includes:
+
+1. **YAML Front-matter** following documented OST format with:
+   - cli section: name, description, options, positional arguments
+   - schema section: JSON schema as string defining expected output
+   - defaults section: default values for template variables
+   - global_args section: global policies for model restrictions and tool access
+
+2. **Embedded JSON Schema** (if not already embedded in template)
+
+3. **Enhanced Template Body** with:
+   - Updated variable references to match CLI flags
+   - Preserved original logic and conditionals
+   - Added comments for clarity and maintainability
+   - Proper file routing and attachment handling
+
+## Quality Requirements
+
+- **CRITICAL**: Use ONLY the documented OST format with cli, schema, defaults, global_args sections
+- **FORBIDDEN**: Do NOT include top-level name, description, version, arguments, tools, or author fields
+- Ensure all CLI flags are properly mapped to template variables
+- Generate valid JSON schema string in the schema section
+- Include comprehensive help text for CLI options
+- Use proper file routing targets (prompt, ci, fs, auto) for file parameters
+- Follow exact documented OST front-matter structure
+
+## Output Format
+
+Generate a complete OST file following this EXACT structure:
+
+```
+#!/usr/bin/env -S ostruct runx
+---
+cli:
+  name: tool-name
+  description: "Tool description"
+  options:
+    param_name:
+      names: ["--param", "-p"]
+      help: "Parameter help text"
+      type: str
+      default: "value"
+
+schema: |
+  {
+    "type": "object",
+    "properties": {
+      "result": {"type": "string"}
+    },
+    "required": ["result"]
+  }
+
+{% if defaults_management is defined and defaults_management != {} -%}
+defaults:
+{% for key, value in defaults_management.items() -%}
+  {{ key }}: {{ value | tojson }}
+{% endfor -%}
+{% else -%}
+{%- set cli_defaults = [] -%}
+{% if cli_specification is defined and cli_specification.cli_specification is defined -%}
+{% for arg in cli_specification.cli_specification.arguments -%}
+{% if arg.default_value -%}
+{%- set _ = cli_defaults.append((arg.variable_name, arg.default_value)) -%}
+{% endif -%}
+{% endfor -%}
+{% endif -%}
+{% if cli_defaults -%}
+defaults:
+{% for name, value in cli_defaults -%}
+  {{ name }}: {{ value | tojson }}
+{% endfor -%}
+{% else -%}
+defaults: {}
+{% endif -%}
+{% endif -%}
+
+{% if policy_configuration is defined and policy_configuration != {} -%}
+global_args:
+{% for key, value in policy_configuration.items() -%}
+  {{ key }}: {{ value | tojson }}
+{% endfor -%}
+{% else -%}
+global_args:
+  pass_through_global: true
+  model:
+    mode: "allowed"
+    allowed: ["gpt-4o", "gpt-4o-mini"]
+{% endif -%}
+---
+{{ template_content }}
+```
+
+The output must be a complete, valid OST file that can be executed with `ostruct runx` command.
+
+---
+
+**IMPORTANT**: The output must be a valid, self-contained OST file that preserves the original template's functionality while adding the intelligent CLI interface generated in Phase 2.

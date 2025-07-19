@@ -1,0 +1,260 @@
+{
+    "type": "object",
+    "properties": {
+        "naming_results": {
+            "type": "object",
+            "properties": {
+                "tool_name": {
+                    "type": "object",
+                    "properties": {
+                        "original": {
+                            "type": "string",
+                            "description": "Original tool name before processing"
+                        },
+                        "kebab_case": {
+                            "type": "string",
+                            "description": "Tool name converted to kebab-case"
+                        },
+                        "validated": {
+                            "type": "string",
+                            "description": "Final validated tool name"
+                        },
+                        "conflicts_resolved": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of conflicts that were resolved"
+                        }
+                    },
+                    "required": [
+                        "original",
+                        "kebab_case",
+                        "validated"
+                    ]
+                },
+                "flag_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "variable_name": {
+                                "type": "string",
+                                "description": "Original template variable name"
+                            },
+                            "long_flag": {
+                                "type": "string",
+                                "description": "Generated long flag name (--kebab-case)"
+                            },
+                            "short_flag": {
+                                "type": "string",
+                                "description": "Generated short flag (-x)"
+                            },
+                            "conflicts": {
+                                "type": "object",
+                                "properties": {
+                                    "long_flag_conflicts": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Other variables that would generate the same long flag"
+                                    },
+                                    "short_flag_conflicts": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Other variables that would generate the same short flag"
+                                    },
+                                    "resolution_method": {
+                                        "type": "string",
+                                        "enum": [
+                                            "none",
+                                            "prefix_addition",
+                                            "suffix_addition",
+                                            "alternative_letter",
+                                            "no_short_flag"
+                                        ],
+                                        "description": "Method used to resolve conflicts"
+                                    },
+                                    "resolution_details": {
+                                        "type": "string",
+                                        "description": "Details about how the conflict was resolved"
+                                    }
+                                }
+                            },
+                            "validation": {
+                                "type": "object",
+                                "properties": {
+                                    "long_flag_valid": {
+                                        "type": "boolean",
+                                        "description": "Whether the long flag follows naming conventions"
+                                    },
+                                    "short_flag_valid": {
+                                        "type": "boolean",
+                                        "description": "Whether the short flag follows naming conventions"
+                                    },
+                                    "issues": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Any validation issues found"
+                                    }
+                                }
+                            },
+                            "alternatives": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "long_flag": {
+                                            "type": "string",
+                                            "description": "Alternative long flag"
+                                        },
+                                        "short_flag": {
+                                            "type": "string",
+                                            "description": "Alternative short flag"
+                                        },
+                                        "reason": {
+                                            "type": "string",
+                                            "description": "Reason for this alternative"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "required": [
+                            "variable_name",
+                            "long_flag",
+                            "conflicts",
+                            "validation"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "tool_name",
+                "flag_names"
+            ]
+        },
+        "naming_conventions": {
+            "type": "object",
+            "properties": {
+                "kebab_case_rules": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Rules applied for kebab-case conversion"
+                },
+                "short_flag_strategy": {
+                    "type": "string",
+                    "enum": [
+                        "first_letter",
+                        "first_consonant",
+                        "meaningful_letter",
+                        "vowel_skip"
+                    ],
+                    "description": "Strategy used for short flag generation"
+                },
+                "conflict_resolution_strategy": {
+                    "type": "string",
+                    "enum": [
+                        "prefix_based",
+                        "suffix_based",
+                        "alternative_letters",
+                        "no_short_flags"
+                    ],
+                    "description": "Overall strategy for resolving conflicts"
+                },
+                "reserved_flags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Flags reserved by ostruct or common CLI conventions"
+                }
+            },
+            "required": [
+                "kebab_case_rules",
+                "short_flag_strategy",
+                "conflict_resolution_strategy",
+                "reserved_flags"
+            ]
+        },
+        "quality_metrics": {
+            "type": "object",
+            "properties": {
+                "naming_consistency": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Consistency level for naming conventions"
+                },
+                "conflict_resolution_success": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Success level of conflict resolution"
+                },
+                "usability_score": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Overall usability level for generated names"
+                },
+                "total_conflicts": {
+                    "type": "integer",
+                    "description": "Total number of conflicts encountered"
+                },
+                "resolved_conflicts": {
+                    "type": "integer",
+                    "description": "Number of conflicts successfully resolved"
+                }
+            },
+            "required": [
+                "naming_consistency",
+                "conflict_resolution_success",
+                "usability_score",
+                "total_conflicts",
+                "resolved_conflicts"
+            ]
+        },
+        "recommendations": {
+            "type": "object",
+            "properties": {
+                "naming_improvements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Suggestions for improving naming"
+                },
+                "conflict_prevention": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Suggestions for preventing future conflicts"
+                },
+                "usability_enhancements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Suggestions for improving usability"
+                }
+            },
+            "required": [
+                "naming_improvements",
+                "conflict_prevention",
+                "usability_enhancements"
+            ]
+        }
+    },
+    "required": [
+        "naming_results",
+        "naming_conventions",
+        "quality_metrics",
+        "recommendations"
+    ]
+}

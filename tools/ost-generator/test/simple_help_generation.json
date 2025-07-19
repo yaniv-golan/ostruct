@@ -1,0 +1,285 @@
+{
+  "tool_description": {
+    "name": "example-cli-tool",
+    "purpose": "A versatile command-line interface (CLI) tool for processing structured data using ostruct templates.",
+    "detailed_description": "This CLI tool provides a powerful and flexible way to process, validate, and transform structured data based on user-defined templates. Generated from ostruct, it supports a wide range of variable types, input validation rules, and output formats. This tool simplifies complex workflows by allowing users to attach files, perform code interpretation, search within files, and integrate with various analysis backends. Its modular design promotes reliability, security, and easy extensibility for many real-world data-processing scenarios.",
+    "use_cases": [
+      "Generating formatted reports from CSV/JSON/YAML data",
+      "Validating input files against custom schemas",
+      "Automated data extraction and transformation",
+      "Batch processing of multiple attachments and data files",
+      "Integration with code interpreters or backend servers for advanced computation",
+      "Ad hoc querying or searching for patterns within large files"
+    ]
+  },
+  "usage_patterns": {
+    "basic_usage": "example-cli-tool --input-file <data-file> --template <template-file> [options]",
+    "common_examples": [
+      {
+        "description": "Process a single input file with a specific template",
+        "command": "example-cli-tool --input-file data.csv --template invoice.tpl",
+        "explanation": "Processes 'data.csv' with the template 'invoice.tpl', producing output as specified by the template."
+      },
+      {
+        "description": "Attach and process multiple files",
+        "command": "example-cli-tool --input-file main.json --attach receipts.zip --template report.tpl",
+        "explanation": "Reads 'main.json', attaches 'receipts.zip' for supplementary data, and processes everything with 'report.tpl'."
+      },
+      {
+        "description": "Output results to a specific file format",
+        "command": "example-cli-tool --input-file data.yaml --template summary.tpl --output results.pdf",
+        "explanation": "Sends generated output to 'results.pdf' instead of standard output."
+      }
+    ],
+    "advanced_examples": [
+      {
+        "description": "Using a code interpreter for advanced calculations",
+        "command": "example-cli-tool --input-file calc.json --template analysis.tpl --enable-code-interpreter",
+        "explanation": "Enables the code interpreter, allowing template logic to run embedded computations based on 'calc.json'."
+      },
+      {
+        "description": "Batch processing with file search for a specific pattern",
+        "command": "example-cli-tool --input-file *.json --file-search pattern='error_code:[A-Z]+' --template alert.tpl",
+        "explanation": "Processes all JSON files in the current directory, searching for 'error_code' patterns, and creates alert reports with 'alert.tpl'."
+      }
+    ]
+  },
+  "argument_documentation": {
+    "required_arguments": [
+      {
+        "name": "input-file",
+        "flag": "--input-file",
+        "short_flag": "-i",
+        "description": "Path to one or more input data files. Supports CSV, JSON, and YAML formats.",
+        "type": "file path or glob",
+        "validation_hints": [
+          "Must exist and be readable",
+          "Accepted formats: .csv, .json, .yaml, .yml"
+        ],
+        "examples": [
+          "example-cli-tool --input-file data.json",
+          "example-cli-tool -i files/*.csv"
+        ]
+      },
+      {
+        "name": "template",
+        "flag": "--template",
+        "short_flag": "-t",
+        "description": "Template file defining the output structure and logic. Must be compatible with ostruct template syntax.",
+        "type": "file path",
+        "validation_hints": [
+          "File must exist and use valid template syntax"
+        ],
+        "examples": [
+          "example-cli-tool --template report.tpl"
+        ]
+      }
+    ],
+    "optional_arguments": [
+      {
+        "name": "output",
+        "flag": "--output",
+        "short_flag": "-o",
+        "description": "Destination to write the rendered output file. Defaults to standard output if not specified.",
+        "type": "file path",
+        "default_value": "stdout",
+        "validation_hints": [
+          "If directory does not exist, it will be created",
+          "Existing files may be overwritten"
+        ],
+        "examples": [
+          "example-cli-tool --output result.pdf"
+        ]
+      },
+      {
+        "name": "attach",
+        "flag": "--attach",
+        "short_flag": "-a",
+        "description": "Attach one or more support files (e.g., images, zips) for use within the template.",
+        "type": "file path or glob",
+        "default_value": null,
+        "validation_hints": [
+          "Attachment files must be accessible and referenced in the template"
+        ],
+        "examples": [
+          "example-cli-tool --attach resources/logo.png"
+        ]
+      },
+      {
+        "name": "enable-code-interpreter",
+        "flag": "--enable-code-interpreter",
+        "short_flag": null,
+        "description": "Enable the integrated code interpreter for running advanced logic in templates.",
+        "type": "boolean",
+        "default_value": "false",
+        "validation_hints": [
+          "Use with trusted templates only"
+        ],
+        "examples": [
+          "example-cli-tool --enable-code-interpreter"
+        ]
+      },
+      {
+        "name": "file-search",
+        "flag": "--file-search",
+        "short_flag": null,
+        "description": "Search for a pattern within attachment or input files.",
+        "type": "pattern string",
+        "default_value": null,
+        "validation_hints": [
+          "Pattern must be a valid regular expression"
+        ],
+        "examples": [
+          "example-cli-tool --file-search pattern='error_code:[A-Z]+'"
+        ]
+      }
+    ]
+  },
+  "file_routing": {
+    "routing_explanation": "Files are routed based on their argument flags and usage context. Templates are interpreted for output formatting, input files provide source data, attachments are made accessible to templates, and special tools (code interpreter, file search) operate according to their enabling flags.",
+    "template_files": {
+      "description": "Template files (via --template) are parsed and evaluated as the blueprint for output generation. All variables, conditionals, and logic derive from the provided template.",
+      "examples": [
+        {
+          "flag": "--template",
+          "description": "Specifies the template logic and layout for output.",
+          "command_example": "example-cli-tool --template invoice.tpl"
+        }
+      ]
+    },
+    "code_interpreter_files": {
+      "description": "When enabled (with --enable-code-interpreter), the tool interprets additional code blocks or logic embedded within templates. Input and attachment files are passed as available context.",
+      "examples": [
+        {
+          "flag": "--enable-code-interpreter",
+          "description": "Activates embedded code execution for dynamic template logic.",
+          "command_example": "example-cli-tool --enable-code-interpreter"
+        }
+      ]
+    },
+    "file_search_files": {
+      "description": "If --file-search is set, it scans specified files (input/attachments) for the given pattern and exposes the results to the template for further processing.",
+      "examples": [
+        {
+          "flag": "--file-search",
+          "description": "Search for regular expression matches in supplied files.",
+          "command_example": "example-cli-tool --file-search pattern='error_code:[A-Z]+'"
+        }
+      ]
+    }
+  },
+  "tool_integration": {
+    "available_tools": [
+      {
+        "name": "code-interpreter",
+        "description": "Enables in-template code execution for custom logic, computations, and data transformations.",
+        "when_to_use": "When templates require computations beyond static rendering.",
+        "example_usage": "example-cli-tool ... --enable-code-interpreter"
+      },
+      {
+        "name": "file-search",
+        "description": "Searches for regex patterns in the provided files and makes results available to the template.",
+        "when_to_use": "To extract, summarize, or act upon dynamic content within input or attachment files.",
+        "example_usage": "example-cli-tool ... --file-search pattern='TODO:'"
+      }
+    ],
+    "mcp_servers": {
+      "description": "The tool can optionally integrate with MCP (Modular Compute Platform) servers for scalable batch processing or remote code execution, depending on template capabilities.",
+      "suggested_servers": [
+        {
+          "name": "mcp-cloud",
+          "purpose": "Distributed processing of large batch jobs or computationally intensive templates.",
+          "example_usage": "example-cli-tool --input-file *.csv --template report.tpl --use-mcp-server mcp-cloud"
+        }
+      ]
+    }
+  },
+  "security_considerations": {
+    "security_overview": "This tool processes potentially sensitive data and executes template logic, including optional code interpretation. Users must ensure that all input files and templates are from trusted sources to minimize risk.",
+    "input_validation": [
+      {
+        "concern": "Malicious or malformed input files",
+        "guidance": "Only process files from trusted sources; validate input file formats as specified in argument hints."
+      }
+    ],
+    "file_handling": [
+      {
+        "concern": "Overwriting existing output files",
+        "guidance": "Check and back up output paths to avoid accidental data overwrites."
+      },
+      {
+        "concern": "Unintended file execution (attachments/code)",
+        "guidance": "Use --enable-code-interpreter only with trusted templates and review template code before execution."
+      }
+    ],
+    "output_security": [
+      {
+        "concern": "Exposing sensitive data in output files",
+        "guidance": "Review output templates for leakage of confidential information before distributing results."
+      }
+    ]
+  },
+  "troubleshooting": {
+    "common_issues": [
+      {
+        "problem": "Input file not found",
+        "symptoms": [
+          "Error: File not found",
+          "Tool returns with exit code 1"
+        ],
+        "solutions": [
+          "Verify the input file path is correct",
+          "Check file permissions and accessibility"
+        ]
+      },
+      {
+        "problem": "Template parse error",
+        "symptoms": [
+          "Error: Template syntax error",
+          "Unexpected output or crash"
+        ],
+        "solutions": [
+          "Review template file for syntax errors",
+          "Refer to ostruct template documentation"
+        ]
+      },
+      {
+        "problem": "Attachment not processed",
+        "symptoms": [
+          "Referenced attachment missing in output",
+          "Warnings about unresolved file references"
+        ],
+        "solutions": [
+          "Confirm the attachment file exists and the path is correct",
+          "Check if template correctly references the attachment variable"
+        ]
+      },
+      {
+        "problem": "Code interpreter errors",
+        "symptoms": [
+          "Runtime error when --enable-code-interpreter is used"
+        ],
+        "solutions": [
+          "Ensure code blocks in template execute securely and are tested",
+          "Check the tool's supported language/version for code interpretation"
+        ]
+      }
+    ],
+    "debugging_tips": [
+      "Run the tool with minimal input and gradually add complexity to isolate issues.",
+      "Use verbose or debug flags if available to increase logging.",
+      "Check output files/logs for stack traces or error messages indicating failure points.",
+      "Compare input data to documented schema to validate format and completeness."
+    ]
+  },
+  "quality_metrics": {
+    "documentation_completeness": 95.0,
+    "example_coverage": 90.0,
+    "clarity_score": 9.0,
+    "recommendations": [
+      "Add more advanced use case examples for large-scale data processing.",
+      "Include versioning information for template and code interpreter compatibility.",
+      "Expand documentation on MCP server integration as adoption grows."
+    ]
+  }
+}

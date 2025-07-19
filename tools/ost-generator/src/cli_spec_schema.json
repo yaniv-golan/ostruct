@@ -1,0 +1,312 @@
+{
+    "type": "object",
+    "properties": {
+        "cli_specification": {
+            "type": "object",
+            "properties": {
+                "tool_name": {
+                    "type": "string",
+                    "description": "Generated tool name based on template purpose"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Brief description of what the tool does"
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Version string for the tool"
+                },
+                "arguments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "variable_name": {
+                                "type": "string",
+                                "description": "Original template variable name"
+                            },
+                            "cli_flag": {
+                                "type": "string",
+                                "description": "Long CLI flag (e.g., --input-file)"
+                            },
+                            "short_flag": {
+                                "type": "string",
+                                "description": "Short CLI flag (e.g., -i)"
+                            },
+                            "argument_type": {
+                                "type": "string",
+                                "enum": [
+                                    "flag",
+                                    "single_value",
+                                    "multiple_values",
+                                    "key_value",
+                                    "file_attachment",
+                                    "directory_attachment"
+                                ],
+                                "description": "Type of CLI argument"
+                            },
+                            "required": {
+                                "type": "boolean",
+                                "description": "Whether this argument is required"
+                            },
+                            "default_value": {
+                                "type": "string",
+                                "description": "Default value if not provided"
+                            },
+                            "help_text": {
+                                "type": "string",
+                                "description": "Help text for this argument"
+                            },
+                            "validation": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "string",
+                                            "integer",
+                                            "float",
+                                            "boolean",
+                                            "file_path",
+                                            "directory_path",
+                                            "email",
+                                            "url"
+                                        ],
+                                        "description": "Expected value type"
+                                    },
+                                    "allowed_values": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "List of allowed values (for enums)"
+                                    },
+                                    "pattern": {
+                                        "type": "string",
+                                        "description": "Regex pattern for validation"
+                                    },
+                                    "min_length": {
+                                        "type": "integer",
+                                        "description": "Minimum length for string values"
+                                    },
+                                    "max_length": {
+                                        "type": "integer",
+                                        "description": "Maximum length for string values"
+                                    },
+                                    "file_extensions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Allowed file extensions for file arguments"
+                                    }
+                                }
+                            },
+                            "file_routing": {
+                                "type": "object",
+                                "properties": {
+                                    "target": {
+                                        "type": "string",
+                                        "enum": [
+                                            "template",
+                                            "code_interpreter",
+                                            "file_search"
+                                        ],
+                                        "description": "Where to route the file"
+                                    },
+                                    "alias": {
+                                        "type": "string",
+                                        "description": "Alias name for the file in templates"
+                                    },
+                                    "multiple": {
+                                        "type": "boolean",
+                                        "description": "Whether multiple files are allowed"
+                                    }
+                                }
+                            },
+                            "examples": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Example values for this argument"
+                            }
+                        },
+                        "required": [
+                            "variable_name",
+                            "cli_flag",
+                            "argument_type",
+                            "required",
+                            "help_text"
+                        ]
+                    }
+                },
+                "file_attachments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "flag": {
+                                "type": "string",
+                                "description": "CLI flag for file attachment"
+                            },
+                            "routing_target": {
+                                "type": "string",
+                                "enum": [
+                                    "template",
+                                    "code_interpreter",
+                                    "file_search"
+                                ],
+                                "description": "Where to route attached files"
+                            },
+                            "alias": {
+                                "type": "string",
+                                "description": "Template alias for the attached files"
+                            },
+                            "file_types": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Suggested file types"
+                            },
+                            "required": {
+                                "type": "boolean",
+                                "description": "Whether file attachment is required"
+                            },
+                            "multiple": {
+                                "type": "boolean",
+                                "description": "Whether multiple files can be attached"
+                            },
+                            "help_text": {
+                                "type": "string",
+                                "description": "Help text for file attachment"
+                            }
+                        },
+                        "required": [
+                            "flag",
+                            "routing_target",
+                            "alias",
+                            "required",
+                            "help_text"
+                        ]
+                    }
+                },
+                "tool_integrations": {
+                    "type": "object",
+                    "properties": {
+                        "enable_code_interpreter": {
+                            "type": "boolean",
+                            "description": "Whether to enable Code Interpreter tool"
+                        },
+                        "enable_file_search": {
+                            "type": "boolean",
+                            "description": "Whether to enable File Search tool"
+                        },
+                        "enable_web_search": {
+                            "type": "boolean",
+                            "description": "Whether to enable Web Search tool"
+                        },
+                        "suggested_mcp_servers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Suggested MCP servers to integrate"
+                        }
+                    }
+                }
+            },
+            "required": [
+                "tool_name",
+                "description",
+                "arguments",
+                "file_attachments",
+                "tool_integrations"
+            ]
+        },
+        "usage_examples": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "Description of the usage example"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Example command line"
+                    },
+                    "explanation": {
+                        "type": "string",
+                        "description": "Explanation of what the command does"
+                    }
+                },
+                "required": [
+                    "description",
+                    "command",
+                    "explanation"
+                ]
+            }
+        },
+        "implementation_notes": {
+            "type": "object",
+            "properties": {
+                "complexity_assessment": {
+                    "type": "string",
+                    "enum": [
+                        "simple",
+                        "moderate",
+                        "complex"
+                    ],
+                    "description": "Overall complexity of the CLI"
+                },
+                "security_considerations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Security considerations for implementation"
+                },
+                "validation_requirements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Validation requirements for arguments"
+                },
+                "file_handling_notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Notes about file handling requirements"
+                },
+                "recommended_defaults": {
+                    "type": "object",
+                    "properties": {
+                        "model": {
+                            "type": "string",
+                            "description": "Recommended default model"
+                        },
+                        "output_format": {
+                            "type": "string",
+                            "description": "Recommended output format"
+                        }
+                    }
+                }
+            },
+            "required": [
+                "complexity_assessment",
+                "security_considerations",
+                "validation_requirements"
+            ]
+        }
+    },
+    "required": [
+        "cli_specification",
+        "usage_examples",
+        "implementation_notes"
+    ]
+}

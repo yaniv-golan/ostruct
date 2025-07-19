@@ -87,6 +87,14 @@ def run(
     See organized option groups below for complete functionality.
     """
     try:
+        # Configure logging as early as possible
+        from ..template_debug import configure_debug_logging
+
+        configure_debug_logging(
+            verbose=bool(kwargs.get("verbose", False)),
+            debug=bool(kwargs.get("debug", False)),
+        )
+
         # Convert Click parameters to typed dict
         params: CLIParams = {
             "task_file": task_template,

@@ -1,0 +1,88 @@
+{
+  "file_patterns": {
+    "file_attachments": [],
+    "directory_operations": []
+  },
+  "tool_hints": {
+    "code_interpreter": {
+      "suggested": false,
+      "confidence": 0.3,
+      "reasons": [
+        "Only mentions of higher-order tasks (extract, analyze, sentiment) suggest possible text processing, but no explicit calculations or file/data analysis.",
+        "No data structures or variables indicating files, data tables, or complex computations."
+      ],
+      "use_cases": null
+    },
+    "file_search": {
+      "suggested": false,
+      "confidence": 0.2,
+      "reasons": [
+        "No variables or schema fields suggesting large documents or file searching.",
+        "No evidence of document batch operations, content extraction from files, or information retrieval."
+      ],
+      "document_types": null
+    },
+    "web_search": {
+      "suggested": false,
+      "confidence": 0.1,
+      "reasons": [
+        "No references to dynamic external data, URLs, or API lookups.",
+        "Template focuses on local analysis, not external or real-time data."
+      ],
+      "search_contexts": null
+    }
+  },
+  "security_patterns": {
+    "input_validation": {
+      "required": true,
+      "validation_types": [
+        "string non-empty validation for 'input_text'",
+        "choice enumeration for 'sentiment'",
+        "choice enumeration for 'format' (output format)"
+      ],
+      "risk_level": "low",
+      "evidence": [
+        "'input_text' is user-supplied and must not be empty.",
+        "'sentiment' and 'format' require strict enumeration validation per schema.",
+        "No evidence of file path or external resource handling."
+      ]
+    },
+    "file_safety": {
+      "file_access_patterns": [],
+      "safety_recommendations": [],
+      "restricted_operations": [
+        "Do not add support for arbitrary file paths or user-uploaded files without strict validation, as current design does not call for it."
+      ]
+    }
+  },
+  "integration_patterns": {
+    "mcp_servers": [],
+    "external_apis": [
+      {
+        "api_type": "Text Analysis API (optional/augmentative)",
+        "purpose": "Enhance entity, topic, or sentiment extraction with third-party services if required in future iterations.",
+        "confidence": 0.4
+      }
+    ]
+  },
+  "pattern_summary": {
+    "complexity_score": 0.3,
+    "primary_patterns": [
+      "User-input string analysis",
+      "Conditional logic for output formatting and verbosity",
+      "Sentiment filtering and labeling"
+    ],
+    "recommended_features": [
+      "Strict input validation for all user-provided fields",
+      "Enumeration (choice) validation for 'sentiment' and 'format'",
+      "Structured output with required fields: entities (array), topics (array), sentiment (enum), format (string)",
+      "CLI interface with clear, required fields and helpful error messages"
+    ],
+    "implementation_notes": [
+      "No file or directory attachment support is needed as per current variable set and schema analysis.",
+      "Validation logic should be airtight (enforce non-empty input_text, enforce supported values for sentiment, format).",
+      "Code interpreter or advanced tools are currently unnecessary, but allow for text analysis extensibility via external APIs if future needs evolve.",
+      "Security risk is low, but maintain strict input validation and provide helpful feedback for invalid cases."
+    ]
+  }
+}

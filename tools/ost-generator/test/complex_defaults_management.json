@@ -1,0 +1,396 @@
+{
+  "default_value_sources": {
+    "template_defaults": [
+      {
+        "variable_name": "output_directory",
+        "default_value": "./dist",
+        "source_location": "template (main block)",
+        "type": "string",
+        "validation": "must be a valid, writable directory path"
+      },
+      {
+        "variable_name": "enable_logging",
+        "default_value": "true",
+        "source_location": "template (logging section)",
+        "type": "boolean",
+        "validation": "must be boolean"
+      }
+    ],
+    "cli_argument_defaults": [
+      {
+        "argument_name": "output_directory",
+        "cli_flag": "--output",
+        "default_value": "./dist",
+        "type": "string",
+        "required": false,
+        "validation": "valid directory path"
+      }
+    ],
+    "global_policy_defaults": [
+      {
+        "policy_area": "security",
+        "parameter": "allow_unsigned_templates",
+        "default_value": "false",
+        "rationale": "Enforce signed templates for all environments",
+        "override_allowed": false
+      }
+    ],
+    "environment_variable_defaults": [
+      {
+        "env_var_name": "MYTOOL_OUTPUT_DIRECTORY",
+        "mapped_parameter": "output_directory",
+        "default_value": "./dist",
+        "type": "string",
+        "sensitive": false,
+        "validation": null
+      }
+    ],
+    "system_defaults": [
+      {
+        "parameter": "config_location",
+        "default_value": "/etc/mytool/config.yml",
+        "description": "System-wide configuration location",
+        "installation_dependent": true
+      }
+    ],
+    "user_config_defaults": [
+      {
+        "config_key": "output_directory",
+        "default_value": "~/mytool-out",
+        "config_section": "output",
+        "type": "string",
+        "validation": "must be writable directory"
+      }
+    ]
+  },
+  "precedence_rules": {
+    "precedence_order": [
+      {
+        "priority": 1,
+        "source": "cli_argument",
+        "description": "Explicit CLI arguments or flags",
+        "override_conditions": null
+      },
+      {
+        "priority": 2,
+        "source": "environment_variable",
+        "description": "Environment variables following tool naming convention",
+        "override_conditions": null
+      },
+      {
+        "priority": 3,
+        "source": "user_configuration",
+        "description": "User-specific configuration files (e.g., ~/.config/mytool.yaml)",
+        "override_conditions": null
+      },
+      {
+        "priority": 4,
+        "source": "template_default",
+        "description": "Defaults defined in the template",
+        "override_conditions": null
+      },
+      {
+        "priority": 5,
+        "source": "global_policy",
+        "description": "Organization/global policy settings",
+        "override_conditions": [
+          "Only override if explicitly enabled by admin"
+        ]
+      },
+      {
+        "priority": 6,
+        "source": "system_default",
+        "description": "System/installation defaults (site administrator set)",
+        "override_conditions": null
+      }
+    ],
+    "conflict_resolution": {
+      "resolution_strategy": "priority-first",
+      "merge_rules": [
+        {
+          "parameter_type": "array",
+          "merge_strategy": "concatenate and deduplicate, highest-priority first",
+          "description": "Combine lists from sources according to order"
+        },
+        {
+          "parameter_type": "object",
+          "merge_strategy": "deep merge with field-level precedence",
+          "description": "For dictionary/settings objects, combine keys by precedence"
+        }
+      ],
+      "validation_on_conflict": true
+    },
+    "special_cases": [
+      {
+        "parameter": "allow_unsigned_templates",
+        "special_rule": "Cannot be overridden outside global policy",
+        "rationale": "Security compliance"
+      }
+    ]
+  },
+  "environment_variable_integration": {
+    "naming_convention": {
+      "prefix": "MYTOOL",
+      "separator": "_",
+      "case_convention": "UPPERCASE_WITH_UNDERSCORES",
+      "examples": [
+        {
+          "parameter": "output_directory",
+          "env_var": "MYTOOL_OUTPUT_DIRECTORY"
+        },
+        {
+          "parameter": "enable_logging",
+          "env_var": "MYTOOL_ENABLE_LOGGING"
+        }
+      ]
+    },
+    "type_conversion": {
+      "string_to_boolean": {
+        "true_values": [
+          "1",
+          "true",
+          "yes",
+          "on",
+          "TRUE",
+          "YES",
+          "ON"
+        ],
+        "false_values": [
+          "0",
+          "false",
+          "no",
+          "off",
+          "FALSE",
+          "NO",
+          "OFF"
+        ],
+        "case_sensitive": false
+      },
+      "string_to_number": {
+        "validation": "must be parseable as integer or float, depending on schema",
+        "error_handling": "raise error or fallback to next lower precedence"
+      },
+      "string_to_array": {
+        "delimiter": ",",
+        "trim_whitespace": true,
+        "remove_empty": true
+      }
+    },
+    "security_considerations": {
+      "sensitive_variables": [
+        "MYTOOL_API_KEY",
+        "MYTOOL_SECRET"
+      ],
+      "masking_rules": [
+        {
+          "variable_pattern": ".*(KEY|SECRET)$",
+          "mask_strategy": "show only first/last 2 chars",
+          "log_policy": "never log full value"
+        }
+      ],
+      "validation_requirements": [
+        "Must match expected format (e.g., hex string for keys)",
+        "Cannot be empty"
+      ]
+    }
+  },
+  "configuration_file_handling": {
+    "file_formats": [
+      {
+        "format": "YAML",
+        "priority": 1,
+        "filename_patterns": [
+          "*.yaml",
+          "*.yml"
+        ],
+        "validation": "schema-based"
+      },
+      {
+        "format": "JSON",
+        "priority": 2,
+        "filename_patterns": [
+          "*.json"
+        ],
+        "validation": "schema-based"
+      }
+    ],
+    "search_locations": [
+      {
+        "location": "~/.config/mytool/",
+        "priority": 1,
+        "description": "User-level config",
+        "platform_specific": false
+      },
+      {
+        "location": "./mytool.config.yml",
+        "priority": 2,
+        "description": "Project-local config",
+        "platform_specific": false
+      },
+      {
+        "location": "/etc/mytool/config.yaml",
+        "priority": 3,
+        "description": "System-level config",
+        "platform_specific": true
+      }
+    ],
+    "hierarchical_merging": {
+      "merge_strategy": "deep merge",
+      "section_handling": "combine by section, overwrite by priority",
+      "conflict_resolution": "warn and use higher-precedence value"
+    },
+    "validation_rules": [
+      {
+        "rule_type": "schema",
+        "description": "Validate structure and types using a defined schema",
+        "validation_logic": "Use JSONSchema/YAMLSchema as applicable",
+        "error_handling": "fail and prompt user for correction"
+      }
+    ]
+  },
+  "runtime_override_mechanisms": {
+    "cli_overrides": {
+      "override_flags": [
+        {
+          "flag": "--override-output",
+          "target_parameter": "output_directory",
+          "override_type": "string",
+          "validation": "must be a valid directory"
+        },
+        {
+          "flag": "--no-logging",
+          "target_parameter": "enable_logging",
+          "override_type": "boolean",
+          "validation": null
+        }
+      ],
+      "global_overrides": [
+        {
+          "flag": "--config",
+          "description": "Specify alternative user/project config file",
+          "scope": "global"
+        }
+      ]
+    },
+    "temporary_overrides": {
+      "session_overrides": true,
+      "override_persistence": "session-only",
+      "override_storage": "in-memory (discarded on restart)"
+    },
+    "dynamic_updates": {
+      "hot_reload": true,
+      "update_mechanisms": [
+        "file watcher for config file changes",
+        "signal-based reload (e.g., SIGHUP)"
+      ],
+      "validation_on_update": true
+    }
+  },
+  "validation_and_conflict_resolution": {
+    "cross_source_validation": {
+      "validation_rules": [
+        {
+          "rule_name": "output_directory_exists",
+          "sources_involved": [
+            "cli_argument",
+            "environment_variable",
+            "user_configuration"
+          ],
+          "validation_logic": "Check if the resolved output_directory exists and is writable",
+          "error_message": "Output directory must exist and be writable"
+        },
+        {
+          "rule_name": "logging_policy_enforced",
+          "sources_involved": [
+            "template_default",
+            "cli_argument",
+            "environment_variable",
+            "user_configuration"
+          ],
+          "validation_logic": "If enable_logging is false, warn if required by policy",
+          "error_message": "Logging must be enabled due to policy"
+        }
+      ],
+      "validation_timing": "on load and on override"
+    },
+    "conflict_detection": {
+      "detection_strategies": [
+        {
+          "strategy": "priority-based",
+          "description": "Select value with highest precedence; warn on conflict",
+          "applicable_types": [
+            "all"
+          ]
+        }
+      ],
+      "conflict_reporting": {
+        "report_format": "detailed (source, value, resolution path)",
+        "include_resolution": true,
+        "user_interaction": true
+      }
+    },
+    "type_checking": {
+      "type_conversion_rules": [
+        {
+          "from_type": "string",
+          "to_type": "boolean",
+          "conversion_logic": "use standard ENV to boolean mapping",
+          "validation": null
+        },
+        {
+          "from_type": "string",
+          "to_type": "integer",
+          "conversion_logic": "parse and validate range",
+          "validation": "within allowed min/max from schema"
+        }
+      ],
+      "strict_typing": true,
+      "type_error_handling": "fail and report with suggestions"
+    }
+  },
+  "debugging_and_troubleshooting": {
+    "debug_modes": [
+      {
+        "mode": "trace-precedence",
+        "description": "Show value source and override path",
+        "output_format": "annotated tree",
+        "security_considerations": "mask sensitive values"
+      },
+      {
+        "mode": "validation-report",
+        "description": "Show all validation checks and failures",
+        "output_format": "structured table",
+        "security_considerations": null
+      }
+    ],
+    "tracing_capabilities": {
+      "value_source_tracing": true,
+      "precedence_tracing": true,
+      "validation_tracing": true,
+      "trace_output_format": "JSON/YAML for programmatic review"
+    },
+    "diagnostic_tools": [
+      {
+        "tool": "conflict-inspector",
+        "purpose": "Show all sources contributing to a setting",
+        "usage": "mytool doctor --show-conflicts"
+      },
+      {
+        "tool": "config-dump",
+        "purpose": "Export resolved configuration with provenance",
+        "usage": "mytool config --dump"
+      }
+    ]
+  },
+  "quality_metrics": {
+    "robustness_score": 9.5,
+    "usability_score": 9.2,
+    "predictability_score": 9.7,
+    "maintainability_score": 9.0,
+    "recommendations": [
+      "Include documentation pointer for each config source",
+      "Auto-generate example config files",
+      "Warn clearly on ambiguous or conflicting settings"
+    ]
+  }
+}

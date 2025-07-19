@@ -26,7 +26,7 @@ ostruct provides several commands for different use cases:
 **Main Commands:**
 
 - ``ostruct run TEMPLATE_FILE SCHEMA_FILE [OPTIONS]`` - Execute templates with separate schema files
-- ``ostruct runx TEMPLATE_FILE [ARGS]`` - Execute OST (Self-Executing Templates) with embedded schemas
+- ``ostruct runx TEMPLATE_FILE [ARGS]`` - Execute OST files (self-executing ostruct prompts)
 - ``ostruct setup COMMAND`` - Environment setup and configuration
 - ``ostruct list-models`` - List available OpenAI models
 - ``ostruct update-registry`` - Update model registry
@@ -35,7 +35,7 @@ ostruct provides several commands for different use cases:
 
 The ``run`` command is the primary interface for traditional ostruct usage. All file processing, model configuration, and tool integration happens through this command with various options.
 
-The ``runx`` command executes OST (Self-Executing Templates) that contain embedded schemas and CLI metadata in their YAML front-matter.
+The ``runx`` command executes OST files (self-executing ostruct prompts) that contain embedded schemas and CLI metadata in their YAML front-matter.
 
 File and Directory Management
 -----------------------------
@@ -229,7 +229,7 @@ Quick Reference Commands
 OST (Self-Executing Templates) Commands
 =======================================
 
-The ``runx`` command executes OST (Self-Executing Templates) that contain embedded schemas and CLI metadata in their YAML front-matter.
+The ``runx`` command executes OST files (self-executing ostruct prompts) that contain embedded schemas and CLI metadata in their YAML front-matter.
 
 ostruct runx
 ------------
@@ -240,12 +240,12 @@ Execute an OST (Self-Executing Template) file.
 
    Usage: ostruct runx [OPTIONS] TEMPLATE_FILE [ARGS]...
 
-   Execute an OST (Self-Executing Template) file.
-   This command executes .ost template files that contain embedded schemas and CLI metadata in their
-   YAML front-matter. The template acts as a self-contained mini-CLI with its own argument parsing
-   and policy enforcement.
+   Execute an OST file (self-executing ostruct prompt).
+   This command executes .ost files that contain embedded schemas and CLI metadata in their
+   YAML front-matter. Each OST file acts as a self-contained tool with its own argument parsing,
+   help system, and policy enforcement.
 
-   TEMPLATE_FILE: Path to the .ost template file to execute
+   TEMPLATE_FILE: Path to the .ost file (self-executing ostruct prompt) to execute
    ARGS: Arguments to pass to the template
 
    Examples:

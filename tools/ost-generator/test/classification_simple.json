@@ -1,0 +1,125 @@
+{
+  "classified_variables": [
+    {
+      "name": "input_text",
+      "type": "scalar",
+      "subtype": "string",
+      "confidence": 0.95,
+      "usage_context": [
+        "substitution"
+      ],
+      "cli_suggestion": {
+        "flag": "--input-text",
+        "short_flag": "-i",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": "string",
+        "pattern": null,
+        "constraints": [
+          "must not be empty"
+        ]
+      },
+      "examples": [
+        "A piece of text to be analyzed or processed."
+      ]
+    },
+    {
+      "name": "format",
+      "type": "scalar",
+      "subtype": "string (output format)",
+      "confidence": 0.85,
+      "usage_context": [
+        "conditional"
+      ],
+      "cli_suggestion": {
+        "flag": "--format",
+        "short_flag": "-f",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null
+      },
+      "validation_hints": {
+        "format": "choice",
+        "pattern": null,
+        "constraints": [
+          "should be a supported format (e.g., 'json', 'text', 'table')"
+        ]
+      },
+      "examples": [
+        "The output format, e.g., 'json', 'text', 'table'."
+      ]
+    },
+    {
+      "name": "verbose",
+      "type": "boolean",
+      "subtype": null,
+      "confidence": 0.9,
+      "usage_context": [
+        "conditional"
+      ],
+      "cli_suggestion": {
+        "flag": "--verbose",
+        "short_flag": "-v",
+        "argument_type": "flag",
+        "required": false,
+        "default_value": "false"
+      },
+      "validation_hints": {
+        "format": "boolean",
+        "pattern": null,
+        "constraints": []
+      },
+      "examples": [
+        "Optional debug-level output."
+      ]
+    },
+    {
+      "name": "sentiment",
+      "type": "scalar",
+      "subtype": "string (sentiment label)",
+      "confidence": 0.85,
+      "usage_context": [
+        "substitution",
+        "filter"
+      ],
+      "cli_suggestion": {
+        "flag": "--sentiment",
+        "short_flag": "-s",
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": "neutral"
+      },
+      "validation_hints": {
+        "format": "choice",
+        "pattern": null,
+        "constraints": [
+          "should be one of: 'positive', 'neutral', 'negative'"
+        ]
+      },
+      "examples": [
+        "Override sentiment classification, e.g., 'positive', 'neutral', 'negative'."
+      ]
+    }
+  ],
+  "classification_summary": {
+    "total_variables": 4,
+    "type_distribution": {
+      "scalar": 3,
+      "boolean": 1,
+      "file": 0,
+      "directory": 0,
+      "list": 0,
+      "json": 0,
+      "unknown": 0
+    },
+    "complexity_indicators": {
+      "has_file_operations": false,
+      "has_complex_data_structures": false,
+      "has_conditional_logic": true,
+      "requires_validation": true
+    }
+  }
+}

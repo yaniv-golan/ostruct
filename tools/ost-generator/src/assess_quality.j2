@@ -1,0 +1,122 @@
+You are an expert OST (ostruct) file quality assessor. Your task is to comprehensively evaluate the generated OST file for usability, completeness, best practices, and professional quality standards.
+
+## Input Data
+
+**Generated OST File:**
+```
+{{ ost_file_content }}
+```
+
+**Assembly Metadata:**
+```json
+{{ assembly_metadata }}
+```
+
+**Front-matter Structure:**
+```json
+{{ frontmatter_structure }}
+```
+
+**Template Processing Results:**
+```json
+{{ template_processing_results }}
+```
+
+**Original Template:**
+```
+{{ original_template }}
+```
+
+**Original Schema:**
+```json
+{{ original_schema }}
+```
+
+## Quality Assessment Criteria
+
+### 1. Usability Assessment
+- **CLI Interface Quality**: Are the CLI flags intuitive and well-named?
+- **Help Documentation**: Is the help text clear and comprehensive?
+- **User Experience**: Would a new user understand how to use this tool?
+- **Error Handling**: Are validation rules appropriate and helpful?
+- **Default Values**: Are sensible defaults provided where appropriate?
+
+### 2. Completeness Assessment
+- **Feature Coverage**: Are all original template features preserved?
+- **CLI Mapping**: Are all template variables properly mapped to CLI flags?
+- **Documentation**: Is the tool adequately documented?
+- **Examples**: Are usage examples provided and helpful?
+- **Edge Cases**: Are edge cases and error conditions handled?
+
+### 3. Best Practices Assessment
+- **YAML Structure**: Is the front-matter well-structured and valid?
+- **Template Quality**: Is the template body clean and maintainable?
+- **Security**: Are appropriate security measures in place?
+- **Performance**: Are there any performance considerations?
+- **Maintainability**: Is the code easy to maintain and extend?
+
+### 4. Professional Standards
+- **Code Quality**: Is the code clean, readable, and well-commented?
+- **Consistency**: Are naming conventions and patterns consistent?
+- **Standards Compliance**: Does it follow ostruct best practices?
+- **Production Readiness**: Is this ready for production use?
+- **Documentation Quality**: Is the documentation professional and complete?
+
+## Evaluation Framework
+
+Rate each aspect on a scale of 1-5:
+- **5 - Excellent**: Exceeds expectations, professional quality
+- **4 - Good**: Meets expectations with minor improvements possible
+- **3 - Satisfactory**: Acceptable but with room for improvement
+- **2 - Needs Improvement**: Significant issues that should be addressed
+- **1 - Poor**: Major problems that prevent effective use
+
+## Assessment Areas
+
+### A. CLI Interface Design
+- Flag naming consistency and intuitiveness
+- Help text clarity and completeness
+- Argument validation and error messages
+- Default value appropriateness
+- Usage example quality
+
+### B. Technical Implementation
+- YAML front-matter structure and validity
+- Template syntax and functionality preservation
+- Variable mapping accuracy
+- File routing implementation
+- Tool integration configuration
+
+### C. Documentation and Usability
+- README and usage instructions
+- Inline comments and documentation
+- Error messages and troubleshooting
+- Example usage scenarios
+- Maintenance and extension guidance
+
+### D. Security and Robustness
+- Input validation and sanitization
+- File access controls and restrictions
+- Error handling and graceful degradation
+- Resource usage and performance
+- Security policy implementation
+
+### E. Professional Quality
+- Code organization and structure
+- Naming conventions and consistency
+- Comment quality and coverage
+- Testing and validation readiness
+- Production deployment suitability
+
+## Output Requirements
+
+Provide a comprehensive quality assessment that includes:
+1. Overall quality score and rating
+2. Detailed scores for each assessment area
+3. Specific strengths and achievements
+4. Identified issues and areas for improvement
+5. Actionable recommendations for enhancement
+6. Production readiness assessment
+7. Maintenance and extension guidance
+
+Focus on practical, actionable feedback that would help improve the OST file quality and user experience.

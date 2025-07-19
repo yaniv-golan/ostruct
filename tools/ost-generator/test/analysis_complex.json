@@ -1,0 +1,175 @@
+{
+  "variables": [
+    {
+      "name": "config",
+      "type": "file",
+      "usage_context": [
+        "conditional",
+        "substitution",
+        "file_access"
+      ],
+      "is_required": false,
+      "default_value": null,
+      "file_attributes": [
+        "name",
+        "content"
+      ]
+    },
+    {
+      "name": "documents",
+      "type": "directory",
+      "usage_context": [
+        "loop"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "doc",
+      "type": "complex",
+      "usage_context": [
+        "loop variable",
+        "substitution",
+        "file_access",
+        "conditional"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": [
+        "name",
+        "size",
+        "content"
+      ]
+    },
+    {
+      "name": "analysis_mode",
+      "type": "scalar",
+      "usage_context": [
+        "substitution",
+        "filter"
+      ],
+      "is_required": false,
+      "default_value": "standard",
+      "file_attributes": null
+    },
+    {
+      "name": "include_metadata",
+      "type": "boolean",
+      "usage_context": [
+        "substitution"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "output_format",
+      "type": "scalar",
+      "usage_context": [
+        "substitution"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "enable_search",
+      "type": "boolean",
+      "usage_context": [
+        "conditional"
+      ],
+      "is_required": false,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "search_query",
+      "type": "scalar",
+      "usage_context": [
+        "substitution"
+      ],
+      "is_required": false,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "processing_instructions",
+      "type": "list",
+      "usage_context": [
+        "loop"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "instruction",
+      "type": "scalar",
+      "usage_context": [
+        "loop variable",
+        "substitution"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": null
+    }
+  ],
+  "file_patterns": [
+    {
+      "pattern_type": "single_file",
+      "variable_name": "config",
+      "routing_hint": "template",
+      "attributes_used": [
+        "name",
+        "content"
+      ]
+    },
+    {
+      "pattern_type": "directory",
+      "variable_name": "documents",
+      "routing_hint": "auto",
+      "attributes_used": null
+    },
+    {
+      "pattern_type": "file_reference",
+      "variable_name": "doc",
+      "routing_hint": "auto",
+      "attributes_used": [
+        "name",
+        "size",
+        "content"
+      ]
+    }
+  ],
+  "tool_hints": [
+    {
+      "tool": "user-data",
+      "confidence": 0.9,
+      "evidence": "Document iteration, reference to .pdf for vision analysis, and document content access."
+    },
+    {
+      "tool": "file-search",
+      "confidence": 0.7,
+      "evidence": "Conditional search integration and web search query usage."
+    },
+    {
+      "tool": "code-interpreter",
+      "confidence": 0.4,
+      "evidence": "Presence of file size and mention of analysis, but no explicit computations."
+    },
+    {
+      "tool": "web-search",
+      "confidence": 0.7,
+      "evidence": "Conditional block for performing web search for a search query."
+    }
+  ],
+  "complexity_score": 0.8,
+  "template_structure": {
+    "has_conditionals": true,
+    "has_loops": true,
+    "has_file_references": true,
+    "has_filters": true,
+    "line_count": 44
+  }
+}

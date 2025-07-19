@@ -1,0 +1,304 @@
+{
+    "type": "object",
+    "properties": {
+        "yaml_frontmatter": {
+            "type": "string",
+            "description": "Complete YAML front-matter content"
+        },
+        "frontmatter_structure": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Tool name in kebab-case"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Tool description"
+                        },
+                        "version": {
+                            "type": "string",
+                            "description": "Tool version"
+                        },
+                        "author": {
+                            "type": "string",
+                            "description": "Tool author"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "description",
+                        "version",
+                        "author"
+                    ]
+                },
+                "arguments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Argument name (CLI flag without --)"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "string",
+                                    "boolean",
+                                    "file",
+                                    "directory",
+                                    "integer",
+                                    "float",
+                                    "array"
+                                ],
+                                "description": "Argument type"
+                            },
+                            "required": {
+                                "type": "boolean",
+                                "description": "Whether argument is required"
+                            },
+                            "help": {
+                                "type": "string",
+                                "description": "Help text for the argument"
+                            },
+                            "default": {
+                                "description": "Default value for the argument"
+                            },
+                            "env": {
+                                "type": "string",
+                                "description": "Environment variable name"
+                            },
+                            "validation": {
+                                "type": "object",
+                                "properties": {
+                                    "allowed_values": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "List of allowed values"
+                                    },
+                                    "pattern": {
+                                        "type": "string",
+                                        "description": "Regex pattern for validation"
+                                    },
+                                    "min_length": {
+                                        "type": "integer",
+                                        "description": "Minimum length for strings"
+                                    },
+                                    "max_length": {
+                                        "type": "integer",
+                                        "description": "Maximum length for strings"
+                                    },
+                                    "file_extensions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "description": "Allowed file extensions"
+                                    }
+                                }
+                            },
+                            "file_routing": {
+                                "type": "object",
+                                "properties": {
+                                    "target": {
+                                        "type": "string",
+                                        "enum": [
+                                            "prompt",
+                                            "code_interpreter",
+                                            "file_search"
+                                        ],
+                                        "description": "File routing target"
+                                    },
+                                    "alias": {
+                                        "type": "string",
+                                        "description": "Alias name for file routing"
+                                    },
+                                    "multiple": {
+                                        "type": "boolean",
+                                        "description": "Whether multiple files are allowed"
+                                    }
+                                },
+                                "required": [
+                                    "target",
+                                    "alias"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "type",
+                            "required",
+                            "help"
+                        ]
+                    }
+                },
+                "tools": {
+                    "type": "object",
+                    "properties": {
+                        "code_interpreter": {
+                            "type": "boolean",
+                            "description": "Whether Code Interpreter is enabled"
+                        },
+                        "file_search": {
+                            "type": "boolean",
+                            "description": "Whether File Search is enabled"
+                        },
+                        "web_search": {
+                            "type": "boolean",
+                            "description": "Whether Web Search is enabled"
+                        },
+                        "mcp_servers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of MCP server configurations"
+                        }
+                    }
+                },
+                "model": {
+                    "type": "object",
+                    "properties": {
+                        "default": {
+                            "type": "string",
+                            "description": "Default model to use"
+                        },
+                        "allowed": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of allowed models"
+                        },
+                        "restrictions": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Model restrictions or policies"
+                        }
+                    }
+                },
+                "security": {
+                    "type": "object",
+                    "properties": {
+                        "validate_inputs": {
+                            "type": "boolean",
+                            "description": "Whether to validate inputs"
+                        },
+                        "sanitize_outputs": {
+                            "type": "boolean",
+                            "description": "Whether to sanitize outputs"
+                        },
+                        "file_access": {
+                            "type": "string",
+                            "enum": [
+                                "restricted",
+                                "sandboxed",
+                                "full"
+                            ],
+                            "description": "File access level"
+                        },
+                        "policies": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Security policies"
+                        }
+                    }
+                },
+                "defaults": {
+                    "type": "object",
+                    "description": "Default values for common settings",
+                    "additionalProperties": true
+                }
+            },
+            "required": [
+                "metadata",
+                "arguments",
+                "tools",
+                "model",
+                "security"
+            ]
+        },
+        "validation_results": {
+            "type": "object",
+            "properties": {
+                "yaml_valid": {
+                    "type": "boolean",
+                    "description": "Whether the generated YAML is valid"
+                },
+                "all_arguments_mapped": {
+                    "type": "boolean",
+                    "description": "Whether all CLI arguments are properly mapped"
+                },
+                "environment_variables_defined": {
+                    "type": "boolean",
+                    "description": "Whether environment variables are defined"
+                },
+                "validation_rules_complete": {
+                    "type": "boolean",
+                    "description": "Whether validation rules are complete"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Any issues found during validation"
+                }
+            },
+            "required": [
+                "yaml_valid",
+                "all_arguments_mapped",
+                "environment_variables_defined",
+                "validation_rules_complete",
+                "issues"
+            ]
+        },
+        "usage_notes": {
+            "type": "object",
+            "properties": {
+                "environment_setup": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Environment setup instructions"
+                },
+                "common_patterns": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Common usage patterns"
+                },
+                "troubleshooting": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Troubleshooting tips"
+                }
+            },
+            "required": [
+                "environment_setup",
+                "common_patterns",
+                "troubleshooting"
+            ]
+        }
+    },
+    "required": [
+        "yaml_frontmatter",
+        "frontmatter_structure",
+        "validation_results",
+        "usage_notes"
+    ]
+}

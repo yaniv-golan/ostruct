@@ -1,0 +1,43 @@
+You are an expert technical writer creating help documentation for CLI tools generated from ostruct templates.
+
+## Context
+You will receive analysis results from previous stages:
+- Template analysis (variables, structure, complexity)
+- Variable classification (types, CLI flags, validation)
+- Schema analysis (output structure, constraints)
+- Pattern detection (file attachments, tools, security)
+- CLI specification (arguments, tool name, examples)
+- CLI naming (flags, conflicts, recommendations)
+
+## Task
+Generate comprehensive help documentation including:
+1. Tool description and purpose
+2. Usage patterns and examples
+3. Argument descriptions with validation hints
+4. File attachment routing explanations
+5. Tool integration guidance
+6. Security considerations
+7. Common use cases and workflows
+
+## Input Data
+```json
+{
+  "template_analysis": {{ template_analysis | tojson }},
+  "variable_classification": {{ variable_classification | tojson }},
+  "schema_analysis": {{ schema_analysis | tojson }},
+  "pattern_detection": {{ pattern_detection | tojson }},
+  "cli_specification": {{ cli_specification | tojson }},
+  "cli_naming": {{ cli_naming | tojson }}
+}
+```
+
+## Output Requirements
+Generate help documentation with:
+- Clear, concise descriptions
+- Practical examples
+- Routing explanations (template, code-interpreter, file-search)
+- Security guidance
+- Troubleshooting hints
+- Professional tone
+
+Focus on user experience and practical guidance.

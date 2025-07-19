@@ -1,0 +1,153 @@
+{
+  "schema_structure": {
+    "root_type": "object",
+    "required_fields": [
+      "entities",
+      "topics",
+      "sentiment",
+      "format"
+    ],
+    "optional_fields": [],
+    "nested_objects": [
+      {
+        "path": "$.entities",
+        "type": "array",
+        "required": false
+      },
+      {
+        "path": "$.topics",
+        "type": "array",
+        "required": false
+      }
+    ]
+  },
+  "field_analysis": [
+    {
+      "field_name": "entities",
+      "field_path": "$.entities",
+      "type": "array",
+      "format": null,
+      "required": true,
+      "constraints": {
+        "min_length": null,
+        "max_length": null,
+        "minimum": null,
+        "maximum": null,
+        "pattern": null,
+        "enum": null
+      },
+      "description": "Key entities found in the text",
+      "examples": null
+    },
+    {
+      "field_name": "entities[*]",
+      "field_path": "$.entities[*]",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": {
+        "min_length": null,
+        "max_length": null,
+        "minimum": null,
+        "maximum": null,
+        "pattern": null,
+        "enum": null
+      },
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "topics",
+      "field_path": "$.topics",
+      "type": "array",
+      "format": null,
+      "required": true,
+      "constraints": {
+        "min_length": null,
+        "max_length": null,
+        "minimum": null,
+        "maximum": null,
+        "pattern": null,
+        "enum": null
+      },
+      "description": "Main topics identified",
+      "examples": null
+    },
+    {
+      "field_name": "topics[*]",
+      "field_path": "$.topics[*]",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": {
+        "min_length": null,
+        "max_length": null,
+        "minimum": null,
+        "maximum": null,
+        "pattern": null,
+        "enum": null
+      },
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "sentiment",
+      "field_path": "$.sentiment",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": {
+        "min_length": null,
+        "max_length": null,
+        "minimum": null,
+        "maximum": null,
+        "pattern": null,
+        "enum": [
+          "positive",
+          "negative",
+          "neutral"
+        ]
+      },
+      "description": "Overall sentiment of the text",
+      "examples": null
+    },
+    {
+      "field_name": "format",
+      "field_path": "$.format",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": {
+        "min_length": null,
+        "max_length": null,
+        "minimum": null,
+        "maximum": null,
+        "pattern": null,
+        "enum": null
+      },
+      "description": "Output format used",
+      "examples": null
+    }
+  ],
+  "validation_rules": {
+    "has_strict_types": true,
+    "has_format_constraints": false,
+    "has_length_constraints": false,
+    "has_value_constraints": false,
+    "has_pattern_constraints": false,
+    "has_enum_constraints": true,
+    "complexity_score": 0.2
+  },
+  "output_guidance": {
+    "structured_output": true,
+    "validation_level": "strict",
+    "suggested_tools": [
+      "JSON Schema Validator"
+    ],
+    "output_format_hints": [
+      "Output should be a JSON object with required fields: entities (array of strings), topics (array of strings), sentiment (string: positive|negative|neutral), format (string).",
+      "All fields must be present for valid output.",
+      "sentiment must be one of: positive, negative, neutral."
+    ]
+  }
+}

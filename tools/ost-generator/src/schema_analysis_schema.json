@@ -1,0 +1,230 @@
+{
+    "type": "object",
+    "properties": {
+        "schema_structure": {
+            "type": "object",
+            "properties": {
+                "root_type": {
+                    "type": "string",
+                    "enum": [
+                        "object",
+                        "array",
+                        "string",
+                        "number",
+                        "boolean"
+                    ],
+                    "description": "The root type of the schema"
+                },
+                "required_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of required fields at the root level"
+                },
+                "optional_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of optional fields at the root level"
+                },
+                "nested_objects": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "path": {
+                                "type": "string",
+                                "description": "JSONPath to the nested object"
+                            },
+                            "type": {
+                                "type": "string",
+                                "description": "Type of the nested object"
+                            },
+                            "required": {
+                                "type": "boolean",
+                                "description": "Whether this nested object is required"
+                            }
+                        }
+                    },
+                    "description": "Information about nested objects in the schema"
+                }
+            },
+            "required": [
+                "root_type",
+                "required_fields",
+                "optional_fields"
+            ]
+        },
+        "field_analysis": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field_name": {
+                        "type": "string",
+                        "description": "Name of the field"
+                    },
+                    "field_path": {
+                        "type": "string",
+                        "description": "JSONPath to the field"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "JSON Schema type of the field"
+                    },
+                    "format": {
+                        "type": "string",
+                        "description": "JSON Schema format specification if any"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "description": "Whether this field is required"
+                    },
+                    "constraints": {
+                        "type": "object",
+                        "properties": {
+                            "min_length": {
+                                "type": "integer",
+                                "description": "Minimum length constraint"
+                            },
+                            "max_length": {
+                                "type": "integer",
+                                "description": "Maximum length constraint"
+                            },
+                            "minimum": {
+                                "type": "number",
+                                "description": "Minimum value constraint"
+                            },
+                            "maximum": {
+                                "type": "number",
+                                "description": "Maximum value constraint"
+                            },
+                            "pattern": {
+                                "type": "string",
+                                "description": "Regex pattern constraint"
+                            },
+                            "enum": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Enumerated values constraint"
+                            }
+                        }
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Field description from schema"
+                    },
+                    "examples": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Example values from schema"
+                    }
+                },
+                "required": [
+                    "field_name",
+                    "field_path",
+                    "type",
+                    "required"
+                ]
+            }
+        },
+        "validation_rules": {
+            "type": "object",
+            "properties": {
+                "has_strict_types": {
+                    "type": "boolean",
+                    "description": "Whether the schema enforces strict typing"
+                },
+                "has_format_constraints": {
+                    "type": "boolean",
+                    "description": "Whether the schema includes format constraints"
+                },
+                "has_length_constraints": {
+                    "type": "boolean",
+                    "description": "Whether the schema includes length constraints"
+                },
+                "has_value_constraints": {
+                    "type": "boolean",
+                    "description": "Whether the schema includes value range constraints"
+                },
+                "has_pattern_constraints": {
+                    "type": "boolean",
+                    "description": "Whether the schema includes regex pattern constraints"
+                },
+                "has_enum_constraints": {
+                    "type": "boolean",
+                    "description": "Whether the schema includes enumerated value constraints"
+                },
+                "complexity_score": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Overall complexity level of the schema"
+                }
+            },
+            "required": [
+                "has_strict_types",
+                "has_format_constraints",
+                "has_length_constraints",
+                "has_value_constraints",
+                "has_pattern_constraints",
+                "has_enum_constraints",
+                "complexity_score"
+            ]
+        },
+        "output_guidance": {
+            "type": "object",
+            "properties": {
+                "structured_output": {
+                    "type": "boolean",
+                    "description": "Whether the output should be structured JSON"
+                },
+                "validation_level": {
+                    "type": "string",
+                    "enum": [
+                        "strict",
+                        "moderate",
+                        "lenient"
+                    ],
+                    "description": "Recommended validation level for the output"
+                },
+                "suggested_tools": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "code-interpreter",
+                            "file-search",
+                            "web-search"
+                        ]
+                    },
+                    "description": "Suggested tools based on schema requirements"
+                },
+                "output_format_hints": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Hints about expected output format"
+                }
+            },
+            "required": [
+                "structured_output",
+                "validation_level",
+                "suggested_tools",
+                "output_format_hints"
+            ]
+        }
+    },
+    "required": [
+        "schema_structure",
+        "field_analysis",
+        "validation_rules",
+        "output_guidance"
+    ]
+}

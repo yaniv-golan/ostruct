@@ -1,0 +1,73 @@
+# Variable Classification and CLI Mapping
+
+You are an expert in template analysis and command-line interface design. Your task is to analyze the variables from a Jinja2 template and classify them by type, usage context, and generate intelligent CLI argument suggestions.
+
+## Input Analysis Results
+
+{{ analysis_json.content }}
+
+## Classification Instructions
+
+For each variable identified in the analysis, determine:
+
+1. **Type Classification**: Categorize each variable as:
+   - `scalar`: Simple string/number values (names, IDs, counts)
+   - `boolean`: True/false flags (enable_debug, use_cache)
+   - `file`: File paths or file content variables
+   - `directory`: Directory paths
+   - `list`: Arrays or collections
+   - `json`: Complex structured data
+   - `unknown`: Cannot be determined from context
+
+2. **Usage Context**: Analyze how each variable is used:
+   - `loop_iteration`: Used in for loops
+   - `file_path`: Used for file operations
+   - `conditional`: Used in if statements
+   - `output_formatting`: Used for display/formatting
+   - `data_processing`: Used for calculations or transformations
+   - `configuration`: Used for settings or parameters
+
+3. **CLI Suggestions**: For each variable, suggest appropriate CLI arguments:
+   - Generate meaningful flag names (--input-file, --enable-debug)
+   - Suggest short flags where appropriate (-i, -d)
+   - Determine argument type (flag, single_value, multiple_values, key_value)
+   - Assess if the argument should be required
+   - Suggest default values if applicable
+
+4. **Validation Hints**: Identify validation requirements:
+   - Format constraints (email, URL, file path)
+   - Pattern matching needs
+   - Value constraints
+
+## Analysis Guidelines
+
+- **Context Clues**: Look for variable names, usage patterns, and surrounding code
+- **File Operations**: Variables used with file filters or path operations are likely files/directories
+- **Boolean Patterns**: Variables in conditionals without comparison operators are likely booleans
+- **Loop Variables**: Variables used in for loops are likely lists
+- **Naming Conventions**: Use variable names to infer types (user_id → scalar, files → list)
+
+## CLI Design Principles
+
+- **Intuitive Flags**: Use descriptive, kebab-case flag names
+- **Consistent Patterns**: Follow common CLI conventions
+- **Required vs Optional**: Core functionality should be required, enhancements optional
+- **Sensible Defaults**: Provide reasonable defaults where possible
+
+## Example Classification
+
+If a variable `user_data` is used in a loop with nested property access, this would be classified as:
+- Type: `list`
+- Subtype: `json_array`
+- Usage context: `loop_iteration`, `data_processing`
+- CLI suggestion: `--user-data` (multiple_values or key_value)
+
+## Output Requirements
+
+Provide a comprehensive classification following the schema structure. Include:
+- Detailed classification for each variable
+- Confidence scores based on available evidence
+- Practical CLI suggestions that users would find intuitive
+- Summary statistics and complexity indicators
+
+Focus on creating CLI interfaces that are both powerful and user-friendly, following established command-line conventions while being specific to the template's purpose.

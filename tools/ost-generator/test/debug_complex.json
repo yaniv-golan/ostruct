@@ -1,0 +1,154 @@
+{
+  "schema_structure": {
+    "root_type": "object",
+    "required_fields": [
+      "document_summaries",
+      "common_themes",
+      "recommendations",
+      "analysis_mode",
+      "metadata_included"
+    ],
+    "optional_fields": [],
+    "nested_objects": [
+      {
+        "path": "$.document_summaries[*]",
+        "type": "object",
+        "required": true
+      }
+    ]
+  },
+  "field_analysis": [
+    {
+      "field_name": "document_summaries",
+      "field_path": "$.document_summaries",
+      "type": "array",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": "Summary of each analyzed document",
+      "examples": null
+    },
+    {
+      "field_name": "document_name",
+      "field_path": "$.document_summaries[*].document_name",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "summary",
+      "field_path": "$.document_summaries[*].summary",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "key_points",
+      "field_path": "$.document_summaries[*].key_points",
+      "type": "array",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "key_points_item",
+      "field_path": "$.document_summaries[*].key_points[*]",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "common_themes",
+      "field_path": "$.common_themes",
+      "type": "array",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": "Common themes across all documents",
+      "examples": null
+    },
+    {
+      "field_name": "common_themes_item",
+      "field_path": "$.common_themes[*]",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "recommendations",
+      "field_path": "$.recommendations",
+      "type": "array",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": "Recommendations based on analysis",
+      "examples": null
+    },
+    {
+      "field_name": "recommendations_item",
+      "field_path": "$.recommendations[*]",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": null,
+      "examples": null
+    },
+    {
+      "field_name": "analysis_mode",
+      "field_path": "$.analysis_mode",
+      "type": "string",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": "Analysis mode used",
+      "examples": null
+    },
+    {
+      "field_name": "metadata_included",
+      "field_path": "$.metadata_included",
+      "type": "boolean",
+      "format": null,
+      "required": true,
+      "constraints": null,
+      "description": "Whether metadata was included",
+      "examples": null
+    }
+  ],
+  "validation_rules": {
+    "has_strict_types": true,
+    "has_format_constraints": false,
+    "has_length_constraints": false,
+    "has_value_constraints": false,
+    "has_pattern_constraints": false,
+    "has_enum_constraints": false,
+    "complexity_score": 0.3
+  },
+  "output_guidance": {
+    "structured_output": true,
+    "validation_level": "strict",
+    "suggested_tools": [
+      "Code Interpreter"
+    ],
+    "output_format_hints": [
+      "Output must be valid JSON and match required structure.",
+      "All array items must be explicitly provided for required arrays.",
+      "All required fields must be present, including nested fields.",
+      "Boolean, string, and array types must be strictly used as specified."
+    ]
+  }
+}

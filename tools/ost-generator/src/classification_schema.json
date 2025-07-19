@@ -1,0 +1,178 @@
+{
+    "type": "object",
+    "properties": {
+        "classified_variables": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The variable name as it appears in the template"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "scalar",
+                            "boolean",
+                            "file",
+                            "directory",
+                            "list",
+                            "json_type",
+                            "unknown"
+                        ],
+                        "description": "The inferred type of the variable"
+                    },
+                    "subtype": {
+                        "type": "string",
+                        "description": "More specific type information (e.g., 'string', 'integer', 'path', 'csv_file')"
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Confidence score for the type classification (0.0 to 1.0)"
+                    },
+                    "usage_context": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "How the variable is used in the template (e.g., 'loop_iteration', 'file_path', 'conditional')"
+                    },
+                    "cli_suggestion": {
+                        "type": "object",
+                        "properties": {
+                            "flag": {
+                                "type": "string",
+                                "description": "Suggested CLI flag name (e.g., '--input-file', '--enable-debug')"
+                            },
+                            "short_flag": {
+                                "type": "string",
+                                "description": "Suggested short flag (e.g., '-i', '-d')"
+                            },
+                            "argument_type": {
+                                "type": "string",
+                                "enum": [
+                                    "flag",
+                                    "single_value",
+                                    "multiple_values",
+                                    "key_value"
+                                ],
+                                "description": "How the CLI argument should be structured"
+                            },
+                            "required": {
+                                "type": "boolean",
+                                "description": "Whether this should be a required CLI argument"
+                            },
+                            "default_value": {
+                                "type": "string",
+                                "description": "Suggested default value if any"
+                            }
+                        },
+                        "required": [
+                            "flag",
+                            "argument_type",
+                            "required"
+                        ]
+                    },
+                    "validation_hints": {
+                        "type": "object",
+                        "properties": {
+                            "format": {
+                                "type": "string",
+                                "description": "Expected format (e.g., 'email', 'url', 'file_path')"
+                            },
+                            "pattern": {
+                                "type": "string",
+                                "description": "Regex pattern for validation"
+                            },
+                            "constraints": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Additional validation constraints"
+                            }
+                        }
+                    },
+                    "examples": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Example values for this variable"
+                    }
+                },
+                "required": [
+                    "name",
+                    "type",
+                    "confidence",
+                    "usage_context",
+                    "cli_suggestion"
+                ]
+            }
+        },
+        "classification_summary": {
+            "type": "object",
+            "properties": {
+                "total_variables": {
+                    "type": "integer",
+                    "description": "Total number of variables classified"
+                },
+                "type_distribution": {
+                    "type": "object",
+                    "properties": {
+                        "scalar": {
+                            "type": "integer"
+                        },
+                        "boolean": {
+                            "type": "integer"
+                        },
+                        "file": {
+                            "type": "integer"
+                        },
+                        "directory": {
+                            "type": "integer"
+                        },
+                        "list": {
+                            "type": "integer"
+                        },
+                        "json_type": {
+                            "type": "integer"
+                        },
+                        "unknown": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "complexity_indicators": {
+                    "type": "object",
+                    "properties": {
+                        "has_file_operations": {
+                            "type": "boolean"
+                        },
+                        "has_complex_data_structures": {
+                            "type": "boolean"
+                        },
+                        "has_conditional_logic": {
+                            "type": "boolean"
+                        },
+                        "requires_validation": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            },
+            "required": [
+                "total_variables",
+                "type_distribution",
+                "complexity_indicators"
+            ]
+        }
+    },
+    "required": [
+        "classified_variables",
+        "classification_summary"
+    ]
+}

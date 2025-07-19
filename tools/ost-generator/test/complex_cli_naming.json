@@ -1,0 +1,265 @@
+{
+  "naming_results": {
+    "tool_name": {
+      "original": "document-batch-analyzer",
+      "kebab_case": "document-batch-analyzer",
+      "validated": "document-batch-analyzer",
+      "conflicts_resolved": null
+    },
+    "flag_names": [
+      {
+        "variable_name": "config",
+        "long_flag": "--config",
+        "short_flag": "-c",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": null,
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": null
+      },
+      {
+        "variable_name": "documents",
+        "long_flag": "--documents",
+        "short_flag": "-d",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": null,
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": null
+      },
+      {
+        "variable_name": "analysis_mode",
+        "long_flag": "--analysis-mode",
+        "short_flag": "-m",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": [
+            "model (ostruct reserved)"
+          ],
+          "resolution_method": "alternative_letter",
+          "resolution_details": "Short flag -m reserved for --model by convention. Recommending -a or no short flag to avoid collision."
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": false,
+          "issues": [
+            "Short flag -m reserved for model selection."
+          ]
+        },
+        "alternatives": [
+          {
+            "long_flag": "--analysis-mode",
+            "short_flag": "-a",
+            "reason": "Use -a for 'analysis' to avoid clashing with reserved -m."
+          },
+          {
+            "long_flag": "--analysis-mode",
+            "short_flag": null,
+            "reason": "Omit short flag if -a is not sufficiently meaningful for users."
+          }
+        ]
+      },
+      {
+        "variable_name": "include_metadata",
+        "long_flag": "--include-metadata",
+        "short_flag": "-i",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": null,
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": [
+          {
+            "long_flag": "--include-metadata",
+            "short_flag": null,
+            "reason": "-i fits but is a common flag for input; document clearly in help, or consider leaving it long-only for clarity."
+          }
+        ]
+      },
+      {
+        "variable_name": "output_format",
+        "long_flag": "--output-format",
+        "short_flag": "-o",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": [
+            "ostruct reserved for output file"
+          ],
+          "resolution_method": "suffix_addition",
+          "resolution_details": "Short flag -o commonly reserved for output file. Use -f for format, document in help text."
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": false,
+          "issues": [
+            "-o typically understood as output file, not format."
+          ]
+        },
+        "alternatives": [
+          {
+            "long_flag": "--output-format",
+            "short_flag": "-f",
+            "reason": "Use -f for format to avoid conflict with output file."
+          }
+        ]
+      },
+      {
+        "variable_name": "enable_search",
+        "long_flag": "--enable-search",
+        "short_flag": "-s",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": [
+            "Potential overlap if -s used for summarize or source"
+          ],
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": [
+          {
+            "long_flag": "--enable-search",
+            "short_flag": null,
+            "reason": "Flag usage is rare; okay without short flag, or use -e for enable if desired."
+          }
+        ]
+      },
+      {
+        "variable_name": "search_query",
+        "long_flag": "--search-query",
+        "short_flag": "-q",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": [
+            "Commonly -q is for quiet; potential confusion."
+          ],
+          "resolution_method": "alternative_letter",
+          "resolution_details": "Although -q is usually reserved for 'quiet', here it's used for search query. Acceptable if tool supports no quiet mode."
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": [
+            "Potential confusion with 'quiet' convention."
+          ]
+        },
+        "alternatives": [
+          {
+            "long_flag": "--search-query",
+            "short_flag": "-s",
+            "reason": "Alternative if -q is needed for 'quiet'."
+          },
+          {
+            "long_flag": "--search-query",
+            "short_flag": null,
+            "reason": "No short flag to strictly preserve conventions."
+          }
+        ]
+      },
+      {
+        "variable_name": "processing_instructions",
+        "long_flag": "--processing-instruction",
+        "short_flag": "-p",
+        "conflicts": {
+          "long_flag_conflicts": null,
+          "short_flag_conflicts": null,
+          "resolution_method": null,
+          "resolution_details": null
+        },
+        "validation": {
+          "long_flag_valid": true,
+          "short_flag_valid": true,
+          "issues": null
+        },
+        "alternatives": [
+          {
+            "long_flag": "--processing-instruction",
+            "short_flag": "-x",
+            "reason": "If -p is used elsewhere or for 'path', use -x as in 'execute' or 'extra-instructions'."
+          }
+        ]
+      }
+    ]
+  },
+  "naming_conventions": {
+    "kebab_case_rules": [
+      "Split words on capital letters, underscores, and numerals.",
+      "Convert all letters to lowercase.",
+      "Replace spaces and special characters with hyphens.",
+      "Trim consecutive, leading, and trailing hyphens.",
+      "Preserve meaningful numbers and abbreviations."
+    ],
+    "short_flag_strategy": "Prioritize first unique, intuitive letter for each flag; avoid reserved or ambiguous letters; use first consonant or next available meaningful letter if conflict; omit short flag if no clear alternative.",
+    "conflict_resolution_strategy": "Detect reserved/common flag conflicts; resolve by selecting alternative meaningful letters, adding context with prefixes/suffixes, or omitting short flags; document and validate all resolutions.",
+    "reserved_flags": [
+      "-h",
+      "--help",
+      "-v",
+      "--verbose",
+      "-m",
+      "--model",
+      "-o",
+      "--output",
+      "-V",
+      "--version",
+      "-q",
+      "--quiet",
+      "-f",
+      "--force",
+      "-r",
+      "--recursive",
+      "-n",
+      "--dry-run",
+      "--dry-run",
+      "--debug"
+    ]
+  },
+  "quality_metrics": {
+    "naming_consistency": 0.97,
+    "conflict_resolution_success": 1.0,
+    "usability_score": 0.93,
+    "total_conflicts": 4,
+    "resolved_conflicts": 4
+  },
+  "recommendations": {
+    "naming_improvements": [
+      "Use more descriptive suffixes for boolean flags (e.g., --with-metadata or --metadata-included) if confusion is possible.",
+      "Strongly consider omitting short flags for rare or potentially confusing options to reduce ambiguity.",
+      "Document all reserved or custom short flag assignments in the help output."
+    ],
+    "conflict_prevention": [
+      "Audit all flags for collision with both reserved and application-specific uses before release.",
+      "Avoid assigning short flags to rarely used or advanced options.",
+      "Consider unique flag patterns (e.g., double-dash plus single letter: --m for model) only if industry standard for your user base."
+    ],
+    "usability_enhancements": [
+      "Provide detailed CLI help examples showing both long and (where available) short flags.",
+      "For complex flags, include usage hints or autofill support in interactive shells.",
+      "Ensure help output clearly explains any deviations from common short-flag conventions (e.g., if -q is not quiet)."
+    ]
+  }
+}

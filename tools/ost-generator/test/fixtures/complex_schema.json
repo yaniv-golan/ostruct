@@ -1,0 +1,60 @@
+{
+    "type": "object",
+    "properties": {
+        "document_summaries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "document_name": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "key_points": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "document_name",
+                    "summary",
+                    "key_points"
+                ]
+            },
+            "description": "Summary of each analyzed document"
+        },
+        "common_themes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Common themes across all documents"
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Recommendations based on analysis"
+        },
+        "analysis_mode": {
+            "type": "string",
+            "description": "Analysis mode used"
+        },
+        "metadata_included": {
+            "type": "boolean",
+            "description": "Whether metadata was included"
+        }
+    },
+    "required": [
+        "document_summaries",
+        "common_themes",
+        "recommendations",
+        "analysis_mode",
+        "metadata_included"
+    ]
+}

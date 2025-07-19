@@ -1,0 +1,1022 @@
+{
+  "template_analysis": {
+    "variables": [
+      {
+        "name": "input_text",
+        "type": "scalar",
+        "usage_context": [
+          "substitution"
+        ],
+        "is_required": true,
+        "default_value": null,
+        "file_attributes": null
+      },
+      {
+        "name": "format",
+        "type": "scalar",
+        "usage_context": [
+          "conditional"
+        ],
+        "is_required": true,
+        "default_value": null,
+        "file_attributes": null
+      },
+      {
+        "name": "verbose",
+        "type": "boolean",
+        "usage_context": [
+          "conditional"
+        ],
+        "is_required": false,
+        "default_value": null,
+        "file_attributes": null
+      },
+      {
+        "name": "sentiment",
+        "type": "scalar",
+        "usage_context": [
+          "substitution",
+          "filter"
+        ],
+        "is_required": false,
+        "default_value": "neutral",
+        "file_attributes": null
+      }
+    ],
+    "file_patterns": [],
+    "tool_hints": [
+      {
+        "tool": "code-interpreter",
+        "confidence": 0.3,
+        "evidence": "Mentions 'extract', 'analyze', and 'sentiment', which could hint at text or data processing, but no direct file/data analysis or calculations present."
+      }
+    ],
+    "complexity_score": 0.3,
+    "template_structure": {
+      "has_conditionals": true,
+      "has_loops": false,
+      "has_file_references": false,
+      "has_filters": true,
+      "line_count": 16
+    }
+  },
+  "variable_classification": {
+    "classified_variables": [
+      {
+        "name": "input_text",
+        "type": "scalar",
+        "subtype": "string",
+        "confidence": 0.98,
+        "usage_context": [
+          "substitution"
+        ],
+        "cli_suggestion": {
+          "flag": "--input-text",
+          "short_flag": "-i",
+          "argument_type": "single_value",
+          "required": true,
+          "default_value": null
+        },
+        "validation_hints": {
+          "format": "string",
+          "pattern": null,
+          "constraints": [
+            "non-empty"
+          ]
+        },
+        "examples": [
+          "\"Hello world\"",
+          "\"The weather is nice today.\""
+        ]
+      },
+      {
+        "name": "format",
+        "type": "scalar",
+        "subtype": "string",
+        "confidence": 0.95,
+        "usage_context": [
+          "conditional"
+        ],
+        "cli_suggestion": {
+          "flag": "--format",
+          "short_flag": "-f",
+          "argument_type": "single_value",
+          "required": true,
+          "default_value": null
+        },
+        "validation_hints": {
+          "format": "string",
+          "pattern": null,
+          "constraints": [
+            "must match supported formats if applicable"
+          ]
+        },
+        "examples": [
+          "\"json\"",
+          "\"text\"",
+          "\"xml\""
+        ]
+      },
+      {
+        "name": "verbose",
+        "type": "boolean",
+        "subtype": null,
+        "confidence": 0.95,
+        "usage_context": [
+          "conditional"
+        ],
+        "cli_suggestion": {
+          "flag": "--verbose",
+          "short_flag": "-v",
+          "argument_type": "flag",
+          "required": false,
+          "default_value": null
+        },
+        "validation_hints": {
+          "format": "boolean",
+          "pattern": null,
+          "constraints": []
+        },
+        "examples": [
+          "true",
+          "false"
+        ]
+      },
+      {
+        "name": "sentiment",
+        "type": "scalar",
+        "subtype": "string",
+        "confidence": 0.9,
+        "usage_context": [
+          "substitution",
+          "filter"
+        ],
+        "cli_suggestion": {
+          "flag": "--sentiment",
+          "short_flag": null,
+          "argument_type": "single_value",
+          "required": false,
+          "default_value": "neutral"
+        },
+        "validation_hints": {
+          "format": "string",
+          "pattern": null,
+          "constraints": [
+            "possible values: positive, negative, neutral"
+          ]
+        },
+        "examples": [
+          "\"positive\"",
+          "\"negative\"",
+          "\"neutral\""
+        ]
+      }
+    ],
+    "classification_summary": {
+      "total_variables": 4,
+      "type_distribution": {
+        "scalar": 3,
+        "boolean": 1,
+        "file": 0,
+        "directory": 0,
+        "list": 0,
+        "json": 0,
+        "unknown": 0
+      },
+      "complexity_indicators": {
+        "has_file_operations": false,
+        "has_complex_data_structures": false,
+        "has_conditional_logic": true,
+        "requires_validation": true
+      }
+    }
+  },
+  "schema_analysis": {
+    "schema_structure": {
+      "root_type": "object",
+      "required_fields": [
+        "entities",
+        "topics",
+        "sentiment",
+        "format"
+      ],
+      "optional_fields": [],
+      "nested_objects": [
+        {
+          "path": "$.entities[*]",
+          "type": "string",
+          "required": false
+        },
+        {
+          "path": "$.topics[*]",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "field_analysis": [
+      {
+        "field_name": "entities",
+        "field_path": "$.entities",
+        "type": "array",
+        "format": null,
+        "required": true,
+        "constraints": {
+          "min_length": null,
+          "max_length": null,
+          "minimum": null,
+          "maximum": null,
+          "pattern": null,
+          "enum": null
+        },
+        "description": "Key entities found in the text",
+        "examples": null
+      },
+      {
+        "field_name": "entities[*]",
+        "field_path": "$.entities[*]",
+        "type": "string",
+        "format": null,
+        "required": false,
+        "constraints": {
+          "min_length": null,
+          "max_length": null,
+          "minimum": null,
+          "maximum": null,
+          "pattern": null,
+          "enum": null
+        },
+        "description": "Array item: entity string",
+        "examples": null
+      },
+      {
+        "field_name": "topics",
+        "field_path": "$.topics",
+        "type": "array",
+        "format": null,
+        "required": true,
+        "constraints": {
+          "min_length": null,
+          "max_length": null,
+          "minimum": null,
+          "maximum": null,
+          "pattern": null,
+          "enum": null
+        },
+        "description": "Main topics identified",
+        "examples": null
+      },
+      {
+        "field_name": "topics[*]",
+        "field_path": "$.topics[*]",
+        "type": "string",
+        "format": null,
+        "required": false,
+        "constraints": {
+          "min_length": null,
+          "max_length": null,
+          "minimum": null,
+          "maximum": null,
+          "pattern": null,
+          "enum": null
+        },
+        "description": "Array item: topic string",
+        "examples": null
+      },
+      {
+        "field_name": "sentiment",
+        "field_path": "$.sentiment",
+        "type": "string",
+        "format": null,
+        "required": true,
+        "constraints": {
+          "min_length": null,
+          "max_length": null,
+          "minimum": null,
+          "maximum": null,
+          "pattern": null,
+          "enum": [
+            "positive",
+            "negative",
+            "neutral"
+          ]
+        },
+        "description": "Overall sentiment of the text",
+        "examples": null
+      },
+      {
+        "field_name": "format",
+        "field_path": "$.format",
+        "type": "string",
+        "format": null,
+        "required": true,
+        "constraints": {
+          "min_length": null,
+          "max_length": null,
+          "minimum": null,
+          "maximum": null,
+          "pattern": null,
+          "enum": null
+        },
+        "description": "Output format used",
+        "examples": null
+      }
+    ],
+    "validation_rules": {
+      "has_strict_types": true,
+      "has_format_constraints": false,
+      "has_length_constraints": false,
+      "has_value_constraints": false,
+      "has_pattern_constraints": false,
+      "has_enum_constraints": true,
+      "complexity_score": 0.2
+    },
+    "output_guidance": {
+      "structured_output": true,
+      "validation_level": "strict",
+      "suggested_tools": [
+        "Standard JSON validator"
+      ],
+      "output_format_hints": [
+        "Output must be a JSON object.",
+        "All root fields (entities, topics, sentiment, format) are required.",
+        "entities and topics are arrays of strings.",
+        "sentiment must be exactly one of: 'positive', 'negative', 'neutral'.",
+        "format must be a string indicating the output format."
+      ]
+    }
+  },
+  "pattern_detection": {
+    "file_patterns": {
+      "file_attachments": [],
+      "directory_operations": []
+    },
+    "tool_hints": {
+      "code_interpreter": {
+        "suggested": false,
+        "confidence": 0.3,
+        "reasons": [
+          "No explicit file analysis, complex data calculation, or computational patterns observed in variables or schema.",
+          "Low complexity, simple scalar/boolean/text processing is detected."
+        ],
+        "use_cases": null
+      },
+      "file_search": {
+        "suggested": false,
+        "confidence": 0.1,
+        "reasons": [
+          "No variable or schema entity referencing files, documents, or large text sources.",
+          "No content extraction, document summarization, or retrieval patterns detected."
+        ],
+        "document_types": null
+      },
+      "web_search": {
+        "suggested": false,
+        "confidence": 0.1,
+        "reasons": [
+          "No URLs or external data references in variable list or schema.",
+          "No dynamic, real-time information needs indicated."
+        ],
+        "search_contexts": null
+      }
+    },
+    "security_patterns": {
+      "input_validation": {
+        "required": true,
+        "validation_types": [
+          "Type validation (string/boolean)",
+          "Enum enforcement (sentiment)",
+          "Non-empty input for text"
+        ],
+        "risk_level": "low",
+        "evidence": [
+          "User-provided variables: input_text, sentiment, format.",
+          "Strict schema validation enforced (JSON output, enum, required fields).",
+          "No evidence of file or path processing to introduce path traversal or injection risks."
+        ]
+      },
+      "file_safety": {
+        "file_access_patterns": [],
+        "safety_recommendations": [
+          "General: No file or directory processing, so no additional file safety considerations required."
+        ],
+        "restricted_operations": []
+      }
+    },
+    "integration_patterns": {
+      "mcp_servers": [],
+      "external_apis": []
+    },
+    "pattern_summary": {
+      "complexity_score": 0.3,
+      "primary_patterns": [
+        "String/text processing",
+        "Conditional output formatting",
+        "Basic validation (enum, required fields)"
+      ],
+      "recommended_features": [
+        "Strict argument validation (enum check for 'sentiment', required enforcement for 'format' and 'input_text')",
+        "Structured output enforced via JSON schema",
+        "Support for output format selection based on 'format' variable"
+      ],
+      "implementation_notes": [
+        "All user-provided variables must have argument validation to enforce expected types and enums.",
+        "Output must always include 'entities', 'topics', 'sentiment', and 'format', matching JSON schema.",
+        "Although 'input_text' and 'format' are required, ensure CLI flags mirror this (e.g., --input-text, --format as required options).",
+        "No file, directory, or external API integration is needed at this stage.",
+        "No advanced tooling (code interpreter, file search, web search) is required—focus solely on robust schema and CLI validation."
+      ]
+    }
+  },
+  "cli_specification": {
+    "cli_specification": {
+      "tool_name": "text-entity-sentiment-extractor",
+      "description": "Extracts entities, topics, and sentiment from input text, returning a strictly validated JSON object with structured results. Supports output in various formats and configurable sentiment filtering. Ideal for natural language processing tasks, topic modeling, and sentiment analysis on textual inputs.",
+      "version": "1.0",
+      "arguments": [
+        {
+          "variable_name": "input_text",
+          "cli_flag": "--input-text",
+          "short_flag": "-i",
+          "argument_type": "single_value",
+          "required": true,
+          "default_value": null,
+          "help_text": "The input text to be analyzed for entity and topic extraction and sentiment classification.",
+          "validation": {
+            "type": "string",
+            "allowed_values": null,
+            "pattern": null,
+            "min_length": 1,
+            "max_length": null,
+            "file_extensions": null
+          },
+          "file_routing": null,
+          "examples": [
+            "\"The quick brown fox jumps over the lazy dog.\"",
+            "\"Global warming impacts weather patterns.\""
+          ]
+        },
+        {
+          "variable_name": "format",
+          "cli_flag": "--format",
+          "short_flag": "-f",
+          "argument_type": "single_value",
+          "required": true,
+          "default_value": null,
+          "help_text": "The output format to use. Common values are 'json', 'text', or 'xml'. Default is 'json'.",
+          "validation": {
+            "type": "string",
+            "allowed_values": null,
+            "pattern": null,
+            "min_length": 2,
+            "max_length": 16,
+            "file_extensions": null
+          },
+          "file_routing": null,
+          "examples": [
+            "\"json\"",
+            "\"text\"",
+            "\"xml\""
+          ]
+        },
+        {
+          "variable_name": "verbose",
+          "cli_flag": "--verbose",
+          "short_flag": "-v",
+          "argument_type": "flag",
+          "required": false,
+          "default_value": null,
+          "help_text": "Increase output verbosity, including more details about the extraction process.",
+          "validation": {
+            "type": "boolean",
+            "allowed_values": null,
+            "pattern": null,
+            "min_length": null,
+            "max_length": null,
+            "file_extensions": null
+          },
+          "file_routing": null,
+          "examples": [
+            "--verbose"
+          ]
+        },
+        {
+          "variable_name": "sentiment",
+          "cli_flag": "--sentiment",
+          "short_flag": null,
+          "argument_type": "single_value",
+          "required": false,
+          "default_value": "neutral",
+          "help_text": "Sentiment filter for results. Allowed values: positive, negative, neutral. Default is 'neutral'.",
+          "validation": {
+            "type": "string",
+            "allowed_values": [
+              "positive",
+              "negative",
+              "neutral"
+            ],
+            "pattern": null,
+            "min_length": null,
+            "max_length": null,
+            "file_extensions": null
+          },
+          "file_routing": null,
+          "examples": [
+            "\"positive\"",
+            "\"negative\"",
+            "\"neutral\""
+          ]
+        }
+      ],
+      "file_attachments": [],
+      "tool_integrations": {
+        "enable_code_interpreter": false,
+        "enable_file_search": false,
+        "enable_web_search": false,
+        "suggested_mcp_servers": null
+      }
+    },
+    "usage_examples": [
+      {
+        "description": "Basic usage with required arguments.",
+        "command": "text-entity-sentiment-extractor --input-text \"I love the new technology trends!\" --format json",
+        "explanation": "Analyzes the given text for entities, topics, and sentiment, outputting a JSON object with structured results."
+      },
+      {
+        "description": "Advanced output with specific sentiment filtering and verbose mode.",
+        "command": "text-entity-sentiment-extractor -i \"Stock markets are volatile today.\" -f json --sentiment positive --verbose",
+        "explanation": "Processes the text, filtering results to positive sentiment, and outputs extra processing details in verbose mode."
+      },
+      {
+        "description": "Output in plain text format.",
+        "command": "text-entity-sentiment-extractor --input-text \"Climate change is a major global issue.\" --format text",
+        "explanation": "Extracts structured data and outputs it as a plain text summary instead of JSON."
+      },
+      {
+        "description": "Short flags and defaults.",
+        "command": "text-entity-sentiment-extractor -i \"Election results spark debates.\" -f xml",
+        "explanation": "Uses short flags for brevity and outputs the results in XML format."
+      }
+    ],
+    "implementation_notes": {
+      "complexity_assessment": "Low complexity: No file operations, no nested data structures, and straightforward variable mappings. Argument validation and schema output enforcement are the only non-trivial requirements.",
+      "security_considerations": [
+        "Validate all user input for correct types and allowed values (especially sentiment).",
+        "Reject empty input text and invalid formats to avoid nonsensical output.",
+        "No file path or file content processing is present, so typical path traversal risks are absent.",
+        "Be prepared to expand validation if future versions support file input or directory attachment."
+      ],
+      "validation_requirements": [
+        "input_text: Required, non-empty string.",
+        "format: Required, string (consider restricting to known formats in implementation).",
+        "sentiment: Optional, must be 'positive', 'negative', or 'neutral'.",
+        "verbose: Optional, boolean flag."
+      ],
+      "file_handling_notes": [
+        "No file attachments or path arguments are present or needed.",
+        "No file system operations are performed."
+      ],
+      "recommended_defaults": {
+        "model": null,
+        "output_format": "json"
+      }
+    }
+  },
+  "cli_naming": {
+    "naming_results": {
+      "tool_name": {
+        "original": "text-entity-sentiment-extractor",
+        "kebab_case": "text-entity-sentiment-extractor",
+        "validated": "text-entity-sentiment-extractor",
+        "conflicts_resolved": null
+      },
+      "flag_names": [
+        {
+          "variable_name": "input_text",
+          "long_flag": "--input-text",
+          "short_flag": "-i",
+          "conflicts": {
+            "long_flag_conflicts": null,
+            "short_flag_conflicts": null,
+            "resolution_method": null,
+            "resolution_details": null
+          },
+          "validation": {
+            "long_flag_valid": true,
+            "short_flag_valid": true,
+            "issues": null
+          },
+          "alternatives": null
+        },
+        {
+          "variable_name": "format",
+          "long_flag": "--format",
+          "short_flag": "-f",
+          "conflicts": {
+            "long_flag_conflicts": null,
+            "short_flag_conflicts": null,
+            "resolution_method": null,
+            "resolution_details": null
+          },
+          "validation": {
+            "long_flag_valid": true,
+            "short_flag_valid": true,
+            "issues": null
+          },
+          "alternatives": null
+        },
+        {
+          "variable_name": "verbose",
+          "long_flag": "--verbose",
+          "short_flag": "-v",
+          "conflicts": {
+            "long_flag_conflicts": null,
+            "short_flag_conflicts": null,
+            "resolution_method": null,
+            "resolution_details": null
+          },
+          "validation": {
+            "long_flag_valid": true,
+            "short_flag_valid": true,
+            "issues": null
+          },
+          "alternatives": [
+            {
+              "long_flag": "--verbosity",
+              "short_flag": "-V",
+              "reason": "If -v is reserved for version in other tools, consider -V for verbose; not needed here as -v is intuitive and not conflicting."
+            }
+          ]
+        },
+        {
+          "variable_name": "sentiment",
+          "long_flag": "--sentiment",
+          "short_flag": null,
+          "conflicts": {
+            "long_flag_conflicts": null,
+            "short_flag_conflicts": [
+              "format",
+              "input_text",
+              "verbose"
+            ],
+            "resolution_method": "no_short_flag",
+            "resolution_details": "All intuitive letters (s, e, n, t) could conflict with common or more primary flags; omitting short flag to prevent ambiguity."
+          },
+          "validation": {
+            "long_flag_valid": true,
+            "short_flag_valid": true,
+            "issues": [
+              "No short flag is assigned to avoid conflicting with more critical or intuitive flags."
+            ]
+          },
+          "alternatives": [
+            {
+              "long_flag": "--sentiment",
+              "short_flag": "-S",
+              "reason": "Capital S could be used in other tools that allow case-sensitive short flags, but standard CLI best practice is to avoid confusion and stay lowercase."
+            }
+          ]
+        }
+      ]
+    },
+    "naming_conventions": {
+      "kebab_case_rules": [
+        "All words lowercase, separated by hyphens.",
+        "Remove special characters and underscores.",
+        "No consecutive, leading, or trailing hyphens.",
+        "Numbers are kept only if meaningful and never lead.",
+        "Word boundaries detected by camelCase, underscores, or numbers."
+      ],
+      "short_flag_strategy": "First letter prioritized for required/frequent-use arguments; intuitive mapping for memorability; if conflicts, omit short flag for secondary/optional flags.",
+      "conflict_resolution_strategy": "Detect conflicts early; required/intuitive flags are given priority short flags; secondary/optional flags without clear short flag are assigned none; consider alternative letters only if no overlap with reserved or intuitive flags.",
+      "reserved_flags": [
+        "-h",
+        "--help",
+        "-v",
+        "--verbose",
+        "-o",
+        "--output",
+        "-m",
+        "--model",
+        "--dry-run",
+        "--debug",
+        "-f",
+        "--force",
+        "-V",
+        "--version",
+        "-q",
+        "--quiet",
+        "-r",
+        "--recursive",
+        "-n",
+        "--dry-run"
+      ]
+    },
+    "quality_metrics": {
+      "naming_consistency": 1.0,
+      "conflict_resolution_success": 1.0,
+      "usability_score": 0.95,
+      "total_conflicts": 1,
+      "resolved_conflicts": 1
+    },
+    "recommendations": {
+      "naming_improvements": [
+        "For future versions, consider reserving -S for sentiment if functionality is critical and if no new flag would conflict.",
+        "Document short flag omissions and alternatives in user documentation for clarity."
+      ],
+      "conflict_prevention": [
+        "When adding new arguments, always check reserved and currently used short flags.",
+        "Prioritize short flags for required and high-frequency arguments; use alternatives or omit for less frequent ones."
+      ],
+      "usability_enhancements": [
+        "In help output, list all flags, including those without short flags, for transparency.",
+        "Encourage users to use long flags for clarity when scripting or integrating into other workflows."
+      ]
+    }
+  },
+  "policy_generation": {
+    "model_policy": {
+      "default_model": "gpt-4-turbo",
+      "model_restrictions": {
+        "allowed_models": [
+          "gpt-4-turbo",
+          "gpt-4",
+          "gpt-3.5-turbo"
+        ],
+        "blocked_models": [
+          "experimental-*",
+          "community-*"
+        ],
+        "minimum_capability_level": "advanced"
+      },
+      "fallback_strategy": {
+        "fallback_models": [
+          "gpt-3.5-turbo"
+        ],
+        "degradation_strategy": "Fallback to lower tier models with restricted features and inform the user of any loss of accuracy or capability."
+      },
+      "model_specific_config": {
+        "temperature": 0.2,
+        "max_tokens": 2048,
+        "top_p": 0.9
+      },
+      "rationale": "Defaulting to gpt-4-turbo provides balanced performance and security. Lower tier models are permitted as fallback for resilience, but experimental or untrusted models are blocked to minimize risk."
+    },
+    "tool_integration_policy": {
+      "enabled_tools": [
+        "code_interpreter",
+        "file_search"
+      ],
+      "tool_configurations": {
+        "code_interpreter": {
+          "enabled": true,
+          "timeout": 60,
+          "max_file_size": 1048576,
+          "allowed_extensions": [
+            ".py",
+            ".ipynb",
+            ".txt",
+            ".csv"
+          ],
+          "security_restrictions": [
+            "no-network",
+            "write-to-temp-only"
+          ]
+        },
+        "file_search": {
+          "enabled": true,
+          "max_file_count": 5,
+          "max_total_size": 5242880,
+          "allowed_extensions": [
+            ".txt",
+            ".md",
+            ".csv"
+          ]
+        },
+        "web_search": {
+          "enabled": false,
+          "max_queries": null,
+          "timeout": null,
+          "allowed_domains": null,
+          "blocked_domains": null
+        }
+      },
+      "mcp_server_policy": {
+        "allow_mcp_servers": false,
+        "suggested_servers": null,
+        "server_restrictions": [
+          "internal-only"
+        ]
+      },
+      "rationale": "Enable essential tools for CLI functionality while disabling external web search and restricting code execution to sandboxed, read-only, and temp-only environments to mitigate risks."
+    },
+    "security_policy": {
+      "input_validation": {
+        "strict_validation": true,
+        "sanitization_rules": [
+          {
+            "input_type": "string",
+            "rule": "strip, escape special chars",
+            "rationale": "Prevents code injection and command line exploits."
+          },
+          {
+            "input_type": "file_path",
+            "rule": "canonicalize, allow-listed base paths only",
+            "rationale": "Mitigates directory traversal."
+          }
+        ],
+        "validation_errors": "reject_and_report"
+      },
+      "file_access": {
+        "allowed_paths": [
+          "/tmp/",
+          "./workspace"
+        ],
+        "blocked_paths": [
+          "/etc/",
+          "/home/",
+          "/var/",
+          "/proc/"
+        ],
+        "file_size_limits": {
+          "max_individual_file": 1048576,
+          "max_total_size": 5242880
+        },
+        "allowed_extensions": [
+          ".txt",
+          ".csv",
+          ".md"
+        ]
+      },
+      "output_security": {
+        "sanitize_output": true,
+        "redact_sensitive_data": true,
+        "output_validation": true,
+        "sensitive_patterns": [
+          "API_KEY",
+          "SECRET",
+          "PASSWORD"
+        ]
+      },
+      "authentication": {
+        "require_api_key": true,
+        "api_key_validation": true,
+        "rate_limiting": {
+          "enabled": true,
+          "requests_per_minute": 60,
+          "burst_limit": 10
+        }
+      },
+      "rationale": "Strict validation, controlled file access, and robust output sanitization reduce attack surface. Authentication and rate limits protect against abuse."
+    },
+    "global_arguments_policy": {
+      "required_global_args": [
+        {
+          "name": "input",
+          "flag": "--input",
+          "description": "Path to the input file or data string",
+          "validation": "must_exist, read_permission"
+        }
+      ],
+      "optional_global_args": [
+        {
+          "name": "output",
+          "flag": "--output",
+          "description": "Path to the desired output file",
+          "default_value": "./workspace/output.txt",
+          "validation": "write_permission"
+        },
+        {
+          "name": "log-level",
+          "flag": "--log-level",
+          "description": "Set verbosity for logging",
+          "default_value": "info",
+          "validation": "in:[trace,debug,info,warning,error]"
+        }
+      ],
+      "environment_variables": [
+        {
+          "name": "CLI_API_KEY",
+          "description": "API key for authentication",
+          "required": true,
+          "default_value": null
+        }
+      ],
+      "argument_precedence": [
+        "command-line",
+        "environment",
+        "config-file"
+      ],
+      "rationale": "Distinguishing required from optional args guides usability. Environment variables support automation, and precedence ensures clarity in overrides."
+    },
+    "error_handling_policy": {
+      "error_reporting": {
+        "verbosity_level": "info",
+        "include_stack_traces": false,
+        "log_errors": true,
+        "user_friendly_messages": true
+      },
+      "retry_policies": {
+        "max_retries": 2,
+        "retry_delay": 2,
+        "exponential_backoff": true,
+        "retryable_errors": [
+          "network_timeout",
+          "service_unavailable"
+        ]
+      },
+      "graceful_degradation": {
+        "fallback_strategies": [
+          {
+            "error_type": "model_unavailable",
+            "strategy": "Switch to fallback model",
+            "description": "Maintain service continuity"
+          },
+          {
+            "error_type": "tool_restricted",
+            "strategy": "Disable feature and notify",
+            "description": "Minimize security risk"
+          }
+        ],
+        "partial_results": true
+      },
+      "rationale": "Provides clear user feedback and minimal interruption while keeping logs for diagnostics. Retries on transient errors help reliability."
+    },
+    "resource_management_policy": {
+      "performance_limits": {
+        "max_memory_usage": 256,
+        "max_cpu_time": 20,
+        "max_execution_time": 60
+      },
+      "concurrency": {
+        "max_concurrent_operations": 2,
+        "thread_pool_size": 2,
+        "queue_size": 10
+      },
+      "temporary_files": {
+        "cleanup_policy": "delete_on_exit",
+        "max_temp_size": 10485760,
+        "temp_directory": "/tmp/"
+      },
+      "rationale": "Restricting memory, CPU, and concurrency ensures stability and avoids resource exhaustion. Auto-cleanup of temp files prevents leaks."
+    },
+    "deployment_scenarios": {
+      "development": {
+        "description": "Allows more verbose logging and disables strict rate limits for easier debugging.",
+        "policy_overrides": {}
+      },
+      "production": {
+        "description": "Implements all security and resource restrictions for maximum safety and scalability.",
+        "policy_overrides": {}
+      },
+      "enterprise": {
+        "description": "Supports integration with enterprise authentication and advanced auditing.",
+        "policy_overrides": {}
+      }
+    },
+    "customization_options": {
+      "configurable_parameters": [
+        {
+          "parameter": "log-level",
+          "description": "Verbosity of logging output",
+          "type": "enum",
+          "default_value": "info",
+          "validation": "in:[trace,debug,info,warning,error]"
+        },
+        {
+          "parameter": "max_concurrent_operations",
+          "description": "Number of simultaneous requests",
+          "type": "integer",
+          "default_value": "2",
+          "validation": ">=1 and <=10"
+        },
+        {
+          "parameter": "output",
+          "description": "Custom output file location",
+          "type": "string",
+          "default_value": "./workspace/output.txt",
+          "validation": "write_permission"
+        }
+      ],
+      "configuration_methods": [
+        "command-line flags",
+        "environment variables",
+        "configuration file"
+      ],
+      "override_mechanisms": [
+        "CLI flag overrides environment and config-file values",
+        "Admin can set defaults via config file"
+      ]
+    },
+    "quality_metrics": {
+      "security_score": 9.0,
+      "usability_score": 8.0,
+      "completeness_score": 10.0,
+      "recommendations": [
+        "Enable web search tool for selected, lower-privilege scenarios only",
+        "Increase configurability for file search paths depending on deployment",
+        "Regularly review model and tool allow-lists for new vulnerabilities"
+      ]
+    }
+  }
+}

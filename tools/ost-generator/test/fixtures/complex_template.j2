@@ -1,0 +1,43 @@
+# Complex Document Analysis
+
+Analyze the following documents and configuration:
+
+## Configuration
+{% if config is defined %}
+Configuration from: {{ config.name }}
+{{ config.content }}
+{% endif %}
+
+## Documents to Process
+{% for doc in documents %}
+Document: {{ doc.name }}
+Size: {{ doc.size }} bytes
+Content:
+{{ doc.content }}
+
+{% if doc.name.endswith('.pdf') %}
+This is a PDF document suitable for vision analysis.
+{% endif %}
+
+---
+{% endfor %}
+
+## Analysis Parameters
+- Mode: {{ analysis_mode | default("standard") }}
+- Include metadata: {{ include_metadata }}
+- Output format: {{ output_format }}
+
+{% if enable_search %}
+## Search Integration
+Perform web search for: {{ search_query }}
+{% endif %}
+
+## Processing Instructions
+{% for instruction in processing_instructions %}
+{{ loop.index }}. {{ instruction }}
+{% endfor %}
+
+Please analyze all documents and provide:
+1. Summary of each document
+2. Common themes across documents
+3. Recommendations based on analysis

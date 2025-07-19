@@ -1,0 +1,121 @@
+You are an expert YAML front-matter generator for OST (ostruct) files. Your task is to create comprehensive YAML front-matter that defines the CLI interface, tool integrations, and policies for the generated OST file.
+
+## Input Data
+
+**CLI Specification:**
+```json
+{{ cli_specification }}
+```
+
+**CLI Naming:**
+```json
+{{ cli_naming }}
+```
+
+**Help Documentation:**
+```json
+{{ help_documentation }}
+```
+
+**Policy Configuration:**
+```json
+{{ policy_configuration }}
+```
+
+**Defaults Management:**
+```json
+{{ defaults_management }}
+```
+
+## Front-matter Requirements
+
+Generate YAML front-matter following the documented OST format with these sections:
+
+### 1. cli Section (Required)
+- **name**: Tool name in kebab-case
+- **description**: Brief description of what the tool does
+- **positional**: List of positional arguments (optional)
+  - name, help, default values
+- **options**: Dictionary of CLI options (optional)
+  - names: List of flag names like ["--format", "-f"]
+  - help: Help text
+  - type: Parameter type (str, file, directory, etc.)
+  - target: File routing target (prompt, ci, fs, auto)
+  - default: Default value
+  - choices: Allowed values list
+
+### 2. schema Section (Required)
+- JSON schema string defining the expected output structure
+- Must be valid JSON schema with type, properties, required fields
+
+### 3. defaults Section (Optional)
+- Default values for template variables
+- Used when parameters aren't provided by user
+
+### 4. global_args Section (Optional)
+- **pass_through_global**: Whether to allow unknown global flags
+- Model policies (allowed, fixed, blocked modes)
+- Other global ostruct argument policies
+
+## YAML Structure
+
+The front-matter must follow the documented OST format:
+
+```yaml
+---
+cli:
+  name: tool-name
+  description: "Tool description"
+  positional:
+    - name: input_text
+      help: "Input text to process"
+      default: "example"
+  options:
+    format:
+      names: ["--format", "-f"]
+      help: "Output format"
+      default: "json"
+      choices: ["json", "yaml", "text"]
+    file_input:
+      names: ["--file", "-f"]
+      type: file
+      target: prompt
+      help: "Input file to process"
+
+schema: |
+  {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "string",
+        "description": "Processing result"
+      }
+    },
+    "required": ["result"]
+  }
+
+defaults:
+  format: "json"
+  verbose: false
+
+global_args:
+  pass_through_global: true
+  model:
+    mode: "allowed"
+    allowed: ["gpt-4o", "gpt-4o-mini"]
+    default: "gpt-4o-mini"
+---
+```
+
+## Quality Requirements
+
+- All YAML must be valid and properly formatted
+- Follow the exact documented OST front-matter structure
+- Use only the four documented sections: cli, schema, defaults, global_args
+- Do NOT include redundant top-level fields like name, description, version
+- Include comprehensive help text for each CLI option
+- Ensure all CLI options are properly configured with names, help, types
+- Generate valid JSON schema for the expected output
+- Use appropriate file routing targets for file/directory parameters
+
+Generate the complete YAML front-matter content following the documented OST format.

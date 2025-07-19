@@ -1,0 +1,186 @@
+{
+    "type": "object",
+    "properties": {
+        "variables": {
+            "type": "array",
+            "description": "All variables found in the template",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Variable name as it appears in template"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "scalar",
+                            "boolean",
+                            "file",
+                            "directory",
+                            "list",
+                            "complex"
+                        ],
+                        "description": "Inferred variable type based on usage patterns"
+                    },
+                    "usage_context": {
+                        "type": "array",
+                        "description": "How the variable is used in the template",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "substitution",
+                                "conditional",
+                                "loop",
+                                "file_access",
+                                "filter"
+                            ]
+                        }
+                    },
+                    "is_required": {
+                        "type": "boolean",
+                        "description": "Whether the variable appears to be required"
+                    },
+                    "default_value": {
+                        "type": "string",
+                        "description": "Default value if specified in template"
+                    },
+                    "file_attributes": {
+                        "type": "array",
+                        "description": "File attributes accessed (e.g., .content, .name, .path)",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "type",
+                    "usage_context",
+                    "is_required"
+                ]
+            }
+        },
+        "file_patterns": {
+            "type": "array",
+            "description": "File attachment patterns detected",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pattern_type": {
+                        "type": "string",
+                        "enum": [
+                            "single_file",
+                            "file_collection",
+                            "directory",
+                            "file_reference"
+                        ]
+                    },
+                    "variable_name": {
+                        "type": "string",
+                        "description": "Variable name associated with file pattern"
+                    },
+                    "routing_hint": {
+                        "type": "string",
+                        "enum": [
+                            "template",
+                            "code-interpreter",
+                            "file-search",
+                            "user-data",
+                            "auto"
+                        ],
+                        "description": "Suggested file routing target"
+                    },
+                    "attributes_used": {
+                        "type": "array",
+                        "description": "File attributes accessed in template",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "pattern_type",
+                    "variable_name",
+                    "routing_hint"
+                ]
+            }
+        },
+        "tool_hints": {
+            "type": "array",
+            "description": "Tool usage hints detected in template",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tool": {
+                        "type": "string",
+                        "enum": [
+                            "code-interpreter",
+                            "file-search",
+                            "web-search"
+                        ]
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Confidence score for tool requirement"
+                    },
+                    "evidence": {
+                        "type": "string",
+                        "description": "Evidence for tool requirement"
+                    }
+                },
+                "required": [
+                    "tool",
+                    "confidence",
+                    "evidence"
+                ]
+            }
+        },
+        "complexity_score": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Template complexity level"
+        },
+        "template_structure": {
+            "type": "object",
+            "properties": {
+                "has_conditionals": {
+                    "type": "boolean",
+                    "description": "Template contains {% if %} blocks"
+                },
+                "has_loops": {
+                    "type": "boolean",
+                    "description": "Template contains {% for %} blocks"
+                },
+                "has_file_references": {
+                    "type": "boolean",
+                    "description": "Template references file objects"
+                },
+                "has_filters": {
+                    "type": "boolean",
+                    "description": "Template uses Jinja2 filters"
+                },
+                "line_count": {
+                    "type": "integer",
+                    "description": "Number of lines in template"
+                }
+            },
+            "required": [
+                "has_conditionals",
+                "has_loops",
+                "has_file_references",
+                "has_filters",
+                "line_count"
+            ]
+        }
+    },
+    "required": [
+        "variables",
+        "file_patterns",
+        "tool_hints",
+        "complexity_score",
+        "template_structure"
+    ]
+}

@@ -1,0 +1,279 @@
+{
+  "tool_description": {
+    "name": "ostruct-cli-tool",
+    "purpose": "A CLI tool for processing data using ostruct templates and flexible file routing.",
+    "detailed_description": "ostruct-cli-tool is a command-line utility generated from ostruct templates that allows users to process, transform, and analyze input data. The tool leverages template variables, validation schemas, and intelligent file routing patterns to deliver flexible data workflows. Common patterns such as file attachment, template processing, and external tool integration (code interpreter, file search) are supported, making it suitable for automation, reporting, and data engineering tasks.",
+    "use_cases": [
+      "Automating batch data processing from files or standard input.",
+      "Generating reports using ostruct templates with structured output.",
+      "Validating input data against template constraints.",
+      "Integrating with code interpreters to execute dynamic scripts.",
+      "Searching and retrieving files to use as template inputs."
+    ]
+  },
+  "usage_patterns": {
+    "basic_usage": "ostruct-cli-tool --input <input-file> --template <template-file> [options]",
+    "common_examples": [
+      {
+        "description": "Process a single input file with a specified template and output results.",
+        "command": "ostruct-cli-tool --input data.csv --template report.ostruct --output result.txt",
+        "explanation": "Processes 'data.csv' using the 'report.ostruct' template and writes the output to 'result.txt'. All required arguments are supplied explicitly."
+      },
+      {
+        "description": "Run with a file attachment (code interpreter integration).",
+        "command": "ostruct-cli-tool --input script.py --mode execute",
+        "explanation": "Attaches 'script.py' for execution via the code interpreter tool, using 'execute' mode for script processing."
+      },
+      {
+        "description": "Use file search to dynamically resolve an input file.",
+        "command": "ostruct-cli-tool --file-search '*.log' --template summary.ostruct",
+        "explanation": "Searches for log files matching '*.log' and applies the 'summary.ostruct' template to aggregate or summarize their contents."
+      }
+    ],
+    "advanced_examples": [
+      {
+        "description": "Batch process multiple files and output to a directory.",
+        "command": "ostruct-cli-tool --input data/*.csv --template process.ostruct --output-dir results/",
+        "explanation": "Expands 'data/*.csv', processes each file with the 'process.ostruct' template, and writes each result to the 'results/' directory, naming files according to the template settings."
+      },
+      {
+        "description": "Chain code interpreter and template processing for data transformation.",
+        "command": "ostruct-cli-tool --input transform.py --template format.ostruct --output formatted.txt",
+        "explanation": "Executes 'transform.py' to preprocess data, then pipes the output to the 'format.ostruct' template to produce a well-formatted file 'formatted.txt'."
+      }
+    ]
+  },
+  "argument_documentation": {
+    "required_arguments": [
+      {
+        "name": "input",
+        "flag": "--input",
+        "short_flag": "-i",
+        "description": "Path to the input data file, directory, or script. Accepts wildcards for batch processing.",
+        "type": "string",
+        "validation_hints": [
+          "Must exist and be readable.",
+          "Supports wildcards (e.g., '*.csv')."
+        ],
+        "examples": [
+          "ostruct-cli-tool --input file.csv --template out.ostruct"
+        ]
+      },
+      {
+        "name": "template",
+        "flag": "--template",
+        "short_flag": "-t",
+        "description": "Ostruct template file to use for processing the input data.",
+        "type": "string",
+        "validation_hints": [
+          "Must be a valid ostruct template file.",
+          "File extension typically .ostruct."
+        ],
+        "examples": [
+          "ostruct-cli-tool --input x.csv --template summary.ostruct"
+        ]
+      }
+    ],
+    "optional_arguments": [
+      {
+        "name": "output",
+        "flag": "--output",
+        "short_flag": "-o",
+        "description": "Output file for processed results. If not specified, outputs to stdout.",
+        "type": "string",
+        "default_value": "stdout",
+        "validation_hints": [
+          "Writable location.",
+          "If directory, generates output files for each input."
+        ],
+        "examples": [
+          "ostruct-cli-tool --input a.csv --template b.ostruct --output c.txt"
+        ]
+      },
+      {
+        "name": "output-dir",
+        "flag": "--output-dir",
+        "short_flag": null,
+        "description": "Directory to write output files when processing multiple inputs.",
+        "type": "string",
+        "default_value": null,
+        "validation_hints": [
+          "Directory must exist or be creatable."
+        ],
+        "examples": [
+          "ostruct-cli-tool --input *.csv --template t.ostruct --output-dir out/"
+        ]
+      },
+      {
+        "name": "file-search",
+        "flag": "--file-search",
+        "short_flag": null,
+        "description": "File glob or search query to dynamically find files for processing.",
+        "type": "string",
+        "default_value": null,
+        "validation_hints": [
+          "Valid glob pattern or search string.",
+          "Matches at least one file."
+        ],
+        "examples": [
+          "ostruct-cli-tool --file-search '*.log' --template r.ostruct"
+        ]
+      },
+      {
+        "name": "mode",
+        "flag": "--mode",
+        "short_flag": null,
+        "description": "Operation mode, e.g. 'execute' for code interpreter or 'process' for template rendering.",
+        "type": "string",
+        "default_value": "process",
+        "validation_hints": [
+          "Allowed: 'process', 'execute', 'analyze'."
+        ],
+        "examples": [
+          "ostruct-cli-tool --input script.py --mode execute"
+        ]
+      }
+    ]
+  },
+  "file_routing": {
+    "routing_explanation": "File routing in ostruct-cli-tool is dynamic and determined by the arguments provided. Files may be routed as template inputs, processed directly, or attached for use by integrated tools such as the code interpreter or file search.",
+    "template_files": {
+      "description": "Template files are routed when the --template flag is provided. The file is parsed and used to process or render the input data according to template logic.",
+      "examples": [
+        {
+          "flag": "--template",
+          "description": "Specifies the ostruct template to use.",
+          "command_example": "ostruct-cli-tool --input file.csv --template report.ostruct"
+        }
+      ]
+    },
+    "code_interpreter_files": {
+      "description": "Files ending in .py or other recognized script extensions are routed to the code interpreter integration, provided 'execute' mode is selected or detected.",
+      "examples": [
+        {
+          "flag": "--input (script.py) --mode execute",
+          "description": "Runs the attached script with the in-built code interpreter.",
+          "command_example": "ostruct-cli-tool --input transform.py --mode execute"
+        }
+      ]
+    },
+    "file_search_files": {
+      "description": "When --file-search is used, matching files are discovered and routed as batch inputs for template or script processing.",
+      "examples": [
+        {
+          "flag": "--file-search",
+          "description": "Uses a glob or query to find and process files.",
+          "command_example": "ostruct-cli-tool --file-search '*.csv' --template summary.ostruct"
+        }
+      ]
+    }
+  },
+  "tool_integration": {
+    "available_tools": [
+      {
+        "name": "code-interpreter",
+        "description": "Executes provided scripts on input data.",
+        "when_to_use": "When you want to preprocess, filter, or transform input data with a custom script before template processing.",
+        "example_usage": "ostruct-cli-tool --input custom.py --mode execute"
+      },
+      {
+        "name": "file-search",
+        "description": "Discovers and routes files in bulk for batch processing.",
+        "when_to_use": "When processing large sets of files matching a pattern (e.g., logs, batch reports).",
+        "example_usage": "ostruct-cli-tool --file-search '*.log' --template report.ostruct"
+      }
+    ],
+    "mcp_servers": {
+      "description": "MCP server integration is supported for advanced use cases. These servers may provide extended capabilities such as distributed processing or workflow orchestration. Integration is typically configured via environment variables or dedicated flags.",
+      "suggested_servers": [
+        {
+          "name": "ostruct-dispatcher",
+          "purpose": "Parallel batch processing and orchestration of template runs.",
+          "example_usage": "ostruct-cli-tool --input data.csv --template t.ostruct --output result.txt --mcp-host dispatcher.internal"
+        }
+      ]
+    }
+  },
+  "security_considerations": {
+    "security_overview": "Always validate input sources and review scripts and templates for any potentially unsafe operations, especially when integrating code execution capabilities or processing untrusted files.",
+    "input_validation": [
+      {
+        "concern": "Untrusted input files or scripts.",
+        "guidance": "Only process files and scripts from trusted sources. Use file validation checks when possible."
+      },
+      {
+        "concern": "Malformed or malicious template files.",
+        "guidance": "Review templates for unsafe operations. Avoid templates that perform direct system commands unless audited."
+      }
+    ],
+    "file_handling": [
+      {
+        "concern": "Overwriting output files.",
+        "guidance": "Choose unique output filenames or directories to avoid accidental overwrites."
+      },
+      {
+        "concern": "Large or recursive glob patterns.",
+        "guidance": "Limit the scope of file search to avoid excessive resource usage or unintended file exposure."
+      }
+    ],
+    "output_security": [
+      {
+        "concern": "Sensitive data leaks.",
+        "guidance": "Review outputs for accidental inclusion of private information. Limit data exposure to intended audiences."
+      }
+    ]
+  },
+  "troubleshooting": {
+    "common_issues": [
+      {
+        "problem": "Input file or template not found.",
+        "symptoms": [
+          "Error: File not found",
+          "CLI exits with missing file message"
+        ],
+        "solutions": [
+          "Check file paths and spelling.",
+          "Ensure files exist in the specified location."
+        ]
+      },
+      {
+        "problem": "Invalid template or script.",
+        "symptoms": [
+          "Error on template parsing.",
+          "Script execution fails."
+        ],
+        "solutions": [
+          "Validate syntax in the template/script.",
+          "Test script outside the tool to ensure correctness."
+        ]
+      },
+      {
+        "problem": "No files matched with --file-search.",
+        "symptoms": [
+          "No output produced.",
+          "Warning about empty file set."
+        ],
+        "solutions": [
+          "Verify your file search pattern.",
+          "Check for correct directory and file naming."
+        ]
+      }
+    ],
+    "debugging_tips": [
+      "Use verbose or debug flags (if supported) for more detailed output.",
+      "Start with a small sample file or template to isolate issues.",
+      "Read error messages carefully—they often indicate the point of failure.",
+      "Check for updates or documentation about newly introduced options or integrations."
+    ]
+  },
+  "quality_metrics": {
+    "documentation_completeness": 0.97,
+    "example_coverage": 0.9,
+    "clarity_score": 0.96,
+    "recommendations": [
+      "Include more CLI examples for complex chained workflows.",
+      "Add a dedicated section for template syntax troubleshooting.",
+      "Incorporate security best practices for in-template scripting."
+    ]
+  }
+}

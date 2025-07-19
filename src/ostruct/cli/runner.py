@@ -1930,16 +1930,6 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         CLIError: For errors during CLI operations.
     """
     try:
-        # 0. Configure Debug Logging
-        from .template_debug import configure_debug_logging
-
-        configure_debug_logging(
-            verbose=bool(args.get("verbose", False)),
-            debug=bool(args.get("debug", False)),
-        )
-
-        # 0a. Help Debug Request is now handled by callback in click_options.py
-
         # 0. Configure Progress Reporting
         configure_progress_reporter(
             verbose=args.get("verbose", False),

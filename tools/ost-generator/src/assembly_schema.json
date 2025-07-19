@@ -1,0 +1,243 @@
+{
+    "type": "object",
+    "properties": {
+        "ost_file_content": {
+            "type": "string",
+            "description": "Complete OST file content with YAML front-matter and template body"
+        },
+        "assembly_metadata": {
+            "type": "object",
+            "properties": {
+                "tool_name": {
+                    "type": "string",
+                    "description": "Final tool name for the OST file"
+                },
+                "file_name": {
+                    "type": "string",
+                    "description": "Suggested filename for the OST file"
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Version of the generated OST file"
+                },
+                "generated_timestamp": {
+                    "type": "string",
+                    "description": "ISO timestamp of generation"
+                },
+                "source_files": {
+                    "type": "object",
+                    "properties": {
+                        "template_file": {
+                            "type": "string",
+                            "description": "Original template filename"
+                        },
+                        "schema_file": {
+                            "type": "string",
+                            "description": "Original schema filename"
+                        }
+                    },
+                    "required": [
+                        "template_file",
+                        "schema_file"
+                    ]
+                }
+            },
+            "required": [
+                "tool_name",
+                "file_name",
+                "version",
+                "generated_timestamp",
+                "source_files"
+            ]
+        },
+        "frontmatter_structure": {
+            "type": "object",
+            "properties": {
+                "cli_arguments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "CLI flag name"
+                            },
+                            "type": {
+                                "type": "string",
+                                "description": "Argument type"
+                            },
+                            "required": {
+                                "type": "boolean",
+                                "description": "Whether argument is required"
+                            },
+                            "help": {
+                                "type": "string",
+                                "description": "Help text for the argument"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "type",
+                            "required",
+                            "help"
+                        ]
+                    }
+                },
+                "tool_integrations": {
+                    "type": "object",
+                    "properties": {
+                        "code_interpreter": {
+                            "type": "boolean",
+                            "description": "Whether Code Interpreter is enabled"
+                        },
+                        "file_search": {
+                            "type": "boolean",
+                            "description": "Whether File Search is enabled"
+                        },
+                        "web_search": {
+                            "type": "boolean",
+                            "description": "Whether Web Search is enabled"
+                        }
+                    }
+                },
+                "model_settings": {
+                    "type": "object",
+                    "properties": {
+                        "default_model": {
+                            "type": "string",
+                            "description": "Default model to use"
+                        },
+                        "allowed_models": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of allowed models"
+                        }
+                    }
+                }
+            },
+            "required": [
+                "cli_arguments",
+                "tool_integrations",
+                "model_settings"
+            ]
+        },
+        "template_modifications": {
+            "type": "object",
+            "properties": {
+                "variable_mappings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "original_name": {
+                                "type": "string",
+                                "description": "Original template variable name"
+                            },
+                            "cli_flag": {
+                                "type": "string",
+                                "description": "Corresponding CLI flag"
+                            },
+                            "transformation": {
+                                "type": "string",
+                                "description": "Any transformation applied"
+                            }
+                        },
+                        "required": [
+                            "original_name",
+                            "cli_flag"
+                        ]
+                    }
+                },
+                "added_comments": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Comments added to the template"
+                },
+                "preserved_logic": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Original logic blocks that were preserved"
+                }
+            },
+            "required": [
+                "variable_mappings",
+                "added_comments",
+                "preserved_logic"
+            ]
+        },
+        "validation_results": {
+            "type": "object",
+            "properties": {
+                "yaml_valid": {
+                    "type": "boolean",
+                    "description": "Whether YAML front-matter is valid"
+                },
+                "template_valid": {
+                    "type": "boolean",
+                    "description": "Whether template syntax is valid"
+                },
+                "schema_embedded": {
+                    "type": "boolean",
+                    "description": "Whether schema is properly embedded"
+                },
+                "cli_mappings_complete": {
+                    "type": "boolean",
+                    "description": "Whether all CLI mappings are complete"
+                },
+                "issues_found": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Any issues found during validation"
+                }
+            },
+            "required": [
+                "yaml_valid",
+                "template_valid",
+                "schema_embedded",
+                "cli_mappings_complete",
+                "issues_found"
+            ]
+        },
+        "usage_examples": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "Example description"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Example command"
+                    },
+                    "explanation": {
+                        "type": "string",
+                        "description": "Explanation of the example"
+                    }
+                },
+                "required": [
+                    "description",
+                    "command",
+                    "explanation"
+                ]
+            }
+        }
+    },
+    "required": [
+        "ost_file_content",
+        "assembly_metadata",
+        "frontmatter_structure",
+        "template_modifications",
+        "validation_results",
+        "usage_examples"
+    ]
+}

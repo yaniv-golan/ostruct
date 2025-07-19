@@ -1,0 +1,154 @@
+{
+  "cli_specification": {
+    "tool_name": "text-entity-sentiment-extractor",
+    "description": "Extracts entities, topics, and sentiment from input text, returning a strictly validated JSON object with structured results. Supports output in various formats and configurable sentiment filtering. Ideal for natural language processing tasks, topic modeling, and sentiment analysis on textual inputs.",
+    "version": "1.0",
+    "arguments": [
+      {
+        "variable_name": "input_text",
+        "cli_flag": "--input-text",
+        "short_flag": "-i",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null,
+        "help_text": "The input text to be analyzed for entity and topic extraction and sentiment classification.",
+        "validation": {
+          "type": "string",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": 1,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "\"The quick brown fox jumps over the lazy dog.\"",
+          "\"Global warming impacts weather patterns.\""
+        ]
+      },
+      {
+        "variable_name": "format",
+        "cli_flag": "--format",
+        "short_flag": "-f",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null,
+        "help_text": "The output format to use. Common values are 'json', 'text', or 'xml'. Default is 'json'.",
+        "validation": {
+          "type": "string",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": 2,
+          "max_length": 16,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "\"json\"",
+          "\"text\"",
+          "\"xml\""
+        ]
+      },
+      {
+        "variable_name": "verbose",
+        "cli_flag": "--verbose",
+        "short_flag": "-v",
+        "argument_type": "flag",
+        "required": false,
+        "default_value": null,
+        "help_text": "Increase output verbosity, including more details about the extraction process.",
+        "validation": {
+          "type": "boolean",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "--verbose"
+        ]
+      },
+      {
+        "variable_name": "sentiment",
+        "cli_flag": "--sentiment",
+        "short_flag": null,
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": "neutral",
+        "help_text": "Sentiment filter for results. Allowed values: positive, negative, neutral. Default is 'neutral'.",
+        "validation": {
+          "type": "string",
+          "allowed_values": [
+            "positive",
+            "negative",
+            "neutral"
+          ],
+          "pattern": null,
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "\"positive\"",
+          "\"negative\"",
+          "\"neutral\""
+        ]
+      }
+    ],
+    "file_attachments": [],
+    "tool_integrations": {
+      "enable_code_interpreter": false,
+      "enable_file_search": false,
+      "enable_web_search": false,
+      "suggested_mcp_servers": null
+    }
+  },
+  "usage_examples": [
+    {
+      "description": "Basic usage with required arguments.",
+      "command": "text-entity-sentiment-extractor --input-text \"I love the new technology trends!\" --format json",
+      "explanation": "Analyzes the given text for entities, topics, and sentiment, outputting a JSON object with structured results."
+    },
+    {
+      "description": "Advanced output with specific sentiment filtering and verbose mode.",
+      "command": "text-entity-sentiment-extractor -i \"Stock markets are volatile today.\" -f json --sentiment positive --verbose",
+      "explanation": "Processes the text, filtering results to positive sentiment, and outputs extra processing details in verbose mode."
+    },
+    {
+      "description": "Output in plain text format.",
+      "command": "text-entity-sentiment-extractor --input-text \"Climate change is a major global issue.\" --format text",
+      "explanation": "Extracts structured data and outputs it as a plain text summary instead of JSON."
+    },
+    {
+      "description": "Short flags and defaults.",
+      "command": "text-entity-sentiment-extractor -i \"Election results spark debates.\" -f xml",
+      "explanation": "Uses short flags for brevity and outputs the results in XML format."
+    }
+  ],
+  "implementation_notes": {
+    "complexity_assessment": "Low complexity: No file operations, no nested data structures, and straightforward variable mappings. Argument validation and schema output enforcement are the only non-trivial requirements.",
+    "security_considerations": [
+      "Validate all user input for correct types and allowed values (especially sentiment).",
+      "Reject empty input text and invalid formats to avoid nonsensical output.",
+      "No file path or file content processing is present, so typical path traversal risks are absent.",
+      "Be prepared to expand validation if future versions support file input or directory attachment."
+    ],
+    "validation_requirements": [
+      "input_text: Required, non-empty string.",
+      "format: Required, string (consider restricting to known formats in implementation).",
+      "sentiment: Optional, must be 'positive', 'negative', or 'neutral'.",
+      "verbose: Optional, boolean flag."
+    ],
+    "file_handling_notes": [
+      "No file attachments or path arguments are present or needed.",
+      "No file system operations are performed."
+    ],
+    "recommended_defaults": {
+      "model": null,
+      "output_format": "json"
+    }
+  }
+}

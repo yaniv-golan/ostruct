@@ -1,0 +1,283 @@
+{
+  "cli_specification": {
+    "tool_name": "document-batch-analyzer",
+    "description": "A command-line tool for analyzing and summarizing collections of documents in batch mode, with configurable processing instructions, metadata inclusion, search capabilities, and flexible output formats. Supports safe file and directory operations, structured output conforming to a strict schema, and integration with code interpreter, file search, and web search features.",
+    "version": "1.0.0",
+    "arguments": [
+      {
+        "variable_name": "config",
+        "cli_flag": "--config",
+        "short_flag": "-c",
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": null,
+        "help_text": "Path to configuration file (YAML or JSON). Used for custom settings and processing instructions.",
+        "validation": {
+          "type": "file_path",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": [
+            ".yaml",
+            ".yml",
+            ".json"
+          ]
+        },
+        "file_routing": {
+          "target": "template",
+          "alias": "config",
+          "multiple": false
+        },
+        "examples": [
+          "configs/settings.yaml",
+          "config.json"
+        ]
+      },
+      {
+        "variable_name": "documents",
+        "cli_flag": "--documents",
+        "short_flag": "-d",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null,
+        "help_text": "Path to a directory containing documents (PDF or TXT) to process in batch.",
+        "validation": {
+          "type": "directory_path",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": {
+          "target": "code_interpreter",
+          "alias": "documents",
+          "multiple": false
+        },
+        "examples": [
+          "./docs",
+          "/data/mydocuments/"
+        ]
+      },
+      {
+        "variable_name": "analysis_mode",
+        "cli_flag": "--analysis-mode",
+        "short_flag": "-m",
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": "standard",
+        "help_text": "Analysis mode to use (e.g., 'standard', 'deep', 'fast').",
+        "validation": {
+          "type": "string",
+          "allowed_values": null,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "standard",
+          "deep"
+        ]
+      },
+      {
+        "variable_name": "include_metadata",
+        "cli_flag": "--include-metadata",
+        "short_flag": null,
+        "argument_type": "flag",
+        "required": true,
+        "default_value": null,
+        "help_text": "Include document metadata in the analysis and output.",
+        "validation": {
+          "type": "boolean",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          ""
+        ]
+      },
+      {
+        "variable_name": "output_format",
+        "cli_flag": "--output-format",
+        "short_flag": "-o",
+        "argument_type": "single_value",
+        "required": true,
+        "default_value": null,
+        "help_text": "Output format for analysis results: json, csv, txt, or pdf. Default is json.",
+        "validation": {
+          "type": "string",
+          "allowed_values": [
+            "json",
+            "csv",
+            "txt",
+            "pdf"
+          ],
+          "pattern": "^(json|csv|txt|pdf)$",
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "json"
+        ]
+      },
+      {
+        "variable_name": "enable_search",
+        "cli_flag": "--enable-search",
+        "short_flag": null,
+        "argument_type": "flag",
+        "required": false,
+        "default_value": null,
+        "help_text": "Enable integrated search (file or web) for relevant queries and content extraction.",
+        "validation": {
+          "type": "boolean",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": null,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          ""
+        ]
+      },
+      {
+        "variable_name": "search_query",
+        "cli_flag": "--search-query",
+        "short_flag": "-q",
+        "argument_type": "single_value",
+        "required": false,
+        "default_value": null,
+        "help_text": "Search query for filtering documents or performing an external web search (requires --enable-search).",
+        "validation": {
+          "type": "string",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": null,
+          "max_length": 256,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "financial summary",
+          "project report"
+        ]
+      },
+      {
+        "variable_name": "processing_instructions",
+        "cli_flag": "--processing-instruction",
+        "short_flag": "-p",
+        "argument_type": "multiple_values",
+        "required": true,
+        "default_value": null,
+        "help_text": "Processing instructions to apply to each document (e.g., ocr, summarize, classify). Use multiple times for multiple instructions.",
+        "validation": {
+          "type": "string_array",
+          "allowed_values": null,
+          "pattern": null,
+          "min_length": 1,
+          "max_length": null,
+          "file_extensions": null
+        },
+        "file_routing": null,
+        "examples": [
+          "ocr",
+          "summarize"
+        ]
+      }
+    ],
+    "file_attachments": [
+      {
+        "flag": "--config",
+        "routing_target": "template",
+        "alias": "config",
+        "file_types": [
+          "yaml",
+          "json"
+        ],
+        "required": false,
+        "multiple": false,
+        "help_text": "Optional configuration file (YAML or JSON)."
+      },
+      {
+        "flag": "--documents",
+        "routing_target": "code_interpreter",
+        "alias": "documents",
+        "file_types": [
+          "pdf",
+          "txt"
+        ],
+        "required": true,
+        "multiple": true,
+        "help_text": "Directory containing document files (PDF or TXT) to analyze."
+      }
+    ],
+    "tool_integrations": {
+      "enable_code_interpreter": true,
+      "enable_file_search": true,
+      "enable_web_search": true,
+      "suggested_mcp_servers": [
+        "document_processing_server"
+      ]
+    }
+  },
+  "usage_examples": [
+    {
+      "description": "Basic usage with required options and output as JSON.",
+      "command": "document-batch-analyzer --documents ./docs --include-metadata --output-format json --processing-instruction summarize",
+      "explanation": "Processes all supported documents in './docs', includes metadata, performs summarization, and outputs the result as JSON."
+    },
+    {
+      "description": "Using a configuration file and specifying analysis mode and multiple instructions.",
+      "command": "document-batch-analyzer --config config.yaml --documents ./mydocs/ --analysis-mode deep --include-metadata --output-format csv -p ocr -p summarize",
+      "explanation": "Loads settings from config.yaml, uses deep analysis, includes metadata, applies both OCR and summarization, and outputs as CSV."
+    },
+    {
+      "description": "Enabling search and specifying a search query for filtering.",
+      "command": "document-batch-analyzer --documents ./docs/ --include-metadata --output-format txt --enable-search --search-query \"climate change\" --processing-instruction summarize",
+      "explanation": "Processes documents in './docs', includes metadata, uses search to filter for 'climate change', summarizes matching documents, and outputs as TXT."
+    },
+    {
+      "description": "Batch conversion to PDF with multiple instructions and search enabled.",
+      "command": "document-batch-analyzer -d ./docs/ --include-metadata -o pdf --enable-search -p summarize -p classify",
+      "explanation": "Processes every document in './docs', includes metadata, enables search, summarizes and classifies each, and saves output as PDF."
+    }
+  ],
+  "implementation_notes": {
+    "complexity_assessment": "High complexity due to batch file processing, conditional feature activation, structured output, and multi-tool integration. Careful validation, modular design, and robust error handling are required.",
+    "security_considerations": [
+      "Validate and sanitize all file/directory paths, restrict to allowed root or directory.",
+      "Only process whitelisted file types (PDF, TXT).",
+      "Sanitize all user input, especially search queries, to prevent command injection.",
+      "Lock down file output destinations to avoid overwriting system files.",
+      "Prevent directory traversal and restrict file access scope.",
+      "Handle large files with memory-efficient streaming or chunked processing."
+    ],
+    "validation_requirements": [
+      "Strictly require documents directory and at least one processing instruction.",
+      "Validate config file existence and type prior to loading.",
+      "Check output_format against allowed values (json, csv, txt, pdf).",
+      "Search_query maximum length and sanitization if used in external calls.",
+      "Boolean flag input should not accept arbitrary values (set, unset only)."
+    ],
+    "file_handling_notes": [
+      "All document processing should occur in a sandboxed environment.",
+      "Iterate over files in the 'documents' directory, skipping unsupported or unreadable files.",
+      "Configuration file is loaded only if specified; fallback to defaults as needed.",
+      "Enforce single batch per command; for very large directories, support batching/chunking and user feedback."
+    ],
+    "recommended_defaults": {
+      "model": null,
+      "output_format": "json"
+    }
+  }
+}

@@ -616,20 +616,20 @@ Message: {{ message }}
 class TestRunxEndToEnd:
     """End-to-end tests for runx functionality."""
 
-    def test_runx_with_real_execution(
-        self, fs: FakeFilesystem, security_manager: Mock
-    ):
+    @pytest.mark.no_fs
+    def test_runx_with_real_execution(self, tmp_path):
         """Test runx with actual subprocess execution (dry-run)."""
-        ost_content = """---
+        ost_content = """#!/usr/bin/env -S ostruct runx
+---
 cli:
   name: e2e-test
   description: End-to-end test
   options:
-    - name: input
-      type: str
+    input:
+      names: ["--input", "-i"]
+      help: Input text
       default: "test input"
-  defaults:
-    dry_run: true
+
 schema: |
   {
     "type": "object",
@@ -639,14 +639,16 @@ schema: |
     },
     "required": ["result", "input_received"]
   }
+
+defaults:
+  dry_run: true
 ---
 Input received: {{ input }}
 Please return a JSON response with the result and input_received fields.
 """
-        ost_path = create_test_ost_file(fs, ost_content, "e2e_test.ost")
-
-        # Make the file executable
-        os.chmod(ost_path, 0o755)
+        ost_path = tmp_path / "e2e_test.ost"
+        ost_path.write_text(ost_content)
+        ost_path.chmod(0o755)
 
         # Test execution via subprocess with dry-run
         result = subprocess.run(
@@ -654,13 +656,13 @@ Please return a JSON response with the result and input_received fields.
                 "python",
                 "-m",
                 "ostruct.cli.runx",
-                ost_path,
+                str(ost_path),
                 "--input",
                 "hello world",
             ],
             capture_output=True,
             text=True,
-            cwd="/test_workspace/base",
+            cwd=str(tmp_path),
         )
 
         # Should succeed with dry-run

@@ -1,0 +1,78 @@
+# Jinja2 Template Analysis for OST Generation
+
+You are an expert in Jinja2 template analysis and CLI design. Your task is to analyze a Jinja2 template and extract comprehensive information about its structure, variables, and usage patterns to generate an intelligent CLI interface.
+
+## Template to Analyze
+
+```jinja2
+{{ template.content }}
+```
+
+## Analysis Instructions
+
+Analyze the template thoroughly and extract the following information:
+
+### 1. Variable Analysis
+For each variable found in the template (e.g., variable substitution syntax), determine:
+- **Name**: The exact variable name
+- **Type**: Classify as one of:
+  - `scalar`: Simple string/number substitution (e.g., name, count)
+  - `boolean`: Used in conditionals (e.g., if verbose)
+  - `file`: Accessed with file attributes (e.g., config.content, data.name)
+  - `directory`: Used in loops over file collections (e.g., for file in files)
+  - `list`: Used in loops over simple items (e.g., for item in items)
+  - `complex`: Complex objects with multiple attributes
+- **Usage Context**: How it's used (substitution, conditional, loop, file_access, filter)
+- **Required**: Whether it appears to be required (no default, no conditional checks)
+- **Default Value**: If specified with default filter
+- **File Attributes**: If it's a file variable, what attributes are accessed (.content, .name, .path, etc.)
+
+### 2. File Pattern Detection
+Identify file attachment patterns:
+- **Single File**: Variables accessed like file.content or config.name
+- **File Collection**: Variables used in loops like for f in files
+- **Directory**: Variables representing directory contents
+- **File Reference**: Variables that reference files indirectly
+
+For each pattern, suggest appropriate routing:
+- `template`: Simple template access (default)
+- `code-interpreter`: Data files for analysis
+- `file-search`: Documents for search/retrieval
+- `user-data`: PDFs/images for vision models
+- `auto`: Let ostruct auto-route based on file type
+
+### 3. Tool Usage Hints
+Look for evidence of tool requirements:
+- **Code Interpreter**: Mathematical operations, data analysis, file processing
+- **File Search**: Document retrieval, knowledge base queries
+- **Web Search**: Real-time information needs, current events
+
+Provide confidence scores (0-1) and evidence for each tool hint.
+
+### 4. Template Structure Analysis
+Assess structural complexity:
+- Presence of conditionals (if statements)
+- Presence of loops (for statements)
+- File object references
+- Jinja2 filter usage
+- Line count
+
+### 5. Complexity Assessment
+Assign an overall complexity level:
+- "low": Simple (few variables, no conditionals/loops)
+- "medium": Moderate (some conditionals, basic file handling)
+- "high": Complex (multiple loops, complex file patterns, advanced logic)
+
+## Output Format
+
+Provide your analysis in the exact JSON format specified by the schema. Be thorough but concise. Focus on actionable insights that will help generate an intelligent CLI interface.
+
+## Examples of Variable Classification
+
+- user_name → scalar, substitution, required
+- if verbose → boolean, conditional, optional
+- config.content → file, file_access, required, attributes: ["content"]
+- for file in documents → directory, loop, required
+- items with length filter → list, filter, required
+
+Analyze the template now and provide comprehensive results.

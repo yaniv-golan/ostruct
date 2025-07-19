@@ -1,0 +1,109 @@
+{
+  "ost_file_content": "---\n# ===================\n# OSTRUCT TOOL CONFIG: text-entity-sentiment-extractor\n# ===================\n\nname: text-entity-sentiment-extractor\nversion: \"1.0\"\ndescription: >-\n  Extracts entities, topics, and sentiment from input text, returning a strictly validated JSON object with structured results. Supports output in various formats and configurable sentiment filtering. Ideal for natural language processing tasks, topic modeling, and sentiment analysis on textual inputs.\n\nauthor: ostruct-generator\nschema:\n  type: object\n  properties:\n    result:\n      type: string\n\narguments:\n  - name: input_text\n    flag: --input-text\n    short_flag: -i\n    type: string\n    required: true\n    help: The input text to be analyzed for entity and topic extraction and sentiment classification.\n    env: INPUT_TEXT\n    validation:\n      min_length: 1\n\n  - name: format\n    flag: --format\n    short_flag: -f\n    type: string\n    required: true\n    help: The output format to use. Common values are 'json', 'text', or 'xml'. Default is 'json'.\n    env: OUTPUT_FORMAT\n    validation:\n      enum: [json, text, xml]\n      min_length: 2\n      max_length: 16\n    default: json\n\n  - name: verbose\n    flag: --verbose\n    short_flag: -v\n    type: boolean\n    required: false\n    help: Increase output verbosity, including more details about the extraction process.\n    env: VERBOSE\n    default: false\n\n  - name: sentiment\n    flag: --sentiment\n    type: string\n    required: false\n    help: \"Sentiment filter for results. Allowed values: positive, negative, neutral. Default is 'neutral'.\"\n    env: SENTIMENT\n    validation:\n      enum: [positive, negative, neutral]\n    default: neutral\n\n# ===================\n# MODEL & POLICY\n# ===================\nmodel:\n  default: gpt-4-turbo\n  allowed:\n    - gpt-4-turbo\n    - gpt-4\n    - gpt-3.5-turbo\n  blocked:\n    - experimental-*\n    - community-*\n\ntool_integrations:\n  code_interpreter: false\n  file_search: false\n  web_search: false\n\ndefaults:\n  output_dir: ./dist\n  log_level: INFO\n\nsecurity:\n  input_validation:\n    escape_special: true\n    pattern_validation: true\n  output_security:\n    sanitize_output: true\n    redact_sensitive_data: true\n    sensitive_patterns:\n      - API_KEY\n      - SECRET\n      - PASSWORD\n  authentication:\n    require_api_key: true\n\nhelp:\n  usage: |\n    text-entity-sentiment-extractor --input-text \"The quick brown fox.\" --format json\n    text-entity-sentiment-extractor -i \"Stock markets are volatile.\" -f json --sentiment positive --verbose\n    text-entity-sentiment-extractor --input-text \"Climate change is a major global issue.\" --format text\n  examples:\n    - description: Basic usage with required arguments.\n      command: |\n        text-entity-sentiment-extractor --input-text \"I love the new technology trends!\" --format json\n      explanation: Analyzes the given text for entities, topics, and sentiment, outputting a JSON object with structured results.\n    - description: Advanced output with specific sentiment filtering and verbose mode.\n      command: |\n        text-entity-sentiment-extractor -i \"Stock markets are volatile today.\" -f json --sentiment positive --verbose\n      explanation: Processes the text, filtering results to positive sentiment, and outputs extra processing details in verbose mode.\n    - description: Output in plain text format.\n      command: |\n        text-entity-sentiment-extractor --input-text \"Climate change is a major global issue.\" --format text\n      explanation: Extracts structured data and outputs it as a plain text summary instead of JSON.\n    - description: Short flags and defaults.\n      command: |\n        text-entity-sentiment-extractor -i \"Election results spark debates.\" -f xml\n      explanation: Uses short flags for brevity and outputs the results in XML format.\n\n# ===================\n# ENVIRONMENT VARIABLES\n# ===================\nenv:\n  INPUT_TEXT: The input text to be analyzed.\n  OUTPUT_FORMAT: Output format ('json', 'text', or 'xml').\n  VERBOSE: Increase verbosity ('true' or 'false').\n  SENTIMENT: Sentiment filter ('positive', 'negative', 'neutral').\n\n# ===================\n# FILE ROUTING / ATTACHMENTS\n# ===================\nattachments: []\n\n# ===================\n# END FRONT MATTER\n# ===================\n\n---\n{#\n  OSTRUCT TEMPLATE for \"text-entity-sentiment-extractor\"\n  - All variables originate from CLI flags and are validated per schema rules.\n  - Use {{ input_text }} for the main payload and {% if format == 'json' %} for format-specific blocks.\n  - For maintainability: All required variables are checked by ostruct runtime.\n  - Sentiment filter and verbose flag are available for advanced logic (to be handled in full implementation).\n  - Attachments not needed; file search and code interpreter are disabled (see YML front-matter).\n#}\n\n{{ input_text }}\n{%- if format == 'json' %}\nJSON output\n{%- endif %}\n",
+  "assembly_metadata": {
+    "tool_name": "text-entity-sentiment-extractor",
+    "file_name": "text-entity-sentiment-extractor.ost",
+    "version": "1.0",
+    "generated_timestamp": "2024-06-17T18:17:00Z",
+    "source_files": {
+      "template_file": "original-template.ost",
+      "schema_file": "original-schema.json"
+    }
+  },
+  "frontmatter_structure": {
+    "cli_arguments": [
+      {
+        "name": "input_text",
+        "type": "string",
+        "required": true,
+        "help": "The input text to be analyzed for entity and topic extraction and sentiment classification."
+      },
+      {
+        "name": "format",
+        "type": "string",
+        "required": true,
+        "help": "The output format to use. Common values are 'json', 'text', or 'xml'. Default is 'json'."
+      },
+      {
+        "name": "verbose",
+        "type": "boolean",
+        "required": false,
+        "help": "Increase output verbosity, including more details about the extraction process."
+      },
+      {
+        "name": "sentiment",
+        "type": "string",
+        "required": false,
+        "help": "Sentiment filter for results. Allowed values: positive, negative, neutral. Default is 'neutral'."
+      }
+    ],
+    "tool_integrations": {
+      "code_interpreter": false,
+      "file_search": false,
+      "web_search": false
+    },
+    "model_settings": {
+      "default_model": "gpt-4-turbo",
+      "allowed_models": [
+        "gpt-4-turbo",
+        "gpt-4",
+        "gpt-3.5-turbo"
+      ]
+    }
+  },
+  "template_modifications": {
+    "variable_mappings": [
+      {
+        "original_name": "input_text",
+        "cli_flag": "--input-text",
+        "transformation": null
+      },
+      {
+        "original_name": "format",
+        "cli_flag": "--format",
+        "transformation": null
+      }
+    ],
+    "added_comments": [
+      "OSTRUCT TEMPLATE for \"text-entity-sentiment-extractor\"",
+      "- All variables originate from CLI flags and are validated per schema rules.",
+      "- Use {{ input_text }} for the main payload and {% if format == 'json' %} for format-specific blocks.",
+      "- For maintainability: All required variables are checked by ostruct runtime.",
+      "- Sentiment filter and verbose flag are available for advanced logic (to be handled in full implementation).",
+      "- Attachments not needed; file search and code interpreter are disabled (see YML front-matter)."
+    ],
+    "preserved_logic": [
+      "{{ input_text }}",
+      "{% if format == 'json' %}JSON output{% endif %}"
+    ]
+  },
+  "validation_results": {
+    "yaml_valid": true,
+    "template_valid": true,
+    "schema_embedded": true,
+    "cli_mappings_complete": true,
+    "issues_found": []
+  },
+  "usage_examples": [
+    {
+      "description": "Basic usage with required arguments.",
+      "command": "text-entity-sentiment-extractor --input-text \"I love the new technology trends!\" --format json",
+      "explanation": "Analyzes the given text for entities, topics, and sentiment, outputting a JSON object with structured results."
+    },
+    {
+      "description": "Advanced output with specific sentiment filtering and verbose mode.",
+      "command": "text-entity-sentiment-extractor -i \"Stock markets are volatile today.\" -f json --sentiment positive --verbose",
+      "explanation": "Processes the text, filtering results to positive sentiment, and outputs extra processing details in verbose mode."
+    },
+    {
+      "description": "Output in plain text format.",
+      "command": "text-entity-sentiment-extractor --input-text \"Climate change is a major global issue.\" --format text",
+      "explanation": "Extracts structured data and outputs it as a plain text summary instead of JSON."
+    },
+    {
+      "description": "Short flags and defaults.",
+      "command": "text-entity-sentiment-extractor -i \"Election results spark debates.\" -f xml",
+      "explanation": "Uses short flags for brevity and outputs the results in XML format."
+    }
+  ]
+}

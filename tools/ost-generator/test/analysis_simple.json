@@ -1,0 +1,61 @@
+{
+  "variables": [
+    {
+      "name": "input_text",
+      "type": "scalar",
+      "usage_context": [
+        "substitution"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "format",
+      "type": "scalar",
+      "usage_context": [
+        "conditional"
+      ],
+      "is_required": true,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "verbose",
+      "type": "boolean",
+      "usage_context": [
+        "conditional"
+      ],
+      "is_required": false,
+      "default_value": null,
+      "file_attributes": null
+    },
+    {
+      "name": "sentiment",
+      "type": "scalar",
+      "usage_context": [
+        "substitution",
+        "filter"
+      ],
+      "is_required": false,
+      "default_value": "neutral",
+      "file_attributes": null
+    }
+  ],
+  "file_patterns": [],
+  "tool_hints": [
+    {
+      "tool": "code-interpreter",
+      "confidence": 0.3,
+      "evidence": "Mentions 'extract', 'analyze', and 'sentiment', which could hint at text or data processing, but no direct file/data analysis or calculations present."
+    }
+  ],
+  "complexity_score": 0.3,
+  "template_structure": {
+    "has_conditionals": true,
+    "has_loops": false,
+    "has_file_references": false,
+    "has_filters": true,
+    "line_count": 16
+  }
+}

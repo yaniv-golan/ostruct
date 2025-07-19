@@ -1,0 +1,594 @@
+{
+    "type": "object",
+    "properties": {
+        "overall_assessment": {
+            "type": "object",
+            "properties": {
+                "overall_score": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "description": "Overall quality score (1-5)"
+                },
+                "overall_rating": {
+                    "type": "string",
+                    "enum": [
+                        "Poor",
+                        "Needs Improvement",
+                        "Satisfactory",
+                        "Good",
+                        "Excellent"
+                    ],
+                    "description": "Overall quality rating"
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "Brief summary of the overall assessment"
+                },
+                "production_ready": {
+                    "type": "boolean",
+                    "description": "Whether the OST file is ready for production use"
+                },
+                "confidence_level": {
+                    "type": "string",
+                    "enum": [
+                        "Low",
+                        "Medium",
+                        "High"
+                    ],
+                    "description": "Confidence level in the assessment"
+                }
+            },
+            "required": [
+                "overall_score",
+                "overall_rating",
+                "summary",
+                "production_ready",
+                "confidence_level"
+            ]
+        },
+        "detailed_scores": {
+            "type": "object",
+            "properties": {
+                "cli_interface_design": {
+                    "type": "object",
+                    "properties": {
+                        "score": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 5,
+                            "description": "CLI interface design score (1-5)"
+                        },
+                        "rating": {
+                            "type": "string",
+                            "enum": [
+                                "Poor",
+                                "Needs Improvement",
+                                "Satisfactory",
+                                "Good",
+                                "Excellent"
+                            ],
+                            "description": "CLI interface design rating"
+                        },
+                        "details": {
+                            "type": "object",
+                            "properties": {
+                                "flag_naming": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Flag naming quality score"
+                                },
+                                "help_text": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Help text quality score"
+                                },
+                                "validation": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Validation quality score"
+                                },
+                                "defaults": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Default values quality score"
+                                },
+                                "examples": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Usage examples quality score"
+                                }
+                            },
+                            "required": [
+                                "flag_naming",
+                                "help_text",
+                                "validation",
+                                "defaults",
+                                "examples"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "score",
+                        "rating",
+                        "details"
+                    ]
+                },
+                "technical_implementation": {
+                    "type": "object",
+                    "properties": {
+                        "score": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 5,
+                            "description": "Technical implementation score (1-5)"
+                        },
+                        "rating": {
+                            "type": "string",
+                            "enum": [
+                                "Poor",
+                                "Needs Improvement",
+                                "Satisfactory",
+                                "Good",
+                                "Excellent"
+                            ],
+                            "description": "Technical implementation rating"
+                        },
+                        "details": {
+                            "type": "object",
+                            "properties": {
+                                "yaml_structure": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "YAML structure quality score"
+                                },
+                                "template_syntax": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Template syntax quality score"
+                                },
+                                "variable_mapping": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Variable mapping quality score"
+                                },
+                                "file_routing": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "File routing implementation score"
+                                },
+                                "tool_integration": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Tool integration quality score"
+                                }
+                            },
+                            "required": [
+                                "yaml_structure",
+                                "template_syntax",
+                                "variable_mapping",
+                                "file_routing",
+                                "tool_integration"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "score",
+                        "rating",
+                        "details"
+                    ]
+                },
+                "documentation_usability": {
+                    "type": "object",
+                    "properties": {
+                        "score": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 5,
+                            "description": "Documentation and usability score (1-5)"
+                        },
+                        "rating": {
+                            "type": "string",
+                            "enum": [
+                                "Poor",
+                                "Needs Improvement",
+                                "Satisfactory",
+                                "Good",
+                                "Excellent"
+                            ],
+                            "description": "Documentation and usability rating"
+                        },
+                        "details": {
+                            "type": "object",
+                            "properties": {
+                                "inline_comments": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Inline comments quality score"
+                                },
+                                "usage_examples": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Usage examples quality score"
+                                },
+                                "error_messages": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Error messages quality score"
+                                },
+                                "troubleshooting": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Troubleshooting guidance score"
+                                }
+                            },
+                            "required": [
+                                "inline_comments",
+                                "usage_examples",
+                                "error_messages",
+                                "troubleshooting"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "score",
+                        "rating",
+                        "details"
+                    ]
+                },
+                "security_robustness": {
+                    "type": "object",
+                    "properties": {
+                        "score": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 5,
+                            "description": "Security and robustness score (1-5)"
+                        },
+                        "rating": {
+                            "type": "string",
+                            "enum": [
+                                "Poor",
+                                "Needs Improvement",
+                                "Satisfactory",
+                                "Good",
+                                "Excellent"
+                            ],
+                            "description": "Security and robustness rating"
+                        },
+                        "details": {
+                            "type": "object",
+                            "properties": {
+                                "input_validation": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Input validation quality score"
+                                },
+                                "file_access_controls": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "File access controls score"
+                                },
+                                "error_handling": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Error handling quality score"
+                                },
+                                "security_policies": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Security policies implementation score"
+                                }
+                            },
+                            "required": [
+                                "input_validation",
+                                "file_access_controls",
+                                "error_handling",
+                                "security_policies"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "score",
+                        "rating",
+                        "details"
+                    ]
+                },
+                "professional_quality": {
+                    "type": "object",
+                    "properties": {
+                        "score": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 5,
+                            "description": "Professional quality score (1-5)"
+                        },
+                        "rating": {
+                            "type": "string",
+                            "enum": [
+                                "Poor",
+                                "Needs Improvement",
+                                "Satisfactory",
+                                "Good",
+                                "Excellent"
+                            ],
+                            "description": "Professional quality rating"
+                        },
+                        "details": {
+                            "type": "object",
+                            "properties": {
+                                "code_organization": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Code organization quality score"
+                                },
+                                "naming_consistency": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Naming consistency score"
+                                },
+                                "standards_compliance": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Standards compliance score"
+                                },
+                                "maintainability": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 5,
+                                    "description": "Maintainability score"
+                                }
+                            },
+                            "required": [
+                                "code_organization",
+                                "naming_consistency",
+                                "standards_compliance",
+                                "maintainability"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "score",
+                        "rating",
+                        "details"
+                    ]
+                }
+            },
+            "required": [
+                "cli_interface_design",
+                "technical_implementation",
+                "documentation_usability",
+                "security_robustness",
+                "professional_quality"
+            ]
+        },
+        "strengths": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string",
+                        "description": "Area where strength was identified"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Description of the strength"
+                    },
+                    "impact": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High"
+                        ],
+                        "description": "Impact level of this strength"
+                    }
+                },
+                "required": [
+                    "area",
+                    "description",
+                    "impact"
+                ]
+            }
+        },
+        "issues": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string",
+                        "description": "Area where issue was identified"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "description": "Severity level of the issue"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Description of the issue"
+                    },
+                    "impact": {
+                        "type": "string",
+                        "description": "Impact of the issue on usability/functionality"
+                    },
+                    "recommendation": {
+                        "type": "string",
+                        "description": "Recommended action to address the issue"
+                    }
+                },
+                "required": [
+                    "area",
+                    "severity",
+                    "description",
+                    "impact",
+                    "recommendation"
+                ]
+            }
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "description": "Category of the recommendation"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High"
+                        ],
+                        "description": "Priority level of the recommendation"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the recommendation"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Detailed description of the recommendation"
+                    },
+                    "expected_benefit": {
+                        "type": "string",
+                        "description": "Expected benefit of implementing this recommendation"
+                    },
+                    "implementation_effort": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High"
+                        ],
+                        "description": "Estimated effort to implement"
+                    }
+                },
+                "required": [
+                    "category",
+                    "priority",
+                    "title",
+                    "description",
+                    "expected_benefit",
+                    "implementation_effort"
+                ]
+            }
+        },
+        "production_readiness": {
+            "type": "object",
+            "properties": {
+                "ready_for_production": {
+                    "type": "boolean",
+                    "description": "Whether the OST file is ready for production"
+                },
+                "blocking_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Issues that must be resolved before production"
+                },
+                "deployment_considerations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Considerations for deployment"
+                },
+                "testing_requirements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Testing requirements before production"
+                }
+            },
+            "required": [
+                "ready_for_production",
+                "blocking_issues",
+                "deployment_considerations",
+                "testing_requirements"
+            ]
+        },
+        "maintenance_guidance": {
+            "type": "object",
+            "properties": {
+                "maintenance_complexity": {
+                    "type": "string",
+                    "enum": [
+                        "Low",
+                        "Medium",
+                        "High"
+                    ],
+                    "description": "Complexity of maintaining this OST file"
+                },
+                "extension_points": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Points where the OST file can be extended"
+                },
+                "common_modifications": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Common modifications that might be needed"
+                },
+                "maintenance_tips": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Tips for maintaining the OST file"
+                }
+            },
+            "required": [
+                "maintenance_complexity",
+                "extension_points",
+                "common_modifications",
+                "maintenance_tips"
+            ]
+        }
+    },
+    "required": [
+        "overall_assessment",
+        "detailed_scores",
+        "strengths",
+        "issues",
+        "recommendations",
+        "production_readiness",
+        "maintenance_guidance"
+    ]
+}

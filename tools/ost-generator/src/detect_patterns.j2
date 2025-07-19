@@ -1,0 +1,149 @@
+# Pattern Detection and Feature Recommendation
+
+You are an expert in template analysis and ostruct feature detection. Your task is to analyze template analysis results, variable classifications, and schema information to detect patterns that suggest specific ostruct features, tools, and implementation considerations.
+
+## Input Data
+
+### Template Analysis
+{{ template_analysis.content }}
+
+### Variable Classification
+{{ variable_classification.content }}
+
+### Schema Analysis
+{{ schema_analysis.content }}
+
+## Pattern Detection Instructions
+
+Analyze the provided data to detect patterns and make intelligent recommendations for:
+
+### 1. File Pattern Detection
+
+**File Attachments**: Look for patterns that suggest file attachments:
+- Variables with file-related names (file, document, data, input, config, etc.)
+- File extension references (.csv, .json, .pdf, .txt, etc.)
+- Path-like variable usage (directories, file paths)
+- File operation contexts (reading, processing, analyzing files)
+
+**Directory Operations**: Identify patterns suggesting directory processing:
+- Variables suggesting batch operations on multiple files
+- Directory path variables
+- Iteration over file collections
+- Bulk processing patterns
+
+For each detected pattern, determine:
+- **Attachment Type**: single_file, multiple_files, directory, file_collection
+- **Routing Target**: template (basic), code_interpreter (processing), file_search (search)
+- **File Types**: Suggested file extensions or formats
+- **Confidence**: How certain you are about this pattern (0.0-1.0)
+
+### 2. Tool Hint Detection
+
+**Code Interpreter**: Detect patterns suggesting computational needs:
+- Mathematical operations, calculations, data analysis
+- File generation, image processing, plotting
+- CSV/data processing, statistical analysis
+- Complex data transformations
+
+**File Search**: Identify document search patterns:
+- Large document processing
+- Content extraction and analysis
+- Document summarization
+- Information retrieval tasks
+
+**Web Search**: Detect real-time information needs:
+- Current events, recent information
+- External data lookup requirements
+- API integration needs
+- Real-time validation
+
+### 3. Security Pattern Detection
+
+**Input Validation**: Identify security concerns:
+- User input processing
+- File path handling
+- URL or external resource access
+- Potential injection vulnerabilities
+
+**File Safety**: Detect file handling risks:
+- File system access patterns
+- Path traversal risks
+- File type restrictions needed
+- Safe file processing requirements
+
+### 4. Integration Pattern Detection
+
+**MCP Servers**: Suggest useful MCP server integrations:
+- Database operations
+- External service integrations
+- Specialized processing needs
+
+**External APIs**: Identify API integration opportunities:
+- Data enrichment needs
+- External validation requirements
+- Third-party service integration
+
+## Analysis Guidelines
+
+### Pattern Recognition Strategies
+
+1. **Variable Name Analysis**: Look for semantic clues in variable names
+   - `config`, `settings` → configuration files
+   - `data`, `input` → data processing
+   - `documents`, `files` → file collections
+   - `url`, `link` → web resources
+
+2. **Usage Context Analysis**: Examine how variables are used
+   - Loop iterations → batch processing
+   - Conditional logic → decision-making
+   - File operations → file handling
+   - Output formatting → data presentation
+
+3. **Schema Correlation**: Cross-reference with schema requirements
+   - Complex nested structures → data processing needs
+   - File path fields → file attachment requirements
+   - Array fields → collection processing
+
+4. **Template Complexity**: Assess overall complexity
+   - Simple templates → basic file attachments
+   - Complex templates → multi-tool requirements
+   - Security-sensitive templates → validation needs
+
+### Confidence Scoring
+
+- **High Confidence (0.8-1.0)**: Clear, unambiguous patterns
+- **Medium Confidence (0.5-0.7)**: Probable patterns with some uncertainty
+- **Low Confidence (0.0-0.4)**: Possible patterns requiring verification
+
+### Pattern Complexity Assessment
+
+For the pattern_summary.complexity_score field, assess the overall complexity level:
+- **"low"**: Simple patterns, basic file operations, minimal processing
+- **"medium"**: Moderate patterns, some file operations, standard processing
+- **"high"**: Complex patterns, multiple file operations, advanced processing
+
+### Security Assessment
+
+Always consider security implications:
+- **File Access**: Any file system operations
+- **User Input**: Any user-provided data
+- **External Resources**: Any external API or web access
+- **Path Operations**: Any file or directory path handling
+
+## Output Requirements
+
+Provide comprehensive pattern detection results including:
+
+1. **Detailed File Patterns**: Specific file attachment and directory operation recommendations
+2. **Tool Recommendations**: Clear justifications for each suggested tool
+3. **Security Assessment**: Thorough security risk analysis
+4. **Integration Opportunities**: Practical suggestions for MCP servers and APIs
+5. **Implementation Guidance**: Actionable notes for implementation
+
+Focus on:
+- **Practicality**: Recommendations that users can immediately implement
+- **Accuracy**: High-confidence pattern detection based on evidence
+- **Completeness**: Cover all relevant patterns and considerations
+- **Clarity**: Clear explanations of why each pattern was detected
+
+Remember that this analysis will drive the generation of intelligent CLI interfaces and OST file features, so prioritize patterns that will enhance user experience and functionality.

@@ -1,0 +1,545 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "tool_description": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Tool name in kebab-case"
+                },
+                "purpose": {
+                    "type": "string",
+                    "description": "One-line description of tool purpose"
+                },
+                "detailed_description": {
+                    "type": "string",
+                    "description": "Comprehensive description of tool functionality"
+                },
+                "use_cases": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Common use cases and scenarios"
+                }
+            },
+            "required": [
+                "name",
+                "purpose",
+                "detailed_description",
+                "use_cases"
+            ]
+        },
+        "usage_patterns": {
+            "type": "object",
+            "properties": {
+                "basic_usage": {
+                    "type": "string",
+                    "description": "Basic command line usage pattern"
+                },
+                "common_examples": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string",
+                                "description": "What this example demonstrates"
+                            },
+                            "command": {
+                                "type": "string",
+                                "description": "Complete command line example"
+                            },
+                            "explanation": {
+                                "type": "string",
+                                "description": "Step-by-step explanation"
+                            }
+                        },
+                        "required": [
+                            "description",
+                            "command",
+                            "explanation"
+                        ]
+                    }
+                },
+                "advanced_examples": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string"
+                            },
+                            "command": {
+                                "type": "string"
+                            },
+                            "explanation": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "description",
+                            "command",
+                            "explanation"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "basic_usage",
+                "common_examples"
+            ]
+        },
+        "argument_documentation": {
+            "type": "object",
+            "properties": {
+                "required_arguments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Argument name"
+                            },
+                            "flag": {
+                                "type": "string",
+                                "description": "CLI flag (e.g., --input-file)"
+                            },
+                            "short_flag": {
+                                "type": "string",
+                                "description": "Short flag if available (e.g., -i)"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "What this argument does"
+                            },
+                            "type": {
+                                "type": "string",
+                                "description": "Expected value type"
+                            },
+                            "validation_hints": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Validation requirements and hints"
+                            },
+                            "examples": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Example values"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "flag",
+                            "description",
+                            "type"
+                        ]
+                    }
+                },
+                "optional_arguments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "flag": {
+                                "type": "string"
+                            },
+                            "short_flag": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "default_value": {
+                                "type": "string",
+                                "description": "Default value if not specified"
+                            },
+                            "validation_hints": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "examples": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "flag",
+                            "description",
+                            "type"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "required_arguments",
+                "optional_arguments"
+            ]
+        },
+        "file_routing": {
+            "type": "object",
+            "properties": {
+                "routing_explanation": {
+                    "type": "string",
+                    "description": "General explanation of file routing in ostruct"
+                },
+                "template_files": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": "When to use template routing"
+                        },
+                        "examples": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "flag": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "command_example": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "flag",
+                                    "description",
+                                    "command_example"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "description",
+                        "examples"
+                    ]
+                },
+                "code_interpreter_files": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "flag": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "command_example": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "flag",
+                                    "description",
+                                    "command_example"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "description",
+                        "examples"
+                    ]
+                },
+                "file_search_files": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "examples": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "flag": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "command_example": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "flag",
+                                    "description",
+                                    "command_example"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "description",
+                        "examples"
+                    ]
+                }
+            },
+            "required": [
+                "routing_explanation"
+            ]
+        },
+        "tool_integration": {
+            "type": "object",
+            "properties": {
+                "available_tools": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Tool name (code-interpreter, file-search, web-search)"
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "What this tool provides"
+                            },
+                            "when_to_use": {
+                                "type": "string",
+                                "description": "Scenarios where this tool is helpful"
+                            },
+                            "example_usage": {
+                                "type": "string",
+                                "description": "Command line example"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "description",
+                            "when_to_use",
+                            "example_usage"
+                        ]
+                    }
+                },
+                "mcp_servers": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": "Explanation of MCP server integration"
+                        },
+                        "suggested_servers": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "purpose": {
+                                        "type": "string"
+                                    },
+                                    "example_usage": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "purpose",
+                                    "example_usage"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "description"
+                    ]
+                }
+            },
+            "required": [
+                "available_tools"
+            ]
+        },
+        "security_considerations": {
+            "type": "object",
+            "properties": {
+                "security_overview": {
+                    "type": "string",
+                    "description": "General security guidance"
+                },
+                "input_validation": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "concern": {
+                                "type": "string",
+                                "description": "Security concern"
+                            },
+                            "guidance": {
+                                "type": "string",
+                                "description": "How to address it"
+                            }
+                        },
+                        "required": [
+                            "concern",
+                            "guidance"
+                        ]
+                    }
+                },
+                "file_handling": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "concern": {
+                                "type": "string"
+                            },
+                            "guidance": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "concern",
+                            "guidance"
+                        ]
+                    }
+                },
+                "output_security": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "concern": {
+                                "type": "string"
+                            },
+                            "guidance": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "concern",
+                            "guidance"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "security_overview"
+            ]
+        },
+        "troubleshooting": {
+            "type": "object",
+            "properties": {
+                "common_issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "problem": {
+                                "type": "string",
+                                "description": "Common problem description"
+                            },
+                            "symptoms": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "How to recognize this problem"
+                            },
+                            "solutions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Steps to resolve the issue"
+                            }
+                        },
+                        "required": [
+                            "problem",
+                            "symptoms",
+                            "solutions"
+                        ]
+                    }
+                },
+                "debugging_tips": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "General debugging advice"
+                }
+            },
+            "required": [
+                "common_issues",
+                "debugging_tips"
+            ]
+        },
+        "quality_metrics": {
+            "type": "object",
+            "properties": {
+                "documentation_completeness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Percentage of documentation coverage"
+                },
+                "example_coverage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Percentage of features covered by examples"
+                },
+                "clarity_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Subjective clarity rating"
+                },
+                "recommendations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Suggestions for improvement"
+                }
+            },
+            "required": [
+                "documentation_completeness",
+                "example_coverage",
+                "clarity_score"
+            ]
+        }
+    },
+    "required": [
+        "tool_description",
+        "usage_patterns",
+        "argument_documentation",
+        "file_routing",
+        "tool_integration",
+        "security_considerations",
+        "troubleshooting",
+        "quality_metrics"
+    ]
+}

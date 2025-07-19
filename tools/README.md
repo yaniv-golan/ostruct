@@ -8,6 +8,7 @@ This directory contains **meta-tools** - development tools that use ostruct inte
 |------|---------|-------|
 | [`template-analyzer/`](template-analyzer/) | Comprehensive analysis of ostruct templates and schemas for issues, best practices, and OpenAI compliance | `./template-analyzer/run.sh --help` |
 | [`schema-generator/`](schema-generator/) | Automatically generate OpenAI-compliant JSON schemas from ostruct templates | `./schema-generator/run.sh --help` |
+| [`ost-generator/`](ost-generator/) | Convert existing Jinja2 template + JSON schema pairs into self-executing OST files with intelligent CLI interfaces | `./ost-generator/run.sh --help` |
 
 ## 🚀 Quick Start
 
@@ -17,14 +18,17 @@ Each meta-tool is self-contained with its own `run.sh` script:
 # Get help for any tool
 ./template-analyzer/run.sh --help
 ./schema-generator/run.sh --help
+./ost-generator/run.sh --help
 
 # Run analysis on your files
 ./template-analyzer/run.sh my_template.j2 my_schema.json
 ./schema-generator/run.sh my_template.j2
+./ost-generator/run.sh -t my_template.j2 -s my_schema.json
 
 # Enable detailed logging
 ./template-analyzer/run.sh --verbose my_template.j2
 ./schema-generator/run.sh --debug my_template.j2
+./ost-generator/run.sh --verbose -t my_template.j2 -s my_schema.json
 ```
 
 ## 🛠️ Tool Features
@@ -44,6 +48,14 @@ Each meta-tool is self-contained with its own `run.sh` script:
 - **Iterative Refinement**: Automatically improves schemas based on validation feedback
 - **Multiple Validators**: Supports ajv-cli, jsonschema, and custom validators
 - **Quality Assessment**: Provides confidence scores and improvement suggestions
+
+### OST Generator
+
+- **Template Conversion**: Converts existing Jinja2 templates and JSON schemas into self-executing OST files
+- **Intelligent CLI Design**: Generates smart command-line interfaces with proper argument handling
+- **5-Phase Analysis**: Template analysis, schema analysis, CLI generation, OST assembly, and validation
+- **Tool Integration**: Recommends and configures code-interpreter, file-search, and web-search tools
+- **Cross-Platform Support**: Creates OST files that work on Unix/Linux/macOS and Windows
 
 ## 📁 Tool Structure
 

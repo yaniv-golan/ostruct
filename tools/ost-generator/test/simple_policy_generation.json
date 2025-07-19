@@ -1,0 +1,285 @@
+{
+  "model_policy": {
+    "default_model": "gpt-4-turbo",
+    "model_restrictions": {
+      "allowed_models": [
+        "gpt-4-turbo",
+        "gpt-4",
+        "gpt-3.5-turbo"
+      ],
+      "blocked_models": [
+        "experimental-*",
+        "community-*"
+      ],
+      "minimum_capability_level": "advanced"
+    },
+    "fallback_strategy": {
+      "fallback_models": [
+        "gpt-3.5-turbo"
+      ],
+      "degradation_strategy": "Fallback to lower tier models with restricted features and inform the user of any loss of accuracy or capability."
+    },
+    "model_specific_config": {
+      "temperature": 0.2,
+      "max_tokens": 2048,
+      "top_p": 0.9
+    },
+    "rationale": "Defaulting to gpt-4-turbo provides balanced performance and security. Lower tier models are permitted as fallback for resilience, but experimental or untrusted models are blocked to minimize risk."
+  },
+  "tool_integration_policy": {
+    "enabled_tools": [
+      "code_interpreter",
+      "file_search"
+    ],
+    "tool_configurations": {
+      "code_interpreter": {
+        "enabled": true,
+        "timeout": 60,
+        "max_file_size": 1048576,
+        "allowed_extensions": [
+          ".py",
+          ".ipynb",
+          ".txt",
+          ".csv"
+        ],
+        "security_restrictions": [
+          "no-network",
+          "write-to-temp-only"
+        ]
+      },
+      "file_search": {
+        "enabled": true,
+        "max_file_count": 5,
+        "max_total_size": 5242880,
+        "allowed_extensions": [
+          ".txt",
+          ".md",
+          ".csv"
+        ]
+      },
+      "web_search": {
+        "enabled": false,
+        "max_queries": null,
+        "timeout": null,
+        "allowed_domains": null,
+        "blocked_domains": null
+      }
+    },
+    "mcp_server_policy": {
+      "allow_mcp_servers": false,
+      "suggested_servers": null,
+      "server_restrictions": [
+        "internal-only"
+      ]
+    },
+    "rationale": "Enable essential tools for CLI functionality while disabling external web search and restricting code execution to sandboxed, read-only, and temp-only environments to mitigate risks."
+  },
+  "security_policy": {
+    "input_validation": {
+      "strict_validation": true,
+      "sanitization_rules": [
+        {
+          "input_type": "string",
+          "rule": "strip, escape special chars",
+          "rationale": "Prevents code injection and command line exploits."
+        },
+        {
+          "input_type": "file_path",
+          "rule": "canonicalize, allow-listed base paths only",
+          "rationale": "Mitigates directory traversal."
+        }
+      ],
+      "validation_errors": "reject_and_report"
+    },
+    "file_access": {
+      "allowed_paths": [
+        "/tmp/",
+        "./workspace"
+      ],
+      "blocked_paths": [
+        "/etc/",
+        "/home/",
+        "/var/",
+        "/proc/"
+      ],
+      "file_size_limits": {
+        "max_individual_file": 1048576,
+        "max_total_size": 5242880
+      },
+      "allowed_extensions": [
+        ".txt",
+        ".csv",
+        ".md"
+      ]
+    },
+    "output_security": {
+      "sanitize_output": true,
+      "redact_sensitive_data": true,
+      "output_validation": true,
+      "sensitive_patterns": [
+        "API_KEY",
+        "SECRET",
+        "PASSWORD"
+      ]
+    },
+    "authentication": {
+      "require_api_key": true,
+      "api_key_validation": true,
+      "rate_limiting": {
+        "enabled": true,
+        "requests_per_minute": 60,
+        "burst_limit": 10
+      }
+    },
+    "rationale": "Strict validation, controlled file access, and robust output sanitization reduce attack surface. Authentication and rate limits protect against abuse."
+  },
+  "global_arguments_policy": {
+    "required_global_args": [
+      {
+        "name": "input",
+        "flag": "--input",
+        "description": "Path to the input file or data string",
+        "validation": "must_exist, read_permission"
+      }
+    ],
+    "optional_global_args": [
+      {
+        "name": "output",
+        "flag": "--output",
+        "description": "Path to the desired output file",
+        "default_value": "./workspace/output.txt",
+        "validation": "write_permission"
+      },
+      {
+        "name": "log-level",
+        "flag": "--log-level",
+        "description": "Set verbosity for logging",
+        "default_value": "info",
+        "validation": "in:[trace,debug,info,warning,error]"
+      }
+    ],
+    "environment_variables": [
+      {
+        "name": "CLI_API_KEY",
+        "description": "API key for authentication",
+        "required": true,
+        "default_value": null
+      }
+    ],
+    "argument_precedence": [
+      "command-line",
+      "environment",
+      "config-file"
+    ],
+    "rationale": "Distinguishing required from optional args guides usability. Environment variables support automation, and precedence ensures clarity in overrides."
+  },
+  "error_handling_policy": {
+    "error_reporting": {
+      "verbosity_level": "info",
+      "include_stack_traces": false,
+      "log_errors": true,
+      "user_friendly_messages": true
+    },
+    "retry_policies": {
+      "max_retries": 2,
+      "retry_delay": 2,
+      "exponential_backoff": true,
+      "retryable_errors": [
+        "network_timeout",
+        "service_unavailable"
+      ]
+    },
+    "graceful_degradation": {
+      "fallback_strategies": [
+        {
+          "error_type": "model_unavailable",
+          "strategy": "Switch to fallback model",
+          "description": "Maintain service continuity"
+        },
+        {
+          "error_type": "tool_restricted",
+          "strategy": "Disable feature and notify",
+          "description": "Minimize security risk"
+        }
+      ],
+      "partial_results": true
+    },
+    "rationale": "Provides clear user feedback and minimal interruption while keeping logs for diagnostics. Retries on transient errors help reliability."
+  },
+  "resource_management_policy": {
+    "performance_limits": {
+      "max_memory_usage": 256,
+      "max_cpu_time": 20,
+      "max_execution_time": 60
+    },
+    "concurrency": {
+      "max_concurrent_operations": 2,
+      "thread_pool_size": 2,
+      "queue_size": 10
+    },
+    "temporary_files": {
+      "cleanup_policy": "delete_on_exit",
+      "max_temp_size": 10485760,
+      "temp_directory": "/tmp/"
+    },
+    "rationale": "Restricting memory, CPU, and concurrency ensures stability and avoids resource exhaustion. Auto-cleanup of temp files prevents leaks."
+  },
+  "deployment_scenarios": {
+    "development": {
+      "description": "Allows more verbose logging and disables strict rate limits for easier debugging.",
+      "policy_overrides": {}
+    },
+    "production": {
+      "description": "Implements all security and resource restrictions for maximum safety and scalability.",
+      "policy_overrides": {}
+    },
+    "enterprise": {
+      "description": "Supports integration with enterprise authentication and advanced auditing.",
+      "policy_overrides": {}
+    }
+  },
+  "customization_options": {
+    "configurable_parameters": [
+      {
+        "parameter": "log-level",
+        "description": "Verbosity of logging output",
+        "type": "enum",
+        "default_value": "info",
+        "validation": "in:[trace,debug,info,warning,error]"
+      },
+      {
+        "parameter": "max_concurrent_operations",
+        "description": "Number of simultaneous requests",
+        "type": "integer",
+        "default_value": "2",
+        "validation": ">=1 and <=10"
+      },
+      {
+        "parameter": "output",
+        "description": "Custom output file location",
+        "type": "string",
+        "default_value": "./workspace/output.txt",
+        "validation": "write_permission"
+      }
+    ],
+    "configuration_methods": [
+      "command-line flags",
+      "environment variables",
+      "configuration file"
+    ],
+    "override_mechanisms": [
+      "CLI flag overrides environment and config-file values",
+      "Admin can set defaults via config file"
+    ]
+  },
+  "quality_metrics": {
+    "security_score": 9.0,
+    "usability_score": 8.0,
+    "completeness_score": 10.0,
+    "recommendations": [
+      "Enable web search tool for selected, lower-privilege scenarios only",
+      "Increase configurability for file search paths depending on deployment",
+      "Regularly review model and tool allow-lists for new vulnerabilities"
+    ]
+  }
+}

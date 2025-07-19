@@ -74,7 +74,7 @@ class FrontMatterParser:
         if not isinstance(metadata, dict):
             raise FrontMatterError("Front-matter must be a YAML object")
 
-        # Validate structure
+        # Validate structure and warn about format issues
         self._validate_metadata(metadata)
 
         # Calculate body start position (line after closing delimiter)
@@ -132,7 +132,43 @@ class FrontMatterParser:
         ):
             raise FrontMatterError("'schema' must be a non-empty string")
 
-        # Optional: validate positional args structure
+        # Validate documented top-level fields only
+        self._validate_top_level_fields(metadata)
+
+        # Validate CLI section structure
+        self._validate_cli_structure(cli)
+
+        # Validate other optional sections
+        self._validate_optional_sections(metadata)
+
+    def _validate_top_level_fields(self, metadata: Dict[str, Any]) -> None:
+        """Validate that only documented top-level fields are present.
+
+        Args:
+            metadata: Full parsed metadata
+        """
+        documented_top_level = {
+            "cli",
+            "schema",
+            "defaults",
+            "global_args",
+            "global_flags",
+        }
+
+        for field in metadata.keys():
+            if field not in documented_top_level:
+                raise FrontMatterError(
+                    f"Unknown top-level field '{field}'. "
+                    f"Allowed fields are: {', '.join(sorted(documented_top_level))}"
+                )
+
+    def _validate_cli_structure(self, cli: Dict[str, Any]) -> None:
+        """Validate CLI section structure.
+
+        Args:
+            cli: CLI section of metadata
+        """
+        # Validate positional args structure
         if "positional" in cli:
             if not isinstance(cli["positional"], list):
                 raise FrontMatterError("'cli.positional' must be a list")
@@ -153,41 +189,37 @@ class FrontMatterParser:
                         f"Positional argument {i} 'name' must be a non-empty string"
                     )
 
-        # Optional: validate options structure
+        # Validate options structure
         if "options" in cli:
             if not isinstance(cli["options"], (dict, list)):
                 raise FrontMatterError(
                     "'cli.options' must be an object or list"
                 )
 
-        # Optional: validate global_args structure
+        # Validate CLI-level global_args structure
         if "global_args" in cli:
-            if not isinstance(cli["global_args"], dict):
-                raise FrontMatterError("'cli.global_args' must be an object")
+            self._validate_global_args_section(
+                cli["global_args"], "'cli.global_args'"
+            )
 
-            for flag, config in cli["global_args"].items():
-                if not isinstance(config, dict):
-                    raise FrontMatterError(
-                        f"Global arg '{flag}' config must be an object"
-                    )
+    def _validate_optional_sections(self, metadata: Dict[str, Any]) -> None:
+        """Validate optional sections structure.
 
-                if "mode" not in config:
-                    raise FrontMatterError(
-                        f"Global arg '{flag}' must have 'mode' field"
-                    )
-
-                mode = config["mode"]
-                if mode not in ["fixed", "pass-through", "allowed", "blocked"]:
-                    raise FrontMatterError(
-                        f"Global arg '{flag}' mode must be one of: fixed, pass-through, allowed, blocked"
-                    )
-
-        # Optional: validate defaults structure
+        Args:
+            metadata: Full parsed metadata
+        """
+        # Validate defaults structure
         if "defaults" in metadata:
             if not isinstance(metadata["defaults"], dict):
                 raise FrontMatterError("'defaults' must be an object")
 
-                # Optional: validate global_flags structure
+        # Validate global_args structure
+        if "global_args" in metadata:
+            self._validate_global_args_section(
+                metadata["global_args"], "'global_args'"
+            )
+
+        # Validate global_flags structure
         if "global_flags" in metadata:
             if not isinstance(metadata["global_flags"], list):
                 raise FrontMatterError(
@@ -207,6 +239,44 @@ class FrontMatterParser:
 
                 # Allow both flags (starting with -) and values (not starting with -)
                 # This supports the format: ["--flag", "value", "--other-flag", "other-value"]
+
+    def _validate_global_args_section(
+        self, global_args: Any, section_name: str
+    ) -> None:
+        """Validate global_args section structure.
+
+        Args:
+            global_args: The global_args value to validate
+            section_name: Human-readable section name for error messages
+        """
+        if not isinstance(global_args, dict):
+            raise FrontMatterError(f"{section_name} must be an object")
+
+        for flag, config in global_args.items():
+            # Handle special boolean field
+            if flag == "pass_through_global":
+                if not isinstance(config, bool):
+                    raise FrontMatterError(
+                        "'pass_through_global' must be a boolean"
+                    )
+                continue
+
+            # Handle policy configuration objects
+            if not isinstance(config, dict):
+                raise FrontMatterError(
+                    f"Global arg '{flag}' config must be an object"
+                )
+
+            if "mode" not in config:
+                raise FrontMatterError(
+                    f"Global arg '{flag}' must have 'mode' field"
+                )
+
+            mode = config["mode"]
+            if mode not in ["fixed", "pass-through", "allowed", "blocked"]:
+                raise FrontMatterError(
+                    f"Global arg '{flag}' mode must be one of: fixed, pass-through, allowed, blocked"
+                )
 
 
 def parse_frontmatter(file_path: Path) -> Tuple[Dict[str, Any], int]:

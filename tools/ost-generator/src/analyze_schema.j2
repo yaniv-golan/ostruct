@@ -1,0 +1,90 @@
+# JSON Schema Analysis
+
+You are an expert in JSON Schema analysis and structured data validation. Your task is to analyze a JSON schema and extract comprehensive information about its structure, constraints, validation rules, and output requirements.
+
+## Input Schema
+
+{{ schema.content }}
+
+## Analysis Instructions
+
+Perform a thorough analysis of the provided JSON schema and extract:
+
+### 1. Schema Structure Analysis
+- **Root Type**: Identify the primary type (object, array, string, number, boolean)
+- **Required Fields**: List all required fields at the root level
+- **Optional Fields**: List all optional fields at the root level
+- **Nested Objects**: Map out any nested object structures with their paths and types
+
+### 2. Field-Level Analysis
+For each field in the schema (including nested fields):
+- **Field Name**: The property name
+- **Field Path**: JSONPath notation (e.g., "$.user.name", "$.items[*].id")
+- **Type**: JSON Schema type (string, number, object, array, boolean, null)
+- **Format**: Any format specifications (email, date-time, uri, etc.)
+- **Required Status**: Whether the field is required or optional
+- **Constraints**: Extract all validation constraints:
+  - Length constraints (minLength, maxLength)
+  - Value constraints (minimum, maximum, exclusiveMinimum, exclusiveMaximum)
+  - Pattern constraints (pattern regex)
+  - Enumerated values (enum)
+- **Description**: Field description from the schema
+- **Examples**: Any example values provided
+
+### 3. Validation Rules Assessment
+Analyze the overall validation characteristics:
+- **Strict Types**: Does the schema enforce strict typing?
+- **Format Constraints**: Are there format validations (email, URL, etc.)?
+- **Length Constraints**: Are there string/array length requirements?
+- **Value Constraints**: Are there numeric range requirements?
+- **Pattern Constraints**: Are there regex pattern requirements?
+- **Enum Constraints**: Are there enumerated value restrictions?
+- **Complexity Score**: Rate the overall validation complexity (0.0 = simple, 1.0 = highly complex)
+
+### 4. Output Guidance
+Based on the schema analysis, provide guidance for:
+- **Structured Output**: Whether the output should be structured JSON
+- **Validation Level**: Recommended validation strictness (strict/moderate/lenient)
+- **Suggested Tools**: Which ostruct tools might be helpful based on schema requirements
+- **Output Format Hints**: Guidance on expected output format and structure
+
+## Analysis Guidelines
+
+### Type Detection
+- Look for `"type"` properties to identify field types
+- Check for `"anyOf"`, `"oneOf"`, `"allOf"` for complex type definitions
+- Identify arrays by `"type": "array"` and examine `"items"` property
+- Detect objects by `"type": "object"` and examine `"properties"`
+
+### Constraint Extraction
+- **String Constraints**: `minLength`, `maxLength`, `pattern`, `format`
+- **Number Constraints**: `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`
+- **Array Constraints**: `minItems`, `maxItems`, `uniqueItems`
+- **Object Constraints**: `required`, `additionalProperties`, `patternProperties`
+- **General Constraints**: `enum`, `const`
+
+### Complexity Assessment
+Consider these factors for complexity assessment:
+- **"low"**: Basic types, few constraints, no nesting
+- **"medium"**: Some nesting, moderate constraints, format requirements
+- **"high"**: Deep nesting, many constraints, complex validation rules
+
+### Tool Suggestions
+Based on schema characteristics, suggest appropriate tools:
+- **Code Interpreter**: For schemas requiring calculations, data processing, or file generation
+- **File Search**: For schemas that reference or process document content
+- **Web Search**: For schemas requiring real-time information or external data
+
+## Output Requirements
+
+Provide a comprehensive analysis following the schema structure. Focus on:
+- **Accuracy**: Correctly identify all types, constraints, and requirements
+- **Completeness**: Cover all fields and validation rules
+- **Practicality**: Provide actionable guidance for implementation
+- **Clarity**: Structure the analysis in a logical, easy-to-understand format
+
+Pay special attention to:
+- Nested object structures and their requirements
+- Complex validation rules that might affect CLI design
+- Format constraints that suggest specific input types
+- Required vs optional fields that impact CLI argument design

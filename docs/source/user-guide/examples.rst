@@ -59,9 +59,35 @@ The Template Analyzer meta-tool performs comprehensive analysis of your template
 - **Interactive HTML reports**: Professional reports with filtering and recommendations
 - **ostruct optimization**: Specialized analysis of ostruct-specific functions
 
+OST Generator
+-------------
+
+The OST Generator meta-tool converts existing Jinja2 templates and JSON schemas into self-executing OST (Self-Executing Templates) files with intelligent CLI interfaces.
+
+**Location**: ``tools/ost-generator/``
+
+**Quick Start**:
+
+.. code-block:: bash
+
+   # Convert template and schema to OST file
+   tools/ost-generator/run.sh -t my_template.j2 -s my_schema.json
+
+   # Generate with verbose output
+   tools/ost-generator/run.sh -t my_template.j2 -s my_schema.json --verbose
+
+**Key Features**:
+
+- **Template conversion**: Converts existing templates into self-executing OST files
+- **Intelligent CLI design**: Generates smart command-line interfaces with proper argument handling
+- **5-phase analysis**: Template analysis, schema analysis, CLI generation, OST assembly, and validation
+- **Tool integration**: Recommends and configures code-interpreter, file-search, and web-search tools
+- **Cross-platform support**: Creates OST files that work on Unix/Linux/macOS and Windows
+
 **When to Use Development Tools**:
 
 - Creating schemas for new ostruct templates
+- Converting existing templates to self-executing OST files
 - Debugging template issues and optimization
 - Ensuring OpenAI Structured Outputs compliance
 - Code review and quality assurance processes

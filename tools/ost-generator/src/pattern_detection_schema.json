@@ -1,0 +1,419 @@
+{
+    "type": "object",
+    "properties": {
+        "file_patterns": {
+            "type": "object",
+            "properties": {
+                "file_attachments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "variable_name": {
+                                "type": "string",
+                                "description": "Name of the variable that suggests file attachment"
+                            },
+                            "attachment_type": {
+                                "type": "string",
+                                "enum": [
+                                    "single_file",
+                                    "multiple_files",
+                                    "directory",
+                                    "file_collection"
+                                ],
+                                "description": "Type of file attachment suggested"
+                            },
+                            "routing_target": {
+                                "type": "string",
+                                "enum": [
+                                    "template",
+                                    "code_interpreter",
+                                    "file_search"
+                                ],
+                                "description": "Suggested routing target for the file"
+                            },
+                            "file_types": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Suggested file types or extensions"
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1,
+                                "description": "Confidence score for this pattern detection"
+                            },
+                            "evidence": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Evidence that supports this pattern detection"
+                            }
+                        },
+                        "required": [
+                            "variable_name",
+                            "attachment_type",
+                            "routing_target",
+                            "confidence",
+                            "evidence"
+                        ]
+                    }
+                },
+                "directory_operations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "variable_name": {
+                                "type": "string",
+                                "description": "Variable that suggests directory operations"
+                            },
+                            "operation_type": {
+                                "type": "string",
+                                "enum": [
+                                    "read_directory",
+                                    "process_files",
+                                    "batch_operation"
+                                ],
+                                "description": "Type of directory operation"
+                            },
+                            "suggested_flags": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Suggested CLI flags for directory handling"
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                            }
+                        },
+                        "required": [
+                            "variable_name",
+                            "operation_type",
+                            "confidence"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "file_attachments",
+                "directory_operations"
+            ]
+        },
+        "tool_hints": {
+            "type": "object",
+            "properties": {
+                "code_interpreter": {
+                    "type": "object",
+                    "properties": {
+                        "suggested": {
+                            "type": "boolean",
+                            "description": "Whether Code Interpreter is suggested"
+                        },
+                        "confidence": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        },
+                        "reasons": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Reasons why Code Interpreter is suggested"
+                        },
+                        "use_cases": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "data_analysis",
+                                    "file_generation",
+                                    "calculations",
+                                    "image_processing",
+                                    "csv_processing",
+                                    "plotting"
+                                ]
+                            },
+                            "description": "Specific use cases for Code Interpreter"
+                        }
+                    },
+                    "required": [
+                        "suggested",
+                        "confidence",
+                        "reasons"
+                    ]
+                },
+                "file_search": {
+                    "type": "object",
+                    "properties": {
+                        "suggested": {
+                            "type": "boolean",
+                            "description": "Whether File Search is suggested"
+                        },
+                        "confidence": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        },
+                        "reasons": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Reasons why File Search is suggested"
+                        },
+                        "document_types": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Types of documents that would benefit from search"
+                        }
+                    },
+                    "required": [
+                        "suggested",
+                        "confidence",
+                        "reasons"
+                    ]
+                },
+                "web_search": {
+                    "type": "object",
+                    "properties": {
+                        "suggested": {
+                            "type": "boolean",
+                            "description": "Whether Web Search is suggested"
+                        },
+                        "confidence": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        },
+                        "reasons": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Reasons why Web Search is suggested"
+                        },
+                        "search_contexts": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Contexts where web search would be helpful"
+                        }
+                    },
+                    "required": [
+                        "suggested",
+                        "confidence",
+                        "reasons"
+                    ]
+                }
+            },
+            "required": [
+                "code_interpreter",
+                "file_search",
+                "web_search"
+            ]
+        },
+        "security_patterns": {
+            "type": "object",
+            "properties": {
+                "input_validation": {
+                    "type": "object",
+                    "properties": {
+                        "required": {
+                            "type": "boolean",
+                            "description": "Whether input validation is required"
+                        },
+                        "validation_types": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "file_path",
+                                    "url",
+                                    "email",
+                                    "sql_injection",
+                                    "xss",
+                                    "command_injection",
+                                    "path_traversal"
+                                ]
+                            },
+                            "description": "Types of validation needed"
+                        },
+                        "risk_level": {
+                            "type": "string",
+                            "enum": [
+                                "low",
+                                "medium",
+                                "high"
+                            ],
+                            "description": "Security risk level"
+                        },
+                        "evidence": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Evidence of security concerns"
+                        }
+                    },
+                    "required": [
+                        "required",
+                        "validation_types",
+                        "risk_level",
+                        "evidence"
+                    ]
+                },
+                "file_safety": {
+                    "type": "object",
+                    "properties": {
+                        "file_access_patterns": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Patterns that suggest file access"
+                        },
+                        "safety_recommendations": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Safety recommendations for file handling"
+                        },
+                        "restricted_operations": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Operations that should be restricted"
+                        }
+                    },
+                    "required": [
+                        "file_access_patterns",
+                        "safety_recommendations",
+                        "restricted_operations"
+                    ]
+                }
+            },
+            "required": [
+                "input_validation",
+                "file_safety"
+            ]
+        },
+        "integration_patterns": {
+            "type": "object",
+            "properties": {
+                "mcp_servers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "server_type": {
+                                "type": "string",
+                                "description": "Type of MCP server that might be useful"
+                            },
+                            "use_case": {
+                                "type": "string",
+                                "description": "Use case for the MCP server"
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                            }
+                        },
+                        "required": [
+                            "server_type",
+                            "use_case",
+                            "confidence"
+                        ]
+                    }
+                },
+                "external_apis": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "api_type": {
+                                "type": "string",
+                                "description": "Type of external API suggested"
+                            },
+                            "purpose": {
+                                "type": "string",
+                                "description": "Purpose of the API integration"
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                            }
+                        },
+                        "required": [
+                            "api_type",
+                            "purpose",
+                            "confidence"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "mcp_servers",
+                "external_apis"
+            ]
+        },
+        "pattern_summary": {
+            "type": "object",
+            "properties": {
+                "complexity_score": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Overall complexity level based on detected patterns"
+                },
+                "primary_patterns": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Primary patterns detected in order of importance"
+                },
+                "recommended_features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Recommended ostruct features based on patterns"
+                },
+                "implementation_notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Implementation notes and considerations"
+                }
+            },
+            "required": [
+                "complexity_score",
+                "primary_patterns",
+                "recommended_features",
+                "implementation_notes"
+            ]
+        }
+    },
+    "required": [
+        "file_patterns",
+        "tool_hints",
+        "security_patterns",
+        "integration_patterns",
+        "pattern_summary"
+    ]
+}
