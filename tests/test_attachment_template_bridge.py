@@ -10,7 +10,6 @@ from ostruct.cli.attachment_processor import (
 )
 from ostruct.cli.attachment_template_bridge import (
     AttachmentTemplateContext,
-    LazyFileContent,
     build_template_context_from_attachments,
 )
 from ostruct.cli.file_info import FileInfo, FileRoutingIntent
@@ -71,52 +70,67 @@ def test_files(security_manager):
 
 def test_lazy_file_content_basic(security_manager, test_files):
     """Test basic lazy file content functionality."""
-    file_info = FileInfo.from_path(
-        str(test_files["test_file"]),
+
+    # Create a new FileInfo with lazy loading enabled
+    lazy_content = FileInfo.from_path(
+        str(test_files["test_file"]),  # Use original path
         security_manager,
         routing_type="template",
         routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+        max_size=None,
+        strict_mode=False,
+        lazy_loading=True,
     )
 
-    lazy_content = LazyFileContent(file_info)
-
     # Content should not be loaded initially
-    assert not lazy_content._loaded
+    assert not lazy_content._FileInfo__loaded
 
     # Access content should trigger loading
     content = str(lazy_content)
     assert content == "Test file content"
-    assert lazy_content._loaded
+    assert lazy_content._FileInfo__loaded
 
 
 def test_lazy_file_content_size_check(security_manager, test_files):
     """Test size checking functionality."""
-    file_info = FileInfo.from_path(
+
+    # Small size limit should fail
+    lazy_content = FileInfo.from_path(
         str(test_files["large_file"]),
         security_manager,
         routing_type="template",
         routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+        max_size=1000,
+        strict_mode=False,
+        lazy_loading=True,
     )
-
-    # Small size limit should fail
-    lazy_content = LazyFileContent(file_info, max_size=1000)
     assert not lazy_content.check_size()
 
     # Large size limit should pass
-    lazy_content = LazyFileContent(file_info, max_size=200000)
+    lazy_content = FileInfo.from_path(
+        str(test_files["large_file"]),
+        security_manager,
+        routing_type="template",
+        routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+        max_size=200000,
+        strict_mode=False,
+        lazy_loading=True,
+    )
     assert lazy_content.check_size()
 
 
 def test_lazy_file_content_size_limit_handling(security_manager, test_files):
     """Test that large files are handled gracefully."""
-    file_info = FileInfo.from_path(
+
+    lazy_content = FileInfo.from_path(
         str(test_files["large_file"]),
         security_manager,
         routing_type="template",
         routing_intent=FileRoutingIntent.TEMPLATE_ONLY,
+        max_size=1000,
+        strict_mode=False,
+        lazy_loading=True,
     )
-
-    lazy_content = LazyFileContent(file_info, max_size=1000)
     content = str(lazy_content)
 
     assert "File too large" in content
@@ -139,7 +153,10 @@ def test_attachment_template_context_single_file(security_manager, test_files):
 
     # Check that alias variable exists and is LazyFileContent
     assert "data" in context
-    assert isinstance(context["data"], LazyFileContent)
+    assert (
+        isinstance(context["data"], FileInfo)
+        and context["data"]._FileInfo__lazy_loading
+    )
 
     # Check content can be accessed
     assert str(context["data"]) == "Test file content"

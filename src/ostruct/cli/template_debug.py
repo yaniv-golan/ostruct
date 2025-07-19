@@ -360,7 +360,7 @@ def show_file_content_expansions(context: Dict[str, Any]) -> None:
     logger.debug("📁 File Content Expansions:")
     for key, value in context.items():
         # Check for specific file-related types more safely
-        from .attachment_template_bridge import LazyFileContent
+        # LazyFileContent has been integrated into FileInfo
         from .file_info import FileInfo
         from .file_list import FileInfoList
 
@@ -392,9 +392,11 @@ def show_file_content_expansions(context: Dict[str, Any]) -> None:
                     logger.debug(f"  → {key}: FileInfoList (empty)")
             except Exception as e:
                 logger.debug(f"  → {key}: FileInfoList (access failed: {e})")
-        elif isinstance(value, LazyFileContent):
+        elif isinstance(value, FileInfo) and getattr(
+            value, "_FileInfo__lazy_loading", False
+        ):
             try:
-                # Show user-friendly file information instead of class name
+                # Show user-friendly file information for lazy-loaded FileInfo
                 file_size = getattr(value, "actual_size", None) or 0
                 if file_size > 0:
                     size_str = f"{file_size:,} bytes"

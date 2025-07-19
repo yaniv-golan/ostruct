@@ -7,10 +7,10 @@ while maintaining compatibility with existing template patterns.
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .attachment_processor import AttachmentSpec, ProcessedAttachments
-from .file_info import FileInfo, FileRoutingIntent
+from .file_info import FileInfo, FileRoutingIntent, LazyLoadError
 from .file_list import FileInfoList
 from .file_utils import collect_files_from_directory
 from .security import SecurityManager
@@ -33,327 +33,6 @@ SYSTEM_CONFIG_VARIABLES = {
     "auto_download_enabled",
     "code_interpreter_config",
 }
-
-
-class LazyLoadError(Exception):
-    """Exception raised during lazy loading operations."""
-
-    pass
-
-
-class LazyLoadSizeError(LazyLoadError):
-    """Exception raised when file exceeds size limits."""
-
-    pass
-
-
-class LazyFileContent:
-    """Enhanced lazy loading file content with configurable size limits and caching."""
-
-    # Attributes that should be transparently forwarded to the underlying
-    # ``FileInfo`` instance so template validation recognises them.  Keep this
-    # list in sync with ``FileInfoProxy._valid_attrs``.
-    _FILE_ATTRS: set[str] = {
-        "name",
-        "path",
-        "abs_path",
-        "content",
-        "size",
-        "mtime",
-        "encoding",
-        "hash",
-        "extension",
-        "basename",
-        "dirname",
-        "parent",
-        "stem",
-        "suffix",
-        "exists",
-        "is_file",
-        "is_dir",
-        "is_url",
-        "__html__",
-        "__html_format__",
-    }
-
-    # ------------------------------------------------------------------
-    #  Forward missing attributes to the wrapped ``FileInfo``
-    # ------------------------------------------------------------------
-
-    def __getattr__(self, name: str) -> Any:  # noqa: D401,E501
-        """Delegate common file attributes to *file_info*.
-
-        This allows template expressions like ``{{ my_file.extension }}`` to
-        pass validation when *my_file* is a ``LazyFileContent`` placeholder
-        created during dry-run.
-        """
-
-        if name in self._FILE_ATTRS:
-            return getattr(self.file_info, name)
-
-        # Fallback: preserve normal attribute-error semantics
-        raise AttributeError(name)
-
-    def __init__(
-        self,
-        file_info: FileInfo,
-        max_size: Optional[int] = None,
-        encoding: str = "utf-8",
-        strict_mode: bool = False,
-    ):
-        """Initialize lazy file content.
-
-        Args:
-            file_info: FileInfo object for the file
-            max_size: Maximum file size in bytes (uses environment default if None)
-            encoding: Text encoding to use
-            strict_mode: If True, raise exceptions instead of returning fallback content
-        """
-        self.file_info = file_info
-        self.max_size = max_size or self._get_default_max_size()
-        self.encoding = encoding
-        self.strict_mode = strict_mode
-        self._content: Optional[str] = None
-        self._loaded = False
-        self._size_checked = False
-        self._actual_size: Optional[int] = None
-
-    @property
-    def name(self) -> str:
-        """Get the filename without loading content."""
-        return self.file_info.name
-
-    @property
-    def path(self) -> str:
-        """Get the file path without loading content."""
-        return self.file_info.path
-
-    @property
-    def size(self) -> Optional[int]:
-        """Get the file size without loading content."""
-        return self.file_info.size
-
-    @property
-    def is_url(self) -> bool:
-        """Check if this is a URL file."""
-        return self.file_info.is_url
-
-    @property
-    def content(self) -> str:
-        """Get file content, loading it if necessary (may raise in strict mode)."""
-        return self.load_safe()
-
-    @staticmethod
-    def _get_default_max_size() -> Optional[int]:
-        """Get default max size from config or environment.
-
-        Returns:
-            Default maximum file size in bytes, or None for no limit
-        """
-        import os
-
-        from .constants import DefaultConfig
-
-        # Check OSTRUCT_TEMPLATE_FILE_LIMIT environment variable
-        template_file_limit = os.getenv("OSTRUCT_TEMPLATE_FILE_LIMIT")
-        if template_file_limit is not None:
-            # Support semantic values: unlimited, none, empty string
-            if template_file_limit.lower() in ("none", "unlimited", ""):
-                return None
-            try:
-                return int(template_file_limit)
-            except ValueError:
-                logger.warning(
-                    f"Invalid OSTRUCT_TEMPLATE_FILE_LIMIT value '{template_file_limit}', using default limit"
-                )
-                # Fall through to default
-
-        # Check OSTRUCT_MAX_FILE_SIZE environment variable (new)
-        max_file_size_env = os.getenv("OSTRUCT_MAX_FILE_SIZE")
-        if max_file_size_env is not None:
-            if max_file_size_env.lower() in ("none", "unlimited", ""):
-                return None
-            try:
-                return int(max_file_size_env)
-            except ValueError:
-                logger.warning(
-                    f"Invalid OSTRUCT_MAX_FILE_SIZE value '{max_file_size_env}', using default limit"
-                )
-                # Fall through to default
-
-        # Default: 100MB limit for DoS protection
-        default_size = DefaultConfig.TEMPLATE["max_file_size"]
-        return int(default_size) if default_size is not None else None
-
-    def check_size(self) -> bool:
-        """Check if file size is within limits.
-
-        Returns:
-            True if file size is acceptable
-
-        Raises:
-            LazyLoadError: If file cannot be accessed
-        """
-        if not self._size_checked:
-            try:
-                self._actual_size = (
-                    Path(self.file_info.abs_path).stat().st_size
-                )
-                self._size_checked = True
-            except OSError as e:
-                raise LazyLoadError(
-                    f"Cannot access file {self.file_info.path}: {e}"
-                )
-
-        # If max_size is None, there's no limit
-        if self.max_size is None:
-            return True
-
-        return (
-            self._actual_size is not None
-            and self._actual_size <= self.max_size
-        )
-
-    @property
-    def actual_size(self) -> Optional[int]:
-        """Get the actual file size in bytes.
-
-        Returns:
-            File size in bytes, or None if not checked yet
-        """
-        if not self._size_checked:
-            try:
-                self.check_size()
-            except LazyLoadError:
-                return None
-        return self._actual_size
-
-    def __str__(self) -> str:
-        """Get file content, loading it if necessary.
-
-        Returns:
-            File content as string, or error message for oversized files
-        """
-        return self.load_safe()
-
-    def _load_content(self) -> None:
-        """Load file content with size checking.
-
-        Raises:
-            LazyLoadSizeError: If file exceeds size limits
-            LazyLoadError: If file cannot be loaded
-        """
-        try:
-            if not self.check_size():
-                error_msg = (
-                    f"File {self.file_info.path} ({self._actual_size:,} bytes) "
-                    f"exceeds size limit ({self.max_size:,} bytes)"
-                )
-                logger.warning(error_msg)
-                raise LazyLoadSizeError(error_msg)
-
-            # Use FileInfo's content property for actual loading
-            self._content = self.file_info.content
-            self._loaded = True
-            logger.debug(
-                f"Loaded content for {self.file_info.path} ({len(self._content)} chars)"
-            )
-
-        except LazyLoadSizeError:
-            # Re-raise size errors
-            raise
-        except Exception as e:
-            logger.error(
-                f"Failed to load content for {self.file_info.path}: {e}"
-            )
-            raise LazyLoadError(
-                f"Failed to load content for {self.file_info.path}: {e}"
-            )
-
-    def load_safe(
-        self, fallback_content: str = "[File too large or unavailable]"
-    ) -> str:
-        """Load content safely with fallback for oversized files.
-
-        Args:
-            fallback_content: Content to return if file cannot be loaded
-
-        Returns:
-            File content or fallback content
-
-        Raises:
-            LazyLoadSizeError: If file is too large and strict_mode is True
-            LazyLoadError: If file cannot be loaded and strict_mode is True
-        """
-        try:
-            if not self._loaded:
-                self._load_content()
-            return self._content or ""
-        except LazyLoadSizeError:
-            if self.strict_mode:
-                raise  # Re-raise the exception in strict mode
-            return f"[File too large: {self._actual_size:,} bytes > {self.max_size:,} bytes]"
-        except LazyLoadError as e:
-            if self.strict_mode:
-                raise  # Re-raise the exception in strict mode
-            return f"[Error: {e}]"
-
-    def preview(self, max_chars: int = 200) -> str:
-        """Get content preview without full loading.
-
-        Args:
-            max_chars: Maximum characters to return
-
-        Returns:
-            Preview of file content
-        """
-        if self._loaded:
-            return (self._content or "")[:max_chars]
-
-        try:
-            # Try to read just the preview amount
-            with open(
-                self.file_info.abs_path,
-                "r",
-                encoding=self.encoding,
-                errors="replace",
-            ) as f:
-                return f.read(max_chars)
-        except Exception as e:
-            return f"[Preview error: {e}]"
-
-    def __iter__(self) -> Iterator["LazyFileContent"]:
-        """Make LazyFileContent iterable by yielding itself.
-
-        This implements the file-sequence protocol, allowing single files
-        to be treated uniformly with file collections in templates.
-
-        Returns:
-            Iterator that yields this LazyFileContent instance
-        """
-        yield self
-
-    @property
-    def first(self) -> "LazyFileContent":
-        """Get the first file in the sequence (itself for single files).
-
-        This provides a uniform interface with FileInfoList.first,
-        allowing templates to use .first regardless of whether they're
-        dealing with a single file or a collection.
-
-        Returns:
-            This LazyFileContent instance
-        """
-        return self
-
-    @property
-    def is_collection(self) -> bool:
-        """Indicate whether this is a collection of files.
-
-        Returns:
-            False, since LazyFileContent represents a single file
-        """
-        return False
 
 
 class ValidationResult:
@@ -399,9 +78,11 @@ class FileSizeValidator:
             max_individual: Maximum size per individual file in bytes (None for no limit)
             max_total: Maximum total size for all files in bytes (None for no limit)
         """
-        # Use the same logic as LazyFileContent for consistency
+        # Use the same logic as FileInfo for consistency
         if max_individual is None:
-            max_individual = LazyFileContent._get_default_max_size()
+            from .file_info import FileInfo
+
+            max_individual = FileInfo._get_default_max_size()
         if max_total is None:
             max_total = self._get_default_total_size()
 
@@ -498,12 +179,12 @@ class ProgressiveLoader:
             validator: File size validator to use
         """
         self.validator = validator
-        self._load_queue: List[Tuple[int, LazyFileContent]] = []
+        self._load_queue: List[Tuple[int, FileInfo]] = []
         self._loaded_count = 0
 
     def create_lazy_content(
         self, file_info: FileInfo, priority: int = 0, strict_mode: bool = False
-    ) -> LazyFileContent:
+    ) -> FileInfo:
         """Create lazy content with loading priority.
 
         Args:
@@ -512,10 +193,9 @@ class ProgressiveLoader:
             strict_mode: If True, raise exceptions instead of returning fallback content
 
         Returns:
-            LazyFileContent instance
+            FileInfo instance with lazy loading enabled
         """
-        lazy_content = LazyFileContent(
-            file_info,
+        lazy_content = file_info.enable_lazy_loading(
             max_size=self.validator.max_individual,
             strict_mode=strict_mode,
         )
@@ -557,21 +237,19 @@ class ProgressiveLoader:
             try:
                 # In strict mode, don't preload content - it will be loaded on demand
                 # This prevents dry-run from failing when only metadata is accessed
-                if lazy_content.strict_mode:
+                if getattr(lazy_content, "_FileInfo__strict_mode", False):
                     logger.debug(
-                        f"Skipping preload for {lazy_content.file_info.path} (strict mode)"
+                        f"Skipping preload for {lazy_content.path} (strict mode)"
                     )
                     continue
 
                 # Trigger loading by accessing content safely
                 _ = lazy_content.load_safe()
-                if lazy_content._loaded:
+                if getattr(lazy_content, "_FileInfo__loaded", False):
                     preloaded += 1
-                    logger.debug(f"Preloaded {lazy_content.file_info.path}")
+                    logger.debug(f"Preloaded {lazy_content.path}")
             except Exception as e:
-                logger.debug(
-                    f"Failed to preload {lazy_content.file_info.path}: {e}"
-                )
+                logger.debug(f"Failed to preload {lazy_content.path}: {e}")
 
         self._loaded_count = preloaded
         return preloaded
@@ -772,7 +450,9 @@ class AttachmentTemplateContext:
                 utility_vars.append(key)
             elif key in SYSTEM_CONFIG_VARIABLES:
                 system_config_vars.append(key)
-            elif isinstance(value, LazyFileContent):
+            elif isinstance(value, FileInfo) and getattr(
+                value, "_FileInfo__lazy_loading", False
+            ):
                 user_defined_vars.append(key)
             else:
                 user_defined_vars.append(key)
@@ -781,7 +461,9 @@ class AttachmentTemplateContext:
             click.echo("  Attachment aliases:", err=True)
             for var in sorted(attachment_vars):
                 value = context[var]
-                if isinstance(value, LazyFileContent):
+                if isinstance(value, FileInfo) and getattr(
+                    value, "_FileInfo__lazy_loading", False
+                ):
                     # Show user-friendly file information instead of class name
                     try:
                         file_size = value.actual_size or 0
@@ -876,7 +558,7 @@ class AttachmentTemplateContext:
 
     def _create_attachment_variable(
         self, spec: AttachmentSpec, strict_mode: bool = False
-    ) -> Union[LazyFileContent, FileInfoList, DotDict]:
+    ) -> Union[FileInfo, FileInfoList, DotDict]:
         """Create template variable for a single attachment.
 
         Args:
@@ -911,8 +593,7 @@ class AttachmentTemplateContext:
                 attachment_type=spec.attachment_type,
             )
 
-            return LazyFileContent(
-                file_info,
+            return file_info.enable_lazy_loading(
                 max_size=self.max_file_size,
                 strict_mode=True,
             )
@@ -980,8 +661,7 @@ class AttachmentTemplateContext:
                     strict_mode=lazy_strict_mode,
                 )
             else:
-                return LazyFileContent(
-                    file_info,
+                return file_info.enable_lazy_loading(
                     max_size=self.max_file_size,
                     strict_mode=lazy_strict_mode,
                 )

@@ -5,7 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2025-07-14
+## [Unreleased]
+
+## [1.4.0] - TBD
+
+### Added
+
+#### 🎯 Major Feature: OST (Self-Executing Templates)
+
+- **Complete OST implementation** - Self-executing ostruct prompts that bundle templates, schemas, and CLI configuration into single executable files
+- **`ostruct runx` command** - Execute OST files with custom command-line interfaces
+- **Dynamic CLI generation** - OST files automatically generate custom CLIs with argument validation and help
+- **Global argument policies** - Configure allowed, blocked, fixed, and pass-through modes for ostruct flags
+- **Cross-platform execution** - Unix shebang support + Windows file associations via `ostruct setup windows-register`
+- **OST Generator tool** - Automated creation of OST files from existing templates and schemas
+- **Comprehensive validation** - Front-matter parsing, schema validation, and error reporting
+- **Self-documenting workflows** - Each OST file provides custom `--help` output and usage examples
+
+### Changed
+
+- File attachment documentation enhanced with practical examples
+- File metadata now properly exposed on LazyFileContent objects
+- CLI reference updated with comprehensive OST documentation
+
+### Fixed
+
+- Improved error message for invalid Jinja2 template syntax
+- Import organization and code quality improvements
+
+### Security
+
+- Comprehensive DoS protection suite addressing multiple attack vectors:
+  - Template size limits with configurable thresholds
+  - JSON parsing size limits to prevent memory exhaustion
+  - Symlink depth restrictions to prevent traversal attacks
+  - ReDoS protection with safe regex patterns
+  - Upload manager memory leak fixes
+  - Credential sanitization to prevent API key exposure
+  - Unicode path traversal prevention
+  - Global security context management
+
+### Removed
+
+- Unused template variable name generation function
+
+## [1.3.0] - 2024-12-04
 
 ### Added
 

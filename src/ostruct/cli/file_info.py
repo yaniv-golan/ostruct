@@ -29,6 +29,18 @@ class FileRoutingIntent(Enum):
 logger = logging.getLogger(__name__)
 
 
+class LazyLoadError(Exception):
+    """Exception raised during lazy loading operations."""
+
+    pass
+
+
+class LazyLoadSizeError(LazyLoadError):
+    """Exception raised when file exceeds size limits."""
+
+    pass
+
+
 class FileInfo:
     """Represents a file with metadata and content.
 
@@ -54,6 +66,9 @@ class FileInfo:
         hash_value: Optional[str] = None,
         routing_type: Optional[str] = None,
         routing_intent: Optional[FileRoutingIntent] = None,
+        max_size: Optional[int] = None,
+        strict_mode: bool = False,
+        lazy_loading: bool = True,
     ) -> None:
         """Initialize FileInfo instance.
 
@@ -65,6 +80,9 @@ class FileInfo:
             hash_value: Optional cached hash value
             routing_type: How the file was routed (e.g., 'template', 'code-interpreter')
             routing_intent: The intended use of the file in the pipeline
+            max_size: Maximum file size in bytes for lazy loading (uses environment default if None)
+            strict_mode: If True, raise exceptions instead of returning fallback content
+            lazy_loading: If True, enable lazy loading with size checks
 
         Raises:
             FileNotFoundError: If the file does not exist
@@ -80,6 +98,16 @@ class FileInfo:
         self.__mtime: Optional[float] = None
         self.routing_type = routing_type
         self.routing_intent = routing_intent
+
+        # LazyFileContent integration
+        self.__max_size = (
+            max_size or self._get_default_max_size() if lazy_loading else None
+        )
+        self.__strict_mode = strict_mode
+        self.__lazy_loading = lazy_loading
+        self.__size_checked = False
+        self.__actual_size: Optional[int] = None
+        self.__loaded = False
 
         # TSES v2.0 fields for alias tracking
         self.parent_alias: Optional[str] = (
@@ -394,12 +422,24 @@ class FileInfo:
             )
 
         if self.__content is None:
-            try:
-                self._read_file()
-            except Exception as e:
-                raise FileReadError(
-                    f"Failed to load content: {self.__path}", self.__path
-                ) from e
+            if self.__lazy_loading:
+                try:
+                    return self._load_content_with_size_check()
+                except LazyLoadSizeError:
+                    if self.__strict_mode:
+                        raise  # Re-raise the exception in strict mode
+                    return f"[File too large: {self.__actual_size:,} bytes > {self.__max_size:,} bytes]"
+                except LazyLoadError as e:
+                    if self.__strict_mode:
+                        raise  # Re-raise the exception in strict mode
+                    return f"[Error: {e}]"
+            else:
+                try:
+                    self._read_file()
+                except Exception as e:
+                    raise FileReadError(
+                        f"Failed to load content: {self.__path}", self.__path
+                    ) from e
         assert (
             self.__content is not None
         )  # Help mypy understand content is set
@@ -478,6 +518,223 @@ class FileInfo:
         except (OSError, PathSecurityError):
             return False
 
+    @property
+    def basename(self) -> str:
+        """Get the filename without directory path (alias for name)."""
+        return self.name
+
+    @property
+    def dirname(self) -> str:
+        """Get the directory name containing this file."""
+        return str(Path(self.path).parent)
+
+    @property
+    def parent(self) -> str:
+        """Get the parent directory path."""
+        return str(Path(self.path).parent)
+
+    @property
+    def stem(self) -> str:
+        """Get the filename without the final suffix."""
+        return Path(self.path).stem
+
+    @property
+    def suffix(self) -> str:
+        """Get the file suffix (extension) including the dot."""
+        return Path(self.path).suffix
+
+    @property
+    def is_file(self) -> bool:
+        """Check if this path points to a regular file."""
+        if self.is_url:
+            return True  # URL files are considered files
+        try:
+            return Path(self.abs_path).is_file()
+        except (OSError, PathSecurityError):
+            return False
+
+    @property
+    def is_dir(self) -> bool:
+        """Check if this path points to a directory."""
+        if self.is_url:
+            return False  # URL files are never directories
+        try:
+            return Path(self.abs_path).is_dir()
+        except (OSError, PathSecurityError):
+            return False
+
+    @staticmethod
+    def _get_default_max_size() -> Optional[int]:
+        """Get default max size from config or environment.
+
+        Returns:
+            Default maximum file size in bytes, or None for no limit
+        """
+        import os
+
+        # Check OSTRUCT_TEMPLATE_FILE_LIMIT environment variable
+        template_file_limit = os.getenv("OSTRUCT_TEMPLATE_FILE_LIMIT")
+        if template_file_limit is not None:
+            # Support semantic values: unlimited, none, empty string
+            if template_file_limit.lower() in ("none", "unlimited", ""):
+                return None
+            try:
+                return int(template_file_limit)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_TEMPLATE_FILE_LIMIT value '{template_file_limit}', using default limit"
+                )
+                # Fall through to default
+
+        # Check OSTRUCT_MAX_FILE_SIZE environment variable (new)
+        max_file_size_env = os.getenv("OSTRUCT_MAX_FILE_SIZE")
+        if max_file_size_env is not None:
+            if max_file_size_env.lower() in ("none", "unlimited", ""):
+                return None
+            try:
+                return int(max_file_size_env)
+            except ValueError:
+                logger.warning(
+                    f"Invalid OSTRUCT_MAX_FILE_SIZE value '{max_file_size_env}', using default limit"
+                )
+                # Fall through to default
+
+        # Default: 100MB limit for DoS protection
+        try:
+            from .constants import DefaultConfig
+
+            default_size = DefaultConfig.TEMPLATE["max_file_size"]
+            return int(default_size) if default_size is not None else None
+        except (ImportError, AttributeError, KeyError):
+            # Fallback if DefaultConfig is not available
+            return 100 * 1024 * 1024  # 100MB
+
+    def check_size(self) -> bool:
+        """Check if file size is within limits.
+
+        Returns:
+            True if file size is acceptable
+
+        Raises:
+            LazyLoadError: If file cannot be accessed
+        """
+        if not self.__size_checked:
+            try:
+                self.__actual_size = Path(self.abs_path).stat().st_size
+                self.__size_checked = True
+            except OSError as e:
+                raise LazyLoadError(f"Cannot access file {self.path}: {e}")
+
+        # If max_size is None, there's no limit
+        if self.__max_size is None:
+            return True
+
+        return (
+            self.__actual_size is not None
+            and self.__actual_size <= self.__max_size
+        )
+
+    @property
+    def actual_size(self) -> Optional[int]:
+        """Get the actual file size in bytes.
+
+        Returns:
+            File size in bytes, or None if not checked yet
+        """
+        if not self.__size_checked:
+            try:
+                self.check_size()
+            except LazyLoadError:
+                return None
+        return self.__actual_size
+
+    def _load_content_with_size_check(self) -> str:
+        """Load file content with size checking for lazy loading.
+
+        Returns:
+            File content as string
+
+        Raises:
+            LazyLoadSizeError: If file exceeds size limits
+            LazyLoadError: If file cannot be loaded
+        """
+        try:
+            if not self.check_size():
+                error_msg = (
+                    f"File {self.path} ({self.__actual_size:,} bytes) "
+                    f"exceeds size limit ({self.__max_size:,} bytes)"
+                )
+                logger.warning(error_msg)
+                raise LazyLoadSizeError(error_msg)
+
+            # Use the normal file reading logic
+            self._read_file()
+            self.__loaded = True
+            logger.debug(
+                f"Loaded content for {self.path} ({len(self.__content or ''):,} chars)"
+            )
+            return self.__content or ""
+
+        except LazyLoadSizeError:
+            # Re-raise size errors
+            raise
+        except Exception as e:
+            logger.error(f"Failed to load content for {self.path}: {e}")
+            raise LazyLoadError(f"Failed to load content for {self.path}: {e}")
+
+    def load_safe(
+        self, fallback_content: str = "[File too large or unavailable]"
+    ) -> str:
+        """Load content safely with fallback for oversized files.
+
+        Args:
+            fallback_content: Content to return if file cannot be loaded
+
+        Returns:
+            File content or fallback content
+
+        Raises:
+            LazyLoadSizeError: If file is too large and strict_mode is True
+            LazyLoadError: If file cannot be loaded and strict_mode is True
+        """
+        if not self.__lazy_loading:
+            # For non-lazy loading, just return content
+            return self.content
+
+        try:
+            if not self.__loaded and self.__content is None:
+                return self._load_content_with_size_check()
+            return self.__content or ""
+        except LazyLoadSizeError:
+            if self.__strict_mode:
+                raise  # Re-raise the exception in strict mode
+            return f"[File too large: {self.__actual_size:,} bytes > {self.__max_size:,} bytes]"
+        except LazyLoadError as e:
+            if self.__strict_mode:
+                raise  # Re-raise the exception in strict mode
+            return f"[Error: {e}]"
+
+    def preview(self, max_chars: int = 200) -> str:
+        """Get content preview without full loading.
+
+        Args:
+            max_chars: Maximum characters to return
+
+        Returns:
+            Preview of file content
+        """
+        if self.__loaded and self.__content:
+            return self.__content[:max_chars]
+
+        try:
+            # Try to read just the preview amount
+            with open(
+                self.abs_path, "r", encoding="utf-8", errors="replace"
+            ) as f:
+                return f.read(max_chars)
+        except Exception as e:
+            return f"[Preview error: {e}]"
+
     def _read_file(self) -> None:
         """Read and decode file content.
 
@@ -530,6 +787,9 @@ class FileInfo:
         base_path: Optional[str] = None,
         from_collection: bool = False,
         attachment_type: str = "file",
+        max_size: Optional[int] = None,
+        strict_mode: bool = False,
+        lazy_loading: bool = True,
     ) -> "FileInfo":
         """Create FileInfo instance from path.
 
@@ -543,6 +803,9 @@ class FileInfo:
             base_path: Base path of attachment (for TSES)
             from_collection: Whether file came from --collect (for TSES)
             attachment_type: Original attachment type: "file", "dir", or "collection" (for TSES)
+            max_size: Maximum file size in bytes for lazy loading
+            strict_mode: If True, raise exceptions instead of returning fallback content
+            lazy_loading: If True, enable lazy loading with size checks
 
         Returns:
             FileInfo instance
@@ -556,6 +819,9 @@ class FileInfo:
             security_manager,
             routing_type=routing_type,
             routing_intent=routing_intent,
+            max_size=max_size,
+            strict_mode=strict_mode,
+            lazy_loading=lazy_loading,
         )
 
         # Set TSES fields
@@ -568,7 +834,9 @@ class FileInfo:
         return file_info
 
     def __str__(self) -> str:
-        """String representation showing path."""
+        """String representation - for lazy loading, return content; otherwise return path."""
+        if self.__lazy_loading:
+            return self.content
         return f"FileInfo({self.__path})"
 
     def __repr__(self) -> str:
@@ -608,8 +876,10 @@ class FileInfo:
             object.__setattr__(self, name, value)
             return
 
-        # Allow setting private attributes from internal methods
-        if name.startswith("_FileInfo__") and self._is_internal_call():
+        # Allow setting private attributes from internal methods or during initialization
+        if name.startswith("_FileInfo__") and (
+            self._is_internal_call() or not hasattr(self, "_FileInfo__path")
+        ):
             object.__setattr__(self, name, value)
             return
 
@@ -635,6 +905,26 @@ class FileInfo:
             )
         finally:
             del frame  # Avoid reference cycles
+
+    def enable_lazy_loading(
+        self, max_size: Optional[int] = None, strict_mode: bool = False
+    ) -> "FileInfo":
+        """Enable lazy loading on this FileInfo instance.
+
+        Args:
+            max_size: Maximum file size in bytes for lazy loading
+            strict_mode: If True, raise exceptions instead of returning fallback content
+
+        Returns:
+            Self for method chaining
+        """
+        self.__max_size = max_size or self._get_default_max_size()
+        self.__strict_mode = strict_mode
+        self.__lazy_loading = True
+        self.__size_checked = False
+        self.__actual_size = None
+        self.__loaded = False
+        return self
 
     def to_dict(self) -> dict[str, Any]:
         """Convert file info to a dictionary.

@@ -254,12 +254,16 @@ def to_json(obj: Any) -> str:
 
     # Lazy import to avoid heavy deps at module import time
     try:
-        from .attachment_template_bridge import LazyFileContent
+        from .file_info import FileInfo
     except Exception:  # pragma: no cover
-        LazyFileContent = None  # type: ignore
+        FileInfo = None  # type: ignore
 
-    # 1️⃣  Unwrap LazyFileContent → underlying text
-    if LazyFileContent is not None and isinstance(obj, LazyFileContent):
+    # 1️⃣  Unwrap FileInfo with lazy loading → underlying text
+    if (
+        FileInfo is not None
+        and isinstance(obj, FileInfo)
+        and getattr(obj, "_FileInfo__lazy_loading", False)
+    ):
         obj = str(obj)  # forces lazy load, returns text
 
     # 2️⃣  Attempt normal serialisation first
