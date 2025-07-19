@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Unused template variable name generation function
 
+### Dependencies
+
+- Updated `pyfakefs` to 5.9.1 for improved test reliability
+- Updated `jinja2` to 3.1.6 for enhanced template processing security
+
 ## [1.3.0] - 2024-12-04
 
 ### Added
