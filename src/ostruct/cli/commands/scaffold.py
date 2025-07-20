@@ -309,19 +309,32 @@ def template(
                 err=True,
             )
 
-        # Simple Jinja2 template content
-        template_content = """# {{title | default("Template")}}
+        # Simple Jinja2 template following ostruct patterns
+        template_content = """---
+system: |
+  You are a helpful assistant. Return valid JSON that follows the provided schema.
+---
+# Task: {{title | default("Text Processing")}}
 
-This is a basic Jinja2 template.
+{% if description is defined %}
+{{description}}
+{% else %}
+Analyze the provided input and return structured results.
+{% endif %}
 
-## Variables
-- title: {{title | default("Untitled")}}
-- description: {{description | default("No description provided")}}
+## Input
+{% if input_text is defined %}
+Text: {{input_text}}
+{% else %}
+No input provided. For dry-run validation, use example data.
+{% endif %}
 
-## Content
-{{content | default("No content provided")}}
+{% if data_file is defined %}
+## Data File
+{{data_file.content}}
+{% endif %}
 
-Generated at: {{timestamp | default("unknown time")}}
+Return your analysis as valid JSON following the schema.
 """
 
         output_path.write_text(template_content, encoding="utf-8")

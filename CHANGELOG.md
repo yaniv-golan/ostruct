@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.4.0] - 2025-01-19
+## [1.4.0] - 2025-01-20
 
 ### Added
 
@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File attachment documentation enhanced with practical examples
 - File metadata now properly exposed on LazyFileContent objects
 - CLI reference updated with comprehensive OST documentation
+
+### Improved
+
+- **Scaffold Templates**: Enhanced template generation with improved Jinja2 templates that follow ostruct patterns, include proper front-matter system prompts, and use defensive variable handling
+- **Documentation**: Added comprehensive scaffold command documentation to CLI reference guide with usage examples and best practices
 
 ### Fixed
 

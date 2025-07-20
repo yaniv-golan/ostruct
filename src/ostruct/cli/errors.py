@@ -908,6 +908,9 @@ def handle_error(e: Exception) -> None:
         if "Missing parameter" in error_msg:
             if "task_template" in error_msg:
                 msg = f"Usage error: {error_msg}\n\nTry 'ostruct run --help' for usage information, 'ostruct --quick-ref' for examples, or 'ostruct run --help-debug' for troubleshooting help."
+            elif "output_file" in error_msg:
+                # Handle scaffold template command
+                msg = f"Usage error: {error_msg}\n\nTry 'ostruct scaffold template --help' for usage information."
             else:
                 msg = f"Usage error: {error_msg}\n\nTry 'ostruct run --help' for usage information or 'ostruct --quick-ref' for examples."
         else:
