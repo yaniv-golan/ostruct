@@ -27,6 +27,7 @@ ostruct provides several commands for different use cases:
 
 - ``ostruct run TEMPLATE_FILE SCHEMA_FILE [OPTIONS]`` - Execute templates with separate schema files
 - ``ostruct runx TEMPLATE_FILE [ARGS]`` - Execute OST files (self-executing ostruct prompts)
+- ``ostruct scaffold COMMAND`` - Generate template files and project scaffolding
 - ``ostruct setup COMMAND`` - Environment setup and configuration
 - ``ostruct list-models`` - List available OpenAI models
 - ``ostruct update-registry`` - Update model registry
@@ -280,6 +281,64 @@ Execute an OST (Self-Executing Template) file.
 
    # Dry run to test without API calls
    ostruct runx my_tool.ost "test input" --dry-run
+
+Template Scaffolding Commands
+=============================
+
+The ``scaffold`` command helps you generate template files and project scaffolding.
+
+ostruct scaffold
+----------------
+
+Generate template files and project scaffolding.
+
+.. code-block:: text
+
+   Usage: ostruct scaffold [OPTIONS] COMMAND [ARGS]...
+
+   Generate template files and project scaffolding.
+
+   Options:
+     --help    Show this message and exit.
+
+   Commands:
+     template  Generate a template file.
+
+ostruct scaffold template
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Generate a template file with optional CLI front-matter.
+
+.. code-block:: text
+
+   Usage: ostruct scaffold template [OPTIONS] OUTPUT_FILE
+
+   Generate a template file.
+   OUTPUT_FILE: Path where the template file will be created
+
+   Options:
+     OUTPUT_FILE           (PATH) [required]
+     --cli                 Generate an OST (Self-Executing Template) with CLI front-matter
+     --name TEXT           Name for the CLI tool (default: derived from filename)
+     --description TEXT    Description for the CLI tool (default: generic description)
+     --no-examples         Don't show usage examples after creation
+     --windows-launcher    Generate Windows launcher files (.exe and .cmd) alongside OST
+     --help                Show this message and exit.
+
+**Usage Examples:**
+
+.. code-block:: bash
+
+   # Generate a basic Jinja2 template
+   ostruct scaffold template analysis.j2
+
+   # Generate an OST template with CLI interface
+   ostruct scaffold template text-analyzer.ost --cli
+
+   # Generate with custom name and description
+   ostruct scaffold template my-tool.ost --cli \
+     --name "data-processor" \
+     --description "Processes and analyzes data files"
 
 Environment Setup Commands
 ==========================
