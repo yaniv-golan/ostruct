@@ -21,7 +21,11 @@ This directory contains practical examples demonstrating ostruct's capabilities 
 - **[multi-tool](analysis/data/multi-tool/)** - Comprehensive business data analysis
 - **[argument-aif](analysis/argument-aif/)** - Argument Interchange Format (AIF) analysis pipeline
 
-### Integration & Automation
+### Automation & Workflows
+
+- **[storyboard-to-veo3](automation/storyboard-to-veo3/)** - Transform storyboards into Veo3-ready video generation JSON
+
+### Integration
 
 - **[multi-agent-debate](integration/multi-agent-debate/)** - Multi-agent debate system
 

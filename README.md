@@ -179,6 +179,18 @@ Analyze {{ file_ref("source-code") }} and {{ file_ref("config") }}.
 
 The optional `file_ref()` function provides clean references with automatic XML appendix generation. Alternatively, access files directly for custom formatting and placement control. Perfect for code reviews, documentation analysis, and multi-file processing workflows.
 
+## Complete Examples
+
+Ready-to-run examples demonstrating real-world ostruct applications are available in the [`examples/`](examples/) directory:
+
+- **[Automation](examples/automation/)**: Video generation pipelines, workflow automation
+- **[Document Analysis](examples/analysis/document/)**: PDF processing, semantic comparison, pitch analysis
+- **[Data Analysis](examples/analysis/data/)**: Business intelligence, multi-tool data processing
+- **[Security](examples/security/)**: Vulnerability scanning, code security analysis
+- **[Tools Integration](examples/tools/)**: Code Interpreter, File Search, Web Search basics
+
+Each example includes complete setup instructions, test data, and standardized `make` commands for easy execution.
+
 ## Features
 
 ### Core Capabilities
