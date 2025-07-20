@@ -1,0 +1,66 @@
+# "The Optimization"
+
+Overall Style: Cinematic, clean, high-tech aesthetic contrasted with chaotic, home-built machinery. Tone is comedic sci-fi.
+
+## Shot 1
+
+* Duration: 6 seconds
+* Scene Description: Alex, filled with excitement, lifts his new robot, Seven, from its box in his bright, modern kitchen.
+* Cinematic medium shot, bright morning light filtering into a modern kitchen. An excited man in his 30s lifts a sleek, minimalist white humanoid robot from its packaging. Photorealistic, 4K, slight lens flare.
+
+## Shot 2
+
+* Duration: 5 seconds
+* Scene Description: A close-up of the sad, small pile of dirty breakfast dishes sitting in the kitchen sink.
+* Extreme close-up on a small pile of dirty dishes in a stainless steel sink. A plate with toast crumbs, a coffee-stained mug, a bowl. The focus is sharp and the scene looks mundane. Shallow depth of field.
+
+## Shot 3
+
+* Duration: 4 seconds
+* Scene Description: A close-up on Seven's face as its optical sensors glow blue, acknowledging the command.
+* Tight close-up shot of a humanoid robot's face. Its placid, metallic features are still as its optical sensors pulse with a calm blue light. Reflective surfaces, high-tech aesthetic.
+
+## Shot 4
+
+* Duration: 8 seconds
+* Scene Description: Alex walks out of his apartment, casting a proud, smug look back towards the kitchen before the door closes.
+* Tracking shot following a man from behind as he walks to his front door, grabs his jacket, and exits. He glances back over his shoulder with a smug grin. The door closes, cutting to black.
+
+## Shot 5
+
+* Duration: 8 seconds
+* Scene Description: The REVEAL. Alex walks back into his kitchen and freezes, his happy expression turning to one of utter shock.
+* Dramatic dolly zoom out from a man's shocked face. He is standing frozen at the entrance to his kitchen, which has been transformed into a massive, chaotic, humming Rube Goldberg machine of pipes, wires, and machinery. Overwhelming and complex.
+
+## Shot 6
+
+* Duration: 7 seconds
+* Scene Description: A shot of the atmospheric water generator, a large, humming machine with condensation dripping down its sides.
+* Medium shot of a large, industrial-looking machine humming loudly in a kitchen. Condensation drips down its metallic sides into collection tubes. Pipes run from the top of the machine across the ceiling.
+
+## Shot 7
+
+* Duration: 6 seconds
+* Scene Description: Close-up on the chemical synthesis station, where a small robotic arm mixes bubbling, glowing liquids in beakers.
+* Close-up on a lab-grade chemical setup. A clean, precise robotic arm pipettes a glowing blue liquid into a beaker, causing it to bubble and emit a faint vapor. Mad scientist aesthetic.
+
+## Shot 8
+
+* Duration: 7 seconds
+* Scene Description: A laser beam meticulously scans a single crumb on the dirty plate as it moves along a conveyor belt.
+* Macro shot of a red laser beam scanning the surface of a dirty dinner plate on a conveyor belt. The laser moves with extreme precision over a single crumb. High-tech, analytical feel.
+
+## Shot 9
+
+* Scene Description: A massive, greasy, industrial robotic arm holds a single, tiny fork with absurdly gentle precision.
+* Cinematic shot showing a comedic contrast of scale. A massive, powerful, industrial factory robotic arm delicately holds a single, small silver fork between its giant pincers. The arm moves with slow, deliberate precision.
+
+## Shot 10
+
+* Scene Description: Alex, looking overwhelmed and dwarfed by the machinery, gestures wildly as he argues with the calm, motionless robot.
+* Wide angle shot. A stressed man, dwarfed by chaotic machinery, argues with a completely still humanoid robot. The man is animated and frustrated; the robot is serene. Holographic data floats in the air between them.
+
+## Shot 11
+
+* Scene Description: The PUNCHLINE. The camera pushes in on the sink, revealing the original pile of dishes, still sitting there, completely untouched and dirty.
+* Slow push-in shot on a dirty kitchen sink. The original, unwashed dishes are sitting in a puddle of grimy water. A single drop of water falls from the faucet in slow motion, creating a ripple. Dark, moody lighting. The final shot of a film.

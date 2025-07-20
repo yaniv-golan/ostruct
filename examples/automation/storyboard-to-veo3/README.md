@@ -99,29 +99,107 @@ Free-text storyboard → ostruct → Master JSON → Split → Veo3-ready JSON
 }
 ```
 
-## 7. Customization
+## 7. Improving Output Quality
 
-### Asset Types
-Modify the schema to add new asset categories:
-- Add to `kind` enum in `schemas/master.json`
-- Update template instructions in `storyboard_to_json.j2`
+### Iterative Asset Refinement Workflow
 
-### Scene Metadata
-Add custom fields like camera angles or style notes:
+If needed, asset descriptions can be refined after the initial run:
+
+```bash
+# 1. Generate initial structure
+./run.sh
+
+# 2. Review generated assets
+ls output/assets/                    # See all extracted assets
+cat output/assets/character_*.json   # Review character descriptions
+
+# 3. Edit asset descriptions for better video results
+nano output/assets/character_elena-rodriguez.json
+
+# 4. Regenerate scenes with improved assets
+./scripts/combine_scene.sh output 1  # Scene 1 with updated assets
+./scripts/combine_scene.sh output 2  # Scene 2 with updated assets
+
+# 5. Repeat until satisfied with asset quality
+```
+
+### Asset Description Best Practices
+
+**Characters - Be Specific:**
 ```json
-"metadata": {
-  "camera": "handheld follow",
-  "style": "cinematic",
-  "lighting": "golden hour"
+// ❌ Generic (poor video results)
+{
+  "description": "A scientist"
+}
+
+// ✅ Detailed (better video results)
+{
+  "description": "Dr. Elena Rodriguez, 35, marine biologist with shoulder-length curly brown hair, wire-rim glasses, olive skin, wearing a weathered navy field jacket over khaki pants, confident posture"
 }
 ```
 
-### Multi-format Output
-Extend `combine_scene.sh` to generate different video API formats:
+**Locations - Add Atmosphere:**
+```json
+// ❌ Basic
+{
+  "description": "A pier"
+}
+
+// ✅ Cinematic
+{
+  "description": "Weathered wooden pier extending into gray ocean waters at dawn, rain-slicked planks reflecting pale yellow streetlights, fog rolling in from the horizon, seagulls calling in the distance"
+}
+```
+
+**Props - Include Context:**
+```json
+// ❌ Minimal
+{
+  "description": "A boat"
+}
+
+// ✅ Contextual
+{
+  "description": "Small white research vessel 'Nereid' with blue hull stripe, diving equipment on deck, GPS antenna, anchored 50 meters from shore, gently rocking in choppy waters"
+}
+```
+
+### Advanced Customization
+
+#### Adding New Asset Types
+Modify the schema to support additional categories:
 ```bash
-# Generate for different platforms
-./combine_scene.sh output 1 > scene1_veo3.json
-python convert_to_runway.py scene1_veo3.json > scene1_runway.json
+# Edit schema
+nano schemas/master.json  # Add to "kind" enum: "vehicle", "weapon", "costume"
+
+# Update template
+nano templates/storyboard_to_json.j2  # Add instructions for new types
+```
+
+#### Scene Metadata
+Enhance scenes with video generation hints:
+```json
+{
+  "id": 1,
+  "text": "Dr. Elena hurries down the pier",
+  "metadata": {
+    "camera": "handheld follow shot",
+    "style": "cinematic thriller",
+    "lighting": "golden hour",
+    "mood": "urgent"
+  }
+}
+```
+
+#### Multi-format Output
+Generate for different video platforms:
+```bash
+# Veo 3 format (default)
+./scripts/combine_scene.sh output 1 > scene1_veo3.json
+
+# Convert to other formats (requires custom scripts)
+python scripts/convert_to_runway.py scene1_veo3.json
+python scripts/convert_to_pika.py scene1_veo3.json
 ```
 
 ## 8. Integration Examples
