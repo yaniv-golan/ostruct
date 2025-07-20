@@ -18,6 +18,7 @@ fi
 DEFAULT_MODEL="${DEFAULT_MODEL:-gpt-4.1}"
 REQUIRES_JQ="${REQUIRES_JQ:-false}"
 REQUIRES_MERMAID="${REQUIRES_MERMAID:-false}"
+REQUIRES_GUM="${REQUIRES_GUM:-false}"
 
 # ── Internal variables ──
 MODEL="$DEFAULT_MODEL"
@@ -32,6 +33,10 @@ fi
 
 if [[ "$REQUIRES_MERMAID" == "true" ]]; then
   source "$ROOT/scripts/install/dependencies/ensure_mermaid.sh" || { echo "❌ Mermaid CLI required but not available"; exit 1; }
+fi
+
+if [[ "$REQUIRES_GUM" == "true" ]]; then
+  source "$ROOT/scripts/install/dependencies/ensure_gum.sh" || { echo "❌ gum required but not available"; exit 1; }
 fi
 
 # ── Helper functions ──

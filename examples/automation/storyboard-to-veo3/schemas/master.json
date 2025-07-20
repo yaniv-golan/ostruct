@@ -1,0 +1,117 @@
+{
+  "type": "object",
+  "required": ["assets", "scenes"],
+  "additionalProperties": false,
+  "properties": {
+    "assets": {
+      "type": "array",
+      "description": "Reusable building blocks for video generation",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "name", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique kebab-case identifier, used as filename"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["character", "location", "prop", "audio", "misc"],
+            "description": "Type of asset for organization"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description for video generation"
+          },
+          "traits": {
+            "type": "string",
+            "description": "Additional visual or behavioral characteristics"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Technical metadata for production use",
+            "additionalProperties": true,
+            "properties": {
+              "voice": {
+                "type": "string",
+                "description": "Voice characteristics for characters (e.g., 'calm baritone')"
+              },
+              "lighting": {
+                "type": "string",
+                "description": "Lighting setup for locations (e.g., 'warm tungsten practicals')"
+              },
+              "material": {
+                "type": "string",
+                "description": "Material properties for props (e.g., 'worn leather', 'tarnished brass')"
+              },
+              "sound": {
+                "type": "string",
+                "description": "Audio mixing properties (e.g., 'ambient background', 'crisp foreground')"
+              }
+            }
+          }
+        }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "description": "Sequence of video scenes, each 8 seconds or less",
+      "items": {
+        "type": "object",
+        "required": ["id", "duration_seconds", "text", "assets"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Sequential scene number starting from 1"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8,
+            "description": "Duration in seconds (1-8)"
+          },
+          "text": {
+            "type": "string",
+            "description": "Scene prompt text for video generation"
+          },
+          "assets": {
+            "type": "array",
+            "description": "Asset references used in this scene",
+            "items": {
+              "type": "object",
+              "required": ["dollar_ref"],
+              "additionalProperties": false,
+              "properties": {
+                "dollar_ref": {
+                  "type": "string",
+                  "description": "References an asset file (e.g. 'john.json')"
+                }
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Cinematic metadata for professional video production",
+            "additionalProperties": true,
+            "properties": {
+              "camera": {
+                "type": "string",
+                "description": "Camera movement (e.g., 'slow dolly-in', 'handheld follow')"
+              },
+              "style": {
+                "type": "string",
+                "description": "Visual style (e.g., 'moody cinematic', 'noir rain')"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

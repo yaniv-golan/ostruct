@@ -1,0 +1,10 @@
+# Generated output files
+output/
+
+# Temporary files
+*.tmp
+*.log
+
+# IDE files
+.vscode/
+.idea/
