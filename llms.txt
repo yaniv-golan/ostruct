@@ -1,0 +1,112 @@
+# ostruct
+
+> **Schema‑first CLI.** Locally renders sandboxed Jinja2 templates → produces the final prompt *and* JSON Schema only; no OS‑level side‑effects are possible because the template runs inside a restricted Jinja `SandboxedEnvironment`([jinja.palletsprojects.com][1]). The prompt and schema are then sent to OpenAI’s **Structured Outputs** endpoint, where the model both *generates* and *validates* the JSON so it exactly matches the supplied schema — eliminating client‑side re‑parsing or retries([OpenAI][2], [OpenAI Community][3]). This design turns ostruct into a pure orchestration layer that also adds multi‑tool context (Web Search, File Search, Code‑Interpreter, MCP) and strict file‑routing security([Ostruct][4], [Ostruct][5]).
+
+A single binary `ostruct` covers every workflow (classic templates, self‑executing **OST** files, scaffolding, environment setup, model registry) while guarding against accidental data leaks through explicit `--allow/--strict-urls` gates([Ostruct][6], [GitHub][7]). All flags are grouped below so an LLM can parse or emit any valid invocation without further docs.
+
+---
+
+* **Mental model bullets**
+
+  * *Templates execute locally* within a Jinja2 sandbox; they may read passed variables / file aliases, perform filters and control‑flow, and emit text; controlled file access occurs through the LazyFileContent system.
+  * *OpenAI enforces validity*: the `response_format={"type":"json_object","schema":…}` parameter activates constrained decoding; any schema violation triggers an API error rather than malformed output reaching the CLI([Microsoft Learn][8], [developer.mamezou-tech.com][9]). `ostruct` then re-validates with Pydantic for additional type safety.
+  * *LLM cost hygiene*: include only the schema‑relevant parts of large files; use `--dry-run` for offline token estimates and to preview the fully‑expanded prompt without burning quota.
+  * *Security*: default deny on unknown paths; override with `--allow` flags or by listing approved roots in a policy file; `.gitignore` respected unless `--ignore-gitignore` is set.
+  * *Tool routing*: attach data to specific tools via `[target:]alias path` (`ci:` for Code Interpreter, `fs:` for File Search, `web:` for Web Search, `ud:` for direct PDF/vision input, `prompt:` for inline‑only, `auto:` for type-based routing).
+  * *JSON Schema rules* mirror OpenAI: top‑level must be `"type":"object"`, every property declares `"type"` and `"description"`, arrays require `"items"`, `$defs` allowed, avoid `oneOf/anyOf` for best success rate([developer.mamezou-tech.com][9]).
+
+* **Command surface (every sub‑command)**
+
+  ```
+  ostruct run TEMPLATE SCHEMA [OPTIONS]        # main execution path
+  ostruct runx OST_FILE [ARGS]                # self‑executing template with front‑matter
+  ostruct scaffold {template|schema|ost}      # quick-start files
+  ostruct setup {windows-register|windows-unregister}
+  ostruct list-models | update-registry | quick-ref
+  ```
+
+* **Global attachment & security flags**
+
+  ```
+  -F/--file      [target:]ALIAS PATH    # targets: prompt|ci|fs|ud|auto
+  -D/--dir       [target:]ALIAS PATH
+  -C/--collect   [target:]ALIAS @filelist
+     --recursive --pattern GLOB
+  -A/--allow DIR         --allow-file FILE
+  --allow-list FILE      --allow-insecure-url URL
+  --path-security {permissive|warn|strict}
+  --strict-urls | --no-strict-urls
+  --max-file-size SIZE   --ignore-gitignore | --gitignore-file PATH
+  ```
+
+* **Variables**
+
+  ```
+  -V/--var name=value           # string
+  -J/--json-var name='JSON'     # raw JSON (must be valid)
+  ```
+
+* **Model & sampling**
+
+  ```
+  -m/--model NAME                 --temperature FLOAT
+  --top-p FLOAT                   --max-output-tokens INT
+  --frequency-penalty FLOAT       --presence-penalty FLOAT
+  --reasoning-effort {low|medium|high}
+  ```
+
+* **System‑prompt controls** `--sys-prompt TEXT | --sys-prompt-file FILE | --ignore-task-sysprompt`
+
+* **API / config** `--api-key`, `--timeout`, `--config PATH`
+
+* **Output, validation & debug**
+
+  ```
+  --output-file FILE          --dry-run | --dry-run-json
+  --run-summary-json          --progress {none|basic|detailed}
+  --verbose | --debug | --debug-openai-stream | --debug-validation
+  --template-debug CAP1[,CAP2|all]
+  ```
+
+* **Tool‑integration toggles & per‑tool flags**
+
+  ```
+  --tool-choice [auto|none|required|code-interpreter|file-search|web-search]  # auto=model picks, none=template-only, required=force tool use, single tool=restrict to that tool
+  --enable-tool/--disable-tool web-search   --ws-context-size LEVEL
+  --ws-country CC  --ws-region REGION  --ws-city CITY
+  --ci-cleanup  --ci-download-dir DIR       --ci-duplicate-outputs MODE
+  --fs-cleanup  --fs-store-name NAME        --fs-timeout SEC  --fs-retries N
+  --mcp-server LABEL@URL    --mcp-headers JSON
+  --mcp-require-approval {always|never}     --mcp-allowed-tools JSON
+  ```
+
+* **Upload‑cache** `--cache-uploads | --no-cache-uploads`, `--cache-path PATH`
+
+* **Environment variables** `OSTRUCT_TEMPLATE_FILE_LIMIT`, `OSTRUCT_TEMPLATE_TOTAL_LIMIT`, `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`, `OSTRUCT_CACHE_UPLOADS`, `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`, `OSTRUCT_IGNORE_GITIGNORE`, `OSTRUCT_GITIGNORE_FILE` for size limits, caching, and gitignore behaviour.
+
+* **Operational limits**
+
+  * Template + attachments trimmed to fit model context (see `--max-output-tokens` and tool token overhead budgets).
+  * Binary files have limited template access; content access raises errors but metadata (`.name`, `.path`, `.size`) works normally; pass binary files to Code‑Interpreter for analysis.
+  * Helper function `file_ref(alias)` generates XML appendix snippet for LLM visibility of file structure.
+  * Auto‑routing file‑type detection upgraded with Magika if `pip install ostruct-cli[enhanced-detection]` is used.
+
+* **Always‑remember heuristics**
+
+  1. First run with `--dry-run` to see the fully‑rendered prompt and detect schema errors locally (syntax only).
+  2. Use explicit `--tool-choice none` when structured data is the *only* goal.
+  3. Keep schemas minimal but descriptive; model matches keys by name, descriptions improve coercion quality.
+  4. Refresh models via `update-registry` to lock in newest OpenAI releases.
+
+## Resources
+
+* [GitHub repo](https://github.com/yaniv-golan/ostruct/) - includes this llms.txt for LLM use
+* [Full docs (Read‑the‑Docs)](https://ostruct.readthedocs.io/en/latest/)
+* [llms.txt format specification](https://llmstxt.org/#format)
+
+[1]: https://jinja.palletsprojects.com/en/stable/sandbox/
+[2]: https://platform.openai.com/docs/guides/structured-outputs
+[3]: https://community.openai.com/t/structured-outputs-now-available-in-the-api/896796
+[7]: https://github.com/yaniv-golan/ostruct/
+[8]: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs
+[9]: https://developer.mamezou-tech.com/en/blogs/2024/08/07/openai-structured-outputs/
