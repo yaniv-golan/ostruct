@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2025-07-21
+
+### Added
+
+- **llms.txt file**: Added standardized llms.txt file following llmstxt.org format for LLM consumption with complete CLI documentation and technical reference
+
+### Improved
+
+- **Storyboard-to-VEO3 Example**: Enhanced documentation and usability for video production automation pipeline
+
 ## [1.4.0] - 2025-01-20
 
 ### Added
