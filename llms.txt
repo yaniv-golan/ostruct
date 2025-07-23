@@ -84,11 +84,19 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
 
 * **Environment variables** `OSTRUCT_TEMPLATE_FILE_LIMIT`, `OSTRUCT_TEMPLATE_TOTAL_LIMIT`, `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`, `OSTRUCT_CACHE_UPLOADS`, `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`, `OSTRUCT_IGNORE_GITIGNORE`, `OSTRUCT_GITIGNORE_FILE` for size limits, caching, and gitignore behaviour.
 
+* **Template functions**
+
+  * Template function `file_ref(alias)` creates structured file references: renders as `<alias>` in-prompt and automatically generates XML appendix at prompt end containing actual file contents. Only referenced aliases appear in appendix. Alternative to manual `{{ alias.content }}` access for reference material placement.
+  * Template function `safe_get(path, default)` prevents errors when accessing nested object properties: takes dot-separated string path (e.g., `"config.database.host"`) and returns value if exists/non-empty, otherwise returns default. Avoids UndefinedError/KeyError exceptions from risky direct access like `{{ config.database.host }}`.
+  * Template filter `single` extracts single item from file collections: `{{ files | single }}` returns the file when exactly one file exists, raises error otherwise. Use for templates expecting one file but receiving collections.
+  * Template filters `to_json` and `from_json` handle JSON conversion: `{{ data | to_json }}` serializes objects to JSON strings, `{{ json_string | from_json }}` parses JSON strings to objects. Provides safe fallbacks for non‑serializable objects.
+  * Also, estimate_tokens(text) function, format_code([language]) filter
+
 * **Operational limits**
 
   * Template + attachments trimmed to fit model context (see `--max-output-tokens` and tool token overhead budgets).
   * Binary files have limited template access; content access raises errors but metadata (`.name`, `.path`, `.size`) works normally; pass binary files to Code‑Interpreter for analysis.
-  * Helper function `file_ref(alias)` generates XML appendix snippet for LLM visibility of file structure.
+
   * Auto‑routing file‑type detection upgraded with Magika if `pip install ostruct-cli[enhanced-detection]` is used.
 
 * **Always‑remember heuristics**
