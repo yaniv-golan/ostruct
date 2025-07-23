@@ -12,7 +12,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   * *OpenAI enforces validity*: the `response_format={"type":"json_object","schema":…}` parameter activates constrained decoding; any schema violation triggers an API error rather than malformed output reaching the CLI([Microsoft Learn][8], [developer.mamezou-tech.com][9]). `ostruct` then re-validates with Pydantic for additional type safety.
   * *LLM cost hygiene*: include only the schema‑relevant parts of large files; use `--dry-run` for offline token estimates and to preview the fully‑expanded prompt without burning quota.
   * *Security*: default deny on unknown paths; override with `--allow` flags or by listing approved roots in a policy file; `.gitignore` respected unless `--ignore-gitignore` is set.
-  * *Tool routing*: attach data to specific tools via `[target:]alias path` (`ci:` for Code Interpreter, `fs:` for File Search, `web:` for Web Search, `ud:` for direct PDF/vision input, `prompt:` for inline‑only, `auto:` for type-based routing).
+  * *Tool routing*: attach data to specific tools via `[target:]alias path` (`ci:` for Code Interpreter, `fs:` for File Search, `web:` for Web Search, `ud:` for direct PDF/vision input, `prompt:` for inline‑only, `auto:` for type-based routing). **Known issue**: OpenAI Responses API `file_search` returns empty results despite successful vector store creation (upstream bug, affects all models).
   * *JSON Schema rules* mirror OpenAI: top‑level must be `"type":"object"`, every property declares `"type"` and `"description"`, arrays require `"items"`, `$defs` allowed, avoid `oneOf/anyOf` for best success rate([developer.mamezou-tech.com][9]).
 
 * **Command surface (every sub‑command)**

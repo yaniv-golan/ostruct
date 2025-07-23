@@ -529,6 +529,12 @@ ostruct run template.j2 schema.json --help-debug
 ostruct run --help
 ```
 
+## Known Issues
+
+### OpenAI API Limitations
+
+- **File Search Empty Results**: The OpenAI Responses API `file_search` tool currently has a known issue where it returns empty results despite successful vector store creation. This affects all models and is an upstream OpenAI API bug. See [known-issues/2025-07-openai-file-search-empty-results.md](known-issues/2025-07-openai-file-search-empty-results.md) for detailed information and community reports.
+
 ## Getting Support
 
 If you've followed this troubleshooting guide and still have issues:
