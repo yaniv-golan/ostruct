@@ -156,3 +156,5 @@ yaniv-private/
 /tools/ost-generator/test_output/
 /tools/ost-generator/*.log
 /tools/ost-generator/ostruct_json_debug_*.txt
+openai_api_tests/
+.repomix/bundles.json
