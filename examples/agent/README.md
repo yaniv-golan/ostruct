@@ -44,6 +44,60 @@ The sandboxed agent system consists of:
 
 ## Architecture
 
+### Agent Loop Overview
+
+```mermaid
+graph TD
+    A[User Task] --> B[PlannerGPT]
+    B --> C[Generate Initial Plan]
+    C --> D[State Manager]
+
+    D --> E{More Steps?}
+    E -->|Yes| F[DAG Sort Steps]
+    E -->|No| G[ReplanGPT]
+
+    F --> H[Next Step]
+    H --> I{Previously Blocked?}
+    I -->|Yes| J[Skip Step]
+    I -->|No| K[CriticGPT]
+
+    K --> L{Step Valid?}
+    L -->|No| M[Block & Generate Patches]
+    L -->|Yes| N[Tool Executor]
+
+    M --> O[Inject Patch Steps]
+    O --> P[Record Block History]
+    P --> Q[Update State]
+
+    N --> R{Execution Success?}
+    R -->|Yes| S[Record Success]
+    R -->|No| T[Record Failure]
+
+    S --> Q
+    T --> Q
+    J --> Q
+
+    Q --> U{Task Complete?}
+    U -->|Yes| V[Final Answer]
+    U -->|No| W{Max Turns?}
+    W -->|Yes| X[Timeout]
+
+    W -->|No| Y{Patch Steps Available?}
+    Y -->|Yes| E
+    Y -->|No| G
+
+    G --> Z[Analyze Current State]
+    Z --> AA[Generate New Steps]
+    AA --> D
+
+    style B fill:#e1f5fe
+    style G fill:#e8f5e8
+    style K fill:#fff3e0
+    style N fill:#f3e5f5
+    style D fill:#fce4ec
+    style M fill:#ffe0e0
+```
+
 ### Components
 
 - **`runner.sh`**: Main orchestrator script
@@ -56,9 +110,51 @@ The sandboxed agent system consists of:
 ### Execution Flow
 
 1. **Planning**: PlannerGPT analyzes the task and creates an initial plan
-2. **Execution**: Each step is executed safely in the sandbox
-3. **Replanning**: ReplanGPT adapts the plan based on results
-4. **Iteration**: Process repeats until task completion or failure
+2. **Dependency Sorting**: Steps are sorted using DAG analysis for optimal execution order
+3. **Block Filtering**: Previously blocked steps are skipped to avoid repeated failures
+4. **Validation**: CriticGPT evaluates remaining steps for safety and effectiveness
+5. **Patch Injection**: Blocked steps trigger patch generation and plan modification
+6. **Execution**: Valid steps are executed safely in the sandbox
+7. **State Management**: Results, failures, and block history are tracked
+8. **Replanning**: ReplanGPT adapts the plan when no patch steps remain
+9. **Iteration**: Process repeats until task completion or failure
+
+### Agent Components
+
+#### PlannerGPT
+
+- Creates structured execution plans from user tasks
+- Generates initial step sequences with tool selections
+- Considers available tools and sandbox constraints
+
+#### CriticGPT
+
+- Validates steps before execution using four dimensions:
+  - **Goal Alignment**: Does the step advance the task?
+  - **Safety Compliance**: Respects sandbox and security constraints?
+  - **Efficiency**: Avoids repeated failures and redundant operations?
+  - **Temporal Awareness**: Considers turn limits and progress?
+- Can generate up to 3 patch steps when blocking a step
+- Blocked steps are cached to avoid repeated validation
+- Integrates with failure pattern tracking and safety constraints
+
+#### ReplanGPT
+
+- Adapts plans based on execution results and current state
+- Learns from blocked steps and previous failures
+- Generates new step sequences when plans need adjustment
+
+#### Tool Executor
+
+- Safely executes validated steps in isolated sandbox
+- Enforces size limits, timeouts, and path restrictions
+- Provides structured results for state updates
+
+#### State Manager
+
+- Tracks execution history and current progress
+- Maintains step results, file operations, and failure patterns
+- Enables replanning with full context of previous attempts
 
 ## Available Tools
 
