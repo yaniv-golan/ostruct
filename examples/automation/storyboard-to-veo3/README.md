@@ -1,17 +1,21 @@
 # Storyboard to Veo3 Pipeline
 
-> **Tools:** ⚡ None (template-only) · 🔧 JSON Processing (jq)
+> **Tools:** ⚡ None (template-only) · 🔧 JSON Processing (jq) · 🔄 YAML Conversion (yq, optional)
 > **Cost (approx.):** <$0.10 with gpt-4o-mini, <$0.50 with gpt-4
 
 ## 1. Description
 
-Converts free-text storyboards into structured JSON prompts optimized for Google's Veo 3 video generation. The pipeline extracts reusable assets (characters, locations, props) and individual scenes, then provides tools to generate Veo3-ready JSON with inlined asset references. Perfect for consistent video generation where characters and settings need to remain uniform across scenes.
+Converts free-text storyboards into structured JSON/YAML prompts optimized for Google's Veo 3 video generation. The pipeline extracts reusable assets (characters, locations, props) and individual scenes, then provides tools to generate Veo3-ready JSON with inlined asset references. When `yq` is available, corresponding YAML files are automatically generated for all outputs. Perfect for consistent video generation where characters and settings need to remain uniform across scenes.
 
 ## 2. Prerequisites
 
 ```bash
 # JSON processing (automatically checked by run.sh)
 ./scripts/ensure_jq.sh
+
+# Optional: YAML support (for YAML output format)
+sudo apt-get install yq  # Ubuntu/Debian
+# or brew install yq     # macOS
 ```
 
 ## 3. Quick Start
@@ -44,19 +48,21 @@ Converts free-text storyboards into structured JSON prompts optimized for Google
 | `schemas/master.json` | Validates structured output containing assets array and scenes array |
 | `scripts/split_master_json.sh` | Splits master JSON into individual asset and scene files |
 | `scripts/combine_scene.sh` | Combines scenes with asset references into Veo3-ready JSON |
+| `scripts/json_to_yaml.sh` | Converts JSON files to YAML format (requires yq) |
 | `data/storyboard.txt` | Sample adventure storyboard with 8 scenes |
 | `data/test_storyboard.txt` | Minimal 2-scene storyboard for testing |
 
 ## 5. Pipeline Workflow
 
 ```
-Free-text storyboard → ostruct → Master JSON → Split → Veo3-ready JSON
+Free-text storyboard → ostruct → Master JSON → Split → Veo3-ready JSON/YAML
 ```
 
 1. **Input**: Natural language storyboard describing scenes, characters, and settings
 2. **Structure**: AI extracts reusable assets and breaks story into ≤8 second scenes
 3. **Split**: Helper scripts separate assets and scenes into modular files
 4. **Combine**: Generate final JSON with asset references resolved for video generation
+5. **Convert**: Optionally generate corresponding YAML files for all outputs (requires `yq`)
 
 ## 6. Expected Output
 
@@ -83,6 +89,8 @@ Free-text storyboard → ostruct → Master JSON → Split → Veo3-ready JSON
 ```
 
 ### Veo3-Ready Output
+
+**JSON Format:**
 ```json
 {
   "id": 1,
@@ -97,6 +105,18 @@ Free-text storyboard → ostruct → Master JSON → Split → Veo3-ready JSON
     }
   ]
 }
+```
+
+**YAML Format (when yq is available):**
+```yaml
+id: 1
+duration_seconds: 6
+text: "Dr. Elena hurries down the rain-soaked pier at dawn"
+assets:
+  - id: "elena-rodriguez"
+    kind: "character"
+    name: "Dr. Elena Rodriguez"
+    description: "Marine biologist with curly brown hair and wire-rim glasses"
 ```
 
 ## 7. Improving Output Quality
@@ -202,13 +222,37 @@ python scripts/convert_to_runway.py scene1_veo3.json
 python scripts/convert_to_pika.py scene1_veo3.json
 ```
 
-## 8. Integration Examples
+## 8. Interactive HTML Viewer
+
+The pipeline generates an interactive HTML viewer (`output/viewer.html`) that provides:
+
+- **Format Toggle**: Switch between JSON and YAML views with buttons at the top
+- **Scene Overview**: Summary cards showing total scenes and duration
+- **Copy Buttons**: One-click copying of individual scenes in your preferred format
+- **Responsive Design**: Works on desktop and mobile browsers
+
+**Features:**
+- Toggle between JSON and YAML formats instantly
+- Copy scene data directly to clipboard for pasting into Veo3
+- Visual scene breakdown with metadata display
+- No server required - works as a standalone HTML file
+
+**Usage:**
+```bash
+./run.sh                    # Generate viewer with all scenes
+open output/viewer.html     # Open in browser
+```
+
+The viewer automatically detects available YAML files and enables the YAML toggle when `yq` is installed and YAML files are generated.
+
+## 9. Integration Examples
 
 ### With Veo 3 Flow UI
 ```bash
 # Generate scene-by-scene
 ./run.sh --scene 1
 # Copy output/scene_1_veo3.json content to Veo 3 interface
+# Or use YAML format: output/scene_1_veo3.yaml
 ```
 
 ### With Vertex AI API
