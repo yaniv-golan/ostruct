@@ -316,8 +316,44 @@ Each file variable provides these properties:
    {{ file.first }}          <!-- First file (itself for single files) -->
    {{ file.is_collection }}  <!-- False for single files -->
 
-File References (Optional)
-===========================
+File Attachment System
+=======================
+
+File Attachment Helpers
+------------------------
+
+ostruct provides two workflows for handling files in templates:
+
+**Text Workflow (XML Appendix)**
+
+For including file content as text in an XML appendix:
+
+.. code-block:: jinja
+
+   Review the configuration in {{ get_embed_ref("config") }}.
+
+   {{ embed_text("config") }}
+
+**Binary Workflow (Vision/Code Interpreter)**
+
+For direct model access to files (vision, code execution):
+
+.. code-block:: jinja
+
+   Analyze {{ get_file_ref("chart.png") }} for trends.
+
+   {{ attach_file("chart.png") }}
+
+**Template Helper Functions:**
+
+- ``attach_file(path)``: Attach a file for binary model access
+- ``get_file_ref(path)``: Get the deterministic label for a file
+- ``embed_text(alias)``: Schedule file content for XML appendix inclusion
+- ``get_embed_ref(alias)``: Get reference tag for embedded content
+- ``file_ref(alias)``: **Deprecated** - Use ``get_embed_ref()`` + ``embed_text()`` instead
+
+Legacy File References (Optional)
+----------------------------------
 
 File references provide an **optional** mechanism to reference attached files in templates using ``{{ file_ref("alias") }}`` syntax. When used, files are automatically included in an XML appendix at the end of your prompt.
 

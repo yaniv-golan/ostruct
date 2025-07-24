@@ -288,6 +288,22 @@ Utility Functions
    {{ type_of(variable) }}             <!-- Get type name -->
    {{ debug(variable) }}               <!-- Debug output -->
 
+File Attachment Helpers
+------------------------
+
+.. code-block:: jinja
+
+   <!-- Text workflow (XML appendix) -->
+   {{ embed_text("config") }}          <!-- Schedule file for appendix -->
+   {{ get_embed_ref("config") }}       <!-- Get reference tag: <config> -->
+
+   <!-- Binary workflow (vision/code interpreter) -->
+   {{ attach_file("chart.png") }}      <!-- Attach for binary access -->
+   {{ get_file_ref("chart.png") }}     <!-- Get file label: FILE A -->
+
+   <!-- Deprecated -->
+   {{ file_ref("alias") }}             <!-- Use get_embed_ref() instead -->
+
 Token Estimation
 ----------------
 

@@ -656,6 +656,68 @@ Files attached with ``prompt`` target (default) are available in templates but n
 
 **Template Access**: Use ``{{ alias.content }}`` or ``{{ alias }}`` to access file content in templates.
 
+File Attachment Helpers
+========================
+
+ostruct provides two workflows for handling files in templates:
+
+**Text Workflow (XML Appendix)**
+
+For including file content as text in an XML appendix:
+
+.. code-block:: jinja
+
+   Review the configuration in {{ get_embed_ref("config") }}.
+
+   {{ embed_text("config") }}
+
+**Binary Workflow (Vision/Code Interpreter)**
+
+For direct model access to files (vision, code execution):
+
+.. code-block:: jinja
+
+   Analyze {{ get_file_ref("chart.png") }} for trends.
+
+   {{ attach_file("chart.png") }}
+
+Template Helper Reference
+-------------------------
+
+.. function:: attach_file(path)
+
+   Attach a file for binary model access (vision/code interpreter).
+
+   :param path: Path to file to attach
+   :returns: Placeholder (replaced with API structures)
+   :side-effects: Registers file for binary attachment
+
+.. function:: get_file_ref(path)
+
+   Get the deterministic label for a file.
+
+   :param path: Path to file
+   :returns: Label string (e.g., "FILE A", "document-1")
+
+.. function:: embed_text(alias)
+
+   Schedule file content for XML appendix inclusion.
+
+   :param alias: File alias from CLI attachment
+   :returns: Empty string
+   :side-effects: Registers alias for appendix inclusion
+
+.. function:: get_embed_ref(alias)
+
+   Get reference tag for embedded content.
+
+   :param alias: File alias from CLI attachment
+   :returns: Reference string (e.g., "<config>")
+
+.. function:: file_ref(alias)
+
+   **Deprecated:** Use ``get_embed_ref()`` + ``embed_text()`` instead.
+
 Code Interpreter Examples
 -------------------------
 
@@ -1011,6 +1073,25 @@ Upload Cache Options
 
 .. seealso::
    For comprehensive information about the upload cache system, including configuration, TTL management, and troubleshooting, see :doc:`upload_cache_guide`.
+
+.. option:: --files-label-style {alpha,filename}
+
+   Label style for file attachments (default: alpha).
+
+   Controls how files are labeled in template helpers and references.
+
+   - ``alpha``: Generate labels like "FILE A", "FILE B", "FILE C"
+   - ``filename``: Use basenames like "config.yaml", "data.txt"
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Use filename-based labels
+      ostruct run template.j2 schema.json --files-label-style filename
+
+      # Use alphabetic labels (default)
+      ostruct run template.j2 schema.json --files-label-style alpha
 
 .. option:: --cache-uploads / --no-cache-uploads
 

@@ -1,5 +1,6 @@
 """Integration tests for SharedUploadManager TTL functionality."""
 
+import hashlib
 import tempfile
 import time
 from pathlib import Path
@@ -9,6 +10,11 @@ import pytest
 
 from src.ostruct.cli.upload_cache import UploadCache
 from src.ostruct.cli.upload_manager import SharedUploadManager
+
+
+def make_test_hash(pattern: str) -> str:
+    """Generate a proper SHA-256 hash for test patterns."""
+    return hashlib.sha256(pattern.encode()).hexdigest()
 
 
 @pytest.mark.asyncio
@@ -51,7 +57,9 @@ class TestSharedUploadManagerTTL:
         manager._all_uploaded_ids.add(file_id_uncached)
 
         # Cache one file (simulate it was uploaded and cached)
-        manager._cache.store("hash123", file_id_cached, 1024, int(time.time()))
+        manager._cache.store(
+            make_test_hash("123"), file_id_cached, 1024, int(time.time())
+        )
 
         # Run cleanup with 14-day TTL
         await manager.cleanup_uploads(ttl_days=14)
@@ -84,7 +92,7 @@ class TestSharedUploadManagerTTL:
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
                 (
-                    "hashexpired",
+                    make_test_hash("expired"),
                     file_id_expired,
                     "sha256",
                     1024,
@@ -110,7 +118,8 @@ class TestSharedUploadManagerTTL:
         manager._all_uploaded_ids.add(file_id_404)
 
         # Cache the file
-        manager._cache.store("hash404", file_id_404, 1024, int(time.time()))
+        hash_404 = make_test_hash("404")
+        manager._cache.store(hash_404, file_id_404, 1024, int(time.time()))
 
         # Mock 404 error
         mock_client.files.delete.side_effect = Exception("404 Not Found")
@@ -119,7 +128,7 @@ class TestSharedUploadManagerTTL:
         await manager.cleanup_uploads(ttl_days=0)  # Force deletion attempt
 
         # Verify cache entry was cleaned up
-        assert manager._cache.lookup("hash404") is None
+        assert manager._cache.lookup(hash_404) is None
 
     async def test_cleanup_updates_last_accessed(
         self, upload_manager_with_cache, mock_client
@@ -131,7 +140,9 @@ class TestSharedUploadManagerTTL:
         manager._all_uploaded_ids.add(file_id)
 
         # Cache the file
-        manager._cache.store("hashlru", file_id, 1024, int(time.time()))
+        manager._cache.store(
+            make_test_hash("lru"), file_id, 1024, int(time.time())
+        )
 
         # Record time before cleanup
         before_cleanup = time.time()
@@ -163,7 +174,7 @@ class TestSharedUploadManagerTTL:
 
         # Cache the file (recent)
         manager._cache.store(
-            "hashimmediate", file_id_cached, 1024, int(time.time())
+            make_test_hash("immediate"), file_id_cached, 1024, int(time.time())
         )
 
         # Run cleanup with TTL=0 (immediate deletion)
@@ -204,7 +215,9 @@ class TestSharedUploadManagerTTL:
         manager._all_uploaded_ids.add(file_uncached)
 
         # Cache one file
-        manager._cache.store("hashlog", file_cached, 1024, int(time.time()))
+        manager._cache.store(
+            make_test_hash("log"), file_cached, 1024, int(time.time())
+        )
 
         # Run cleanup
         await manager.cleanup_uploads(ttl_days=14)
@@ -242,7 +255,10 @@ class TestSharedUploadManagerTTL:
             # Cache every other file
             if i % 2 == 0:
                 manager._cache.store(
-                    f"hash{i}", file_id, 1024, int(time.time())
+                    make_test_hash(f"perf-{i}"),
+                    file_id,
+                    1024,
+                    int(time.time()),
                 )
 
         # Measure cleanup time

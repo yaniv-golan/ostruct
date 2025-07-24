@@ -2,6 +2,7 @@
 
 import click
 
+from .files import files
 from .list_models import list_models
 from .run import run
 from .runx import runx
@@ -22,6 +23,7 @@ def create_command_group() -> click.Group:
     group.add_command(setup)
     group.add_command(update_registry)
     group.add_command(list_models)
+    group.add_command(files)
 
     return group
 
@@ -34,5 +36,6 @@ __all__ = [
     "setup",
     "update_registry",
     "list_models",
+    "files",
     "create_command_group",
 ]

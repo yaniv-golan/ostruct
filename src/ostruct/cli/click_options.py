@@ -964,6 +964,16 @@ def file_options(f: Union[Command, Callable[..., Any]]) -> Command:
     # Attach options first (in reverse order since they stack)
     for deco in (
         click.option(
+            "--files-label-style",
+            type=click.Choice(["alpha", "filename"]),
+            default="alpha",
+            show_default=True,
+            help="""Label style for file attachments.
+'alpha' generates labels like FILE A, FILE B, FILE C.
+'filename' uses the basename like config.yaml, data.txt.
+Example: --files-label-style filename""",
+        ),
+        click.option(
             "--cache-path",
             type=click.Path(dir_okay=False),
             help="""Path to upload cache database.

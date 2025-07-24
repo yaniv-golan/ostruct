@@ -7,10 +7,49 @@ import sqlite3
 import threading
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CachedFileInfo:
+    """Information about a cached file."""
+
+    file_id: str
+    hash: str
+    size: int
+    path: str
+    created_at: int
+    metadata: Optional[Dict[str, Any]] = None
+
+
+def generate_label(file_hash: str, label_style: str = "alpha") -> str:
+    """Generate deterministic label for a file hash.
+
+    Args:
+        file_hash: SHA-256 hash of file content
+        label_style: "alpha" for FILE A/B/C or "filename" for basename
+
+    Returns:
+        Deterministic label string
+    """
+    if label_style == "filename":
+        # Will be overridden with actual filename in store()
+        return "PLACEHOLDER"
+
+    # Alpha style: FILE A, FILE B, ..., FILE Z, AA, AB, etc.
+    index = (
+        int(file_hash[:8], 16) % 1000
+    )  # Use hash for deterministic ordering
+    if index < 26:
+        return f"FILE {chr(65 + index)}"
+    else:
+        first = chr(65 + (index // 26) - 1)
+        second = chr(65 + (index % 26))
+        return f"FILE {first}{second}"
 
 
 class UploadCache:
@@ -43,7 +82,7 @@ class UploadCache:
                 conn.execute("PRAGMA journal_mode = WAL")
                 conn.execute("PRAGMA foreign_keys = ON")
 
-                # Create base table without last_accessed (for migration compatibility)
+                # Create base table with all columns for new databases
                 conn.execute(
                     """
                     CREATE TABLE IF NOT EXISTS files (
@@ -53,7 +92,9 @@ class UploadCache:
                         size        INTEGER NOT NULL,
                         mtime       INTEGER NOT NULL,
                         created_at  INTEGER NOT NULL,
-                        metadata    JSON
+                        metadata    JSON,
+                        last_accessed INTEGER,
+                        path        TEXT DEFAULT ''
                     )
                 """
                 )
@@ -69,6 +110,16 @@ class UploadCache:
                 except sqlite3.OperationalError:
                     # Column already exists, which is expected
                     logger.debug("[cache] last_accessed column already exists")
+
+                # Add path column if it doesn't exist (proper migration)
+                try:
+                    conn.execute(
+                        "ALTER TABLE files ADD COLUMN path TEXT DEFAULT ''"
+                    )
+                    logger.debug("[cache] Added path column to existing table")
+                except sqlite3.OperationalError:
+                    # Column already exists, which is expected
+                    logger.debug("[cache] path column already exists")
 
                 conn.execute(
                     """
@@ -100,7 +151,8 @@ class UploadCache:
                             mtime       INTEGER NOT NULL,
                             created_at  INTEGER NOT NULL,
                             last_accessed INTEGER,
-                            metadata    JSON
+                            metadata    JSON,
+                            path        TEXT DEFAULT ''
                         )
                     """
                     )
@@ -116,6 +168,9 @@ class UploadCache:
             else:
                 # File doesn't exist, this is a normal case - re-raise
                 raise
+
+        # Add new tables for vector store support (automatic migration)
+        self._add_vector_store_tables()
 
     @contextmanager
     def _get_connection(self) -> Any:
@@ -177,21 +232,56 @@ class UploadCache:
         size: int,
         mtime: int,
         metadata: Optional[Dict[str, Any]] = None,
+        file_path: Optional[str] = None,
+        label_style: str = "alpha",
     ) -> None:
-        """Store file upload record in cache (thread-safe)."""
+        """Store file upload record in cache with label generation (thread-safe)."""
         # Use per-file locking to prevent race conditions
         file_lock = self._get_file_lock(file_hash)
 
         with file_lock:
             try:
+                if metadata is None:
+                    metadata = {}
+
+                # Normalize file path to absolute path for consistent storage
+                normalized_path = ""
+                if file_path:
+                    try:
+                        normalized_path = str(Path(file_path).resolve())
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to resolve path {file_path}: {e}"
+                        )
+                        normalized_path = file_path
+
+                # Generate label if not already present
+                if "label" not in metadata:
+                    if label_style == "filename" and file_path:
+                        base_label = Path(file_path).stem
+                        # Handle collisions by checking existing labels
+                        existing_labels = self._get_existing_labels()
+                        final_label = base_label
+                        collision_count = 0
+                        while final_label in existing_labels:
+                            collision_count += 1
+                            final_label = f"{base_label}-{collision_count}"
+                        metadata["label"] = final_label
+                    else:
+                        metadata["label"] = generate_label(
+                            file_hash, label_style
+                        )
+
+                    metadata["label_style"] = label_style
+
                 with self._get_connection() as conn:
                     conn.execute("BEGIN IMMEDIATE")
                     current_time = int(time.time())
                     conn.execute(
                         """
                         INSERT OR REPLACE INTO files
-                        (hash, file_id, algo, size, mtime, created_at, last_accessed, metadata)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        (hash, file_id, algo, size, mtime, created_at, last_accessed, metadata, path)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                         (
                             file_hash,
@@ -202,6 +292,7 @@ class UploadCache:
                             current_time,
                             current_time,  # Set last_accessed to creation time
                             json.dumps(metadata) if metadata else None,
+                            normalized_path,  # Store the normalized absolute path
                         ),
                     )
                     conn.commit()
@@ -502,3 +593,317 @@ class UploadCache:
 
             except Exception as e:
                 logger.warning(f"[cache] Failed to cleanup file locks: {e}")
+
+    def _add_vector_store_tables(self) -> None:
+        """Add vector store tables for automatic migration."""
+        try:
+            with self._get_connection() as conn:
+                # Create vector_stores table
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS vector_stores (
+                        vector_store_id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        last_used INTEGER NOT NULL,
+                        metadata JSON
+                    )
+                    """
+                )
+
+                # Create file_vector_store_mappings table
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS file_vector_store_mappings (
+                        file_hash TEXT NOT NULL,
+                        vector_store_id TEXT NOT NULL,
+                        added_at INTEGER NOT NULL,
+                        PRIMARY KEY (file_hash, vector_store_id),
+                        FOREIGN KEY (file_hash) REFERENCES files(hash) ON DELETE CASCADE,
+                        FOREIGN KEY (vector_store_id) REFERENCES vector_stores(vector_store_id) ON DELETE CASCADE
+                    )
+                    """
+                )
+
+                # Create indexes (using IF NOT EXISTS for safety)
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_vector_stores_name ON vector_stores(name)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_vector_stores_last_used ON vector_stores(last_used)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_mappings_file_hash ON file_vector_store_mappings(file_hash)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_mappings_vector_store ON file_vector_store_mappings(vector_store_id)"
+                )
+
+                # Performance optimization: Index on label extraction for large caches (>50k files)
+                # Note: Requires SQLite 3.9+ for json_extract support
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_files_label ON files(json_extract(metadata,'$.label'))"
+                )
+
+                logger.debug(
+                    "[cache] Vector store tables and indexes created/verified"
+                )
+
+        except sqlite3.Error as e:
+            logger.warning(
+                f"[cache] Failed to create vector store tables: {e}"
+            )
+            # Continue without vector store support - graceful degradation
+            logger.info("[cache] Vector store features will be disabled")
+
+    def _get_existing_labels(self) -> Set[str]:
+        """Get all existing labels to detect collisions."""
+        try:
+            with self._get_connection() as conn:
+                results = conn.execute(
+                    "SELECT metadata FROM files WHERE metadata IS NOT NULL"
+                ).fetchall()
+
+                labels = set()
+                for row in results:
+                    try:
+                        meta = json.loads(row["metadata"])
+                        if "label" in meta:
+                            labels.add(meta["label"])
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+                return labels
+        except Exception as e:
+            logger.warning(f"Failed to get existing labels: {e}")
+            return set()
+
+    def get_label_and_file_id(
+        self, file_hash: str
+    ) -> Optional[Tuple[str, str]]:
+        """Get label and file_id for a file hash."""
+        try:
+            with self._get_connection() as conn:
+                result = conn.execute(
+                    "SELECT file_id, metadata FROM files WHERE hash = ? AND algo = ?",
+                    (file_hash, self.hash_algo),
+                ).fetchone()
+
+                if not result:
+                    return None
+
+                try:
+                    metadata = (
+                        json.loads(result["metadata"])
+                        if result["metadata"]
+                        else {}
+                    )
+                    label = metadata.get("label", "UNKNOWN")
+                    return (label, result["file_id"])
+                except (json.JSONDecodeError, KeyError):
+                    return (f"FILE_{file_hash[:8]}", result["file_id"])
+
+        except Exception as e:
+            logger.warning(f"Failed to get label and file_id: {e}")
+            return None
+
+    def list_all(self) -> List[CachedFileInfo]:
+        """List all cached files."""
+        try:
+            with self._get_connection() as conn:
+                results = conn.execute(
+                    "SELECT file_id, hash, size, created_at, metadata, path FROM files WHERE algo = ?",
+                    (self.hash_algo,),
+                ).fetchall()
+
+                files = []
+                for row in results:
+                    metadata = None
+                    if row["metadata"]:
+                        try:
+                            metadata = json.loads(row["metadata"])
+                        except json.JSONDecodeError:
+                            pass
+
+                    files.append(
+                        CachedFileInfo(
+                            file_id=row["file_id"],
+                            hash=row["hash"],
+                            size=row["size"],
+                            path=row["path"] or "",  # Use stored path
+                            created_at=row["created_at"],
+                            metadata=metadata,
+                        )
+                    )
+
+                return files
+        except Exception as e:
+            logger.warning(f"Failed to list all files: {e}")
+            return []
+
+    def get_by_file_id(self, file_id: str) -> Optional[CachedFileInfo]:
+        """Get cached file info by file_id."""
+        try:
+            with self._get_connection() as conn:
+                result = conn.execute(
+                    "SELECT file_id, hash, size, created_at, metadata, path FROM files WHERE file_id = ?",
+                    (file_id,),
+                ).fetchone()
+
+                if not result:
+                    return None
+
+                metadata = None
+                if result["metadata"]:
+                    try:
+                        metadata = json.loads(result["metadata"])
+                    except json.JSONDecodeError:
+                        pass
+
+                return CachedFileInfo(
+                    file_id=result["file_id"],
+                    hash=result["hash"],
+                    size=result["size"],
+                    path=result["path"] or "",  # Use stored path
+                    created_at=result["created_at"],
+                    metadata=metadata,
+                )
+        except Exception as e:
+            logger.warning(f"Failed to get file by file_id: {e}")
+            return None
+
+    def update_metadata(self, file_id: str, metadata: Dict[str, Any]) -> None:
+        """Update metadata for a cached file."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute(
+                    "UPDATE files SET metadata = ? WHERE file_id = ?",
+                    (json.dumps(metadata), file_id),
+                )
+                conn.commit()
+                logger.debug(f"[cache] Updated metadata for {file_id}")
+        except Exception as e:
+            logger.warning(
+                f"[cache] Failed to update metadata for {file_id}: {e}"
+            )
+
+    def register_vector_store(
+        self,
+        vector_store_id: str,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Register a vector store in the cache."""
+        try:
+            with self._get_connection() as conn:
+                current_time = int(time.time())
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO vector_stores
+                    (vector_store_id, name, created_at, last_used, metadata)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        vector_store_id,
+                        name,
+                        current_time,
+                        current_time,
+                        json.dumps(metadata) if metadata else None,
+                    ),
+                )
+                conn.commit()
+                logger.debug(
+                    f"[cache] Registered vector store: {name} -> {vector_store_id}"
+                )
+        except Exception as e:
+            logger.warning(f"[cache] Failed to register vector store: {e}")
+
+    def get_vector_store_by_name(self, name: str) -> Optional[str]:
+        """Get vector store ID by name."""
+        try:
+            with self._get_connection() as conn:
+                result = conn.execute(
+                    "SELECT vector_store_id FROM vector_stores WHERE name = ?",
+                    (name,),
+                ).fetchone()
+                return result["vector_store_id"] if result else None
+        except Exception as e:
+            logger.warning(
+                f"[cache] Failed to lookup vector store by name: {e}"
+            )
+            return None
+
+    def add_file_to_vector_store(
+        self, file_hash: str, vector_store_id: str
+    ) -> None:
+        """Add a file to a vector store mapping."""
+        try:
+            with self._get_connection() as conn:
+                current_time = int(time.time())
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO file_vector_store_mappings
+                    (file_hash, vector_store_id, added_at)
+                    VALUES (?, ?, ?)
+                    """,
+                    (file_hash, vector_store_id, current_time),
+                )
+                # Update vector store last_used timestamp
+                conn.execute(
+                    "UPDATE vector_stores SET last_used = ? WHERE vector_store_id = ?",
+                    (current_time, vector_store_id),
+                )
+                conn.commit()
+                logger.debug(
+                    f"[cache] Added file {file_hash[:8]}... to vector store {vector_store_id}"
+                )
+        except Exception as e:
+            logger.warning(f"[cache] Failed to add file to vector store: {e}")
+
+    def get_files_in_vector_store(self, vector_store_id: str) -> List[str]:
+        """Get all file hashes in a vector store."""
+        try:
+            with self._get_connection() as conn:
+                results = conn.execute(
+                    "SELECT file_hash FROM file_vector_store_mappings WHERE vector_store_id = ?",
+                    (vector_store_id,),
+                ).fetchall()
+                return [row["file_hash"] for row in results]
+        except Exception as e:
+            logger.warning(f"[cache] Failed to get files in vector store: {e}")
+            return []
+
+    def list_vector_stores(self) -> List[Dict[str, Any]]:
+        """List all vector stores with their metadata."""
+        try:
+            with self._get_connection() as conn:
+                results = conn.execute(
+                    """
+                    SELECT vs.vector_store_id, vs.name, vs.created_at, vs.last_used, vs.metadata,
+                           COUNT(fvs.file_hash) as file_count
+                    FROM vector_stores vs
+                    LEFT JOIN file_vector_store_mappings fvs ON vs.vector_store_id = fvs.vector_store_id
+                    GROUP BY vs.vector_store_id, vs.name, vs.created_at, vs.last_used, vs.metadata
+                    ORDER BY vs.last_used DESC
+                    """
+                ).fetchall()
+
+                vector_stores = []
+                for row in results:
+                    metadata = (
+                        json.loads(row["metadata"]) if row["metadata"] else {}
+                    )
+                    vector_stores.append(
+                        {
+                            "vector_store_id": row["vector_store_id"],
+                            "name": row["name"],
+                            "created_at": row["created_at"],
+                            "last_used": row["last_used"],
+                            "file_count": row["file_count"],
+                            "metadata": metadata,
+                        }
+                    )
+                return vector_stores
+        except Exception as e:
+            logger.warning(f"[cache] Failed to list vector stores: {e}")
+            return []

@@ -19,7 +19,7 @@ dependencies = [
     "typing-extensions>=4.9.0,<5.0",
     "pyyaml>=6.0.2,<7.0",
     "tomli>=2.0.1,<3.0;python_version<'3.11'",
-    "click>=8.1.7,<9.0",
+    "click>=8.2.1,<9.0",
     "werkzeug>=3.1.3,<4.0",
     "openai==1.81.0",
     "tiktoken==0.9.0",
@@ -33,6 +33,8 @@ dependencies = [
     "rich-click>=1.8.9,<2.0.0",
     "rich>=13.0.0,<14.0.0",
     "pathspec>=0.12.1,<0.13.0",
+    "tabulate (>=0.9.0,<0.10.0)",
+    "questionary>=2.0.0,<3.0.0",
 ]
 
 [project.scripts]
@@ -110,6 +112,7 @@ types-psutil = ">=7.0.0,<8.0.0"
 hypothesis = "^6.135.4"
 pyinstaller = "^6.13"
 sphinx-rtd-theme = ">=3.0,<4.0"
+types-tabulate = "^0.9.0.20241207"
 
 [tool.flake8]
 max-line-length = 120

@@ -1,5 +1,6 @@
 """Tests for upload cache functionality."""
 
+import hashlib
 import tempfile
 import threading
 import time
@@ -9,6 +10,11 @@ from unittest.mock import patch
 import pytest
 
 from src.ostruct.cli.upload_cache import UploadCache
+
+
+def make_test_hash(pattern: str) -> str:
+    """Generate a proper SHA-256 hash for test patterns."""
+    return hashlib.sha256(pattern.encode()).hexdigest()
 
 
 @pytest.mark.no_fs
@@ -90,7 +96,11 @@ class TestUploadCache:
         """Test thread-safe concurrent access."""
 
         def store_entry(i):
-            temp_cache.store(f"hash{i}", f"file{i}", 1024, int(time.time()))
+            hash_val = make_test_hash(f"concurrent-{i}")
+            temp_cache.store(hash_val, f"file{i}", 1024, int(time.time()))
+
+        # Store hash values for later lookup
+        hash_values = [make_test_hash(f"concurrent-{i}") for i in range(10)]
 
         threads = []
         for i in range(10):
@@ -103,7 +113,7 @@ class TestUploadCache:
 
         # All entries should be stored
         for i in range(10):
-            assert temp_cache.lookup(f"hash{i}") == f"file{i}"
+            assert temp_cache.lookup(hash_values[i]) == f"file{i}"
 
     def test_cache_stats(self, temp_cache):
         """Test cache statistics."""
@@ -113,7 +123,12 @@ class TestUploadCache:
 
         # Add entries
         for i in range(5):
-            temp_cache.store(f"hash{i}", f"file{i}", 1024, int(time.time()))
+            temp_cache.store(
+                make_test_hash(f"stats-{i}"),
+                f"file{i}",
+                1024,
+                int(time.time()),
+            )
 
         stats = temp_cache.get_stats()
         assert stats["entries"] == 5
@@ -150,7 +165,7 @@ class TestUploadCache:
 
     def test_invalidate(self, temp_cache):
         """Test cache invalidation."""
-        file_hash = "test_hash"
+        file_hash = make_test_hash("test")
         temp_cache.store(file_hash, "file-123", 1024, int(time.time()))
 
         # Verify stored
@@ -164,7 +179,7 @@ class TestUploadCache:
 
     def test_metadata_storage(self, temp_cache):
         """Test storing metadata with cache entries."""
-        file_hash = "test_hash"
+        file_hash = make_test_hash("test")
         metadata = {"purpose": "assistants", "tool": "code_interpreter"}
 
         temp_cache.store(
@@ -201,7 +216,9 @@ class TestUploadCache:
         file_id = "file-123"
 
         # Store entry (created_at = now)
-        temp_cache.store("hash123", file_id, 1024, int(time.time()))
+        temp_cache.store(
+            make_test_hash("123"), file_id, 1024, int(time.time())
+        )
 
         # Test within TTL (14 days)
         assert temp_cache.is_file_cached_and_valid(file_id, 14) is True
@@ -229,7 +246,7 @@ class TestUploadCache:
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
                 (
-                    "hash456",
+                    make_test_hash("456"),
                     file_id,
                     "sha256",
                     1024,
@@ -250,16 +267,17 @@ class TestUploadCache:
         file_id = "file-404"
 
         # Store entry
-        temp_cache.store("hash404", file_id, 1024, int(time.time()))
+        hash_404 = make_test_hash("404")
+        temp_cache.store(hash_404, file_id, 1024, int(time.time()))
 
         # Verify it exists
-        assert temp_cache.lookup("hash404") == file_id
+        assert temp_cache.lookup(hash_404) == file_id
 
         # Clean up by file_id (simulates 404 cleanup)
         temp_cache.invalidate_by_file_id(file_id)
 
         # Should be gone
-        assert temp_cache.lookup("hash404") is None
+        assert temp_cache.lookup(hash_404) is None
 
         # Second cleanup should be safe (no error)
         temp_cache.invalidate_by_file_id(file_id)
@@ -269,7 +287,9 @@ class TestUploadCache:
         file_id = "file-lru"
 
         # Store entry
-        temp_cache.store("hashlru", file_id, 1024, int(time.time()))
+        temp_cache.store(
+            make_test_hash("lru"), file_id, 1024, int(time.time())
+        )
 
         # Update last_accessed
         before_update = time.time()
@@ -292,7 +312,9 @@ class TestUploadCache:
         created_time = int(time.time())
 
         # Store entry
-        temp_cache.store("hashcreated", file_id, 1024, created_time)
+        temp_cache.store(
+            make_test_hash("created"), file_id, 1024, created_time
+        )
 
         # Get created_at timestamp
         retrieved_time = temp_cache.get_created_at(file_id)
@@ -310,7 +332,7 @@ class TestUploadCache:
             try:
                 # Store entry
                 file_id = f"file-{worker_id}"
-                file_hash = f"hash-{worker_id}"
+                file_hash = make_test_hash(f"worker-{worker_id}")
                 temp_cache.store(file_hash, file_id, 1024, int(time.time()))
 
                 # Retrieve entry
@@ -346,5 +368,5 @@ class TestUploadCache:
             mock_conn.side_effect = Exception("Database corrupted")
 
             # Should not raise exception, just return None
-            result = temp_cache.lookup("any_hash")
+            result = temp_cache.lookup(make_test_hash("any"))
             assert result is None

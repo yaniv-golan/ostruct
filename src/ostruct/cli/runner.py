@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from pathlib import Path, Path as _Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 from urllib.parse import urlparse
 
 from openai import AsyncOpenAI, OpenAIError
@@ -519,43 +519,217 @@ async def process_file_search_configuration(
         raise mapped_error
 
 
+def _process_attachment_placeholders(
+    rendered_text: str, upload_cache: Optional[Any] = None
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Process attachment placeholders in rendered text.
+
+    Args:
+        rendered_text: Template output with placeholders
+        upload_cache: Cache for looking up file IDs and labels
+
+    Returns:
+        Tuple of (cleaned_text, attachment_elements)
+    """
+    if not upload_cache:
+        # No cache available, just remove placeholders
+        cleaned_text = re.sub(r"\[OSTRUCT_ATTACH:[^\]]+\]", "", rendered_text)
+        return cleaned_text.strip(), []
+
+    attachment_elements = []
+    text_parts = []
+
+    # Split text by attachment placeholders
+    parts = re.split(r"\[OSTRUCT_ATTACH:([^\]]+)\]", rendered_text)
+
+    for i, part in enumerate(parts):
+        if i % 2 == 0:
+            # Regular text part
+            if part.strip():
+                text_parts.append(part)
+        else:
+            # Attachment path
+            file_path = part.strip()
+            try:
+                file_hash = upload_cache.compute_file_hash(Path(file_path))
+                result = upload_cache.get_label_and_file_id(file_hash)
+
+                if result:
+                    label, file_id = result
+                    # Add label line
+                    attachment_elements.append(
+                        {
+                            "type": "input_text",
+                            "text": f"**{label}** – {Path(file_path).name}",
+                        }
+                    )
+                    # Add file attachment
+                    attachment_elements.append(
+                        {"type": "input_file", "file_id": file_id}
+                    )
+                else:
+                    logger.warning(
+                        f"No cached file found for attachment: {file_path}"
+                    )
+                    text_parts.append(f"[FILE NOT FOUND: {file_path}]")
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to process attachment {file_path}: {e}"
+                )
+                text_parts.append(f"[ATTACHMENT ERROR: {file_path}]")
+
+    cleaned_text = "".join(text_parts).strip()
+    return cleaned_text, attachment_elements
+
+
+def _validate_attachment_labels(
+    rendered_text: str, upload_cache: Optional[Any] = None
+) -> None:
+    """Validate that all referenced labels have corresponding attachments.
+
+    Args:
+        rendered_text: Final rendered template text
+        upload_cache: Cache for label lookups
+
+    Raises:
+        CLIError: If validation fails
+    """
+    if not upload_cache:
+        logger.debug("No upload cache available for label validation")
+        return
+
+    from .render_context import get_render_context
+
+    render_context = get_render_context()
+
+    # Extract all **LABEL** patterns from text
+    label_pattern = re.compile(r"\*\*([^*]+)\*\*")
+    referenced_labels = set()
+
+    for match in label_pattern.finditer(rendered_text):
+        label_text = match.group(1).strip()
+
+        # Improved heuristic based on label style
+        is_file_label = False
+
+        # Check if it's an alpha-style label (FILE A, FILE B, etc.)
+        if label_text.startswith("FILE "):
+            is_file_label = True
+        # Check if it's a filename-style label (contains extension)
+        elif re.search(r"\.[a-zA-Z0-9]{1,4}$", label_text):
+            is_file_label = True
+        # Additional check: avoid false positives on common bold text
+        elif len(label_text) > 50 or " " in label_text.strip():
+            # Skip overly long labels or those with spaces (likely not file labels)
+            is_file_label = False
+
+        if is_file_label:
+            referenced_labels.add(label_text)
+
+    # Get labels for all attached files
+    attached_labels = set()
+    for file_path in render_context.attached_files:
+        try:
+            file_hash = upload_cache.compute_file_hash(Path(file_path))
+            result = upload_cache.get_label_and_file_id(file_hash)
+            if result:
+                label, _ = result
+                attached_labels.add(label)
+        except Exception as e:
+            logger.warning(
+                f"Failed to get label for attached file {file_path}: {e}"
+            )
+
+    # Check for references without attachments (E1)
+    missing_attachments = referenced_labels - attached_labels
+    if missing_attachments:
+        error_msg = f"Referenced labels without attachments: {', '.join(sorted(missing_attachments))}"
+        raise CLIError(
+            f"{error_msg}. Add attach_file() calls for the referenced files.",
+            exit_code=ExitCode.VALIDATION_ERROR,
+        )
+
+    # Check for attachments without references (E2) - warning only
+    orphan_attachments = attached_labels - referenced_labels
+    if orphan_attachments:
+        logger.warning(
+            f"Attached files not referenced in text: {', '.join(sorted(orphan_attachments))}. "
+            f"Consider using get_file_ref() to reference them."
+        )
+
+
 def _build_message_content(
     system_prompt: str,
     user_prompt: str,
     shared_upload_manager: Optional[Any] = None,
+    upload_cache: Optional[Any] = None,
     **kwargs: Any,
 ) -> Any:
-    """Build message content with user-data file elements if needed.
+    """Build message content with user-data file elements and attachment processing.
 
     Args:
         system_prompt: System prompt text
-        user_prompt: User prompt text
+        user_prompt: User prompt text (may contain attachment placeholders)
         shared_upload_manager: Upload manager for user-data files
+        upload_cache: Cache for attachment placeholder processing
         **kwargs: Additional arguments (ignored)
 
     Returns:
         Message content (string or structured content with file elements)
     """
-    # If no upload manager or no user-data files, return simple combined prompt
+    # Process attachment placeholders first
+    processed_user_prompt, attachment_elements = (
+        _process_attachment_placeholders(user_prompt, upload_cache)
+    )
+
+    # If no upload manager or user-data files, use processed prompt
     if not shared_upload_manager:
-        return f"{system_prompt}\n\n{user_prompt}"
+        combined_text = f"{system_prompt}\n\n{processed_user_prompt}"
+
+        if attachment_elements:
+            # Build structured content with attachments
+            content_elements = [{"type": "input_text", "text": combined_text}]
+            content_elements.extend(attachment_elements)
+            return [{"role": "user", "content": content_elements}]
+        else:
+            return combined_text
 
     # Check if we have user-data files
     try:
         user_data_files = shared_upload_manager.get_files_for_tool("user-data")
     except (AttributeError, ValueError):
         # No user-data support or files
-        return f"{system_prompt}\n\n{user_prompt}"
+        combined_text = f"{system_prompt}\n\n{processed_user_prompt}"
+
+        if attachment_elements:
+            # Build structured content with attachments
+            content_elements = [{"type": "input_text", "text": combined_text}]
+            content_elements.extend(attachment_elements)
+            return [{"role": "user", "content": content_elements}]
+        else:
+            return combined_text
 
     if not user_data_files:
-        return f"{system_prompt}\n\n{user_prompt}"
+        combined_text = f"{system_prompt}\n\n{processed_user_prompt}"
+
+        if attachment_elements:
+            # Build structured content with attachments
+            content_elements = [{"type": "input_text", "text": combined_text}]
+            content_elements.extend(attachment_elements)
+            return [{"role": "user", "content": content_elements}]
+        else:
+            return combined_text
 
     # Build structured message content with file elements for Responses API
     content_elements = []
 
     # Add text content first using input_text type
-    combined_text = f"{system_prompt}\n\n{user_prompt}"
+    combined_text = f"{system_prompt}\n\n{processed_user_prompt}"
     content_elements.append({"type": "input_text", "text": combined_text})
+
+    # Add attachment elements from placeholders
+    content_elements.extend(attachment_elements)
 
     # Add user-data file elements
     # `user_data_files` may be either:

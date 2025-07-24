@@ -5,6 +5,7 @@ import sys
 
 import click
 from openai_model_registry import ModelRegistry
+from tabulate import tabulate
 
 from ..exit_codes import ExitCode
 
@@ -71,37 +72,10 @@ def list_models(format: str = "table", show_deprecated: bool = False) -> None:
                     )
 
         if format == "table":
-            # Calculate dynamic column widths based on actual data
-            max_id_width = (
-                max(len(str(model["id"])) for model in models_data)
-                if models_data
-                else 8
-            )
-            max_id_width = max(max_id_width, len("Model ID"))
+            # Prepare table data
+            table_data = []
+            headers = ["Model ID", "Context Window", "Max Output", "Status"]
 
-            max_context_width = (
-                15  # Keep reasonable default for context window
-            )
-            max_output_width = 12  # Keep reasonable default for max output
-            status_width = 10  # Keep fixed for status
-
-            # Ensure minimum widths for readability
-            id_width = max(max_id_width, 8)
-
-            total_width = (
-                id_width
-                + max_context_width
-                + max_output_width
-                + status_width
-                + 6
-            )  # 6 for spacing
-
-            click.echo("Available Models:")
-            click.echo("-" * total_width)
-            click.echo(
-                f"{'Model ID':<{id_width}} {'Context Window':<{max_context_width}} {'Max Output':<{max_output_width}} {'Status':<{status_width}}"
-            )
-            click.echo("-" * total_width)
             for model in models_data:
                 status = model.get("status", "active")
                 context = (
@@ -114,9 +88,14 @@ def list_models(format: str = "table", show_deprecated: bool = False) -> None:
                     if isinstance(model["max_output"], int)
                     else model["max_output"]
                 )
-                click.echo(
-                    f"{model['id']:<{id_width}} {context:<{max_context_width}} {output:<{max_output_width}} {status:<{status_width}}"
-                )
+
+                row = [model["id"], context, output, status]
+                table_data.append(row)
+
+            click.echo("Available Models:")
+            click.echo(
+                tabulate(table_data, headers=headers, tablefmt="simple")
+            )
         elif format == "json":
             click.echo(json.dumps(models_data, indent=2))
         else:  # simple

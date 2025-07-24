@@ -136,6 +136,7 @@ class UploadConfig(BaseModel):
     cache_max_age_days: int = 14
     cache_path: Optional[str] = None
     hash_algorithm: str = "sha256"
+    label_style: str = "alpha"
 
     @field_validator("cache_max_age_days")
     @classmethod
@@ -152,6 +153,15 @@ class UploadConfig(BaseModel):
         supported = {"sha256", "sha1", "md5"}
         if v not in supported:
             raise ValueError(f"hash_algorithm must be one of: {supported}")
+        return v
+
+    @field_validator("label_style")
+    @classmethod
+    def validate_label_style(cls, v: str) -> str:
+        """Validate label_style is supported."""
+        supported = {"alpha", "filename"}
+        if v not in supported:
+            raise ValueError(f"label_style must be one of: {supported}")
         return v
 
 

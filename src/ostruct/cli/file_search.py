@@ -246,7 +246,9 @@ class FileSearchManager:
 
             except Exception as e:
                 last_exception = e
-                logger.warning(
+
+                # Only log detailed retry info at debug level to reduce noise
+                logger.debug(
                     f"Adding files to vector store attempt {attempt + 1} failed: {e}"
                 )
 
@@ -254,14 +256,24 @@ class FileSearchManager:
                     delay = retry_delay * (2**attempt)
                     logger.debug(f"Retrying in {delay:.1f} seconds...")
                     await asyncio.sleep(delay)
-                else:
-                    logger.error(
-                        f"Adding files to vector store failed after {max_retries + 1} attempts"
-                    )
 
-        raise Exception(
-            f"Failed to add files to vector store after {max_retries + 1} attempts: {last_exception}"
+        # After all retries failed, create a user-friendly error message
+        error_msg = str(last_exception)
+        if "Files with extensions [none]" in error_msg:
+            # Improve the error message for files without extensions
+            user_friendly_msg = (
+                "Files without extensions (like LICENSE, Dockerfile, README) are not supported for file-search. "
+                "These files were uploaded successfully but cannot be added to the vector store."
+            )
+        else:
+            user_friendly_msg = (
+                f"Failed to add files to vector store: {error_msg}"
+            )
+
+        logger.error(
+            f"Adding files to vector store failed after {max_retries + 1} attempts"
         )
+        raise Exception(user_friendly_msg)
 
     async def wait_for_vector_store_ready(
         self,

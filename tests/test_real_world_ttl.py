@@ -1,5 +1,6 @@
 """Real-world validation tests for TTL cache functionality."""
 
+import hashlib
 import tempfile
 import time
 from pathlib import Path
@@ -9,6 +10,11 @@ import pytest
 
 from src.ostruct.cli.upload_cache import UploadCache
 from src.ostruct.cli.upload_manager import SharedUploadManager
+
+
+def make_test_hash(pattern: str) -> str:
+    """Generate a proper SHA-256 hash for test patterns."""
+    return hashlib.sha256(pattern.encode()).hexdigest()
 
 
 @pytest.mark.asyncio
@@ -48,7 +54,7 @@ class TestRealWorldTTLScenarios:
 
         for filename, file_id in files_run1.items():
             # Cache the uploads
-            file_hash = f"hash-{filename}"
+            file_hash = make_test_hash(f"run1-{filename}")
             cache.store(
                 file_hash, file_id, 1024 * len(filename), int(time.time())
             )
@@ -63,7 +69,7 @@ class TestRealWorldTTLScenarios:
         # Simulate second run - same files, should hit cache
         cache_hits = 0
         for filename, expected_file_id in files_run1.items():
-            file_hash = f"hash-{filename}"
+            file_hash = make_test_hash(f"run1-{filename}")
             cached_file_id = cache.lookup(file_hash)
             if cached_file_id == expected_file_id:
                 cache_hits += 1
@@ -129,7 +135,7 @@ class TestRealWorldTTLScenarios:
             }
 
             cache.store(
-                f"hash-{filename}",
+                make_test_hash(f"mixed-{filename}"),
                 file_id,
                 1024 * len(filename),
                 current_time,
@@ -145,7 +151,9 @@ class TestRealWorldTTLScenarios:
 
         # Verify all files still cached
         for filename in files.keys():
-            assert cache.lookup(f"hash-{filename}") is not None
+            assert (
+                cache.lookup(make_test_hash(f"mixed-{filename}")) is not None
+            )
 
     async def test_file_modification_detection_scenario(
         self, temp_cache, mock_client
@@ -213,7 +221,9 @@ class TestRealWorldTTLScenarios:
         current_time = int(time.time())
 
         for filename, (file_id, size) in large_files.items():
-            cache.store(f"hash-{filename}", file_id, size, current_time)
+            cache.store(
+                make_test_hash(f"cost-{filename}"), file_id, size, current_time
+            )
             manager._all_uploaded_ids.add(file_id)
 
         # Test different TTL strategies
@@ -256,7 +266,7 @@ class TestRealWorldTTLScenarios:
         for run_num, files in enumerate(runs, 1):
             for filename in files:
                 total_files += 1
-                file_hash = f"hash-{filename}"
+                file_hash = make_test_hash(f"perf-{filename}")
 
                 # Check if file is already cached
                 cached_id = cache.lookup(file_hash)

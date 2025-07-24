@@ -7,6 +7,7 @@ import logging
 import re
 import textwrap
 from collections import Counter
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,7 +28,7 @@ from pygments.lexers import TextLexer, get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
 
 if TYPE_CHECKING:
-    pass
+    from .upload_cache import UploadCache
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,8 @@ _alias_manager: Optional[AliasManager] = None
 def file_ref(alias_name: str) -> str:
     """Reference a file collection by its CLI alias name.
 
+    DEPRECATED: Use get_embed_ref() + embed_text() instead.
+
     Args:
         alias_name: The alias from --dir or --file attachment
 
@@ -185,6 +188,94 @@ def file_ref(alias_name: str) -> str:
 
     Usage:
         {{ file_ref("source-code") }}  -> renders as "<source-code>"
+    """
+    import warnings
+
+    warnings.warn(
+        "file_ref() is deprecated. Use get_embed_ref() + embed_text() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    # Use new helpers internally
+    embed_text(alias_name)
+    return get_embed_ref(alias_name)
+
+
+# ============================================================================
+# New File Attachment Helper System
+# ============================================================================
+
+# File attachment placeholder pattern
+_ATTACHMENT_PLACEHOLDER_RE = re.compile(r"\[OSTRUCT_ATTACH:([^\]]+)\]")
+
+# Global cache reference (set during initialization)
+_upload_cache: Optional["UploadCache"] = None
+
+
+def set_upload_cache(cache: "UploadCache") -> None:
+    """Set the global upload cache reference."""
+    global _upload_cache
+    _upload_cache = cache
+
+
+def attach_file(file_path: str) -> str:
+    """Attach a file for binary access (vision/code interpreter).
+
+    Args:
+        file_path: Path to file to attach
+
+    Returns:
+        Placeholder string that will be replaced with API structures
+
+    Side Effects:
+        Registers the file path in render context for later processing
+    """
+    from .render_context import get_render_context
+
+    render_ctx = get_render_context()
+    render_ctx.register_attachment(file_path)
+    return f"[OSTRUCT_ATTACH:{file_path}]"
+
+
+def get_file_ref(file_path: str) -> str:
+    """Get the deterministic label for a file.
+
+    Args:
+        file_path: Path to file
+
+    Returns:
+        Label string (e.g., "FILE A" or "document-1")
+    """
+    if not _upload_cache:
+        logger.warning("Upload cache not available for get_file_ref")
+        return f"FILE_{Path(file_path).stem}"
+
+    try:
+        file_hash = _upload_cache.compute_file_hash(Path(file_path))
+        result = _upload_cache.get_label_and_file_id(file_hash)
+        if result:
+            label, _ = result
+            return label
+        else:
+            logger.warning(f"No cached label found for {file_path}")
+            return f"FILE_{Path(file_path).stem}"
+    except Exception as e:
+        logger.warning(f"Failed to get file ref for {file_path}: {e}")
+        return f"FILE_{Path(file_path).stem}"
+
+
+def embed_text(alias: str) -> str:
+    """Schedule text content for XML appendix embedding.
+
+    Args:
+        alias: File alias from CLI attachment
+
+    Returns:
+        Empty string (no inline output)
+
+    Side Effects:
+        Registers alias for XML appendix inclusion
     """
     global _alias_manager
 
@@ -197,11 +288,28 @@ def file_ref(alias_name: str) -> str:
             ],
         )
 
-    # Register this alias as referenced
-    _alias_manager.reference_alias(alias_name)
+    # Register with alias manager (existing behavior)
+    _alias_manager.reference_alias(alias)
 
-    # Return the reference format
-    return f"<{alias_name}>"
+    # Also register with render context
+    from .render_context import get_render_context
+
+    render_ctx = get_render_context()
+    render_ctx.register_embedding(alias)
+
+    return ""  # No inline output
+
+
+def get_embed_ref(alias: str) -> str:
+    """Get reference tag for embedded text content.
+
+    Args:
+        alias: File alias from CLI attachment
+
+    Returns:
+        Reference string in format "<alias>"
+    """
+    return f"<{alias}>"
 
 
 def register_tses_filters(
@@ -1156,5 +1264,10 @@ def register_template_filters(env: Environment) -> None:
             "auto_table": auto_table,
             # Safe access utilities
             "safe_get": safe_get,
+            # New file attachment helpers
+            "attach_file": attach_file,
+            "get_file_ref": get_file_ref,
+            "embed_text": embed_text,
+            "get_embed_ref": get_embed_ref,
         }
     )

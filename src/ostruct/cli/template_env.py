@@ -3,7 +3,10 @@
 This module provides a centralized factory for creating consistently configured Jinja2 environments.
 """
 
-from typing import Any, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Type, Union
+
+if TYPE_CHECKING:
+    from .upload_cache import UploadCache
 
 import jinja2
 from jinja2 import Environment
@@ -25,6 +28,7 @@ def create_jinja_env(
     validation_mode: bool = False,
     debug_mode: bool = False,
     files: Optional[List[Any]] = None,
+    upload_cache: Optional["UploadCache"] = None,
 ) -> Tuple[Environment, AliasManager]:
     """Create a consistently configured Jinja2 environment.
 
@@ -34,6 +38,7 @@ def create_jinja_env(
         validation_mode: Whether to configure the environment for validation (uses SafeUndefined).
         debug_mode: Whether to enable debug features like undefined variable detection.
         files: Optional list of FileInfo objects to enable file reference support.
+        upload_cache: Optional upload cache for file attachment helpers.
 
     Returns:
         Tuple of (Environment, AliasManager). AliasManager will be empty if no files provided.

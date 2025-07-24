@@ -594,6 +594,7 @@ class SharedUploadManager:
                         file_size,
                         int(file_stat.st_mtime),
                         {"purpose": "assistants"},
+                        file_path=str(file_path),  # Pass file path for storage
                     )
                     logger.debug(
                         f"[upload] Stored in cache: {file_path} -> {file_obj.id}"
