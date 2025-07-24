@@ -195,7 +195,9 @@ class TestFilesUploadBatch:
         )
 
         assert result.exit_code == 0
-        assert result.output.count("✅ Uploaded") == 2
+        # Check for individual file upload messages (not the summary)
+        assert "✅ Uploaded test1.txt" in result.output
+        assert "✅ Uploaded test2.pdf" in result.output
         assert mock_manager._perform_upload.call_count == 2
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
@@ -224,7 +226,8 @@ class TestFilesUploadBatch:
 
         assert result.exit_code == 0
         # Should upload both files in subdirectory
-        assert result.output.count("✅ Uploaded") == 2
+        assert "✅ Uploaded sub1.txt" in result.output
+        assert "✅ Uploaded sub2.png" in result.output
         assert mock_manager._perform_upload.call_count == 2
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
@@ -259,7 +262,8 @@ class TestFilesUploadBatch:
 
         assert result.exit_code == 0
         # Should upload 2 files listed in filelist.txt
-        assert result.output.count("✅ Uploaded") == 2
+        assert "✅ Uploaded test1.txt" in result.output
+        assert "✅ Uploaded doc.csv" in result.output
         assert mock_manager._perform_upload.call_count == 2
 
 
@@ -299,7 +303,8 @@ class TestFilesUploadGlobPatterns:
 
             assert result.exit_code == 0
             # Should match test1.txt and filelist.txt (both .txt files)
-            assert result.output.count("✅ Uploaded") == 2
+            assert "✅ Uploaded test1.txt" in result.output
+            assert "✅ Uploaded filelist.txt" in result.output
             assert mock_manager._perform_upload.call_count == 2
         finally:
             os.chdir(old_cwd)
@@ -339,7 +344,8 @@ class TestFilesUploadGlobPatterns:
 
         assert result.exit_code == 0
         # Should only upload sub1.txt, not sub2.png
-        assert result.output.count("✅ Uploaded") == 1
+        assert "✅ Uploaded sub1.txt" in result.output
+        assert "sub2.png" not in result.output
         assert mock_manager._perform_upload.call_count == 1
 
 

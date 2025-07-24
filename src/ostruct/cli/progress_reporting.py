@@ -1,10 +1,21 @@
-"""Enhanced progress reporting with user-centric language."""
+"""Enhanced progress reporting with user-centric language.
+
+Progress Levels:
+- 'none': No progress output (silent mode for scripting/CI)
+- 'basic': Phase messages with progress bars for batch operations
+- 'detailed': Basic level plus per-item details and verbose information
+
+The progress system supports both phase-based reporting (textual steps with emojis)
+and embedded progress bars for batch operations. Commands use start_phase() to begin
+a phase, advance() to update progress, and complete() to finish.
+"""
 
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import click
+from rich.progress import Progress
 
 logger = logging.getLogger(__name__)
 
@@ -340,6 +351,121 @@ class EnhancedProgressReporter:
                     )
                 else:
                     click.echo("✅ Validation passed", err=True)
+
+    def start_phase(
+        self,
+        phase_name: str,
+        emoji: str = "⚙️",
+        expected_steps: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Start a new phase with optional progress bar support.
+
+        This method supports two modes:
+        1. Text-only phases: When expected_steps is None, only emits phase text
+        2. Progress bar phases: When expected_steps is provided, embeds a Rich progress bar
+
+        The progress bar is automatically managed within the phase - it starts immediately
+        and should be updated via advance() and completed via complete().
+
+        Args:
+            phase_name: Name of the processing phase
+            emoji: Emoji icon for the phase
+            expected_steps: Number of expected steps (enables progress bar if provided)
+
+        Returns:
+            Handle dictionary containing phase info and optional progress bar task.
+            The handle must be passed to advance() and complete() methods.
+        """
+        handle: Dict[str, Any] = {
+            "phase_name": phase_name,
+            "emoji": emoji,
+            "expected_steps": expected_steps,
+            "progress": None,  # Rich Progress instance (if progress bar enabled)
+            "task": None,  # Rich TaskID (if progress bar enabled)
+        }
+
+        if self.should_report:
+            # Always emit the phase start message
+            click.echo(f"{emoji} {phase_name}...", err=True)
+
+            # Initialize embedded progress bar if expected_steps provided
+            # This creates a self-contained progress bar that lives within this phase
+            if expected_steps is not None and expected_steps > 0:
+                progress = Progress()
+                progress.start()  # Start the progress display
+                task = progress.add_task(phase_name, total=expected_steps)
+                handle["progress"] = progress
+                handle["task"] = task
+
+        return handle
+
+    def advance(
+        self,
+        handle: Dict[str, Any],
+        advance: int = 1,
+        msg: Optional[str] = None,
+    ) -> None:
+        """Advance progress and optionally log detailed messages.
+
+        Level-specific behavior:
+        - 'none': No output at all
+        - 'basic': Updates progress bar (if present) but no per-item messages
+        - 'detailed': Updates progress bar AND prints per-item messages
+
+        Args:
+            handle: Phase handle from start_phase
+            advance: Number of steps to advance
+            msg: Optional message to display in detailed mode only
+        """
+        if not self.should_report:
+            return
+
+        # Update embedded progress bar if present
+        if handle.get("progress") and handle.get("task") is not None:
+            handle["progress"].update(handle["task"], advance=advance)
+
+        # Print detailed message only in detailed mode
+        # This allows basic mode to show progress bars without cluttering output
+        if self.detailed and msg:
+            click.echo(f"  {msg}", err=True)
+
+    def complete(
+        self,
+        handle: Dict[str, Any],
+        success: bool = True,
+        final_message: Optional[str] = None,
+    ) -> None:
+        """Complete a phase and clean up progress bar.
+
+        This method handles both text-only and progress bar phases:
+        - For progress bar phases: Sets bar to 100% and stops the Rich Progress instance
+        - For all phases: Emits completion message with success/failure emoji
+
+        Args:
+            handle: Phase handle from start_phase
+            success: Whether the phase completed successfully
+            final_message: Optional final message to display (auto-generated if not provided)
+        """
+        if not self.should_report:
+            return
+
+        # Complete and stop embedded progress bar if present
+        if handle.get("progress") and handle.get("task") is not None:
+            # Ensure progress bar shows as completed (100%)
+            if handle.get("expected_steps"):
+                handle["progress"].update(
+                    handle["task"], completed=handle["expected_steps"]
+                )
+            handle["progress"].stop()  # Clean up the Rich Progress instance
+
+        # Print completion message with appropriate emoji
+        emoji = "✅" if success else "❌"
+        phase_name = handle.get("phase_name", "Phase")
+        message = (
+            final_message
+            or f"{phase_name} {'completed' if success else 'failed'}"
+        )
+        click.echo(f"{emoji} {message}", err=True)
 
 
 # Global progress reporter instance

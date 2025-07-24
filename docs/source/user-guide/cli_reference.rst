@@ -1223,12 +1223,29 @@ Progress Options
 ----------------
 
 Control progress display during execution with a single ``--progress`` option.
+This option is available for both ``ostruct run`` and ``ostruct files`` commands.
 
 **Available Options:**
 
 - ``--progress none``: Silent operation (ideal for CI/CD pipelines)
-- ``--progress basic``: Key progress steps (default)
-- ``--progress detailed``: Detailed progress with additional information
+- ``--progress basic``: Key progress steps with progress bars for batch operations (default)
+- ``--progress detailed``: Basic level plus per-item details and verbose information
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Silent operation (no progress indicators)
+   ostruct run task.j2 schema.json --progress none
+   ostruct files upload --file data.csv --progress none
+
+   # Basic progress with progress bars (default)
+   ostruct run task.j2 schema.json --progress basic
+   ostruct files upload --file *.pdf --progress basic
+
+   # Detailed progress with per-item details
+   ostruct run task.j2 schema.json --progress detailed
+   ostruct files upload --dir ./docs --progress detailed
 
 Troubleshooting
 ===============

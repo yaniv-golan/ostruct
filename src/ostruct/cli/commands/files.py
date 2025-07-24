@@ -15,11 +15,14 @@ import click
 import questionary
 from openai import AsyncOpenAI
 from pydantic import BaseModel
-from rich.progress import track
 from tabulate import tabulate
 
 from ..cache_utils import get_default_cache_path
 from ..file_search import FileSearchManager
+from ..progress_reporting import (
+    configure_progress_reporter,
+    get_progress_reporter,
+)
 from ..upload_cache import UploadCache
 from ..upload_manager import SharedUploadManager
 
@@ -241,9 +244,11 @@ def files() -> None:
     help="Preview uploads without making API calls",
 )
 @click.option(
-    "--progress/--no-progress",
-    default=True,
-    help="Show progress bars for batch operations",
+    "--progress",
+    type=click.Choice(["none", "basic", "detailed"]),
+    default="basic",
+    show_default=True,
+    help="Control progress display. 'none' disables progress indicators, 'basic' shows key steps, 'detailed' shows all operations.",
 )
 @click.option(
     "--json", "output_json", is_flag=True, help="Emit machine-readable JSON"
@@ -259,7 +264,7 @@ def upload(
     tag: tuple[str, ...],
     vector_store: str,
     dry_run: bool,
-    progress: bool,
+    progress: str,
     output_json: bool,
 ) -> None:
     """Upload files with batch support and interactive mode.
@@ -280,6 +285,11 @@ def upload(
         # Interactive mode (no arguments)
         ostruct files upload
     """
+    # Configure progress reporting
+    configure_progress_reporter(
+        verbose=ctx.obj.get("verbose", False) if ctx.obj else False,
+        progress=progress,
+    )
 
     # Parse comma-separated tools string
     valid_tools = {"user-data", "file-search", "code-interpreter"}
@@ -424,7 +434,7 @@ async def _batch_upload(
     tag: tuple[str, ...],
     vector_store: str,
     dry_run: bool,
-    progress: bool,
+    progress: str,
     output_json: bool,
 ) -> None:
     """Perform the actual batch upload operation."""
@@ -589,18 +599,17 @@ async def _batch_upload(
         results: List[UploadResult] = []
 
         # Disable progress bars in JSON mode to avoid corrupting output
-        show_progress = progress and not output_json
+        show_progress = progress != "none" and not output_json
 
+        # Get progress reporter and start phase
+        reporter = get_progress_reporter()
+        handle = None
         if show_progress:
-            file_iterator = track(
-                all_files,
-                description="Uploading files...",
-                disable=not show_progress,
+            handle = reporter.start_phase(
+                "Uploading files", "📤", expected_steps=len(all_files)
             )
-        else:
-            file_iterator = all_files
 
-        for file_path in file_iterator:
+        for file_path in all_files:
             try:
                 result = await _upload_single_file(
                     file_path,
@@ -612,6 +621,16 @@ async def _batch_upload(
                     upload_manager,
                 )
                 results.append(result)
+
+                # Update progress
+                if handle:
+                    filename = Path(file_path).name
+                    msg = (
+                        f"Uploaded {filename}"
+                        if progress == "detailed"
+                        else None
+                    )
+                    reporter.advance(handle, advance=1, msg=msg)
 
             except Exception as e:
                 error_msg = f"{file_path}: {str(e)}"
@@ -632,6 +651,24 @@ async def _batch_upload(
 
                 errors.append(error_msg)
                 logger.error(error_msg)
+
+                # Update progress even on error
+                if handle:
+                    filename = Path(file_path).name
+                    msg = (
+                        f"Error with {filename}"
+                        if progress == "detailed"
+                        else None
+                    )
+                    reporter.advance(handle, advance=1, msg=msg)
+
+        # Complete the phase
+        if handle:
+            success = len(errors) == 0
+            summary = f"Uploaded {len(results)} files" + (
+                f" ({len(errors)} errors)" if errors else ""
+            )
+            reporter.complete(handle, success=success, final_message=summary)
 
         # Output results
         if output_json:
