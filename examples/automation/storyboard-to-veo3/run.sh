@@ -82,6 +82,53 @@ combine_scenes() {
     fi
 }
 
+generate_yaml_files() {
+    gum style --foreground 212 "🔄 Generating corresponding YAML files..."
+    
+    # Check if yq is available
+    if ! command -v yq &> /dev/null; then
+        gum style --foreground 220 "⚠️ yq not found - skipping YAML generation"
+        gum style --foreground 244 "   Install yq to enable YAML output: sudo apt-get install yq"
+        return 0
+    fi
+    
+    # Convert Veo3-ready JSON files to YAML
+    if [[ -n "$SCENE_NUMBER" && -f "$OUTPUT_DIR/scene_${SCENE_NUMBER}_veo3.json" ]]; then
+        bash scripts/json_to_yaml.sh "$OUTPUT_DIR/scene_${SCENE_NUMBER}_veo3.json" "$OUTPUT_DIR/scene_${SCENE_NUMBER}_veo3.yaml"
+    fi
+    
+    if [[ -f "$OUTPUT_DIR/all_scenes_veo3.json" ]]; then
+        bash scripts/json_to_yaml.sh "$OUTPUT_DIR/all_scenes_veo3.json" "$OUTPUT_DIR/all_scenes_veo3.yaml"
+    fi
+    
+    # Convert individual scene files to YAML
+    if [[ -d "$OUTPUT_DIR/scenes" ]]; then
+        for scene_file in "$OUTPUT_DIR/scenes"/scene_*.json; do
+            if [[ -f "$scene_file" ]]; then
+                yaml_file="${scene_file%.json}.yaml"
+                bash scripts/json_to_yaml.sh "$scene_file" "$yaml_file" 2>/dev/null || true
+            fi
+        done
+    fi
+    
+    # Convert asset files to YAML
+    if [[ -d "$OUTPUT_DIR/assets" ]]; then
+        for asset_file in "$OUTPUT_DIR/assets"/*.json; do
+            if [[ -f "$asset_file" ]]; then
+                yaml_file="${asset_file%.json}.yaml"
+                bash scripts/json_to_yaml.sh "$asset_file" "$yaml_file" 2>/dev/null || true
+            fi
+        done
+    fi
+    
+    # Convert master.json to YAML
+    if [[ -f "$OUTPUT_DIR/master.json" ]]; then
+        bash scripts/json_to_yaml.sh "$OUTPUT_DIR/master.json" "$OUTPUT_DIR/master.yaml" 2>/dev/null || true
+    fi
+    
+    gum style --foreground 46 "✅ YAML files generated successfully"
+}
+
 generate_html_viewer() {
     gum style --foreground 212 "🌐 Generating interactive HTML viewer..."
 
@@ -305,6 +352,40 @@ generate_html_viewer() {
             font-size: 1.1em;
             opacity: 0.9;
         }
+        .format-toggle {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px;
+        }
+        .toggle-btn {
+            background: transparent;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .toggle-btn.active {
+            background: rgba(255, 255, 255, 0.3);
+            font-weight: 600;
+        }
+        .format-content {
+            display: none;
+        }
+        .format-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -312,6 +393,10 @@ generate_html_viewer() {
         <div class="header">
             <h1>🎬 Storyboard to Veo3</h1>
             <p>Interactive Viewer - Ready for Video Generation</p>
+            <div class="format-toggle">
+                <button id="jsonBtn" class="toggle-btn active" onclick="switchFormat('json')">JSON</button>
+                <button id="yamlBtn" class="toggle-btn" onclick="switchFormat('yaml')">YAML</button>
+            </div>
         </div>
 
         <div class="content">
@@ -334,7 +419,10 @@ generate_html_viewer() {
 
     <script>
         // Data will be inserted here by the shell script
-        const data = DATA_PLACEHOLDER;
+        const jsonData = JSON_DATA_PLACEHOLDER;
+        const yamlData = YAML_DATA_PLACEHOLDER;
+        let currentFormat = 'json';
+        let currentData = jsonData;
 
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -343,6 +431,18 @@ generate_html_viewer() {
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 2000);
+        }
+
+        function switchFormat(format) {
+            currentFormat = format;
+            currentData = format === 'json' ? jsonData : yamlData;
+            
+            // Update button states
+            document.getElementById('jsonBtn').classList.toggle('active', format === 'json');
+            document.getElementById('yamlBtn').classList.toggle('active', format === 'yaml');
+            
+            // Re-render content
+            renderScenes();
         }
 
         function copyToClipboard(text, button) {
@@ -363,8 +463,8 @@ generate_html_viewer() {
 
         function renderSummary() {
             const summaryDiv = document.getElementById('summary');
-            const sceneCount = data.length;
-            const totalDuration = data.reduce((sum, scene) => sum + scene.duration_seconds, 0);
+            const sceneCount = jsonData.length;
+            const totalDuration = jsonData.reduce((sum, scene) => sum + scene.duration_seconds, 0);
 
             summaryDiv.innerHTML = `
                 <div class="summary-card">
@@ -380,27 +480,33 @@ generate_html_viewer() {
 
         function renderScenes() {
             const scenesDiv = document.getElementById('scenes');
-            scenesDiv.innerHTML = data.map((scene, index) => {
-                const sceneJson = JSON.stringify(scene, null, 2);
+            scenesDiv.innerHTML = jsonData.map((scene, index) => {
+                const sceneContent = currentFormat === 'json' 
+                    ? JSON.stringify(scene, null, 2)
+                    : currentData[index] || 'YAML not available';
+                const copyButtonText = currentFormat === 'json' ? '📋 Copy JSON' : '📋 Copy YAML';
+                
                 return `
                     <div class="card scene-card">
                         <div class="card-header">
                             <h3 class="card-title">Scene ${scene.id} (${scene.duration_seconds}s)</h3>
-                            <button class="copy-btn" onclick="copySceneJson(${index})">
-                                📋 Copy JSON
+                            <button class="copy-btn" onclick="copySceneContent(${index})">
+                                ${copyButtonText}
                             </button>
                         </div>
-                        <div class="json-content">${sceneJson}</div>
+                        <div class="json-content">${sceneContent}</div>
                     </div>
                 `;
             }).join('');
         }
 
-        function copySceneJson(index) {
-            const scene = data[index];
-            const sceneJson = JSON.stringify(scene, null, 2);
+        function copySceneContent(index) {
+            const scene = jsonData[index];
+            const content = currentFormat === 'json' 
+                ? JSON.stringify(scene, null, 2)
+                : currentData[index] || 'YAML not available';
             const button = event.target;
-            copyToClipboard(sceneJson, button);
+            copyToClipboard(content, button);
         }
 
         // Initialize the page
@@ -414,22 +520,50 @@ EOF
     # Insert the actual data using a simpler approach
     if [[ -f "$OUTPUT_DIR/all_scenes_veo3.json" ]]; then
         # Convert the newline-separated JSON objects into a proper JSON array
-        local scenes_data
-        scenes_data=$(jq -s '.' "$OUTPUT_DIR/all_scenes_veo3.json")
-        # Replace the placeholder using string replacement
+        local json_scenes_data
+        json_scenes_data=$(jq -s '.' "$OUTPUT_DIR/all_scenes_veo3.json")
+        
+        # Prepare YAML data array (individual YAML strings)
+        local yaml_scenes_data="[]"
+        if [[ -f "$OUTPUT_DIR/all_scenes_veo3.yaml" ]]; then
+            # Convert JSON scenes to individual YAML strings for display
+            yaml_scenes_data=$(python3 -c "
+import json
+import sys
+try:
+    import yaml
+    # Read the JSON data and convert each scene to YAML string
+    json_data = $json_scenes_data
+    yaml_strings = []
+    for scene in json_data:
+        yaml_str = yaml.dump(scene, default_flow_style=False, allow_unicode=True)
+        yaml_strings.append(yaml_str.strip())
+    print(json.dumps(yaml_strings))
+except ImportError:
+    # yaml not available, return empty array
+    print('[]')
+except Exception as e:
+    print('[]')
+")
+        fi
+        
+        # Replace the placeholders using string replacement
         python3 -c "
 import sys
 content = open('$html_file', 'r').read()
-data = '''$scenes_data'''
-new_content = content.replace('DATA_PLACEHOLDER', data)
+json_data = '''$json_scenes_data'''
+yaml_data = '''$yaml_scenes_data'''
+new_content = content.replace('JSON_DATA_PLACEHOLDER', json_data)
+new_content = new_content.replace('YAML_DATA_PLACEHOLDER', yaml_data)
 open('$html_file', 'w').write(new_content)
 "
     else
-        # Fallback to empty array
+        # Fallback to empty arrays
         python3 -c "
 import sys
 content = open('$html_file', 'r').read()
-new_content = content.replace('DATA_PLACEHOLDER', '[]')
+new_content = content.replace('JSON_DATA_PLACEHOLDER', '[]')
+new_content = new_content.replace('YAML_DATA_PLACEHOLDER', '[]')
 open('$html_file', 'w').write(new_content)
 "
     fi
@@ -462,12 +596,20 @@ show_results() {
         gum style --foreground 244 "  🚀 Veo3-ready JSON: $OUTPUT_DIR/all_scenes_veo3.json"
     fi
 
+    if [[ -f "$OUTPUT_DIR/all_scenes_veo3.yaml" ]]; then
+        gum style --foreground 244 "  🚀 Veo3-ready YAML: $OUTPUT_DIR/all_scenes_veo3.yaml"
+    fi
+
     if [[ -f "$OUTPUT_DIR/viewer.html" ]]; then
         gum style --foreground 33 "  🌐 Interactive viewer: $OUTPUT_DIR/viewer.html"
     fi
 
     if [[ -n "$SCENE_NUMBER" && -f "$OUTPUT_DIR/scene_${SCENE_NUMBER}_veo3.json" ]]; then
         gum style --foreground 244 "  🚀 Veo3-ready scene: $OUTPUT_DIR/scene_${SCENE_NUMBER}_veo3.json"
+    fi
+
+    if [[ -n "$SCENE_NUMBER" && -f "$OUTPUT_DIR/scene_${SCENE_NUMBER}_veo3.yaml" ]]; then
+        gum style --foreground 244 "  🚀 Veo3-ready scene: $OUTPUT_DIR/scene_${SCENE_NUMBER}_veo3.yaml"
     fi
 
     gum style --margin "1 0" --foreground 220 "💡 Next steps:"
@@ -510,6 +652,7 @@ case "$MODE" in
         generate_master_json
         split_master_json
         combine_scenes
+        generate_yaml_files
         generate_html_viewer
         show_results
 
