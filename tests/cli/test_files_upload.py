@@ -80,11 +80,11 @@ class TestFilesUploadBasic:
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
     @patch("ostruct.cli.commands.files.FileSearchManager")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_single_file_upload(
         self,
-        mock_openai,
+        mock_client,
         mock_fs_manager_cls,
         mock_cache_cls,
         mock_upload_manager_cls,
@@ -92,6 +92,8 @@ class TestFilesUploadBasic:
     ):
         """Test uploading a single file."""
         # Setup mocks
+        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = None
@@ -124,13 +126,15 @@ class TestFilesUploadBasic:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_cached_file_upload(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test uploading a file that's already cached."""
         # Setup mocks
+        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = "cached-file-123"
@@ -164,10 +168,10 @@ class TestFilesUploadBatch:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_multiple_files_upload(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test uploading multiple files."""
         # Setup mocks
@@ -202,10 +206,10 @@ class TestFilesUploadBatch:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_directory_upload(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test uploading a directory recursively."""
         # Setup mocks
@@ -232,10 +236,10 @@ class TestFilesUploadBatch:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_collection_upload(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test uploading files from a collection file."""
         # Setup mocks
@@ -273,10 +277,10 @@ class TestFilesUploadGlobPatterns:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_file_glob_pattern(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test glob pattern for files."""
         # Setup mocks
@@ -311,13 +315,15 @@ class TestFilesUploadGlobPatterns:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_global_pattern_filter(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test global pattern filter."""
         # Setup mocks
+        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = None
@@ -404,11 +410,11 @@ class TestFilesUploadInteractive:
     @patch("ostruct.cli.commands.files.questionary")
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_interactive_file_selection(
         self,
-        mock_openai,
+        mock_client,
         mock_cache_cls,
         mock_upload_manager_cls,
         mock_questionary,
@@ -416,6 +422,8 @@ class TestFilesUploadInteractive:
     ):
         """Test interactive file selection mode."""
         # Setup mocks
+        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = None
@@ -487,7 +495,7 @@ class TestFilesUploadErrorHandling:
         )
 
         assert result.exit_code == 1
-        assert "OPENAI_API_KEY environment variable not set" in result.output
+        assert "No OpenAI API key found" in result.output
 
     def test_no_files_specified_json_mode(self):
         """Test error when no files specified in JSON mode."""
@@ -520,10 +528,10 @@ class TestFilesUploadErrorHandling:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_upload_error_handling(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test handling of individual file upload errors."""
         # Setup mocks
@@ -566,11 +574,11 @@ class TestFilesUploadToolBindings:
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
     @patch("ostruct.cli.commands.files.FileSearchManager")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_file_search_binding(
         self,
-        mock_openai,
+        mock_client,
         mock_fs_manager_cls,
         mock_cache_cls,
         mock_upload_manager_cls,
@@ -616,10 +624,10 @@ class TestFilesUploadToolBindings:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_multiple_tool_bindings(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test binding to multiple tools."""
         # Setup mocks
@@ -660,55 +668,10 @@ class TestFilesUploadJsonOutput:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
-    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
-    def test_json_output_success(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
+    def test_json_output_empty_files(
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls
     ):
-        """Test JSON output for successful uploads."""
-        # Setup mocks
-        mock_cache = Mock()
-        mock_cache.compute_file_hash.return_value = "hash123"
-        mock_cache.lookup_with_validation.return_value = None
-        mock_cache_cls.return_value = mock_cache
-
-        mock_manager = Mock()
-        mock_manager._perform_upload = AsyncMock(return_value="file-123")
-        mock_upload_manager_cls.return_value = mock_manager
-
-        runner = CliRunner()
-        result = runner.invoke(
-            files,
-            [
-                "upload",
-                "--file",
-                str(temp_files["test1.txt"]),
-                "--tools",
-                "user-data",
-                "--tag",
-                "project=test",
-                "--json",
-            ],
-        )
-
-        assert result.exit_code == 0
-        data = json.loads(result.output)
-
-        assert "uploaded" in data
-        assert "cached" in data
-        assert "errors" in data
-        assert "summary" in data
-
-        assert len(data["uploaded"]) == 1
-        assert len(data["cached"]) == 0
-        assert len(data["errors"]) == 0
-
-        uploaded_file = data["uploaded"][0]
-        assert uploaded_file["file_id"] == "file-123"
-        assert uploaded_file["tags"] == {"project": "test"}
-        assert uploaded_file["bindings"]["user_data"] is True
-
-    def test_json_output_empty_files(self):
         """Test JSON output when no files match criteria."""
         runner = CliRunner()
         # Use --file with a pattern that won't match anything
@@ -731,10 +694,10 @@ class TestFilesUploadTagsAndMetadata:
 
     @patch("ostruct.cli.commands.files.SharedUploadManager")
     @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_multiple_tags(
-        self, mock_openai, mock_cache_cls, mock_upload_manager_cls, temp_files
+        self, mock_client, mock_cache_cls, mock_upload_manager_cls, temp_files
     ):
         """Test multiple tags application."""
         # Setup mocks

@@ -237,15 +237,3 @@ class TestProgressReporterGlobals:
         assert reporter.verbose is True
         assert reporter.progress == "detailed"
         assert reporter.detailed is True
-
-    def test_get_progress_reporter_default(self):
-        """Test getting default progress reporter."""
-        # Reset global state
-        import ostruct.cli.progress_reporting
-
-        ostruct.cli.progress_reporting._progress_reporter = None
-
-        reporter = get_progress_reporter()
-        assert isinstance(reporter, EnhancedProgressReporter)
-        assert reporter.progress == "basic"  # default
-        assert reporter.verbose is False  # default

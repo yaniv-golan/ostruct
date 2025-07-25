@@ -23,7 +23,6 @@ from .file_search import FileSearchManager
 from .json_extract import split_json_and_text
 from .mcp_integration import MCPConfiguration, MCPServerManager
 from .progress_reporting import (
-    configure_progress_reporter,
     get_progress_reporter,
     report_success,
 )
@@ -31,6 +30,7 @@ from .sentinel import extract_json_block
 from .serialization import LogSerializer
 from .services import ServiceContainer
 from .types import CLIParams
+from .utils.progress_utils import ProgressHandler
 from .validators import validate_security_manager
 
 
@@ -1388,25 +1388,15 @@ async def execute_model(
     #         logger.error(error_msg)
     #         raise CLIError(error_msg, exit_code=ExitCode.VALIDATION_ERROR)
 
-    api_key = args.get("api_key") or os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        msg = (
-            "No OpenAI API key found. Please:\n"
-            "  • Set OPENAI_API_KEY environment variable, or\n"
-            "  • Create a .env file with OPENAI_API_KEY=your-key-here, or\n"
-            "  • Use --api-key option (not recommended for production)\n"
-            "\n"
-            "Get your API key from: https://platform.openai.com/api-keys"
-        )
-        logger.error(msg)
-        raise CLIError(msg, exit_code=ExitCode.API_ERROR)
+    # Create OpenAI client
+    from .utils.client_utils import create_openai_client
 
-    # Get API timeout
+    api_key = args.get("api_key")
     api_timeout = args.get("timeout", 60.0)
-    client = AsyncOpenAI(
+    client = create_openai_client(
         api_key=api_key,
-        timeout=min(float(api_timeout), 300.0),
-    )  # Cap at 5 min for client timeout
+        timeout=float(api_timeout),
+    )
 
     # Create service container for dependency management
     services = ServiceContainer(client, args)
@@ -1894,37 +1884,26 @@ async def execute_model(
         output_buffer.append(response)
 
         # Handle final output
+        from .utils.json_output import JSONOutputHandler
+
+        joh = JSONOutputHandler(indent=2)
+
         output_file = args.get("output_file")
+        if len(output_buffer) == 1:
+            # Single response - output raw model JSON
+            json_content = output_buffer[0].model_dump_json(indent=2)
+        else:
+            # Multiple responses - create JSON array using JSONOutputHandler
+            response_data = [
+                response.model_dump() for response in output_buffer
+            ]
+            json_content = joh.to_json(response_data)
+
         if output_file:
             with open(output_file, "w") as f:
-                if len(output_buffer) == 1:
-                    f.write(output_buffer[0].model_dump_json(indent=2))
-                else:
-                    # Build complete JSON array as a single string
-                    json_output = "[\n"
-                    for i, response in enumerate(output_buffer):
-                        if i > 0:
-                            json_output += ",\n"
-                        json_output += "  " + response.model_dump_json(
-                            indent=2
-                        ).replace("\n", "\n  ")
-                    json_output += "\n]"
-                    f.write(json_output)
+                f.write(json_content)
         else:
-            # Write to stdout when no output file is specified
-            if len(output_buffer) == 1:
-                print(output_buffer[0].model_dump_json(indent=2))
-            else:
-                # Build complete JSON array as a single string
-                json_output = "[\n"
-                for i, response in enumerate(output_buffer):
-                    if i > 0:
-                        json_output += ",\n"
-                    json_output += "  " + response.model_dump_json(
-                        indent=2
-                    ).replace("\n", "\n  ")
-                json_output += "\n]"
-                print(json_output)
+            print(json_content)
 
         # Handle file downloads from Code Interpreter if any were generated
         if code_interpreter_info and output_buffer:
@@ -2105,14 +2084,13 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
     """
     try:
         # 0. Configure Progress Reporting
-        configure_progress_reporter(
+        handler = ProgressHandler(
             verbose=args.get("verbose", False),
             progress=args.get("progress", "basic"),
         )
-        progress_reporter = get_progress_reporter()
 
         # 0. Model Parameter Validation
-        progress_reporter.report_phase("Validating configuration", "🔧")
+        handler.simple_phase("Validating configuration", "🔧")
         logger.debug("=== Model Parameter Validation ===")
         # Import here to avoid circular dependency
         from .model_validation import validate_model_params
@@ -2120,7 +2098,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         params = await validate_model_params(args)
 
         # 1. Input Validation Phase (includes schema validation)
-        progress_reporter.report_phase("Processing input files", "📂")
+        handler.simple_phase("Processing input files", "📂")
         # Import here to avoid circular dependency
         from .validators import validate_inputs
 
@@ -2150,18 +2128,18 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             vector_files = routing_result_typed.validated_files.get(
                 "file-search", []
             )
-            progress_reporter.report_file_routing(
+            handler.reporter.report_file_routing(
                 template_files, container_files, vector_files
             )
 
         # 2. Template Processing Phase
-        progress_reporter.report_phase("Rendering template", "📝")
+        handler.simple_phase("Rendering template", "📝")
         system_prompt, user_prompt = await process_templates(
             args, task_template, template_context, env, template_path or ""
         )
 
         # 3. Model & Schema Validation Phase
-        progress_reporter.report_phase("Validating model and schema", "✅")
+        handler.simple_phase("Validating model and schema", "✅")
         # Import here to avoid circular dependency
         from .model_validation import validate_model_and_schema
 
@@ -2181,7 +2159,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         # Report validation results
         if registry is not None:
             capabilities = registry.get_capabilities(args["model"])
-            progress_reporter.report_validation_results(
+            handler.reporter.report_validation_results(
                 schema_valid=True,  # If we got here, schema is valid
                 template_valid=True,  # If we got here, template is valid
                 token_count=total_tokens,
@@ -2189,7 +2167,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             )
         else:
             # Fallback for test environments where registry might be None
-            progress_reporter.report_validation_results(
+            handler.reporter.report_validation_results(
                 schema_valid=True,  # If we got here, schema is valid
                 template_valid=True,  # If we got here, template is valid
                 token_count=total_tokens,
@@ -2253,7 +2231,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             return ExitCode.SUCCESS
 
         # 5. Execution Phase
-        progress_reporter.report_phase("Generating response", "🤖")
+        handler.simple_phase("Generating response", "🤖")
         return await execute_model(
             args, params, output_model, system_prompt, user_prompt
         )

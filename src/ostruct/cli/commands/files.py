@@ -1,10 +1,8 @@
 """File management commands for ostruct."""
 
 import asyncio
-import fnmatch
 import json
 import logging
-import os
 import shutil
 import sys
 from datetime import datetime
@@ -19,12 +17,11 @@ from tabulate import tabulate
 
 from ..cache_utils import get_default_cache_path
 from ..file_search import FileSearchManager
-from ..progress_reporting import (
-    configure_progress_reporter,
-    get_progress_reporter,
-)
 from ..upload_cache import UploadCache
 from ..upload_manager import SharedUploadManager
+from ..utils.attachment_utils import AttachmentProcessor
+from ..utils.error_utils import ErrorCollector
+from ..utils.progress_utils import ProgressHandler
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +283,7 @@ def upload(
         ostruct files upload
     """
     # Configure progress reporting
-    configure_progress_reporter(
+    handler = ProgressHandler(
         verbose=ctx.obj.get("verbose", False) if ctx.obj else False,
         progress=progress,
     )
@@ -421,6 +418,7 @@ def upload(
             dry_run,
             progress,
             output_json,
+            handler,
         )
     )
 
@@ -436,17 +434,14 @@ async def _batch_upload(
     dry_run: bool,
     progress: str,
     output_json: bool,
+    handler: ProgressHandler,
 ) -> None:
     """Perform the actual batch upload operation."""
     try:
         # Create OpenAI client
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise click.ClickException(
-                "OPENAI_API_KEY environment variable not set"
-            )
+        from ..utils.client_utils import create_openai_client
 
-        client = AsyncOpenAI(api_key=api_key, timeout=60.0)
+        client = create_openai_client(timeout=60.0)
         cache = UploadCache(get_default_cache_path())
         upload_manager = SharedUploadManager(client, cache=cache)
 
@@ -460,98 +455,16 @@ async def _batch_upload(
             key, value = tag_str.split("=", 1)
             tags[key] = value
 
-        # Collect all files to process
-        all_files: List[Path] = []
-        errors: List[str] = []
+        # Use AttachmentProcessor to collect files
+        processor = AttachmentProcessor(
+            support_aliases=False, progress_handler=handler
+        )
+        all_files = await processor.collect_files(
+            files, directories, collections, pattern
+        )
 
-        # Add individual files (with glob support)
-        for file_path_str in files:
-            file_path_obj = Path(file_path_str)
-            if (
-                "*" in file_path_str
-                or "?" in file_path_str
-                or "[" in file_path_str
-            ):
-                # Glob pattern
-                parent = (
-                    file_path_obj.parent
-                    if file_path_obj.parent != Path(".")
-                    else Path.cwd()
-                )
-                glob_pattern = file_path_obj.name
-                for matched_file in parent.glob(glob_pattern):
-                    if matched_file.is_file():
-                        all_files.append(matched_file)
-            else:
-                # Regular file path
-                if file_path_obj.exists() and file_path_obj.is_file():
-                    all_files.append(file_path_obj)
-                else:
-                    errors.append(f"File not found: {file_path_str}")
-
-        # Add files from directories (with glob support)
-        for dir_path_str in directories:
-            dir_path_obj = Path(dir_path_str)
-            if (
-                "*" in dir_path_str
-                or "?" in dir_path_str
-                or "[" in dir_path_str
-            ):
-                # Glob pattern for directories
-                parent = (
-                    dir_path_obj.parent
-                    if dir_path_obj.parent != Path(".")
-                    else Path.cwd()
-                )
-                glob_pattern = dir_path_obj.name
-                for matched_dir in parent.glob(glob_pattern):
-                    if matched_dir.is_dir():
-                        for file_path in matched_dir.rglob("*"):
-                            if file_path.is_file():
-                                all_files.append(file_path)
-            else:
-                # Regular directory path
-                for file_path in dir_path_obj.rglob("*"):
-                    if file_path.is_file():
-                        all_files.append(file_path)
-
-        # Add files from collections
-        for collection_path_str in collections:
-            collection_file = Path(collection_path_str)
-            if collection_file.name.startswith("@"):
-                # Handle @filelist.txt syntax
-                actual_path = Path(collection_file.name[1:])
-                if actual_path.exists():
-                    collection_file = actual_path
-
-            with collection_file.open("r") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        file_path = Path(line)
-                        if file_path.exists() and file_path.is_file():
-                            all_files.append(file_path)
-                        else:
-                            errors.append(
-                                f"File not found in collection: {line}"
-                            )
-
-        # Apply global pattern filter
-        if pattern:
-            filtered_files = []
-            for file_path in all_files:
-                if fnmatch.fnmatch(file_path.name, pattern):
-                    filtered_files.append(file_path)
-            all_files = filtered_files
-
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_files = []
-        for file_path in all_files:
-            if file_path not in seen:
-                seen.add(file_path)
-                unique_files.append(file_path)
-        all_files = unique_files
+        # Initialize error collector for standardized error handling
+        error_collector = ErrorCollector()
 
         if not all_files:
             if output_json:
@@ -601,89 +514,98 @@ async def _batch_upload(
         # Disable progress bars in JSON mode to avoid corrupting output
         show_progress = progress != "none" and not output_json
 
-        # Get progress reporter and start phase
-        reporter = get_progress_reporter()
-        handle = None
+        # Use progress handler for batch processing
         if show_progress:
-            handle = reporter.start_phase(
-                "Uploading files", "📤", expected_steps=len(all_files)
-            )
+            with handler.batch_phase(
+                "Uploading files", "📤", len(all_files)
+            ) as phase:
+                for file_path in all_files:
+                    try:
+                        result = await _upload_single_file(
+                            file_path,
+                            effective_tools,
+                            tags,
+                            vector_store,
+                            client,
+                            cache,
+                            upload_manager,
+                        )
+                        results.append(result)
 
-        for file_path in all_files:
-            try:
-                result = await _upload_single_file(
-                    file_path,
-                    effective_tools,
-                    tags,
-                    vector_store,
-                    client,
-                    cache,
-                    upload_manager,
-                )
-                results.append(result)
+                        # Update progress
+                        filename = Path(file_path).name
+                        msg = (
+                            f"Uploaded {filename}"
+                            if progress == "detailed"
+                            else None
+                        )
+                        phase.advance(advance=1, msg=msg)
 
-                # Update progress
-                if handle:
-                    filename = Path(file_path).name
-                    msg = (
-                        f"Uploaded {filename}"
-                        if progress == "detailed"
-                        else None
+                    except Exception as e:
+                        # Use error collector for standardized formatting
+                        error_collector.add_error(str(file_path), e)
+                        error_msg = error_collector.format_error(
+                            str(file_path), e
+                        )
+                        logger.error(error_msg)
+
+                        # Update progress even on error
+                        filename = Path(file_path).name
+                        msg = (
+                            f"Error with {filename}"
+                            if progress == "detailed"
+                            else None
+                        )
+                        phase.advance(advance=1, msg=msg)
+        else:
+            # No progress tracking - process files without progress bars
+            for file_path in all_files:
+                try:
+                    result = await _upload_single_file(
+                        file_path,
+                        effective_tools,
+                        tags,
+                        vector_store,
+                        client,
+                        cache,
+                        upload_manager,
                     )
-                    reporter.advance(handle, advance=1, msg=msg)
+                    results.append(result)
 
-            except Exception as e:
-                error_msg = f"{file_path}: {str(e)}"
-
-                # Improve error messages for common issues
-                error_str = str(e)
-                if (
-                    "Files without extensions" in error_str
-                    and "not supported for file-search" in error_str
-                ):
-                    # More concise message for extension issues
-                    filename = Path(file_path).name
-                    error_msg = f"{filename}: Cannot use with file-search (no file extension). File was uploaded successfully for template use."
-                elif "Failed to add files to vector store" in error_str:
-                    # Simplify vector store errors
-                    filename = Path(file_path).name
-                    error_msg = f"{filename}: Upload succeeded but file-search binding failed. File available for template use."
-
-                errors.append(error_msg)
-                logger.error(error_msg)
-
-                # Update progress even on error
-                if handle:
-                    filename = Path(file_path).name
-                    msg = (
-                        f"Error with {filename}"
-                        if progress == "detailed"
-                        else None
-                    )
-                    reporter.advance(handle, advance=1, msg=msg)
-
-        # Complete the phase
-        if handle:
-            success = len(errors) == 0
-            summary = f"Uploaded {len(results)} files" + (
-                f" ({len(errors)} errors)" if errors else ""
-            )
-            reporter.complete(handle, success=success, final_message=summary)
+                except Exception as e:
+                    # Use error collector for standardized formatting
+                    error_collector.add_error(str(file_path), e)
+                    error_msg = error_collector.format_error(str(file_path), e)
+                    logger.error(error_msg)
 
         # Output results
+        formatted_errors = error_collector.get_formatted_errors()
+
         if output_json:
-            json_result = {
-                "uploaded": [r.model_dump() for r in results if not r.cached],
-                "cached": [r.model_dump() for r in results if r.cached],
-                "errors": errors,
-                "summary": {
-                    "total": len(all_files),
-                    "uploaded": len([r for r in results if not r.cached]),
-                    "cached": len([r for r in results if r.cached]),
-                    "errors": len(errors),
-                },
-            }
-            click.echo(json.dumps(json_result))
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler()
+
+            uploaded_count = len([r for r in results if not r.cached])
+            cached_count = len([r for r in results if r.cached])
+
+            summary = joh.format_summary(
+                total=len(all_files),
+                uploaded=uploaded_count,
+                cached=cached_count,
+                errors=error_collector.get_error_count(),
+            )
+
+            json_result = joh.format_results(
+                success_items=[
+                    r.model_dump() for r in results if not r.cached
+                ],
+                cached_items=[r.model_dump() for r in results if r.cached],
+                errors=formatted_errors,
+                summary=summary,
+            )
+
+            click.echo(joh.to_json(json_result))
         else:
             # Human-readable output
             for result in results:
@@ -702,21 +624,25 @@ async def _batch_upload(
                 click.echo(f"{status} {filename} → {result.file_id}")
                 click.echo(f"   Tools: {tools_str}")
 
-            if errors:
-                click.echo(f"\n❌ {len(errors)} errors:")
-                for error in errors:
+            if error_collector.has_errors():
+                click.echo(f"\n❌ {error_collector.get_error_count()} errors:")
+                for error in formatted_errors:
                     click.echo(f"   {error}")
 
             # Summary
             uploaded_count = len([r for r in results if not r.cached])
             cached_count = len([r for r in results if r.cached])
             click.echo(
-                f"\n📊 Summary: {uploaded_count} uploaded, {cached_count} cached, {len(errors)} errors"
+                f"\n📊 Summary: {uploaded_count} uploaded, {cached_count} cached, {error_collector.get_error_count()} errors"
             )
 
     except Exception as e:
         if output_json:
-            click.echo(json.dumps({"error": str(e)}))
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler()
+            error_result = joh.format_error_response(str(e))
+            click.echo(joh.to_json(error_result))
         else:
             click.echo(f"❌ Error: {str(e)}")
         sys.exit(1)

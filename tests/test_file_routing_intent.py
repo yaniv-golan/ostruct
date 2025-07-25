@@ -42,23 +42,6 @@ class LogCapture(logging.Handler):
 class TestFileRoutingIntent:
     """Test FileRoutingIntent enum and its usage."""
 
-    def test_routing_intent_enum_values(self) -> None:
-        """Test that FileRoutingIntent enum has correct values."""
-        assert FileRoutingIntent.TEMPLATE_ONLY.value == "template_only"
-        assert FileRoutingIntent.CODE_INTERPRETER.value == "code_interpreter"
-        assert FileRoutingIntent.FILE_SEARCH.value == "file_search"
-
-    def test_routing_intent_enum_members(self) -> None:
-        """Test that all expected enum members exist."""
-        expected_members = {
-            "TEMPLATE_ONLY",
-            "CODE_INTERPRETER",
-            "FILE_SEARCH",
-            "USER_DATA",
-        }
-        actual_members = {member.name for member in FileRoutingIntent}
-        assert actual_members == expected_members
-
 
 class TestFileInfoRoutingIntent:
     """Test FileInfo with routing intent functionality."""

@@ -2,7 +2,7 @@
 
 from typing import Tuple
 
-from .errors import VariableNameError, VariableValueError
+from ..errors import VariableNameError, VariableValueError
 
 
 def fix_surrogate_escapes(text: str) -> str:

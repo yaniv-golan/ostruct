@@ -127,7 +127,7 @@ class MockResponsesAPIHelper:
 class TestResponsesAPIIntegration:
     """Test OpenAI Responses API integration and streaming."""
 
-    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -136,7 +136,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_openai_class: Mock,
+        mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
         """Test basic Responses API call."""
@@ -161,9 +161,16 @@ class TestResponsesAPIIntegration:
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper for non-streaming response
-        mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, '{"result": "API response"}'
+        from unittest.mock import AsyncMock
+
+        mock_client = AsyncMock()
+        mock_response = MockResponsesAPIHelper.create_non_streaming_response(
+            '{"result": "API response"}'
         )
+        mock_responses = Mock()
+        mock_responses.create = AsyncMock(return_value=mock_response)
+        mock_client.responses = mock_responses
+        mock_create_client.return_value = mock_client
 
         # Create test files
         schema_content = {
@@ -204,7 +211,7 @@ class TestResponsesAPIIntegration:
         )  # Responses API uses 'input' not 'messages'
         assert "text" in call_args[1]  # Responses API uses 'text' format
 
-    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -213,7 +220,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_openai_class: Mock,
+        mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
         """Test non-streaming responses work correctly."""
@@ -238,9 +245,16 @@ class TestResponsesAPIIntegration:
         cli_runner = CliTestRunner()
 
         # Set up mock client for non-streaming response (streaming is no longer used)
-        mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, '{"result": "streaming response"}'
+        from unittest.mock import AsyncMock
+
+        mock_client = AsyncMock()
+        mock_response = MockResponsesAPIHelper.create_non_streaming_response(
+            '{"result": "streaming response"}'
         )
+        mock_responses = Mock()
+        mock_responses.create = AsyncMock(return_value=mock_response)
+        mock_client.responses = mock_responses
+        mock_create_client.return_value = mock_client
 
         # Create test files
         schema_content = {
@@ -273,7 +287,7 @@ class TestResponsesAPIIntegration:
         assert result.exit_code == 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -282,7 +296,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_openai_class: Mock,
+        mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
         """Test Responses API call with tools integration."""
@@ -307,9 +321,16 @@ class TestResponsesAPIIntegration:
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper for non-streaming response
-        mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, '{"result": "Tool analysis complete"}'
+        from unittest.mock import AsyncMock
+
+        mock_client = AsyncMock()
+        mock_response = MockResponsesAPIHelper.create_non_streaming_response(
+            '{"result": "Tool analysis complete"}'
         )
+        mock_responses = Mock()
+        mock_responses.create = AsyncMock(return_value=mock_response)
+        mock_client.responses = mock_responses
+        mock_create_client.return_value = mock_client
 
         # Create test files
         schema_content = {
@@ -348,7 +369,7 @@ class TestResponsesAPIIntegration:
         call_args = mock_client.responses.create.call_args
         assert call_args is not None
 
-    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -418,7 +439,7 @@ class TestResponsesAPIIntegration:
         assert result.exit_code != 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -491,7 +512,7 @@ class TestResponsesAPIIntegration:
         assert result.exit_code == 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.runner.AsyncOpenAI")
+    @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
