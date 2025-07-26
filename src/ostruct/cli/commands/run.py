@@ -423,10 +423,10 @@ def run(
             )
 
             if kwargs.get("dry_run_json"):
-                # Output JSON to stdout
+                # Output JSON to stdout - output plan directly without data wrapper
+                # for consistency with other commands and simpler consumption
                 joh = JSONOutputHandler(indent=2)
-                json_result = joh.format_generic(plan, "run", mode="dry-run")
-                click.echo(joh.to_json(json_result))
+                click.echo(joh.to_json(plan))
             else:
                 # Output human-readable to stdout
                 PlanPrinter.human(plan)
