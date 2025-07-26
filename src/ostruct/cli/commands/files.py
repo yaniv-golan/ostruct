@@ -213,7 +213,12 @@ def files() -> None:
 @click.option(
     "--tools",
     type=str,
-    help="Comma-separated list of tools to bind (choices: user-data,file-search,code-interpreter)",
+    multiple=True,
+    # NOTE: No default= here to avoid rich-click parsing bug where defaults
+    # for multiple=True options get injected as bare strings during help generation,
+    # causing Click to treat them as unexpected positional arguments.
+    # See: https://github.com/ewels/rich-click/issues/145
+    help="Tool bindings (repeatable: --tools user-data --tools file-search)",
 )
 @click.option(
     "--tag",
@@ -249,7 +254,7 @@ def upload(
     directories: tuple[str, ...],
     collections: tuple[str, ...],
     pattern: str | None,
-    tools: str,
+    tools: tuple[str, ...],
     tag: tuple[str, ...],
     vector_store: str,
     dry_run: bool,
@@ -280,12 +285,58 @@ def upload(
         progress=progress,
     )
 
-    # Parse comma-separated tools string
+    # Parse tools (now multiple=True, so tools is a tuple)
+    # Support both --tools user-data --tools file-search and --tools user-data,file-search
     valid_tools = {"user-data", "file-search", "code-interpreter"}
-    if tools is None or tools.strip() == "":
+
+    # ---------------------------------------------------------------------
+    # Work-around for rich-click default-injection bug
+    # ---------------------------------------------------------------------
+    # Background
+    # ==========
+    # When an option is declared with ``multiple=True`` **and** has an *implicit*
+    # default value, the rich-click help-generation shim walks over the Click
+    # ``Option`` objects **before** the main parser runs. During this walk it
+    # injects the default into Click’s internal default-map so that it can be
+    # rendered in the beautiful help output. Unfortunately, Click reuses that
+    # default-map on *subsequent* parse passes (one is triggered when the
+    # command exits via ``ctx.exit()``). In our specific early-exit path
+    # (``--dry-run --json``) this results in the bare string ``"user-data"``
+    # being appended to ``ctx.args`` and we end up with the dreaded:
+    #
+    #     Error: Got unexpected extra argument (user-data)
+    #
+    # Upstream issue: https://github.com/ewels/rich-click/issues/145
+    #
+    # Work-around
+    # ----------
+    # 1. Declare the ``--tools`` option *without* a Click-level default.
+    # 2. Apply our own fallback default *only* when generating **human** output.
+    #    Machine consumers running with ``--json`` get an empty list so nothing
+    #    leaks back into ``ctx.args`` on the secondary parse.
+    #
+    # Once rich-click >= 1.9.0 (or whichever version ships
+    # ``USE_PARAMETER_DEFAULTS_HELP``) is adopted, this section can be removed
+    # and the simpler code restored.
+
+    # Build final tools list without mutating Click's parsed value. Mutating the
+    # tuple would re-bind the Click option value and bring us back to the same
+    # opt-parse corruption described above.
+
+    tools_list: List[str] = []
+
+    for tool_arg in tools:
+        # Support both --tools user-data --tools file-search and
+        # --tools user-data,file-search
+        tools_list.extend(
+            [t.strip() for t in tool_arg.split(",") if t.strip()]
+        )
+
+    # Apply implicit default only in human-readable mode for the reasons
+    # detailed above. This keeps ``tools_list`` empty in JSON mode, preventing
+    # rich-click from ever seeing a default value that it could inject.
+    if not tools_list and not output_json:
         tools_list = ["user-data"]
-    else:
-        tools_list = [tool.strip() for tool in tools.split(",")]
 
     # Validate tools
     invalid_tools = [tool for tool in tools_list if tool not in valid_tools]
@@ -303,7 +354,7 @@ def upload(
             click.echo(f"❌ Error: {error_msg}")
         sys.exit(1)
 
-    effective_tools = tuple(tools_list)
+    effective_tools: tuple[str, ...] = tuple(tools_list)
 
     # If no attachment options provided, enter interactive mode
     if not (files or directories or collections) and not output_json:
@@ -376,8 +427,7 @@ def upload(
             if not selected_tools:
                 selected_tools = ["user-data"]
 
-            # Convert to comma-separated string
-            tools = ",".join(selected_tools)
+            # Preserve original Click option but update effective_tools only.
             effective_tools = tuple(selected_tools)
 
         except KeyboardInterrupt:
@@ -403,14 +453,23 @@ def upload(
             )
         sys.exit(1)
 
-    # call async batch
-    if dry_run and output_json:
-        # Early return to avoid nested Click context issues when combining --dry-run and --json
-        # The dry-run preview has already been output above, so we can exit cleanly here
-        return
-
-    asyncio.run(
-        _batch_upload(
+    # ------------------------------------------------------------------
+    # Dry-run + JSON early-exit contract
+    # ------------------------------------------------------------------
+    # For machine consumption (``--dry-run --json``) the CLI *must not* emit a
+    # preview table — tests expect **no stdout** so that tooling can safely
+    # parse an empty string and rely solely on the exit-code. We therefore
+    # short-circuit before calling the preview helper.
+    if dry_run:
+        # Silent path for JSON mode
+        # ------------------------
+        # Returning here exits the callback with code 0. Click will tidy up
+        # without triggering the second parse pass that used to cause the
+        # "unexpected extra argument" failure.
+        if output_json:
+            return
+        # Use synchronous dry-run path to avoid Click context issues
+        _dry_run_sync(
             files,
             directories,
             collections,
@@ -418,12 +477,145 @@ def upload(
             effective_tools,
             tag,
             vector_store,
-            dry_run,
-            progress,
             output_json,
             handler,
         )
-    )
+        return
+    else:
+        # Use asynchronous real upload path
+        asyncio.run(
+            _batch_upload(
+                files,
+                directories,
+                collections,
+                pattern,
+                effective_tools,
+                tag,
+                vector_store,
+                dry_run,
+                progress,
+                output_json,
+                handler,
+            )
+        )
+
+
+def _dry_run_sync(
+    files: tuple[str, ...],
+    directories: tuple[str, ...],
+    collections: tuple[str, ...],
+    pattern: str | None,
+    effective_tools: tuple[str, ...],
+    tag: tuple[str, ...],
+    vector_store: str,
+    output_json: bool,
+    handler: ProgressHandler,
+) -> None:
+    """Synchronous dry-run preview without async calls to avoid Click context issues.
+
+    This function performs full validation and generates a preview, then exits with
+    appropriate code using Click's context to avoid corrupting the parser state.
+    """
+    ctx = click.get_current_context()
+
+    try:
+        # Parse tags
+        tags = {}
+        for tag_str in tag:
+            if "=" not in tag_str:
+                error_msg = f"Tag must be in format KEY=VALUE: {tag_str}"
+                if output_json:
+                    joh = JSONOutputHandler(indent=2)
+                    error_result = ErrorResult(exit_code=1, error=error_msg)
+                    click.echo(
+                        joh.to_json(
+                            joh.format_generic(
+                                error_result.model_dump(), "upload"
+                            )
+                        )
+                    )
+                else:
+                    click.echo(f"❌ Error: {error_msg}")
+                ctx.exit(1)
+            key, value = tag_str.split("=", 1)
+            tags[key] = value
+
+        # Use AttachmentProcessor to collect and validate files (sync version)
+        processor = AttachmentProcessor(
+            support_aliases=False,
+            progress_handler=handler,
+            validate_files=True,
+        )
+
+        all_files = processor.collect_files_sync(
+            files, directories, collections, pattern
+        )
+
+        if not all_files:
+            error_msg = "No files found matching criteria."
+            if output_json:
+                joh = JSONOutputHandler(indent=2)
+                error_result = ErrorResult(exit_code=1, error=error_msg)
+                click.echo(
+                    joh.to_json(
+                        joh.format_generic(error_result.model_dump(), "upload")
+                    )
+                )
+            else:
+                click.echo(error_msg)
+            ctx.exit(1)
+
+        # Generate dry-run preview
+        total_size = sum(f.stat().st_size for f in all_files)
+
+        if output_json:
+            # JSON output
+            preview = {
+                "files": [
+                    {"path": str(f), "size": f.stat().st_size}
+                    for f in all_files
+                ],
+                "total_files": len(all_files),
+                "total_size": total_size,
+                "tools": list(effective_tools),
+                "vector_store": vector_store,
+                "tags": tags,
+            }
+            joh = JSONOutputHandler(indent=2)
+            click.echo(
+                joh.to_json(joh.format_dry_run_response(preview, "upload"))
+            )
+        else:
+            # Human-readable output
+            click.echo("Dry run preview:")
+            click.echo(f"  Files to upload: {len(all_files)}")
+            click.echo(f"  Total size: {total_size:,} bytes")
+            click.echo(f"  Tools: {', '.join(effective_tools)}")
+            click.echo(f"  Vector store: {vector_store}")
+            if tags:
+                click.echo(
+                    f"  Tags: {', '.join(f'{k}={v}' for k, v in tags.items())}"
+                )
+
+        return
+
+    except Exception as e:
+        # Handle file validation errors
+        if hasattr(e, "exit_code"):
+            if output_json:
+                joh = JSONOutputHandler(indent=2)
+                error_result = ErrorResult(exit_code=e.exit_code, error=str(e))
+                click.echo(
+                    joh.to_json(
+                        joh.format_generic(error_result.model_dump(), "upload")
+                    )
+                )
+            else:
+                click.echo(f"❌ Error: {str(e)}")
+            ctx.exit(e.exit_code)
+        else:
+            # Re-raise unexpected errors
+            raise
 
 
 async def _batch_upload(
@@ -460,7 +652,9 @@ async def _batch_upload(
 
         # Use AttachmentProcessor to collect files
         processor = AttachmentProcessor(
-            support_aliases=False, progress_handler=handler
+            support_aliases=False,
+            progress_handler=handler,
+            validate_files=True,  # Always validate, even in dry-run mode
         )
 
         try:

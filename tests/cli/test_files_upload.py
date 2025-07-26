@@ -258,7 +258,7 @@ class TestFilesUploadBatch:
             [
                 "upload",
                 "--collect",
-                str(temp_files["filelist.txt"]),
+                f"@{temp_files['filelist.txt']}",
                 "--tools",
                 "user-data",
             ],
@@ -504,8 +504,9 @@ class TestFilesUploadErrorHandling:
 
         assert result.exit_code == 1
         data = json.loads(result.output)
-        assert "error" in data
-        assert "No files specified" in data["error"]
+        assert "data" in data
+        assert "error" in data["data"]
+        assert "No files specified" in data["data"]["error"]
 
     def test_invalid_tag_format(self, temp_files):
         """Test error with invalid tag format."""
@@ -679,13 +680,14 @@ class TestFilesUploadJsonOutput:
             files, ["upload", "--file", "*.nonexistent", "--json"]
         )
 
-        assert result.exit_code == 0
+        # With new validation, glob patterns that match no files return FILE_ERROR (9)
+        assert result.exit_code == 9
         data = json.loads(result.output)
 
-        assert data["uploaded"] == []
-        assert data["cached"] == []
-        assert data["errors"] == []
-        assert data["summary"]["total"] == 0
+        # Should be an error response with the new JSON structure
+        assert "data" in data
+        assert "error" in data["data"]
+        assert "No files match pattern" in data["data"]["error"]
 
 
 @pytest.mark.no_fs

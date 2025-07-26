@@ -31,6 +31,9 @@ click.rich_click.SHOW_METAVARS_COLUMN = (
 )
 click.rich_click.APPEND_METAVARS_HELP = True  # Append metavars to help text
 
+# Note: rich-click 1.8.9 doesn't have USE_PARAMETER_DEFAULTS_HELP setting
+# The default injection issue needs to be handled in the callback logic instead
+
 # ============================================================================
 # COMMAND GROUPING CONFIGURATION
 # ============================================================================
