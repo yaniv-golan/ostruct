@@ -461,12 +461,44 @@ def upload(
     # parse an empty string and rely solely on the exit-code. We therefore
     # short-circuit before calling the preview helper.
     if dry_run:
-        # Silent path for JSON mode
-        # ------------------------
-        # Returning here exits the callback with code 0. Click will tidy up
-        # without triggering the second parse pass that used to cause the
-        # "unexpected extra argument" failure.
+        # Special handling for machine-readable mode
+        # -----------------------------------------
+        # We still want *full validation* so that missing files correctly
+        # raise ``ExitCode.FILE_ERROR`` (tests rely on this).  However, on
+        # *success* we suppress the human preview table and emit **no**
+        # stdout – tools consume the exit-code only.
         if output_json:
+            try:
+                processor = AttachmentProcessor(
+                    support_aliases=False,
+                    progress_handler=handler,
+                    validate_files=True,
+                )
+                # Validation is enough – the collect_files call will raise
+                # our custom exceptions (with ``exit_code``) if anything is
+                # wrong.  We deliberately ignore the returned list to keep
+                # the silent success contract.
+                asyncio.run(
+                    processor.collect_files(
+                        files, directories, collections, pattern
+                    )
+                )
+            except Exception as e:  # pragma: no cover – handled exhaustively
+                if hasattr(e, "exit_code"):
+                    joh = JSONOutputHandler(indent=2)
+                    error_result = ErrorResult(
+                        exit_code=e.exit_code, error=str(e)
+                    )
+                    click.echo(
+                        joh.to_json(
+                            joh.format_generic(
+                                error_result.model_dump(), "upload"
+                            )
+                        )
+                    )
+                    ctx.exit(e.exit_code)
+                raise
+            # All good – silent exit (code 0)
             return
         # Use synchronous dry-run path to avoid Click context issues
         _dry_run_sync(

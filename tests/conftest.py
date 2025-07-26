@@ -98,6 +98,20 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
+def pytest_collection_modifyitems(items):
+    """Automatically mark tests using tmp_path with no_fs to prevent conflicts.
+
+    Tests that use pytest's real tmp_path fixture are incompatible with our
+    autouse setup_test_fs fixture that enables pyfakefs. This hook automatically
+    adds the no_fs marker to any test that uses tmp_path to prevent the
+    FileNotFoundError issues that occur when pyfakefs patches tempfile.gettempdir()
+    while pytest tries to create real temporary directories.
+    """
+    for item in items:
+        if "tmp_path" in item.fixturenames:
+            item.add_marker("no_fs")
+
+
 @pytest.fixture
 def requires_openai() -> None:
     """Skip tests that require OpenAI API access if no valid API key is found."""

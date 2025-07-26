@@ -22,6 +22,11 @@ from src.ostruct.cli.utils.file_errors import (
     validate_file_exists,
 )
 
+# These tests rely heavily on pytest's real ``tmp_path`` fixture to create actual
+# temporary files and directories. The pytest_collection_modifyitems hook in
+# conftest.py automatically adds the no_fs marker to any test using tmp_path
+# to prevent conflicts with the pyfakefs-based setup_test_fs fixture.
+
 
 class TestFileValidationFunctions:
     """Test the core file validation functions."""
