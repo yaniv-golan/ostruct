@@ -4,6 +4,7 @@ import click
 
 from .files import files
 from .list_models import list_models
+from .models import models
 from .run import run
 from .runx import runx
 from .scaffold import scaffold
@@ -21,9 +22,14 @@ def create_command_group() -> click.Group:
     group.add_command(runx)
     group.add_command(scaffold)
     group.add_command(setup)
+    group.add_command(files)
+
+    # Add new models command group
+    group.add_command(models)
+
+    # Keep deprecated commands for backward compatibility
     group.add_command(update_registry)
     group.add_command(list_models)
-    group.add_command(files)
 
     return group
 

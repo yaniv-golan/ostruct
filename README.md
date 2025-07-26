@@ -234,6 +234,7 @@ We provide multiple installation methods to suit different user needs. Choose th
 `pipx` is the recommended installation method. It installs `ostruct` in an isolated environment, preventing conflicts with other Python packages.
 
 **macOS (with Homebrew):**
+
 ```bash
 brew install pipx
 pipx install ostruct-cli       # new users
@@ -536,13 +537,13 @@ ostruct --config my-config.yaml run template.j2 schema.json
 ostruct automatically validates model names against the OpenAI model registry. Only models that support structured output are available for selection, ensuring compatibility with JSON schema outputs.
 
 ```bash
-# See all available models with details
-ostruct list-models
+   # See all available models with details
+   ostruct models list
 
 # Models are validated at command time
 ostruct run template.j2 schema.json --model invalid-model
-# Error: Invalid model 'invalid-model'. Available models: gpt-4o, gpt-4o-mini, o1 (and 12 more).
-#        Run 'ostruct list-models' to see all 15 available models.
+      # Error: Invalid model 'invalid-model'. Available models: gpt-4o, gpt-4o-mini, o1 (and 12 more).
+      #        Run 'ostruct models list' to see all 15 available models.
 
 # Shell completion works with model names
 ostruct run template.j2 schema.json --model <TAB>
@@ -551,14 +552,14 @@ ostruct run template.j2 schema.json --model <TAB>
 
 **Model Registry Updates:**
 
-The model list is automatically updated when you run `ostruct update-registry`. If you encounter model validation errors, try updating your registry first:
+The model list is automatically updated when you run `ostruct models update`. If you encounter model validation errors, try updating your registry first:
 
 ```bash
 # Update model registry
-ostruct update-registry
+ostruct models update
 
 # Check available models
-ostruct list-models
+ostruct models list
 ```
 
 ### Code Interpreter File Downloads
@@ -817,20 +818,24 @@ ostruct run template.j2 schema.json --ignore-task-sysprompt
 ### Regular ostruct vs OST Files
 
 **Regular ostruct workflow:**
+
 ```bash
 # Requires separate files and manual configuration
 ostruct run template.j2 schema.json --var name="John" --file data.csv --model gpt-4o
 ```
+
 - Template and schema are separate files
 - User must know variable names and types
 - Command-line becomes complex with many options
 - No built-in help for template-specific usage
 
 **OST file workflow:**
+
 ```bash
 # Self-contained with custom CLI
 ./text-analyzer.ost "Hello world" --format json --help
 ```
+
 - Everything bundled in one executable file
 - Custom command-line arguments defined by template author
 - Built-in help system: `./tool.ost --help` shows template-specific options
@@ -1105,13 +1110,13 @@ To ensure you're using the latest models and features, you can update the regist
 
 ```bash
 # Update from the official repository
-ostruct update-registry
+ostruct models update
 
 # Update from a custom URL
-ostruct update-registry --url https://example.com/models.yml
+ostruct models update --url https://example.com/models.yml
 
 # Force an update even if the registry is current
-ostruct update-registry --force
+ostruct models update --force
 ```
 
 This is especially useful when:

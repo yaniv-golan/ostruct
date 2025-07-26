@@ -105,7 +105,7 @@ class ModelChoice(click.Choice):
 
             raise click.BadParameter(
                 f"Invalid model '{value}'. Available models: {available}{more_text}.\n"
-                f"Run 'ostruct list-models' to see all {len(choices_list)} available models."
+                f"Run 'ostruct models list' to see all {len(choices_list)} available models."
             )
 
     def shell_complete(
@@ -127,7 +127,7 @@ class ModelChoice(click.Choice):
         choices_list = list(self.choices)
 
         # Simple, clean display
-        return f"[{len(choices_list)} models available - run 'ostruct list-models' for full list]"
+        return f"[{len(choices_list)} models available - run 'ostruct models list' for full list]"
 
 
 def create_model_choice() -> ModelChoice:
@@ -298,7 +298,7 @@ def model_options(f: Union[Command, Callable[..., Any]]) -> Command:
             type=model_choice,
             default=default_model,
             show_default=True,
-            help="OpenAI model to use. Must support structured output. Run 'ostruct list-models' for complete list.",
+            help="OpenAI model to use. Must support structured output. Run 'ostruct models list' for complete list.",
         ),
     ):
         cmd = deco(cmd)

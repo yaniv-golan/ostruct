@@ -32,6 +32,31 @@ click.rich_click.SHOW_METAVARS_COLUMN = (
 click.rich_click.APPEND_METAVARS_HELP = True  # Append metavars to help text
 
 # ============================================================================
+# COMMAND GROUPING CONFIGURATION
+# ============================================================================
+
+# Configure command groups to separate deprecated commands
+click.rich_click.COMMAND_GROUPS = {
+    "ostruct": [
+        {
+            "name": "Main Commands",
+            "commands": [
+                "run",
+                "runx",
+                "files",
+                "models",
+                "scaffold",
+                "setup",
+            ],
+        },
+        {
+            "name": "Deprecated Commands",
+            "commands": ["list-models", "update-registry"],
+        },
+    ]
+}
+
+# ============================================================================
 # MODERN THEME STYLING - APPLIED IMMEDIATELY
 # ============================================================================
 # Based on our rich-click test - Modern/Vibrant theme with professional polish

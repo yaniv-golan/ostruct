@@ -137,7 +137,7 @@ def check_for_registry_updates() -> Tuple[bool, Optional[str]]:
             return True, (
                 "A new model registry is available. "
                 "This may include support for new models or features. "
-                "Run 'ostruct update-registry' to update."
+                "Run 'ostruct models update' to update."
             )
 
         return False, None

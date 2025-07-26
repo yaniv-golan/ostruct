@@ -30,8 +30,11 @@ ostruct provides several commands for different use cases:
 - ``ostruct files COMMAND`` - Manage file uploads and cache inventory
 - ``ostruct scaffold COMMAND`` - Generate template files and project scaffolding
 - ``ostruct setup COMMAND`` - Environment setup and configuration
-- ``ostruct list-models`` - List available OpenAI models
-- ``ostruct update-registry`` - Update model registry
+- ``ostruct models list`` - List available OpenAI models
+- ``ostruct models update`` - Update model registry
+
+.. note::
+   **Deprecated Commands**: The standalone ``ostruct list-models`` and ``ostruct update-registry`` commands are deprecated and will be removed in the next minor version. Use the ``models`` subcommands instead.
 
 **Command Details:**
 
@@ -217,7 +220,7 @@ Quick Reference Commands
    ostruct run --help-json
 
    # Update model registry
-   ostruct update-registry
+   ostruct models update
 
 .. warning::
    **Experimental Feature: --help-json**
@@ -963,12 +966,12 @@ Model and API Options
       ostruct run template.j2 schema.json --model gpt-4o-mini
 
       # See all available models with details
-      ostruct list-models
+      ostruct models list
 
       # Invalid models are rejected with helpful suggestions
       ostruct run template.j2 schema.json --model invalid-model
       # Error: Invalid model 'invalid-model'. Available models: gpt-4o, gpt-4o-mini, o1 (and 15 more).
-      #        Run 'ostruct list-models' to see all 18 available models.
+      #        Run 'ostruct models list' to see all 18 available models.
 
    **Shell Completion:**
 
@@ -982,7 +985,7 @@ Model and API Options
 
    **Model Registry Updates:**
 
-   The model list is automatically updated when you run ``ostruct update-registry``.
+   The model list is automatically updated when you run ``ostruct models update``.
    If you encounter model validation errors, try updating your registry first.
 
 .. option:: --timeout SECONDS
@@ -1212,8 +1215,8 @@ ostruct validates model names against the OpenAI model registry to ensure compat
 
 **Available Commands:**
 
-1. Check available models: ``ostruct list-models``
-2. Update model registry: ``ostruct update-registry``
+1. Check available models: ``ostruct models list``
+2. Update model registry: ``ostruct models update``
 
 **Common Model Names:**
 

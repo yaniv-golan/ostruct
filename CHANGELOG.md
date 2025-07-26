@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Models Command Group**: Introduced `ostruct models` command group with `list` and `update` subcommands for better organization of model-related functionality
+
+### Changed
+
+- **Command Structure**: Model management commands are now organized under the `models` group:
+  - `ostruct models list` - List available OpenAI models (replaces `list-models`)
+  - `ostruct models update` - Update model registry (replaces `update-registry`)
+
+### Deprecated
+
+- **Legacy Commands**: The standalone `list-models` and `update-registry` commands are deprecated and will be removed in the next minor version. Use the new `models` subcommands instead. Deprecated commands now show dynamic warnings indicating the exact version when they will be removed.
+
 ## [1.4.1] - 2025-07-21
 
 ### Added

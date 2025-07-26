@@ -444,7 +444,7 @@ class UserDataNotSupportedError(CLIError):
                     "Use a vision-enabled model (e.g., gpt-4o, gpt-4.1)",
                     "Convert files to text and use 'prompt:' target instead",
                     "Use 'fs:' target for File Search RAG workflow",
-                    "Check model capabilities with 'ostruct list-models'",
+                    "Check model capabilities with 'ostruct models list'",
                 ],
             )
 

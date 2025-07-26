@@ -22,7 +22,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   ostruct runx OST_FILE [ARGS]                # self‑executing template with front‑matter
   ostruct scaffold {template|schema|ost}      # quick-start files
   ostruct setup {windows-register|windows-unregister}
-  ostruct list-models | update-registry | quick-ref
+  ostruct models {list|update} | quick-ref
   ```
 
 * **Global attachment & security flags**
@@ -104,7 +104,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   1. First run with `--dry-run` to see the fully‑rendered prompt and detect schema errors locally (syntax only).
   2. Use explicit `--tool-choice none` when structured data is the *only* goal.
   3. Keep schemas minimal but descriptive; model matches keys by name, descriptions improve coercion quality.
-  4. Refresh models via `update-registry` to lock in newest OpenAI releases.
+  4. Refresh models via `models update` to lock in newest OpenAI releases.
 
 ## Resources
 
