@@ -9,7 +9,6 @@ from ostruct.cli.commands.files import files
 
 
 @pytest.fixture
-@pytest.mark.no_fs
 def temp_files(tmp_path):
     """Create temporary test files."""
     files = {}
