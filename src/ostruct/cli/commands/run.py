@@ -1,7 +1,6 @@
 """Run command for ostruct CLI."""
 
 import asyncio
-import json
 import logging
 import sys
 from pathlib import Path
@@ -21,6 +20,8 @@ from ..errors import (
 from ..exit_codes import ExitCode
 from ..runner import run_cli_async
 from ..types import CLIParams
+from ..utils.json_models import ErrorResult
+from ..utils.json_output import JSONOutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -423,7 +424,9 @@ def run(
 
             if kwargs.get("dry_run_json"):
                 # Output JSON to stdout
-                click.echo(json.dumps(plan, indent=2))
+                joh = JSONOutputHandler(indent=2)
+                json_result = joh.format_generic(plan, "run", mode="dry-run")
+                click.echo(joh.to_json(json_result))
             else:
                 # Output human-readable to stdout
                 PlanPrinter.human(plan)
@@ -478,8 +481,19 @@ def run(
             # Log the error with full context
             logger.error("Schema validation error: %s", str(e))
             if e.context:
+                joh = JSONOutputHandler(indent=2)
+                error_result = ErrorResult(exit_code=1, error=str(e))
                 logger.debug(
-                    "Error context: %s", json.dumps(e.context, indent=2)
+                    "Error context: %s",
+                    joh.to_json(
+                        joh.format_generic(
+                            {
+                                "error": error_result.model_dump(),
+                                "context": e.context,
+                            },
+                            "run",
+                        )
+                    ),
                 )
             # Re-raise to preserve error chain and exit code
             raise

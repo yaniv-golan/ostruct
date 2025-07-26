@@ -27,6 +27,7 @@ ostruct provides several commands for different use cases:
 
 - ``ostruct run TEMPLATE_FILE SCHEMA_FILE [OPTIONS]`` - Execute templates with separate schema files
 - ``ostruct runx TEMPLATE_FILE [ARGS]`` - Execute OST files (self-executing ostruct prompts)
+- ``ostruct files COMMAND`` - Manage file uploads and cache inventory
 - ``ostruct scaffold COMMAND`` - Generate template files and project scaffolding
 - ``ostruct setup COMMAND`` - Environment setup and configuration
 - ``ostruct list-models`` - List available OpenAI models
@@ -1282,6 +1283,332 @@ If you see warnings about Magika not being available, this affects auto-routing 
 **Supported Extensions (Fallback Mode)**:
 
 Text files automatically routed to template: ``.txt``, ``.md``, ``.rst``, ``.json``, ``.yaml``, ``.yml``, ``.toml``, ``.ini``, ``.cfg``, ``.py``, ``.js``, ``.html``, ``.css``, ``.sql``, ``.sh``, ``.log``, ``.csv``, ``.env``, and 15+ others.
+
+Files Management Commands
+=========================
+
+The ``ostruct files`` command provides dedicated file management functionality separate from the main ``ostruct run`` command. These commands help you manage file uploads, cache inventory, and file-tool bindings.
+
+ostruct files upload
+--------------------
+
+Upload files with batch support, tool binding, and caching.
+
+.. code-block:: text
+
+   Usage: ostruct files upload [OPTIONS]
+
+   Upload files with batch support and interactive mode.
+
+**File Input Options:**
+
+.. option:: --file PATH
+
+   Upload individual files (repeatable).
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Single file
+      ostruct files upload --file document.pdf
+
+      # Multiple files
+      ostruct files upload --file doc1.pdf --file doc2.csv --file chart.png
+
+      # Glob patterns
+      ostruct files upload --file "*.pdf"
+
+.. option:: --dir PATH
+
+   Upload directories recursively (repeatable).
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Single directory
+      ostruct files upload --dir ./documentation
+
+      # Multiple directories
+      ostruct files upload --dir ./docs --dir ./data
+
+.. option:: --collect @FILELIST
+
+   Upload files listed in text file (repeatable).
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Single collection
+      ostruct files upload --collect @file-list.txt
+
+      # Multiple collections
+      ostruct files upload --collect @docs.txt --collect @data.txt
+
+**Tool Binding Options:**
+
+.. option:: --tools TOOLS
+
+   Comma-separated list of tools to bind files to.
+
+   **Available tools:**
+
+   - ``user-data``: Template access only (default)
+   - ``file-search``: Upload to File Search vector store
+   - ``code-interpreter``: Upload to Code Interpreter
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Default (user-data only)
+      ostruct files upload --file data.csv
+
+      # File Search
+      ostruct files upload --file manual.pdf --tools file-search
+
+      # Code Interpreter
+      ostruct files upload --file analysis.py --tools code-interpreter
+
+      # Multiple tools
+      ostruct files upload --file data.json --tools file-search,code-interpreter
+
+**Metadata and Organization:**
+
+.. option:: --tag KEY=VALUE
+
+   Add metadata tags to files (repeatable).
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Single tag
+      ostruct files upload --file report.pdf --tag project=alpha
+
+      # Multiple tags
+      ostruct files upload --file data.csv --tag project=beta --tag type=analysis
+
+.. option:: --vector-store NAME
+
+   Named vector store for file search (default: "ostruct").
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Custom vector store
+      ostruct files upload --file docs.pdf --tools file-search --vector-store project_docs
+
+.. option:: --pattern GLOB
+
+   Global file pattern filter.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Filter by extension
+      ostruct files upload --dir ./mixed --pattern "*.pdf"
+
+      # Filter by name pattern
+      ostruct files upload --dir ./logs --pattern "error_*.log"
+
+**Execution Options:**
+
+.. option:: --dry-run
+
+   Preview uploads without making API calls.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Preview file upload
+      ostruct files upload --file *.pdf --dry-run
+
+.. option:: --progress [none|basic|detailed]
+
+   Control progress display (default: basic).
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # Silent operation
+      ostruct files upload --file data.csv --progress none
+
+      # Detailed progress
+      ostruct files upload --dir ./docs --progress detailed
+
+.. option:: --json
+
+   Output machine-readable JSON.
+
+   **Examples:**
+
+   .. code-block:: bash
+
+      # JSON output
+      ostruct files upload --file data.csv --json
+
+**Usage Examples:**
+
+.. code-block:: bash
+
+   # Interactive mode (no arguments)
+   ostruct files upload
+
+   # Single file with metadata
+   ostruct files upload --file chart.png --tag project=alpha --tag type=visualization
+
+   # Batch upload with file search
+   ostruct files upload --file doc1.pdf --file doc2.pdf --tools file-search
+
+   # Directory upload with pattern filtering
+   ostruct files upload --dir ./docs --pattern '*.pdf' --tools file-search
+
+   # Collection upload with code interpreter
+   ostruct files upload --collect @data-files.txt --tools code-interpreter
+
+   # Mixed inputs with multiple tools
+   ostruct files upload --file config.yaml --dir ./data --tools file-search,code-interpreter
+
+ostruct files list
+------------------
+
+Show cache inventory and file information.
+
+.. code-block:: text
+
+   Usage: ostruct files list [OPTIONS]
+
+   Show cache inventory.
+
+**Options:**
+
+.. option:: --json
+
+   Output machine-readable JSON.
+
+.. option:: --vector-store NAME
+
+   Filter by specific vector store name.
+
+**Examples:**
+
+.. code-block:: bash
+
+   # List all cached files
+   ostruct files list
+
+   # JSON output
+   ostruct files list --json
+
+   # Filter by vector store
+   ostruct files list --vector-store project_docs
+
+File Error Handling
+-------------------
+
+The files commands implement comprehensive error handling following Unix conventions. All file-related errors use exit code 9 (``FILE_ERROR``) for consistency.
+
+**Error Categories:**
+
+**File Not Found (Exit Code 9):**
+
+.. code-block:: bash
+
+   # Missing individual file
+   ostruct files upload --file nonexistent.txt
+   # Output: ❌ Error: File not found: nonexistent.txt
+
+   # Glob pattern with no matches
+   ostruct files upload --file "*.nonexistent"
+   # Output: ❌ Error: No files match pattern: *.nonexistent
+
+**Directory Errors (Exit Code 9):**
+
+.. code-block:: bash
+
+   # Missing directory
+   ostruct files upload --dir nonexistent_dir
+   # Output: ❌ Error: Directory not found: nonexistent_dir
+
+   # Path is not a directory
+   ostruct files upload --dir regular_file.txt
+   # Output: ❌ Error: Path is not a directory: regular_file.txt
+
+**Collection File Errors (Exit Code 9):**
+
+.. code-block:: bash
+
+   # Missing collection file
+   ostruct files upload --collect @missing_list.txt
+   # Output: ❌ Error: Collection file not found: missing_list.txt
+
+   # File in collection doesn't exist
+   ostruct files upload --collect @list_with_missing_files.txt
+   # Output: ❌ Error: File not found (from collection list_with_missing_files.txt): missing.txt
+
+**Permission Errors (Exit Code 9):**
+
+.. code-block:: bash
+
+   # Unreadable file
+   ostruct files upload --file unreadable.txt
+   # Output: ❌ Error: Permission denied: unreadable.txt
+
+**Symlink Errors (Exit Code 9):**
+
+.. code-block:: bash
+
+   # Broken symlink
+   ostruct files upload --file broken_link.txt
+   # Output: ❌ Error: Broken symlink: broken_link.txt -> /nonexistent/target
+
+**Error Behavior:**
+
+- **Fail Fast**: Stop on first error, don't process any files
+- **Early Validation**: Errors are caught before dry-run preview or file processing
+- **Consistent Exit Codes**: All file-related errors use exit code 9
+- **JSON Error Format**: Structured error output with metadata when using ``--json``
+
+**JSON Error Output:**
+
+.. code-block:: json
+
+   {
+     "data": {
+       "exit_code": 9,
+       "error": "File not found: nonexistent.txt"
+     },
+     "metadata": {
+       "operation": "upload",
+       "timestamp": "2024-01-15T10:30:00Z"
+     }
+   }
+
+**Warning vs Error Cases:**
+
+- **Errors (Exit Code 9)**: Explicitly specified files/directories that don't exist
+- **Warnings (Exit Code 0)**: Empty directories, empty collections, no files after pattern filtering
+
+.. code-block:: bash
+
+   # Error: Explicit file missing
+   ostruct files upload --file missing.txt
+   # Exit code: 9
+
+   # Warning: Empty directory (but continues)
+   ostruct files upload --dir empty_directory
+   # Exit code: 0, shows: "No files found matching criteria."
+
+   # Warning: Pattern filters out all files (but continues)
+   ostruct files upload --file existing.txt --pattern "*.nonexistent"
+   # Exit code: 0, shows: "No files found matching criteria."
 
 See Also
 ========

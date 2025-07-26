@@ -4,6 +4,14 @@ import fnmatch
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from .file_errors import (
+    CollectionFileNotFoundError,
+    FileFromCollectionNotFoundError,
+    NoFilesMatchPatternError,
+    validate_collection_file_exists,
+    validate_directory_exists,
+    validate_file_exists,
+)
 from .progress_utils import ProgressHandler
 
 
@@ -80,27 +88,33 @@ class AttachmentProcessor:
                     path.parent if path.parent != Path(".") else Path.cwd()
                 )
                 pattern_name = path.name
+                matched_files = []
                 try:
                     for matched_file in parent.glob(pattern_name):
                         if matched_file.is_file():
+                            # Validate each matched file
+                            validate_file_exists(matched_file)
                             resolved_path = matched_file.resolve()
                             if resolved_path not in processed_paths:
-                                all_files.append(resolved_path)
+                                matched_files.append(resolved_path)
                                 processed_paths.add(resolved_path)
-                except Exception:
-                    # If glob fails, treat as literal path
-                    if path.exists() and path.is_file():
-                        resolved_path = path.resolve()
-                        if resolved_path not in processed_paths:
-                            all_files.append(resolved_path)
-                            processed_paths.add(resolved_path)
+                except Exception as e:
+                    # If glob expansion fails, this is an error
+                    # Don't fall back to treating as literal path
+                    raise e
+
+                # Check if glob pattern matched any files
+                if not matched_files:
+                    raise NoFilesMatchPatternError(str(path))
+
+                all_files.extend(matched_files)
             else:
-                # Regular file path
-                if path.exists() and path.is_file():
-                    resolved_path = path.resolve()
-                    if resolved_path not in processed_paths:
-                        all_files.append(resolved_path)
-                        processed_paths.add(resolved_path)
+                # Regular file path - validate existence before adding
+                validate_file_exists(path)
+                resolved_path = path.resolve()
+                if resolved_path not in processed_paths:
+                    all_files.append(resolved_path)
+                    processed_paths.add(resolved_path)
 
         # Process directories recursively
         for dir_str in directories:
@@ -112,18 +126,28 @@ class AttachmentProcessor:
                 # No alias for FILES command
                 dir_path = Path(dir_str)
 
-            if dir_path.exists() and dir_path.is_dir():
-                # Recursively collect files from directory
-                try:
-                    for file_path in dir_path.rglob("*"):
-                        if file_path.is_file():
-                            resolved_path = file_path.resolve()
-                            if resolved_path not in processed_paths:
-                                all_files.append(resolved_path)
-                                processed_paths.add(resolved_path)
-                except Exception:
-                    # Skip directories that can't be read
-                    continue
+            # Validate directory exists and is accessible
+            validate_directory_exists(dir_path)
+
+            # Recursively collect files from directory
+            dir_files = []
+            try:
+                for file_path in dir_path.rglob("*"):
+                    if file_path.is_file():
+                        # Validate each file in directory
+                        validate_file_exists(file_path)
+                        resolved_path = file_path.resolve()
+                        if resolved_path not in processed_paths:
+                            dir_files.append(resolved_path)
+                            processed_paths.add(resolved_path)
+            except Exception as e:
+                # Re-raise validation errors, but allow other directory errors
+                if hasattr(e, "exit_code"):
+                    raise e
+                # For other errors (permission issues, etc.), continue processing
+                pass
+
+            # Note: Empty directories are allowed (warning case, not error)
 
         # Process collections (@filelist.txt format)
         for collection_str in collections:
@@ -135,29 +159,69 @@ class AttachmentProcessor:
                 # Remove @ prefix for FILES command
                 collection_path = Path(collection_str.lstrip("@"))
 
-            if collection_path.exists() and collection_path.is_file():
-                try:
-                    with open(collection_path, "r", encoding="utf-8") as f:
-                        for line in f:
-                            line = line.strip()
-                            if line and not line.startswith("#"):
-                                file_path = Path(line)
-                                if file_path.exists() and file_path.is_file():
-                                    resolved_path = file_path.resolve()
-                                    if resolved_path not in processed_paths:
-                                        all_files.append(resolved_path)
-                                        processed_paths.add(resolved_path)
-                except Exception:
-                    # Skip collections that can't be read
-                    continue
+            # Validate collection file exists
+            validate_collection_file_exists(collection_path)
+
+            try:
+                with open(collection_path, "r", encoding="utf-8") as f:
+                    for line_num, line in enumerate(f, 1):
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            file_path = Path(line)
+                            # Validate each file in collection
+                            try:
+                                validate_file_exists(file_path)
+                            except Exception as e:
+                                # Convert to collection-specific error
+                                raise FileFromCollectionNotFoundError(
+                                    str(file_path), str(collection_path)
+                                ) from e
+
+                            resolved_path = file_path.resolve()
+                            if resolved_path not in processed_paths:
+                                all_files.append(resolved_path)
+                                processed_paths.add(resolved_path)
+            except FileFromCollectionNotFoundError:
+                # Re-raise collection-specific errors
+                raise
+            except Exception as e:
+                # For other errors (encoding, permission), convert to file error
+                if hasattr(e, "exit_code"):
+                    raise e
+                # For IO errors, this becomes a permission error on the collection file
+                raise CollectionFileNotFoundError(str(collection_path)) from e
 
         # Apply pattern filter if specified
         if pattern:
-            filtered_files = []
-            for file_path in all_files:
-                if fnmatch.fnmatch(file_path.name, pattern):
-                    filtered_files.append(file_path)
-            all_files = filtered_files
+            # Check if pattern is being used as primary input method
+            is_pattern_primary = not (files or directories or collections)
+
+            if is_pattern_primary:
+                # Pattern is primary input - collect files from current directory
+                cwd = Path.cwd()
+                pattern_files = []
+                for file_path in cwd.rglob("*"):
+                    if file_path.is_file() and fnmatch.fnmatch(
+                        file_path.name, pattern
+                    ):
+                        validate_file_exists(file_path)
+                        resolved_path = file_path.resolve()
+                        if resolved_path not in processed_paths:
+                            pattern_files.append(resolved_path)
+                            processed_paths.add(resolved_path)
+
+                if not pattern_files:
+                    raise NoFilesMatchPatternError(pattern)
+
+                all_files.extend(pattern_files)
+            else:
+                # Pattern is a filter on collected files
+                filtered_files = []
+                for file_path in all_files:
+                    if fnmatch.fnmatch(file_path.name, pattern):
+                        filtered_files.append(file_path)
+                all_files = filtered_files
+                # Note: Empty result after filtering is a warning, not an error
 
         return all_files
 

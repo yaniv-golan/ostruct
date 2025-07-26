@@ -227,3 +227,51 @@ The upload cache works seamlessly with all ostruct tools:
 
    # Upload once, use in both tools
    ostruct run multi.j2 schema.json --file ci,fs:shared data.json
+
+Error Handling
+==============
+
+The upload cache system includes comprehensive error handling that validates files before cache operations.
+
+File Validation Before Caching
+-------------------------------
+
+All file operations validate existence and accessibility before interacting with the cache:
+
+- **File existence**: Validates that files exist before attempting upload or cache lookup
+- **Permission checks**: Ensures files are readable before processing
+- **Symlink validation**: Checks that symlinks point to valid targets
+- **Directory validation**: Confirms directories exist and are accessible
+
+**Error Behavior:**
+
+- File validation errors use exit code 9 (``FILE_ERROR``)
+- Validation happens before cache lookup to prevent inconsistent state
+- Cache remains clean - invalid files never create cache entries
+
+**Example Error Cases:**
+
+.. code-block:: bash
+
+   # File validation prevents cache corruption
+   ostruct files upload --file missing.txt
+   # Error: File not found: missing.txt (Exit code 9)
+   # Cache remains unchanged
+
+   # Broken symlinks are detected early
+   ostruct files upload --file broken_link.txt
+   # Error: Broken symlink: broken_link.txt -> /nonexistent/target
+   # No cache entry created
+
+Cache Consistency
+-----------------
+
+The validation-first approach ensures cache consistency:
+
+- **No orphaned entries**: Invalid files never create cache records
+- **Reliable lookups**: Cache hits always correspond to accessible files
+- **Clean state**: Failed operations don't leave partial cache data
+
+**Integration with File Commands:**
+
+The ``ostruct files`` commands use the same validation logic as ``ostruct run``, ensuring consistent behavior across all file operations.

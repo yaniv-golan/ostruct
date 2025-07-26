@@ -1,7 +1,6 @@
 """File management commands for ostruct."""
 
 import asyncio
-import json
 import logging
 import shutil
 import sys
@@ -21,6 +20,8 @@ from ..upload_cache import UploadCache
 from ..upload_manager import SharedUploadManager
 from ..utils.attachment_utils import AttachmentProcessor
 from ..utils.error_utils import ErrorCollector
+from ..utils.json_models import ErrorResult
+from ..utils.json_output import JSONOutputHandler
 from ..utils.progress_utils import ProgressHandler
 
 logger = logging.getLogger(__name__)
@@ -105,13 +106,6 @@ class UploadResult(BaseModel):
     cached: bool
     bindings: FileBindings
     tags: Dict[str, str] = {}
-
-
-class ErrorResult(BaseModel):
-    """Error result."""
-
-    exit_code: int
-    error: str
 
 
 def render_responsive_table(
@@ -201,16 +195,14 @@ def files() -> None:
     "--dir",
     "directories",
     multiple=True,
-    type=click.Path(
-        exists=True, file_okay=False, dir_okay=True, path_type=str
-    ),
+    type=str,
     help="Upload directories recursively (repeatable)",
 )
 @click.option(
     "--collect",
     "collections",
     multiple=True,
-    type=click.Path(exists=True, path_type=str),
+    type=str,
     help="Upload files listed in text file (one path per line, repeatable)",
 )
 @click.option(
@@ -300,7 +292,13 @@ def upload(
     if invalid_tools:
         error_msg = f"Invalid tools: {', '.join(invalid_tools)}. Valid choices: {', '.join(sorted(valid_tools))}"
         if output_json:
-            click.echo(json.dumps({"error": error_msg}))
+            joh = JSONOutputHandler(indent=2)
+            error_result = ErrorResult(exit_code=1, error=error_msg)
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(error_result.model_dump(), "upload")
+                )
+            )
         else:
             click.echo(f"❌ Error: {error_msg}")
         sys.exit(1)
@@ -393,7 +391,12 @@ def upload(
                 exit_code=1,
                 error="No files specified. Use --file, --dir, or --collect options.",
             )
-            click.echo(json.dumps({"error": error_result.error}))
+            joh = JSONOutputHandler(indent=2)
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(error_result.model_dump(), "upload")
+                )
+            )
         else:
             click.echo(
                 "❌ Error: No files specified. Use --file, --dir, or --collect options."
@@ -459,22 +462,48 @@ async def _batch_upload(
         processor = AttachmentProcessor(
             support_aliases=False, progress_handler=handler
         )
-        all_files = await processor.collect_files(
-            files, directories, collections, pattern
-        )
+
+        try:
+            all_files = await processor.collect_files(
+                files, directories, collections, pattern
+            )
+        except Exception as e:
+            # Handle file validation errors
+            if hasattr(e, "exit_code"):
+                # This is one of our file validation errors
+                if output_json:
+                    joh = JSONOutputHandler(indent=2)
+                    error_result = ErrorResult(
+                        exit_code=e.exit_code, error=str(e)
+                    )
+                    click.echo(
+                        joh.to_json(
+                            joh.format_generic(
+                                error_result.model_dump(), "upload"
+                            )
+                        )
+                    )
+                else:
+                    click.echo(f"❌ Error: {str(e)}")
+                sys.exit(e.exit_code)
+            else:
+                # Re-raise unexpected errors
+                raise
 
         # Initialize error collector for standardized error handling
         error_collector = ErrorCollector()
 
         if not all_files:
             if output_json:
-                empty_result = {
-                    "uploaded": [],
-                    "cached": [],
-                    "errors": [],
-                    "summary": {"total": 0},
-                }
-                click.echo(json.dumps(empty_result))
+                joh = JSONOutputHandler(indent=2)
+                empty_result = joh.format_results(
+                    success_items=[],
+                    cached_items=[],
+                    errors=[],
+                    summary={"total": 0},
+                    operation="upload",
+                )
+                click.echo(joh.to_json(empty_result))
             else:
                 click.echo("No files found matching criteria.")
             return
@@ -484,7 +513,6 @@ async def _batch_upload(
             total_size = sum(f.stat().st_size for f in all_files)
             if output_json:
                 preview = {
-                    "dry_run": True,
                     "files": [
                         {"path": str(f), "size": f.stat().st_size}
                         for f in all_files
@@ -495,7 +523,10 @@ async def _batch_upload(
                     "vector_store": vector_store,
                     "tags": tags,
                 }
-                click.echo(json.dumps(preview))
+                joh = JSONOutputHandler(indent=2)
+                click.echo(
+                    joh.to_json(joh.format_dry_run_response(preview, "upload"))
+                )
             else:
                 click.echo("Dry run preview:")
                 click.echo(f"  Files to upload: {len(all_files)}")
@@ -582,9 +613,7 @@ async def _batch_upload(
         formatted_errors = error_collector.get_formatted_errors()
 
         if output_json:
-            from ..utils.json_output import JSONOutputHandler
-
-            joh = JSONOutputHandler()
+            joh = JSONOutputHandler(indent=2)
 
             uploaded_count = len([r for r in results if not r.cached])
             cached_count = len([r for r in results if r.cached])
@@ -638,11 +667,13 @@ async def _batch_upload(
 
     except Exception as e:
         if output_json:
-            from ..utils.json_output import JSONOutputHandler
-
-            joh = JSONOutputHandler()
-            error_result = joh.format_error_response(str(e))
-            click.echo(joh.to_json(error_result))
+            joh = JSONOutputHandler(indent=2)
+            error_result = ErrorResult(exit_code=1, error=str(e))
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(error_result.model_dump(), "upload")
+                )
+            )
         else:
             click.echo(f"❌ Error: {str(e)}")
         sys.exit(1)
@@ -804,7 +835,12 @@ def list(output_json: bool, vector_store: Optional[str]) -> None:
                         "tags": metadata.get("tags", {}),
                     }
                 )
-            click.echo(json.dumps(result, indent=2))
+            joh = JSONOutputHandler(indent=2)
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(result, "list", total_files=len(result))
+                )
+            )
         else:
             render_responsive_table(files, "files")
 
@@ -817,6 +853,11 @@ def list(output_json: bool, vector_store: Optional[str]) -> None:
             return str(r)
 
         if output_json:
-            click.echo(json.dumps({"error": error_result.error}))
+            joh = JSONOutputHandler(indent=2)
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(error_result.model_dump(), "list")
+                )
+            )
         else:
             click.echo(format_error(error_result))

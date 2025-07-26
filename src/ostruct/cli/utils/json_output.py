@@ -196,6 +196,33 @@ class JSONOutputHandler:
 
         return result
 
+    def format_generic(
+        self,
+        data: Union[Dict[str, Any], List[Any]],
+        operation: str,
+        **metadata: Any,
+    ) -> Dict[str, Any]:
+        """Format arbitrary data with metadata for consistent JSON output.
+
+        Args:
+            data: The main data to include in the response
+            operation: Name of the operation for metadata
+            **metadata: Additional metadata fields to include
+
+        Returns:
+            Dictionary with standardized JSON structure including metadata
+        """
+        result: Dict[str, Any] = {"data": data}
+
+        if self.include_metadata:
+            result["metadata"] = {
+                "operation": operation,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                **metadata,
+            }
+
+        return result
+
     def to_json(self, data: Union[Dict[str, Any], List[Any]]) -> str:
         """Convert data to JSON string.
 
