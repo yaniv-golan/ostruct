@@ -2109,6 +2109,7 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
             template_context,
             env,
             template_path,
+            upload_cache,
         ) = await validate_inputs(args)
 
         # Report file routing decisions
@@ -2137,6 +2138,9 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
         system_prompt, user_prompt = await process_templates(
             args, task_template, template_context, env, template_path or ""
         )
+
+        # Validate attachment labels after template rendering
+        _validate_attachment_labels(user_prompt, upload_cache)
 
         # 3. Model & Schema Validation Phase
         handler.simple_phase("Validating model and schema", "✅")

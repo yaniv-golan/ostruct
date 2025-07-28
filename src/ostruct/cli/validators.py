@@ -4,7 +4,10 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+
+if TYPE_CHECKING:
+    from .upload_cache import UploadCache
 
 import click
 import jinja2
@@ -568,6 +571,7 @@ async def validate_inputs(
     Dict[str, Any],
     jinja2.Environment,
     Optional[str],
+    "UploadCache",
 ]:
     """Validate all input parameters and return validated components.
 
@@ -669,6 +673,12 @@ async def validate_inputs(
             except (TypeError, AttributeError):
                 continue
 
+    # Create upload cache for template helpers
+    from .cache_utils import get_default_cache_path
+    from .upload_cache import UploadCache
+
+    upload_cache = UploadCache(get_default_cache_path())
+
     # Create environment with file reference support
     env, alias_manager = create_jinja_env(files=files)
 
@@ -683,6 +693,7 @@ async def validate_inputs(
         template_context,
         env,
         args.get("task_file"),
+        upload_cache,
     )
 
 

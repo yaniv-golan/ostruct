@@ -287,6 +287,7 @@ def run(
                         template_context,
                         env,
                         template_path,
+                        upload_cache,
                     ) = validation_result
 
                     # Update task_template with validated content

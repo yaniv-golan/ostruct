@@ -77,6 +77,7 @@ async def test_attachment_integration_end_to_end():
             template_context,
             env,
             template_path,
+            upload_cache,
         ) = result
 
         # Verify that the new attachment system was used
@@ -159,6 +160,7 @@ async def test_async_attachment_integration():
             template_context,
             env,
             template_path,
+            upload_cache,
         ) = await validate_inputs(args)
 
         routing_result = args.get("_routing_result")
