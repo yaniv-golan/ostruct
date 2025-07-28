@@ -74,6 +74,12 @@ def create_jinja_env(
     # Register all template filters
     register_template_filters(env)
 
+    # Set upload cache for template helpers
+    if upload_cache:
+        from .template_filters import set_upload_cache
+
+        set_upload_cache(upload_cache)
+
     # Always create an alias manager
     alias_manager = AliasManager()
 

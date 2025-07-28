@@ -680,7 +680,9 @@ async def validate_inputs(
     upload_cache = UploadCache(get_default_cache_path())
 
     # Create environment with file reference support
-    env, alias_manager = create_jinja_env(files=files)
+    env, alias_manager = create_jinja_env(
+        files=files, upload_cache=upload_cache
+    )
 
     # Store alias manager in args for use by template processor if it has any aliases
     if alias_manager.aliases:
