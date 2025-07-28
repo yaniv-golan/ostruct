@@ -158,3 +158,4 @@ yaniv-private/
 /tools/ost-generator/ostruct_json_debug_*.txt
 openai_api_tests/
 .repomix/bundles.json
+.claude/agents/
