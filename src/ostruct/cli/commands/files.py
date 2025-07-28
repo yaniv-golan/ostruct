@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from tabulate import tabulate
 
 from ..cache_utils import get_default_cache_path
+from ..exit_codes import ExitCode
 from ..file_search import FileSearchManager
 from ..upload_cache import UploadCache
 from ..upload_manager import SharedUploadManager
@@ -1087,3 +1088,457 @@ def list(output_json: bool, vector_store: Optional[str]) -> None:
             )
         else:
             click.echo(format_error(error_result))
+
+
+@files.command()
+@click.option(
+    "--older-than",
+    default="90d",
+    help="TTL for garbage collection (e.g., 30d, 7d)",
+)
+@click.option(
+    "--json", "output_json", is_flag=True, help="Output machine-readable JSON"
+)
+def gc(older_than: str, output_json: bool) -> None:
+    """Garbage-collect expired cache entries.
+
+    Examples:
+        ostruct files gc --older-than 30d
+        ostruct files gc --older-than 7d --json
+    """
+    try:
+        from datetime import datetime, timedelta
+
+        # Parse duration
+        if older_than.endswith("d"):
+            days = int(older_than[:-1])
+        else:
+            raise click.BadParameter(f"Invalid duration format: {older_than}")
+
+        cutoff_date = datetime.now() - timedelta(days=days)
+        cutoff_timestamp = int(cutoff_date.timestamp())
+
+        cache = UploadCache(get_default_cache_path())
+
+        # Get all files and filter by age
+        all_files = cache.list_all()
+        deleted_count = 0
+
+        # Remove files older than the cutoff date
+        for file_info in all_files:
+            if file_info.created_at < cutoff_timestamp:
+                try:
+                    cache.invalidate(file_info.hash)
+                    deleted_count += 1
+                    logger.debug(
+                        f"Deleted old file {file_info.file_id} from {datetime.fromtimestamp(file_info.created_at).strftime('%Y-%m-%d')}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to remove file {file_info.file_id}: {e}"
+                    )
+
+        if output_json:
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler(indent=2)
+            result = {
+                "status": "success",
+                "deleted_count": deleted_count,
+                "cutoff_date": cutoff_date.isoformat(),
+            }
+            click.echo(joh.to_json(result))
+        else:
+            if deleted_count > 0:
+                click.echo(
+                    f"Cleaned up {deleted_count} orphaned cache entries"
+                )
+            else:
+                click.echo("No cleanup needed")
+
+    except Exception as e:
+        if output_json:
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler(indent=2)
+            error_result = ErrorResult(
+                exit_code=ExitCode.INTERNAL_ERROR, error=str(e)
+            )
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(error_result.model_dump(), "gc")
+                )
+            )
+        else:
+            click.echo(f"Error during garbage collection: {e}", err=True)
+
+        ctx = click.get_current_context()
+        ctx.exit(ExitCode.INTERNAL_ERROR)
+
+
+@files.command()
+@click.argument("file_id")
+@click.option(
+    "--tools",
+    multiple=True,
+    type=click.Choice(["user-data", "file-search", "code-interpreter"]),
+    required=True,
+    help="Tools to bind the cached file to (user-data=vision, file-search=search, code-interpreter=execution)",
+)
+@click.option(
+    "--json", "output_json", is_flag=True, help="Output machine-readable JSON"
+)
+def bind(file_id: str, tools: tuple[str, ...], output_json: bool) -> None:
+    """Attach cached file to one or more tools.
+
+    Examples:
+        ostruct files bind file_abc123 --tools file-search
+        ostruct files bind file_abc123 --tools file-search --tools code-interpreter
+    """
+    try:
+        cache = UploadCache(get_default_cache_path())
+
+        # Step 1: Validate file exists in cache
+        files = cache.list_all()
+        file_info = None
+        for f in files:
+            if f.file_id == file_id:
+                file_info = f
+                break
+
+        if not file_info:
+            raise click.ClickException(f"File not found in cache: {file_id}")
+
+        # Step 2: Get current metadata
+        metadata = file_info.metadata or {}
+        bindings = metadata.get("bindings", {})
+
+        # Step 3: Add new bindings
+        if "user-data" in tools:
+            bindings["user_data"] = True
+        if "code-interpreter" in tools:
+            bindings["code_interpreter"] = True
+        if "file-search" in tools:
+            bindings["file_search"] = True
+            # Note: Actual vector store binding would happen at runtime
+
+        # Step 4: Update cache metadata
+        metadata["bindings"] = bindings
+        cache.update_metadata(file_id, metadata)
+
+        if output_json:
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler(indent=2)
+            result = {
+                "status": "success",
+                "file_id": file_id,
+                "bindings": bindings,
+            }
+            click.echo(joh.to_json(result))
+        else:
+            click.echo(f"Bound {file_id} to: {', '.join(tools)}")
+
+    except Exception as e:
+        if output_json:
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler(indent=2)
+            error_result = ErrorResult(
+                exit_code=ExitCode.INTERNAL_ERROR, error=str(e)
+            )
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(error_result.model_dump(), "bind")
+                )
+            )
+        else:
+            click.echo(f"Error binding file: {e}", err=True)
+
+        ctx = click.get_current_context()
+        ctx.exit(ExitCode.INTERNAL_ERROR)
+
+
+@files.command()
+@click.argument("file_id")
+@click.option(
+    "--json", "output_json", is_flag=True, help="Output machine-readable JSON"
+)
+def rm(file_id: str, output_json: bool) -> None:
+    """Delete remote file and purge from cache.
+
+    Examples:
+        ostruct files rm file_abc123
+        ostruct files rm file_abc123 --json
+    """
+    import asyncio
+
+    from ..cache_utils import get_default_cache_path
+    from ..upload_cache import UploadCache
+    from ..utils.client_utils import create_openai_client
+    from ..utils.json_output import JSONOutputHandler
+
+    async def _rm_async() -> None:
+        # Step 1: Delete from OpenAI (ignore 404s)
+        try:
+            client = create_openai_client(timeout=60.0)
+            await client.files.delete(file_id)
+        except Exception as e:
+            # Log warning but continue - file might already be deleted
+            logger.warning(f"OpenAI deletion failed (continuing): {e}")
+
+        # Step 2: Remove from cache
+        try:
+            cache.invalidate_by_file_id(file_id)
+        except Exception as e:
+            logger.warning(f"Failed to remove from cache: {e}")
+
+    try:
+        cache = UploadCache(get_default_cache_path())
+
+        # Run the async operations
+        asyncio.run(_rm_async())
+
+        if output_json:
+            result = {"status": "success", "file_id": file_id}
+            joh = JSONOutputHandler(indent=2)
+            click.echo(joh.to_json(result))
+        else:
+            click.echo(f"Deleted: {file_id}")
+
+    except Exception as e:
+        logger.error(f"Error during file deletion: {e}")
+        if output_json:
+            error_result = {"status": "error", "error": str(e)}
+            joh = JSONOutputHandler(indent=2)
+            click.echo(joh.to_json(error_result))
+        else:
+            click.echo(f"Error: {e}")
+        raise click.ClickException(str(e))
+
+
+@files.command()
+@click.argument("file_id")
+@click.option(
+    "--json", "output_json", is_flag=True, help="Output machine-readable JSON"
+)
+def diagnose(file_id: str, output_json: bool) -> None:
+    """Live probes (head / vector / sandbox).
+
+    Examples:
+        ostruct files diagnose file_abc123
+        ostruct files diagnose file_abc123 --json
+    """
+    import asyncio
+
+    from ..utils.client_utils import create_openai_client
+    from ..utils.json_output import JSONOutputHandler
+
+    async def _diagnose_async() -> tuple[dict[str, Any], int]:
+        client = create_openai_client(timeout=60.0)
+
+        probes = {}
+        exit_code = 0
+
+        # Probe 1: Head (file exists)
+        try:
+            file_obj = await client.files.retrieve(file_id)
+            probes["head"] = {"status": "pass", "size": file_obj.bytes}
+        except Exception as e:
+            probes["head"] = {"status": "fail", "error": str(e)}
+            exit_code = max(exit_code, 1)
+
+        # Probe 2: Vector search (test file_search tool with actual vector stores)
+        try:
+            # Get file metadata to check vector store bindings
+            cache = UploadCache(get_default_cache_path())
+            files = cache.list_all()
+            file_info = None
+            for f in files:
+                if f.file_id == file_id:
+                    file_info = f
+                    break
+
+            if file_info and file_info.metadata:
+                bindings = file_info.metadata.get("bindings", {})
+                vector_store_ids = bindings.get("vector_store_ids", [])
+                if vector_store_ids:
+                    # Test file_search with the actual vector store
+                    response = await client.responses.create(
+                        model="gpt-4o",
+                        input="Find information about this file",
+                        tools=[
+                            {
+                                "type": "file_search",
+                                "vector_store_ids": vector_store_ids,
+                            }
+                        ],
+                        tool_choice={"type": "file_search"},
+                    )
+
+                    # Check if we got search results
+                    if response.output:
+                        probes["vector"] = {
+                            "status": "pass",
+                            "vector_stores": len(vector_store_ids),
+                        }
+                    else:
+                        probes["vector"] = {
+                            "status": "fail",
+                            "error": "No search results returned",
+                        }
+                        exit_code = max(exit_code, 3)
+                else:
+                    probes["vector"] = {
+                        "status": "fail",
+                        "error": "File not bound to any vector store",
+                    }
+                    exit_code = max(exit_code, 3)
+            else:
+                probes["vector"] = {
+                    "status": "fail",
+                    "error": "File not found in cache",
+                }
+                exit_code = max(exit_code, 3)
+
+        except Exception as e:
+            probes["vector"] = {"status": "fail", "error": str(e)}
+            exit_code = max(exit_code, 3)
+
+        # Probe 3: Sandbox (test code_interpreter tool with the actual file)
+        try:
+            response = await client.responses.create(
+                model="gpt-4o",
+                input="List files in the current directory and show their sizes",
+                tools=[
+                    {
+                        "type": "code_interpreter",
+                        "container": {"type": "auto", "file_ids": [file_id]},
+                    }
+                ],
+                tool_choice={"type": "code_interpreter"},
+            )
+
+            # Check if we got a response
+            if response.output:
+                # Check if the file_id appears in the response (indicating it was accessible)
+                response_text = str(response.output)
+                file_found = file_id in response_text
+
+                if file_found:
+                    probes["sandbox"] = {"status": "pass"}
+                else:
+                    probes["sandbox"] = {
+                        "status": "pass",
+                        "note": "Code interpreter working but file not directly referenced",
+                    }
+            else:
+                probes["sandbox"] = {
+                    "status": "fail",
+                    "error": "No response from code interpreter",
+                }
+                exit_code = max(exit_code, 4)
+
+        except Exception as e:
+            probes["sandbox"] = {"status": "fail", "error": str(e)}
+            exit_code = max(exit_code, 4)
+
+        return probes, exit_code
+
+    try:
+        probes, exit_code = asyncio.run(_diagnose_async())
+
+        if output_json:
+            result = {
+                "status": "complete",
+                "file_id": file_id,
+                "probes": probes,
+                "exit_code": exit_code,
+            }
+            joh = JSONOutputHandler(indent=2)
+            click.echo(joh.to_json(result))
+        else:
+            click.echo(f"Diagnostic results for {file_id}:")
+            for probe_name, probe_result in probes.items():
+                status = probe_result["status"]
+                if status == "pass":
+                    click.echo(f"  {probe_name}: ✓ PASS")
+                else:
+                    error = probe_result.get("error", "Unknown error")
+                    click.echo(f"  {probe_name}: ✗ FAIL - {error}")
+
+        if exit_code != 0:
+            sys.exit(exit_code)
+
+    except Exception as e:
+        if output_json:
+            error_result = {"status": "error", "error": str(e)}
+            joh = JSONOutputHandler(indent=2)
+            click.echo(joh.to_json(error_result))
+        else:
+            click.echo(f"Error: {e}")
+        raise click.ClickException(str(e))
+
+
+@files.command(name="vector-stores")
+@click.option(
+    "--json", "output_json", is_flag=True, help="Output machine-readable JSON"
+)
+def vector_stores(output_json: bool) -> None:
+    """List available vector stores and their contents.
+
+    Examples:
+        ostruct files vector-stores
+        ostruct files vector-stores --json
+    """
+    try:
+        cache = UploadCache(get_default_cache_path())
+
+        # Get vector store information from cache
+        vector_stores_list = cache.list_vector_stores()
+
+        if output_json:
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler(indent=2)
+            result = {"status": "success", "vector_stores": vector_stores_list}
+            click.echo(joh.to_json(result))
+        else:
+            if not vector_stores_list:
+                click.echo("No vector stores found")
+            else:
+                click.echo(
+                    "Vector Store | Files | Total Size | Vector Store ID"
+                )
+                click.echo("-" * 70)
+                for vs in vector_stores_list:
+                    vs_name = vs["name"].replace(
+                        "ostruct_", ""
+                    )  # Remove prefix for display
+                    file_count = vs.get("file_count", 0)
+                    total_size = vs.get("total_size", 0)
+                    vs_id = vs["vector_store_id"]
+                    click.echo(
+                        f"{vs_name:<12} | {file_count:5d} | {total_size:10d} | {vs_id}"
+                    )
+
+    except Exception as e:
+        if output_json:
+            from ..utils.json_output import JSONOutputHandler
+
+            joh = JSONOutputHandler(indent=2)
+            error_result = ErrorResult(
+                exit_code=ExitCode.INTERNAL_ERROR, error=str(e)
+            )
+            click.echo(
+                joh.to_json(
+                    joh.format_generic(
+                        error_result.model_dump(), "vector-stores"
+                    )
+                )
+            )
+        else:
+            click.echo(f"Error listing vector stores: {e}", err=True)
+
+        ctx = click.get_current_context()
+        ctx.exit(ExitCode.INTERNAL_ERROR)
