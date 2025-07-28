@@ -102,7 +102,12 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   * Template function `safe_get(path, default)` prevents errors when accessing nested object properties: takes dot-separated string path (e.g., `"config.database.host"`) and returns value if exists/non-empty, otherwise returns default. Avoids UndefinedError/KeyError exceptions from risky direct access like `{{ config.database.host }}`.
   * Template filter `single` extracts single item from file collections: `{{ files | single }}` returns the file when exactly one file exists, raises error otherwise. Use for templates expecting one file but receiving collections.
   * Template filters `to_json` and `from_json` handle JSON conversion: `{{ data | to_json }}` serializes objects to JSON strings, `{{ json_string | from_json }}` parses JSON strings to objects. Provides safe fallbacks for non‑serializable objects.
-  * Also, estimate_tokens(text) function, format_code([language]) filter
+  * File attachment helpers: `attach_file(path)`, `get_file_ref(path)`, `embed_text(alias)`, `get_embed_ref(alias)` for binary/text workflows.
+  * Text processing filters: `word_count`, `char_count`, `extract_keywords`, `normalize`, `strip_markdown`, `wrap(width)`, `indent(spaces)`, `dedent`.
+  * Data processing filters: `sort_by(field)`, `group_by(field)`, `filter_by(field,value)`, `unique`, `frequency`, `aggregate`.
+  * Table formatting: `table`, `auto_table`, `dict_to_table`, `list_to_table`, `align_table`.
+  * Code processing: `format_code(lang)`, `strip_comments(lang)`, `escape_special`.
+  * Utility functions: `estimate_tokens(text)`, `type_of(obj)`, `debug(var)`, `format_json(data)`, `validate_json(text)`, `summarize(data)`, `pivot_table(data,rows,cols)`.
 
 * **Operational limits**
 

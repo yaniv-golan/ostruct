@@ -597,20 +597,78 @@ ostruct provides many built-in filters for data processing:
 - ``{{ text | char_count }}`` - Count characters
 - ``{{ text | length }}`` - Count characters (built-in)
 - ``{{ text | strip }}`` - Remove whitespace
+- ``{{ text | extract_keywords }}`` - Extract keywords from text
+- ``{{ text | remove_comments }}`` - Remove comments from text
+- ``{{ text | wrap(80) }}`` - Wrap text to specified width
+- ``{{ text | indent(4) }}`` - Indent text by specified spaces
+- ``{{ text | dedent }}`` - Remove indentation from text
+- ``{{ text | normalize }}`` - Normalize whitespace
+- ``{{ text | strip_markdown }}`` - Remove markdown formatting
+
+**Data Processing:**
+- ``{{ items | sort_by("name") }}`` - Sort by property
+- ``{{ items | group_by("category") }}`` - Group items by property
+- ``{{ items | filter_by("active", true) }}`` - Filter items by criteria
+- ``{{ items | extract_field("email") }}`` - Extract field from items
+- ``{{ items | unique }}`` - Get unique items
+- ``{{ items | frequency }}`` - Calculate frequency counts
+- ``{{ data | aggregate }}`` - Aggregate data (sum, avg, count)
 
 **Data Conversion:**
 - ``{{ json_text | from_json }}`` - Parse JSON (custom filter)
 - ``{{ data | to_json }}`` - Convert to JSON (custom filter)
 - ``{{ data | tojson }}`` - Convert to JSON (built-in filter)
 
+**Table Formatting:**
+- ``{{ data | table }}`` - Format data as table
+- ``{{ data | align_table }}`` - Align table columns
+- ``{{ dict | dict_to_table }}`` - Convert dictionary to table
+- ``{{ list | list_to_table }}`` - Convert list to table
+- ``{{ data | auto_table }}`` - Auto-format data as table
+
+**Code Processing:**
+- ``{{ code | format_code("python") }}`` - Format code with syntax highlighting
+- ``{{ code | strip_comments("python") }}`` - Remove comments from code
+- ``{{ text | escape_special }}`` - Escape special characters
+
 **File Operations:**
 - ``{{ files | single }}`` - Extract single file from collection
+- ``{{ files | files }}`` - File sequence protocol support
 - ``{{ file.name }}`` - Get filename (FileInfo property)
 - ``{{ file.path }}`` - Get full file path (FileInfo property)
 
 **Safety and Validation:**
 - ``{{ value | default("fallback") }}`` - Provide default value
 - ``{{ safe_get("config.database.host", "localhost") }}`` - Safe nested access
+
+Template Functions
+==================
+
+ostruct provides global functions for advanced template operations:
+
+**Utility Functions:**
+- ``{{ estimate_tokens(content) }}`` - Estimate token count for text
+- ``{{ format_json(data) }}`` - Format JSON with indentation
+- ``{{ now() }}`` - Get current timestamp
+- ``{{ type_of(variable) }}`` - Get type name of variable
+- ``{{ dir_of(object) }}`` - Get object attributes
+- ``{{ len_of(object) }}`` - Get length of object
+- ``{{ debug(variable) }}`` - Debug output for development
+- ``{{ validate_json(text) }}`` - Validate JSON syntax
+- ``{{ format_error(error) }}`` - Format error messages
+
+**Data Analysis Functions:**
+- ``{{ summarize(data_list) }}`` - Summarize data collections
+- ``{{ pivot_table(data, rows, cols) }}`` - Create pivot tables
+
+**File Attachment Helpers:**
+- ``{{ attach_file("chart.png") }}`` - Attach file for binary model access
+- ``{{ get_file_ref("chart.png") }}`` - Get deterministic file label
+- ``{{ embed_text("config") }}`` - Schedule file for XML appendix
+- ``{{ get_embed_ref("config") }}`` - Get reference tag for embedded content
+
+**Safe Access Utilities:**
+- ``{{ safe_get("config.database.host", "localhost") }}`` - Safe nested property access
 
 Control Structures
 ===================

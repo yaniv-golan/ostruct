@@ -190,6 +190,13 @@ Text Processing
    {{ text | upper }}                  <!-- UPPERCASE -->
    {{ text | lower }}                  <!-- lowercase -->
    {{ long_text | truncate(100) }}     <!-- Truncate to 100 chars -->
+   {{ text | extract_keywords }}       <!-- Extract keywords -->
+   {{ text | remove_comments }}        <!-- Remove comments -->
+   {{ text | wrap(80) }}               <!-- Wrap text to width -->
+   {{ text | indent(4) }}              <!-- Indent by spaces -->
+   {{ text | dedent }}                 <!-- Remove indentation -->
+   {{ text | normalize }}              <!-- Normalize whitespace -->
+   {{ text | strip_markdown }}         <!-- Remove markdown -->
 
 Data Processing
 ---------------
@@ -198,8 +205,12 @@ Data Processing
 
    {{ items | length }}                <!-- Count items -->
    {{ items | sort_by("name") }}       <!-- Sort by property -->
+   {{ items | group_by("category") }}  <!-- Group by property -->
+   {{ items | filter_by("active", true) }} <!-- Filter by criteria -->
    {{ items | unique }}                <!-- Remove duplicates -->
    {{ users | extract_field("email") }} <!-- Extract field -->
+   {{ items | frequency }}             <!-- Calculate frequencies -->
+   {{ data | aggregate }}              <!-- Aggregate data -->
 
 JSON Operations
 ---------------
@@ -214,8 +225,11 @@ Table Formatting
 
 .. code-block:: jinja
 
+   {{ data | table }}                  <!-- Format as table -->
+   {{ data | align_table }}            <!-- Align table columns -->
    {{ dictionary | dict_to_table }}    <!-- Dict to markdown table -->
    {{ list_data | list_to_table }}     <!-- List to markdown table -->
+   {{ data | auto_table }}             <!-- Auto-format table -->
 
 Code Processing
 ---------------
@@ -224,6 +238,7 @@ Code Processing
 
    {{ code | format_code("python") }}  <!-- Syntax highlighting -->
    {{ code | strip_comments("python") }} <!-- Remove comments -->
+   {{ text | escape_special }}         <!-- Escape special chars -->
 
 Common Patterns
 ===============
@@ -286,7 +301,12 @@ Utility Functions
 
    {{ now() }}                         <!-- Current timestamp -->
    {{ type_of(variable) }}             <!-- Get type name -->
+   {{ dir_of(object) }}                <!-- Get object attributes -->
+   {{ len_of(object) }}                <!-- Get object length -->
    {{ debug(variable) }}               <!-- Debug output -->
+   {{ format_json(data) }}             <!-- Format JSON with indentation -->
+   {{ validate_json(text) }}           <!-- Validate JSON syntax -->
+   {{ format_error(error) }}           <!-- Format error messages -->
 
 File Attachment Helpers
 ------------------------
@@ -311,13 +331,30 @@ Token Estimation
 
    Estimated tokens: {{ estimate_tokens(content) }}
 
-Data Analysis
--------------
+Data Analysis Functions
+-----------------------
 
 .. code-block:: jinja
 
    {% set summary = summarize(data_list) %}
    Records: {{ summary.total_records }}
+
+   {% set pivot = pivot_table(data, "category", "month") %}
+   {{ pivot | auto_table }}
+
+File Operations
+===============
+
+File Processing
+---------------
+
+.. code-block:: jinja
+
+   {{ files | single }}               <!-- Extract single file -->
+   {{ files | files }}                <!-- File sequence protocol -->
+   {{ file.name }}                    <!-- Filename -->
+   {{ file.path }}                    <!-- Full path -->
+   {{ file.size }}                    <!-- File size -->
 
 Common Issues
 =============
