@@ -410,6 +410,14 @@ Shell completion will help you with:
 
 ## Enhanced CLI with Multi-Tool Integration
 
+ostruct provides multiple commands for different workflows:
+
+- **`ostruct run`** - Main execution command for templates and schemas
+- **`ostruct files`** - Dedicated file management (upload, cache, diagnostics)
+- **`ostruct runx`** - Execute self-contained OST files
+- **`ostruct scaffold`** - Generate templates and project scaffolding
+- **`ostruct setup`** - Environment configuration and setup
+
 ### File Attachment System
 
 ostruct provides a flexible file attachment system with explicit tool targeting:

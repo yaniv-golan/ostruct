@@ -1500,6 +1500,26 @@ Show cache inventory and file information.
 
    Filter by specific vector store name.
 
+.. option:: --tool TOOL
+
+   Filter by tool bindings (repeatable). Available choices: user-data, ud, code-interpreter, ci, file-search, fs.
+
+.. option:: --tag KEY=VALUE
+
+   Filter by tag metadata (repeatable, AND logic).
+
+.. option:: --columns COLUMNS
+
+   Comma-separated column names: FILE_ID,SIZE,UPLOADED,TOOLS,TAGS,PATH.
+
+.. option:: --no-truncate
+
+   Show full column values without truncation.
+
+.. option:: --max-col-width WIDTH
+
+   Maximum width for variable-width columns (default: 50).
+
 **Examples:**
 
 .. code-block:: bash
@@ -1512,6 +1532,188 @@ Show cache inventory and file information.
 
    # Filter by vector store
    ostruct files list --vector-store project_docs
+
+   # Filter by tool bindings
+   ostruct files list --tool fs --tool ci
+
+   # Filter by tags
+   ostruct files list --tag project=alpha --tag type=document
+
+   # Custom columns display
+   ostruct files list --columns FILE_ID,TOOLS,PATH
+
+   # No truncation
+   ostruct files list --no-truncate
+
+ostruct files gc
+----------------
+
+Garbage-collect expired cache entries.
+
+.. code-block:: text
+
+   Usage: ostruct files gc [OPTIONS]
+
+   Garbage-collect expired cache entries.
+
+**Options:**
+
+.. option:: --older-than DURATION
+
+   TTL for garbage collection (e.g., 30d, 7d) (default: 90d).
+
+.. option:: --json
+
+   Output machine-readable JSON.
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Clean files older than 30 days
+   ostruct files gc --older-than 30d
+
+   # Clean files older than 7 days with JSON output
+   ostruct files gc --older-than 7d --json
+
+ostruct files bind
+------------------
+
+Attach cached file to one or more tools.
+
+.. code-block:: text
+
+   Usage: ostruct files bind FILE_ID [OPTIONS]
+
+   Attach cached file to one or more tools.
+
+**Arguments:**
+
+.. option:: FILE_ID
+
+   The file ID of the cached file to bind.
+
+**Options:**
+
+.. option:: --tools TOOL
+
+   Tools to bind the cached file to (repeatable). Available choices: user-data, file-search, code-interpreter.
+
+.. option:: --json
+
+   Output machine-readable JSON.
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Bind file to file-search
+   ostruct files bind file_abc123 --tools file-search
+
+   # Bind file to multiple tools
+   ostruct files bind file_abc123 --tools file-search --tools code-interpreter
+
+   # JSON output
+   ostruct files bind file_abc123 --tools file-search --json
+
+ostruct files rm
+----------------
+
+Delete remote file and purge from cache.
+
+.. code-block:: text
+
+   Usage: ostruct files rm FILE_ID [OPTIONS]
+
+   Delete remote file and purge from cache.
+
+**Arguments:**
+
+.. option:: FILE_ID
+
+   The file ID of the file to delete.
+
+**Options:**
+
+.. option:: --json
+
+   Output machine-readable JSON.
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Delete file
+   ostruct files rm file_abc123
+
+   # Delete with JSON output
+   ostruct files rm file_abc123 --json
+
+ostruct files diagnose
+----------------------
+
+Live probes (head / vector / sandbox) to test file accessibility.
+
+.. code-block:: text
+
+   Usage: ostruct files diagnose FILE_ID [OPTIONS]
+
+   Live probes (head / vector / sandbox).
+
+**Arguments:**
+
+.. option:: FILE_ID
+
+   The file ID to diagnose.
+
+**Options:**
+
+.. option:: --json
+
+   Output machine-readable JSON.
+
+**Examples:**
+
+.. code-block:: bash
+
+   # Run diagnostic probes
+   ostruct files diagnose file_abc123
+
+   # Diagnostic with JSON output
+   ostruct files diagnose file_abc123 --json
+
+**Probe Types:**
+
+- **head**: Tests if file exists and is accessible
+- **vector**: Tests file-search functionality with actual vector stores
+- **sandbox**: Tests code-interpreter functionality with the file
+
+ostruct files vector-stores
+---------------------------
+
+List available vector stores and their contents.
+
+.. code-block:: text
+
+   Usage: ostruct files vector-stores [OPTIONS]
+
+   List available vector stores and their contents.
+
+**Options:**
+
+.. option:: --json
+
+   Output machine-readable JSON.
+
+**Examples:**
+
+.. code-block:: bash
+
+   # List vector stores
+   ostruct files vector-stores
+
+   # JSON output
+   ostruct files vector-stores --json
 
 File Error Handling
 -------------------
