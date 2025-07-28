@@ -598,10 +598,6 @@ ostruct provides many built-in filters for data processing:
 - ``{{ text | length }}`` - Count characters (built-in)
 - ``{{ text | strip }}`` - Remove whitespace
 - ``{{ text | extract_keywords }}`` - Extract keywords from text
-- ``{{ text | remove_comments }}`` - Remove comments from text
-- ``{{ text | wrap(80) }}`` - Wrap text to specified width
-- ``{{ text | indent(4) }}`` - Indent text by specified spaces
-- ``{{ text | dedent }}`` - Remove indentation from text
 - ``{{ text | normalize }}`` - Normalize whitespace
 - ``{{ text | strip_markdown }}`` - Remove markdown formatting
 
@@ -651,11 +647,7 @@ ostruct provides global functions for advanced template operations:
 - ``{{ format_json(data) }}`` - Format JSON with indentation
 - ``{{ now() }}`` - Get current timestamp
 - ``{{ type_of(variable) }}`` - Get type name of variable
-- ``{{ dir_of(object) }}`` - Get object attributes
-- ``{{ len_of(object) }}`` - Get length of object
 - ``{{ debug(variable) }}`` - Debug output for development
-- ``{{ validate_json(text) }}`` - Validate JSON syntax
-- ``{{ format_error(error) }}`` - Format error messages
 
 **Data Analysis Functions:**
 - ``{{ summarize(data_list) }}`` - Summarize data collections

@@ -191,10 +191,6 @@ Text Processing
    {{ text | lower }}                  <!-- lowercase -->
    {{ long_text | truncate(100) }}     <!-- Truncate to 100 chars -->
    {{ text | extract_keywords }}       <!-- Extract keywords -->
-   {{ text | remove_comments }}        <!-- Remove comments -->
-   {{ text | wrap(80) }}               <!-- Wrap text to width -->
-   {{ text | indent(4) }}              <!-- Indent by spaces -->
-   {{ text | dedent }}                 <!-- Remove indentation -->
    {{ text | normalize }}              <!-- Normalize whitespace -->
    {{ text | strip_markdown }}         <!-- Remove markdown -->
 
@@ -301,12 +297,8 @@ Utility Functions
 
    {{ now() }}                         <!-- Current timestamp -->
    {{ type_of(variable) }}             <!-- Get type name -->
-   {{ dir_of(object) }}                <!-- Get object attributes -->
-   {{ len_of(object) }}                <!-- Get object length -->
    {{ debug(variable) }}               <!-- Debug output -->
    {{ format_json(data) }}             <!-- Format JSON with indentation -->
-   {{ validate_json(text) }}           <!-- Validate JSON syntax -->
-   {{ format_error(error) }}           <!-- Format error messages -->
 
 File Attachment Helpers
 ------------------------
@@ -351,7 +343,6 @@ File Processing
 .. code-block:: jinja
 
    {{ files | single }}               <!-- Extract single file -->
-   {{ files | files }}                <!-- File sequence protocol -->
    {{ file.name }}                    <!-- Filename -->
    {{ file.path }}                    <!-- Full path -->
    {{ file.size }}                    <!-- File size -->
