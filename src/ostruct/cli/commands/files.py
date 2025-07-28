@@ -77,17 +77,17 @@ def truncate_with_ellipsis(text: str, max_width: int) -> str:
 def format_bindings(bindings: Dict[str, Any]) -> str:
     """Format bindings dictionary for display."""
     if not bindings:
-        return "none"
+        return "-"
 
     tools = []
     if bindings.get("user_data"):
-        tools.append("user-data")
+        tools.append("ud")
     if bindings.get("code_interpreter"):
-        tools.append("code-interpreter")
+        tools.append("ci")
     if bindings.get("file_search"):
-        tools.append("file-search")
+        tools.append("fs")
 
-    return ", ".join(tools) if tools else "none"
+    return ", ".join(tools) if tools else "-"
 
 
 class FileBindings(BaseModel):
@@ -134,11 +134,7 @@ def render_responsive_table(
 
             rows.append(
                 [
-                    (
-                        file_info.file_id[:12] + "..."
-                        if len(file_info.file_id) > 15
-                        else file_info.file_id
-                    ),
+                    file_info.file_id,  # Show full file ID
                     format_size(file_info.size),
                     datetime.fromtimestamp(file_info.created_at).strftime(
                         "%Y-%m-%d %H:%M"
