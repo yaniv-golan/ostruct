@@ -20,6 +20,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   ```
   ostruct run TEMPLATE SCHEMA [OPTIONS]        # main execution path
   ostruct runx OST_FILE [ARGS]                # self‑executing template with front‑matter
+  ostruct files {upload|list|gc|bind|rm|diagnose|vector-stores}  # file mgmt/cache
   ostruct scaffold {template|schema|ost}      # quick-start files
   ostruct setup {windows-register|windows-unregister}
   ostruct models {list|update} | quick-ref
@@ -37,6 +38,17 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   --path-security {permissive|warn|strict}
   --strict-urls | --no-strict-urls
   --max-file-size SIZE   --ignore-gitignore | --gitignore-file PATH
+  ```
+
+* **Files command flags**
+
+  ```
+  # upload: --file|--dir|--collect PATH, --tools {user-data|file-search|code-interpreter}, --tag KEY=VALUE, --vector-store NAME, --pattern GLOB, --dry-run, --progress {none|basic|detailed}, --json
+  # list: --vector-store NAME, --tool {user-data|ud|code-interpreter|ci|file-search|fs}, --tag KEY=VALUE, --columns LIST, --no-truncate, --max-col-width N, --json
+  # gc: --older-than DURATION, --json
+  # bind FILE_ID: --tools {user-data|file-search|code-interpreter}, --json
+  # rm|diagnose FILE_ID: --json
+  # vector-stores: --json
   ```
 
 * **Variables**
