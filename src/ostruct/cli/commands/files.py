@@ -23,6 +23,7 @@ from ..utils.attachment_utils import AttachmentProcessor
 from ..utils.error_utils import ErrorCollector
 from ..utils.json_models import ErrorResult
 from ..utils.json_output import JSONOutputHandler
+from ..utils.path_truncation import smart_truncate_path, truncate_with_ellipsis
 from ..utils.progress_utils import ProgressHandler
 
 logger = logging.getLogger(__name__)
@@ -65,15 +66,6 @@ def format_path_display(file_path: str) -> str:
         return file_path
 
 
-def truncate_with_ellipsis(text: str, max_width: int) -> str:
-    """Truncate text with ellipsis if too long."""
-    if len(text) <= max_width:
-        return text
-    if max_width <= 3:
-        return "..." if max_width == 3 else text[:max_width]
-    return text[: max_width - 3] + "..."
-
-
 def format_bindings(bindings: Dict[str, Any]) -> str:
     """Format bindings dictionary for display."""
     if not bindings:
@@ -113,51 +105,154 @@ def render_responsive_table(
     data: List[Any],
     table_type: str,
     text_formatter: Optional[Callable[[Any], str]] = None,
+    columns: Optional[str] = None,
+    no_truncate: bool = False,
+    max_col_width: int = 50,
 ) -> None:
     """Render a responsive table based on terminal width."""
     if not data:
         click.echo("No data to display.")
         return
 
-    # For files, always use tabular format for consistency with list-models
-    # and to avoid printing raw CachedFileInfo objects in narrow terminals
+    # Get terminal width
+    try:
+        terminal_width = shutil.get_terminal_size().columns
+    except OSError:
+        terminal_width = 80
+
     if table_type == "files":
-        headers = ["File ID", "Size", "Uploaded", "Tools", "Tags", "Path"]
-        rows = []
-        for file_info in data:
-            metadata = file_info.metadata or {}
-            bindings = metadata.get("bindings", {})
-            tags = metadata.get("tags", {})
+        # Define all available columns
+        all_columns = ["FILE_ID", "SIZE", "UPLOADED", "TOOLS", "TAGS", "PATH"]
+        column_headers = [
+            "File ID",
+            "Size",
+            "Uploaded",
+            "Tools",
+            "Tags",
+            "Path",
+        ]
 
-            # Path as last column - no truncation needed since it's rightmost
-            path_display = format_path_display(file_info.path)
+        # Select columns to display
+        if columns:
+            selected_columns = [
+                col.strip().upper() for col in columns.split(",")
+            ]
+            # Validate column names
+            valid_columns = []
+            valid_headers = []
+            for col in selected_columns:
+                if col in all_columns:
+                    idx = all_columns.index(col)
+                    valid_columns.append(col)
+                    valid_headers.append(column_headers[idx])
+                else:
+                    click.echo(
+                        f"Warning: Unknown column '{col}'. Available: {', '.join(all_columns)}",
+                        err=True,
+                    )
 
-            rows.append(
-                [
-                    file_info.file_id,  # Show full file ID
-                    format_size(file_info.size),
-                    datetime.fromtimestamp(file_info.created_at).strftime(
-                        "%Y-%m-%d %H:%M"
-                    ),
-                    format_bindings(bindings),
-                    (
-                        ", ".join(f"{k}={v}" for k, v in tags.items())
-                        if tags
-                        else ""
-                    ),
-                    path_display,
-                ]
-            )
+            if not valid_columns:
+                click.echo("Error: No valid columns specified.", err=True)
+                return
 
-        click.echo(tabulate(rows, headers=headers, tablefmt="simple"))
+            display_columns = valid_columns
+            headers = valid_headers
+        else:
+            display_columns = all_columns
+            headers = column_headers
+
+        # Check if we should use narrow format
+        use_narrow_format = terminal_width < 100 and not columns
+
+        if use_narrow_format:
+            # Narrow terminal - use vertical record format
+            for i, file_info in enumerate(data):
+                if i > 0:
+                    click.echo()  # Blank line between records
+
+                metadata = file_info.metadata or {}
+                bindings = metadata.get("bindings", {})
+                tags = metadata.get("tags", {})
+
+                click.echo(f"File ID: {file_info.file_id}")
+                click.echo(f"Size:    {format_size(file_info.size)}")
+                click.echo(
+                    f"Date:    {datetime.fromtimestamp(file_info.created_at).strftime('%Y-%m-%d %H:%M')}"
+                )
+                click.echo(f"Tools:   {format_bindings(bindings)}")
+
+                if tags:
+                    tags_str = ", ".join(f"{k}={v}" for k, v in tags.items())
+                    if no_truncate or len(tags_str) <= max_col_width:
+                        click.echo(f"Tags:    {tags_str}")
+                    else:
+                        click.echo(
+                            f"Tags:    {truncate_with_ellipsis(tags_str, max_col_width)}"
+                        )
+                else:
+                    click.echo("Tags:    -")
+
+                path_display = format_path_display(file_info.path)
+                if no_truncate or len(path_display) <= max_col_width:
+                    click.echo(f"Path:    {path_display}")
+                else:
+                    click.echo(
+                        f"Path:    {smart_truncate_path(path_display, max_col_width)}"
+                    )
+        else:
+            # Wide terminal or custom columns - use tabular format
+            rows = []
+            for file_info in data:
+                metadata = file_info.metadata or {}
+                bindings = metadata.get("bindings", {})
+                tags = metadata.get("tags", {})
+
+                # Build row data based on selected columns
+                row = []
+                for col in display_columns:
+                    if col == "FILE_ID":
+                        row.append(file_info.file_id)
+                    elif col == "SIZE":
+                        row.append(format_size(file_info.size))
+                    elif col == "UPLOADED":
+                        row.append(
+                            datetime.fromtimestamp(
+                                file_info.created_at
+                            ).strftime("%Y-%m-%d %H:%M")
+                        )
+                    elif col == "TOOLS":
+                        row.append(format_bindings(bindings))
+                    elif col == "TAGS":
+                        if tags:
+                            tags_str = ", ".join(
+                                f"{k}={v}" for k, v in tags.items()
+                            )
+                            if no_truncate or len(tags_str) <= max_col_width:
+                                row.append(tags_str)
+                            else:
+                                row.append(
+                                    truncate_with_ellipsis(
+                                        tags_str, max_col_width
+                                    )
+                                )
+                        else:
+                            row.append("")
+                    elif col == "PATH":
+                        path_display = format_path_display(file_info.path)
+                        if no_truncate or len(path_display) <= max_col_width:
+                            row.append(path_display)
+                        else:
+                            row.append(
+                                smart_truncate_path(
+                                    path_display, max_col_width
+                                )
+                            )
+
+                rows.append(row)
+
+            click.echo(tabulate(rows, headers=headers, tablefmt="simple"))
     else:
-        # For other table types, keep the responsive behavior
-        # Get terminal width
-        try:
-            terminal_width = shutil.get_terminal_size().columns
-        except OSError:
-            terminal_width = 80
-
+        # For other table types, keep the original responsive behavior
         # For narrow terminals, use simple list format
         if terminal_width < 100:
             for item in data:
@@ -1007,19 +1102,63 @@ async def _upload_single_file(
 @click.option(
     "--vector-store", type=str, help="Filter by specific vector store name"
 )
-def list(output_json: bool, vector_store: Optional[str]) -> None:
+@click.option(
+    "--tool",
+    "tools_filter",
+    multiple=True,
+    type=click.Choice(
+        ["user-data", "ud", "code-interpreter", "ci", "file-search", "fs"]
+    ),
+    help="Filter by tool bindings (repeatable)",
+)
+@click.option(
+    "--tag",
+    "tags_filter",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Filter by tag metadata (repeatable, AND logic)",
+)
+@click.option(
+    "--columns",
+    type=str,
+    help="Comma-separated column names: FILE_ID,SIZE,UPLOADED,TOOLS,TAGS,PATH",
+)
+@click.option(
+    "--no-truncate",
+    is_flag=True,
+    help="Show full column values without truncation",
+)
+@click.option(
+    "--max-col-width",
+    type=int,
+    default=50,
+    help="Maximum width for variable-width columns (default: 50)",
+)
+def list(
+    output_json: bool,
+    vector_store: Optional[str],
+    tools_filter: tuple[str, ...],
+    tags_filter: tuple[str, ...],
+    columns: Optional[str],
+    no_truncate: bool,
+    max_col_width: int,
+) -> None:
     """Show cache inventory.
 
     Examples:
         ostruct files list
         ostruct files list --json
         ostruct files list --vector-store project_docs
+        ostruct files list --tool fs --tool ci
+        ostruct files list --tag project=alpha --tag type=document
+        ostruct files list --columns FILE_ID,TOOLS,PATH
+        ostruct files list --no-truncate
     """
     try:
         cache = UploadCache(get_default_cache_path())
         files = cache.list_all()
 
-        # Filter by vector store if specified
+        # Apply filters
         if vector_store:
             # Get vector store ID by name
             vector_store_name = f"ostruct_{vector_store}"
@@ -1040,6 +1179,48 @@ def list(output_json: bool, vector_store: Optional[str]) -> None:
             else:
                 # Vector store not found, return empty list
                 files = []
+
+        if tools_filter:
+            # Normalize tool names (ud->user_data, ci->code_interpreter, fs->file_search)
+            normalized_tools = []
+            for tool in tools_filter:
+                if tool in ["ud", "user-data"]:
+                    normalized_tools.append("user_data")
+                elif tool in ["ci", "code-interpreter"]:
+                    normalized_tools.append("code_interpreter")
+                elif tool in ["fs", "file-search"]:
+                    normalized_tools.append("file_search")
+
+            # Filter by tool bindings (OR logic - file matches if bound to any specified tool)
+            filtered_files = []
+            for file_info in files:
+                metadata = file_info.metadata or {}
+                bindings = metadata.get("bindings", {})
+                if any(bindings.get(tool, False) for tool in normalized_tools):
+                    filtered_files.append(file_info)
+            files = filtered_files
+
+        if tags_filter:
+            # Parse tag filters (key=value format) and apply AND logic
+            parsed_tags = {}
+            for tag_filter in tags_filter:
+                if "=" in tag_filter:
+                    key, value = tag_filter.split("=", 1)
+                    parsed_tags[key] = value
+                else:
+                    click.echo(
+                        f"Warning: Invalid tag filter format '{tag_filter}'. Expected key=value.",
+                        err=True,
+                    )
+
+            if parsed_tags:
+                filtered_files = []
+                for file_info in files:
+                    metadata = file_info.metadata or {}
+                    tags = metadata.get("tags", {})
+                    if all(tags.get(k) == v for k, v in parsed_tags.items()):
+                        filtered_files.append(file_info)
+                files = filtered_files
 
         if output_json:
             result = []
@@ -1065,7 +1246,39 @@ def list(output_json: bool, vector_store: Optional[str]) -> None:
                 )
             )
         else:
-            render_responsive_table(files, "files")
+            # Calculate summary statistics
+            total_size = sum(f.size for f in files)
+            tool_counts = {"ud": 0, "fs": 0, "ci": 0}
+
+            for file_info in files:
+                metadata = file_info.metadata or {}
+                bindings = metadata.get("bindings", {})
+                if bindings.get("user_data", False):
+                    tool_counts["ud"] += 1
+                if bindings.get("file_search", False):
+                    tool_counts["fs"] += 1
+                if bindings.get("code_interpreter", False):
+                    tool_counts["ci"] += 1
+
+            # Use responsive table with new options
+            render_responsive_table(
+                files,
+                "files",
+                columns=columns,
+                no_truncate=no_truncate,
+                max_col_width=max_col_width,
+            )
+
+            # Show summary statistics
+            if files:
+                summary_parts = [
+                    f"{len(files)} files",
+                    f"{format_size(total_size)} total",
+                ]
+                for tool, count in tool_counts.items():
+                    if count > 0:
+                        summary_parts.append(f"{count} {tool}-bound")
+                click.echo(f"\n{' · '.join(summary_parts)}")
 
     except Exception as e:
         error_result = ErrorResult(exit_code=1, error=str(e))
