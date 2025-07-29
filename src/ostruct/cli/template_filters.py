@@ -1204,10 +1204,6 @@ def register_template_filters(env: Environment) -> None:
         "to_json": to_json,
         "tojson": to_json,
         "from_json": from_json,
-        "remove_comments": remove_comments,
-        "wrap": wrap_text,
-        "indent": indent_text,
-        "dedent": dedent_text,
         "normalize": normalize_text,
         "strip_markdown": strip_markdown,
         # Data processing
@@ -1232,8 +1228,6 @@ def register_template_filters(env: Environment) -> None:
         "auto_table": auto_table,
         # Single item extraction
         "single": single_filter,
-        # File-sequence protocol support
-        "files": files_filter,
     }
 
     env.filters.update(filters)
@@ -1253,10 +1247,6 @@ def register_template_filters(env: Environment) -> None:
             "now": datetime.datetime.now,
             "debug": debug_print,
             "type_of": type_of,
-            "dir_of": dir_of,
-            "len_of": len_of,
-            "validate_json": validate_json,
-            "format_error": format_error,
             # Data analysis globals
             "summarize": summarize,
             "pivot_table": pivot_table,
