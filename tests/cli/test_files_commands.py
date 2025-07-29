@@ -80,6 +80,12 @@ class TestFilesBindCommand:
         mock_cache_path.return_value = "/test/cache.db"
         mock_cache_class.return_value = mock_upload_cache
 
+        # Set up the mock to return a file with the expected file_id
+        file_info = Mock()
+        file_info.file_id = "file-123"
+        file_info.metadata = {"bindings": {"user_data": False}}
+        mock_upload_cache.list_all.return_value = [file_info]
+
         runner = CliRunner()
         result = runner.invoke(
             files,
@@ -112,6 +118,12 @@ class TestFilesBindCommand:
         """Test bind command with JSON output."""
         mock_cache_path.return_value = "/test/cache.db"
         mock_cache_class.return_value = mock_upload_cache
+
+        # Set up the mock to return a file with the expected file_id
+        file_info = Mock()
+        file_info.file_id = "file-123"
+        file_info.metadata = {"bindings": {"user_data": False}}
+        mock_upload_cache.list_all.return_value = [file_info]
 
         runner = CliRunner()
         result = runner.invoke(
@@ -154,12 +166,12 @@ class TestFilesRmCommand:
         mock_cache_path,
         mock_cache_class,
         mock_client_func,
-        mock_upload_cache,
-        mock_openai_client,
     ):
         """Test successful file deletion."""
         mock_cache_path.return_value = "/test/cache.db"
+        mock_upload_cache = Mock()
         mock_cache_class.return_value = mock_upload_cache
+        mock_openai_client = AsyncMock()
         mock_client_func.return_value = mock_openai_client
 
         runner = CliRunner()
@@ -177,8 +189,8 @@ class TestFilesRmCommand:
         )
 
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
-    @patch("ostruct.cli.upload_cache.UploadCache")
-    @patch("ostruct.cli.cache_utils.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch("ostruct.cli.commands.files.get_default_cache_path")
     def test_rm_file_json_output(
         self,
         mock_cache_path,
@@ -208,12 +220,12 @@ class TestFilesRmCommand:
         mock_cache_path,
         mock_cache_class,
         mock_client_func,
-        mock_upload_cache,
-        mock_openai_client,
     ):
         """Test that 404 errors from OpenAI are ignored."""
         mock_cache_path.return_value = "/test/cache.db"
+        mock_upload_cache = Mock()
         mock_cache_class.return_value = mock_upload_cache
+        mock_openai_client = AsyncMock()
         mock_client_func.return_value = mock_openai_client
 
         # Make OpenAI deletion fail with 404

@@ -34,3 +34,9 @@ repos:
         # Do not pass filenames to mypy, we are checking the whole src folder
         pass_filenames: false
         types: [python]
+    -   id: pytest-critical
+        name: pytest critical tests
+        entry: poetry run pytest tests/test_template_rendering.py::test_create_jinja_env tests/cli/test_files_commands.py::TestFilesBindCommand::test_bind_file_to_tools tests/test_responses_api.py::TestResponsesAPIIntegration::test_responses_api_non_streaming -x
+        language: system
+        pass_filenames: false
+        types: [python]

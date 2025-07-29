@@ -91,14 +91,14 @@ class TestFilesUploadBasic:
     ):
         """Test uploading a single file."""
         # Setup mocks
-        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+        mock_client.return_value = AsyncMock()  # Mock AsyncOpenAI client
 
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -132,14 +132,15 @@ class TestFilesUploadBasic:
     ):
         """Test uploading a file that's already cached."""
         # Setup mocks
-        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+        mock_client.return_value = AsyncMock()  # Mock AsyncOpenAI client
 
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = "cached-file-123"
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
+        mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
         runner = CliRunner()
@@ -179,7 +180,7 @@ class TestFilesUploadBatch:
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -217,7 +218,7 @@ class TestFilesUploadBatch:
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -247,7 +248,7 @@ class TestFilesUploadBatch:
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -288,7 +289,7 @@ class TestFilesUploadGlobPatterns:
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -321,14 +322,14 @@ class TestFilesUploadGlobPatterns:
     ):
         """Test global pattern filter."""
         # Setup mocks
-        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+        mock_client.return_value = AsyncMock()  # Mock AsyncOpenAI client
 
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -421,14 +422,14 @@ class TestFilesUploadInteractive:
     ):
         """Test interactive file selection mode."""
         # Setup mocks
-        mock_client.return_value = Mock()  # Mock AsyncOpenAI client
+        mock_client.return_value = AsyncMock()  # Mock AsyncOpenAI client
 
         mock_cache = Mock()
         mock_cache.compute_file_hash.return_value = "hash123"
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -540,7 +541,7 @@ class TestFilesUploadErrorHandling:
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         # First call succeeds, second fails
         mock_manager._perform_upload = AsyncMock(
             side_effect=["file-123", Exception("Upload failed")]
@@ -592,7 +593,7 @@ class TestFilesUploadToolBindings:
         mock_cache.get_vector_store_by_name.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -636,7 +637,7 @@ class TestFilesUploadToolBindings:
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 
@@ -707,7 +708,7 @@ class TestFilesUploadTagsAndMetadata:
         mock_cache.lookup_with_validation.return_value = None
         mock_cache_cls.return_value = mock_cache
 
-        mock_manager = Mock()
+        mock_manager = AsyncMock()
         mock_manager._perform_upload = AsyncMock(return_value="file-123")
         mock_upload_manager_cls.return_value = mock_manager
 

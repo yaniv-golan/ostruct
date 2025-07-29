@@ -47,6 +47,9 @@ For **branching and tagging rules** (what to do *before* you start coding, how t
    ```bash
    ostruct --help          # Should work without errors
    ostruct run --help      # Test CLI functionality
+
+   # Run full CI simulation before creating RC
+   ./scripts/test-like-ci.sh
    ```
 
 ### Final Release Process

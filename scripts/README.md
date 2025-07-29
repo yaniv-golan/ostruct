@@ -36,6 +36,9 @@ find scripts/test -name "*.sh" -executable -exec {} \;
 
 # Validate release readiness
 python3 scripts/build/validate-release.py
+
+# Simulate CI environment locally (catch issues before CI)
+./scripts/test-like-ci.sh
 ```
 
 ## Key Features
@@ -55,6 +58,7 @@ python3 scripts/build/validate-release.py
 - **Unit Tests**: Fast, focused component testing
 - **Integration Tests**: Workflow and component interaction testing
 - **Docker Tests**: Clean environment, end-to-end testing
+- **CI Simulation**: `test-like-ci.sh` - Run full CI suite locally to catch environment-specific issues
 - **Organized by Type**: Clear separation of test categories
 
 ## Development Workflow
@@ -62,7 +66,8 @@ python3 scripts/build/validate-release.py
 ### Making Changes
 
 1. **Test**: Use scripts in `test/` to validate changes
-2. **Validate**: Run `scripts/build/validate-release.py` before release
+2. **CI Simulation**: Run `./scripts/test-like-ci.sh` to catch environment-specific issues
+3. **Validate**: Run `scripts/build/validate-release.py` before release
 
 ### Adding New Tests
 

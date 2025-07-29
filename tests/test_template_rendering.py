@@ -35,7 +35,7 @@ def test_create_jinja_env() -> None:
     assert "now" in env.globals
     assert "debug" in env.globals
     assert "type_of" in env.globals
-    assert "dir_of" in env.globals
+    assert "dir_of" not in env.globals
 
 
 def test_render_template_basic() -> None:

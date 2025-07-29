@@ -39,6 +39,7 @@ We welcome various types of contributions:
 - Performance testing and benchmarking
 - Security review and validation
 - Accessibility testing
+- CI environment simulation and validation
 
 Before You Start
 ----------------
@@ -694,6 +695,31 @@ The project uses pytest for testing:
 
    # Run tests with verbose output
    poetry run pytest -v
+
+CI Environment Simulation
+--------------------------
+
+Before submitting changes, simulate the CI environment locally to catch issues that might only appear in CI:
+
+.. code-block:: bash
+
+   # Run full CI simulation (matches GitHub Actions exactly)
+   ./scripts/test-like-ci.sh
+
+This script:
+
+- Configures Poetry to match CI settings (``virtualenvs.create false``)
+- Runs all pre-commit checks, type checking, and tests
+- Tests CLI commands and dry-run functionality
+- Builds documentation with warnings as errors
+- Restores your original Poetry configuration afterward
+
+**When to use CI simulation:**
+
+- Before creating pull requests
+- After making significant changes to imports or CLI structure
+- When debugging environment-specific test failures
+- Before creating release candidates
 
 Environment Consistency
 -----------------------

@@ -34,7 +34,11 @@ Before writing code
         git switch -c feature/<short-name>
 
 3.  Implement the feature, update tests, **update ``CHANGELOG.md`` incrementally**.
-4.  Open a PR (even if you merge it yourself) – CI must be green.
+4.  **Test locally with CI simulation**::
+
+        ./scripts/test-like-ci.sh
+
+5.  Open a PR (even if you merge it yourself) – CI must be green.
 
 Tagging the release
 ~~~~~~~~~~~~~~~~~~~
