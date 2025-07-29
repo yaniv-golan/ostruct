@@ -5,21 +5,134 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] - Unreleased
 
 ### Added
 
-- **Models Command Group**: Introduced `ostruct models` command group with `list` and `update` subcommands for better organization of model-related functionality
+#### 🎯 Major Feature: File Management System
+
+- **Complete File Upload Management**: Introduced comprehensive `ostruct files` command group for managing uploaded files and cache:
+  - `files upload` - Upload files with tool bindings (user-data, code-interpreter, file-search), tags, and vector store assignment
+  - `files list` - List cached files with advanced filtering by tool, tags, vector store, and customizable column display
+  - `files gc` - Garbage collect old cache entries with configurable TTL (e.g., `--older-than 30d`)
+  - `files bind` - Bind existing cached files to additional tools without re-uploading
+  - `files rm` - Delete remote files and purge from local cache
+  - `files diagnose` - Live diagnostic probes (head/vector/sandbox tests) for troubleshooting file issues
+  - `files vector-stores` - List available vector stores and their contents
+- **Advanced File Display**: Smart path truncation, responsive table formatting, and customizable column layouts for better file inventory management
+- **JSON Output Support**: All file commands support `--json` flag for programmatic integration and automation
+
+#### 🔧 Enhanced CLI Organization
+
+- **Models Command Group**: Introduced `ostruct models` command group with better organization:
+  - `ostruct models list` - List available OpenAI models with table/JSON/simple output formats
+  - `ostruct models update` - Update model registry with force option and progress reporting
+- **Dynamic Deprecation Warnings**: Legacy commands (`list-models`, `update-registry`) now show dynamic version warnings indicating exact removal version
+
+#### 🎨 Template System Enhancements
+
+- **New File Attachment Helpers**: Modern template functions for file handling workflows:
+  - `attach_file(path)` - Attach files for binary access (vision/code interpreter)
+  - `get_file_ref(path)` - Get deterministic file labels for consistent referencing
+  - `embed_text(alias)` - Schedule text content for XML appendix embedding
+  - `get_embed_ref(alias)` - Get reference tags for embedded content
+- **Upload Cache Integration**: Template environment now has access to upload cache for intelligent file labeling and metadata
+- **Comprehensive Template Documentation**: Updated llms.txt with complete reference of all template functions and filters
 
 ### Changed
 
-- **Command Structure**: Model management commands are now organized under the `models` group:
-  - `ostruct models list` - List available OpenAI models (replaces `list-models`)
-  - `ostruct models update` - Update model registry (replaces `update-registry`)
+#### 🚨 Template Filter Cleanup
+
+- **Deprecated Functions**: `file_ref()` function deprecated in favor of new `embed_text()` + `get_embed_ref()` pattern with clear migration path
+- **Removed Deprecated Filters**: Cleaned up template system by removing unused filters:
+  - `remove_comments`, `wrap`, `indent`, `dedent` (text processing)
+  - `files` (file sequence protocol)
+  - `dir_of`, `len_of`, `validate_json`, `format_error` (utility functions)
+
+#### 📊 Improved Error Handling & JSON Output
+
+- **Comprehensive File Error System**: Specific error types for common file issues (FileNotFoundError, DirectoryNotFoundError, PermissionError, BrokenSymlinkError) with actionable error messages
+- **Standardized JSON Output**: Consistent JSON formatting across all commands with metadata, timestamps, and structured error reporting
+- **Enhanced Progress Reporting**: Unified progress indicators across all CLI commands with configurable verbosity levels
+
+#### 🔧 CLI Infrastructure Improvements
+
+- **Modular Utilities Structure**: Reorganized CLI utilities into focused modules for better maintainability and testing
+- **Rich-Click Integration**: Improved argument parsing and error handling with better user experience
+- **Smart Path Handling**: Intelligent path truncation for readable file displays in terminal output
+
+### Fixed
+
+#### 🔍 Template Processing
+
+- **File Reference Validation**: Improved validation of file references and labels in templates
+- **Upload Cache Management**: Better integration between template system and file upload cache
+
+### Improved
+
+#### 📚 Documentation & Known Issues
+
+- **OpenAI File-Search Issue**: Documented known upstream issue where OpenAI Responses API file_search returns empty results despite successful vector store creation
+- **CLI Documentation**: Updated llms.txt with complete FILES command documentation and template function reference
+- **Enhanced Examples**: Updated agent examples with improved architecture documentation and execution flow details. Not ready yet though.
+
+#### 🔒 Security & Reliability
+
+- **File Validation**: Enhanced file existence and permission checking with specific error types
+- **Path Security**: Improved path handling and security validation across file operations
+- **Error Recovery**: Better error recovery and user guidance for common file and permission issues
+
+### Dependencies
+
+- **Updated Core Dependencies**:
+  - `click>=8.2.1` (improved CLI framework)
+  - `pytest-asyncio>=0.25.2,<2.0` (better async test support)
+- **Added New Dependencies**:
+  - `tabulate>=0.9.0,<0.10.0` (table formatting for file listings)
+  - `questionary>=2.0.0,<3.0.0` (interactive prompts)
+  - `types-tabulate` (type checking support)
 
 ### Deprecated
 
-- **Legacy Commands**: The standalone `list-models` and `update-registry` commands are deprecated and will be removed in the next minor version. Use the new `models` subcommands instead. Deprecated commands now show dynamic warnings indicating the exact version when they will be removed.
+- **Legacy Commands**: `ostruct list-models` and `ostruct update-registry` are deprecated and will be removed in v1.6.0. Use `ostruct models list` and `ostruct models update` instead.
+- **Template Functions**: `file_ref()` function is deprecated. Use the new `embed_text()` + `get_embed_ref()` pattern for better control and clarity.
+
+### Migration Notes
+
+#### File Management
+
+- **New Capability**: Use `ostruct files upload` to pre-upload and manage files with specific tool bindings and metadata
+- **Cache Management**: Use `ostruct files list` to view your upload cache and `ostruct files gc` for cleanup
+- **Troubleshooting**: Use `ostruct files diagnose <file_id>` to test file accessibility across different tools
+
+#### Template Updates
+
+- **Replace deprecated file_ref()**:
+
+  ```jinja2
+  <!-- Old (deprecated) -->
+  {{ file_ref("docs") }}
+
+  <!-- New (recommended) -->
+  {{ embed_text("docs") }}
+  Reference: {{ get_embed_ref("docs") }}
+  ```
+
+#### CLI Command Updates
+
+- **Model Management**:
+
+  ```bash
+  # Old (deprecated)
+  ostruct list-models
+  ostruct update-registry
+
+  # New (recommended)
+  ostruct models list
+  ostruct models update
+  ```
+
+This release significantly enhances ostruct's file management capabilities, provides better CLI organization, and improves the overall user experience while maintaining backward compatibility through clear deprecation paths.
 
 ## [1.4.1] - 2025-07-21
 
