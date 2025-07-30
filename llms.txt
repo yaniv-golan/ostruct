@@ -94,6 +94,8 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   --mcp-require-approval {always|never}     --mcp-allowed-tools JSON
   ```
 
+* **MCP** `--mcp-server label@url --mcp-headers '{"Authorization":"Bearer key"}' --mcp-allowed-tools '["tool"]' --mcp-require-approval never`. Auth format critical: Bearer token. Filter tools to reduce context. Template check: `{% if mcp_enabled %}`. Ex: `--mcp-server api@https://x.com/mcp/sse --mcp-headers '{"Authorization":"Bearer abc"}'`
+
 * **Web Search tool patterns**
 
   * **When to use**: Real-time information (news, prices, events), fact verification, current data beyond training cutoff, research requiring citations.
@@ -103,6 +105,14 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   * **Output format**: Web search results appear in LLM response with automatic citations as numbered references [1], [2] with URLs.
   * **Template detection**: Use `{% if web_search_enabled %}` to conditionally prompt for web search when tool is available.
   * **Result access**: Search results integrated into model's response context; no separate template variable - model includes findings and citations directly in output.
+
+* **Code‑Interpreter auto‑download behavior (v1.6+)**
+
+  * **Auto‑workaround**: ostruct automatically enables two‑pass sentinel strategy when structured output + auto_download + CI are used together
+  * **Rationale**: Works around OpenAI API bug where JSON schema response_format prevents container_file_citation annotations
+  * **Performance**: Adds ~2‑3s execution time but ensures reliable file downloads
+  * **Override**: Set `download_strategy: "single_pass"` in config to disable (files won't download)
+  * **Future**: Auto‑enable will be removed when OpenAI fixes the underlying API bug
 
 * **Citation placement**: put numeric refs [n] inline *and* list full entries in the `sources` array when the schema defines it; otherwise include refs only inline.
 * **Quick example**: `ostruct run tpl.j2 sch.json -V question='...' --enable-tool web-search --ws-context-size low --dry-run`
@@ -154,38 +164,39 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
 [8]: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs
 [9]: https://developer.mamezou-tech.com/en/blogs/2024/08/07/openai-structured-outputs/
 
-## Minimal end-to-end example
+* **Minimal end-to-end example**:
 
-```jinja2
-# tpl.j2 (snippet)
-{% if web_search_enabled %}
-**IMPORTANT**: Use web search to answer the question and cite every source in the `sources` array.
-{% endif %}
-Question: {{ question }}
-```
+  ```jinja2
+  # tpl.j2 (snippet)
+  {% if web_search_enabled %}
+  **IMPORTANT**: Use web search to answer the question and cite every source in the `sources` array.
+  {% endif %}
+  Question: {{ question }}
+  ```
 
-```json
-{
-  "type": "object",
-  "properties": {
-    "answer": {"type": "string"},
-    "sources": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "title": {"type": "string"},
-          "url":   {"type": "string"}
-        },
-        "required": ["title", "url"]
+  ```jsonc
+  // sch.json (snippet)
+  {
+    "type": "object",
+    "properties": {
+      "answer": {"type": "string"},
+      "sources": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {"type": "string"},
+            "url":   {"type": "string"}
+          },
+          "required": ["title", "url"]
+        }
       }
-    }
-  },
-  "required": ["answer", "sources"]
-}
-```
+    },
+    "required": ["answer", "sources"]
+  }
+  ```
 
-```bash
-ostruct run tpl.j2 sch.json -V question='Latest AI safety news' \
-  --enable-tool web-search --ws-context-size low
-```
+  ```bash
+  ostruct run tpl.j2 sch.json -V question='Latest AI safety news' \
+    --enable-tool web-search --ws-context-size low
+  ```
