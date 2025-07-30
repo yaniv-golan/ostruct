@@ -112,6 +112,38 @@ CLI Options
 - ``--ci-download-dir DIR``: Directory to save generated files (default: ./downloads/)
 - ``--ci-duplicate-outputs {overwrite|rename|skip}``: Handle duplicate file names
 
+File Download Behavior
+~~~~~~~~~~~~~~~~~~~~~~
+
+**Automatic Workaround (v1.6+)**
+
+ostruct automatically handles the OpenAI API file download bug by enabling the two-pass sentinel strategy when:
+
+* Code Interpreter is enabled
+* Structured output (JSON schema) is provided
+* Auto-download is enabled (default)
+
+This ensures reliable file downloads without manual configuration.
+
+**Manual Configuration**
+
+For explicit control over download behavior:
+
+.. code-block:: yaml
+
+   # ostruct.yaml
+   tools:
+     code_interpreter:
+       download_strategy: "two_pass_sentinel"  # Force enable
+       auto_download: true
+       output_directory: "./downloads"
+
+**Performance Notes**
+
+* Two-pass execution adds 2-3 seconds to requests
+* Single-pass mode is faster but files won't download with structured output
+* The workaround will be removed when OpenAI fixes the underlying API bug
+
 Best Practices
 --------------
 
