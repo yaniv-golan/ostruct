@@ -133,6 +133,7 @@ class TestResponsesAPIIntegration:
     """Test OpenAI Responses API integration and streaming."""
 
     @patch.object(CLIENT_UTILS, "create_openai_client")
+    @patch.object(UPLOAD_MOD, "UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -141,6 +142,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
+        mock_upload_cache_class: Mock,
         mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -164,6 +166,8 @@ class TestResponsesAPIIntegration:
         mock_validation_registry.get_instance.return_value = mock_registry
 
         # Mock upload cache to avoid database file issues
+        mock_cache = Mock()
+        mock_upload_cache_class.return_value = mock_cache
 
         cli_runner = CliTestRunner()
 
@@ -219,6 +223,7 @@ class TestResponsesAPIIntegration:
         assert "text" in call_args[1]  # Responses API uses 'text' format
 
     @patch.object(CLIENT_UTILS, "create_openai_client")
+    @patch.object(UPLOAD_MOD, "UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -227,6 +232,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
+        mock_upload_cache_class: Mock,
         mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -251,7 +257,7 @@ class TestResponsesAPIIntegration:
 
         # Mock upload cache to avoid database file issues
         mock_cache = Mock()
-        mock_create_client.return_value = mock_cache
+        mock_upload_cache_class.return_value = mock_cache
 
         cli_runner = CliTestRunner()
 
@@ -299,6 +305,7 @@ class TestResponsesAPIIntegration:
         mock_client.responses.create.assert_called_once()
 
     @patch.object(CLIENT_UTILS, "create_openai_client")
+    @patch.object(UPLOAD_MOD, "UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -307,6 +314,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
+        mock_upload_cache_class: Mock,
         mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -328,6 +336,10 @@ class TestResponsesAPIIntegration:
         mock_registry_class.get_instance.return_value = mock_registry
         mock_runner_registry.get_instance.return_value = mock_registry
         mock_validation_registry.get_instance.return_value = mock_registry
+
+        # Mock upload cache to avoid database file issues
+        mock_cache = Mock()
+        mock_upload_cache_class.return_value = mock_cache
 
         cli_runner = CliTestRunner()
 
@@ -381,6 +393,7 @@ class TestResponsesAPIIntegration:
         assert call_args is not None
 
     @patch.object(CLIENT_UTILS, "create_openai_client")
+    @patch.object(UPLOAD_MOD, "UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -389,7 +402,8 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_openai_class: Mock,
+        mock_upload_cache_class: Mock,
+        mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
         """Test error handling in Responses API calls."""
@@ -411,11 +425,15 @@ class TestResponsesAPIIntegration:
         mock_runner_registry.get_instance.return_value = mock_registry
         mock_validation_registry.get_instance.return_value = mock_registry
 
+        # Mock upload cache to avoid database file issues
+        mock_cache = Mock()
+        mock_upload_cache_class.return_value = mock_cache
+
         cli_runner = CliTestRunner()
 
         # Setup mock client that raises an error
         mock_client = AsyncMock()
-        mock_openai_class.return_value = mock_client
+        mock_create_client.return_value = mock_client
 
         mock_client.responses.create.side_effect = Exception("API Error")
 
@@ -451,6 +469,7 @@ class TestResponsesAPIIntegration:
         mock_client.responses.create.assert_called_once()
 
     @patch.object(CLIENT_UTILS, "create_openai_client")
+    @patch.object(UPLOAD_MOD, "UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -459,10 +478,11 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_openai_class: Mock,
+        mock_upload_cache_class: Mock,
+        mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
-        """Test API calls with content processing."""
+        """Test Responses API call with content validation."""
         # Mock model registry and capabilities
         mock_registry = Mock()
         mock_capabilities = Mock()
@@ -481,11 +501,15 @@ class TestResponsesAPIIntegration:
         mock_runner_registry.get_instance.return_value = mock_registry
         mock_validation_registry.get_instance.return_value = mock_registry
 
+        # Mock upload cache to avoid database file issues
+        mock_cache = Mock()
+        mock_upload_cache_class.return_value = mock_cache
+
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper for non-streaming response
         mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, '{"result": "Optimized response"}'
+            mock_create_client, '{"result": "Optimized response"}'
         )
 
         # Create test files with content that should be optimized
@@ -524,6 +548,7 @@ class TestResponsesAPIIntegration:
         mock_client.responses.create.assert_called_once()
 
     @patch.object(CLIENT_UTILS, "create_openai_client")
+    @patch.object(UPLOAD_MOD, "UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -532,7 +557,8 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_openai_class: Mock,
+        mock_upload_cache_class: Mock,
+        mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
         """Test model parameters are passed correctly."""
@@ -554,11 +580,15 @@ class TestResponsesAPIIntegration:
         mock_runner_registry.get_instance.return_value = mock_registry
         mock_validation_registry.get_instance.return_value = mock_registry
 
+        # Mock upload cache to avoid database file issues
+        mock_cache = Mock()
+        mock_upload_cache_class.return_value = mock_cache
+
         cli_runner = CliTestRunner()
 
         # Set up mock client using the helper for non-streaming response
         mock_client = MockResponsesAPIHelper.setup_mock_client(
-            mock_openai_class, '{"result": "Parameter test"}'
+            mock_create_client, '{"result": "Parameter test"}'
         )
 
         # Create test files
