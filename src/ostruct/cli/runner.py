@@ -1329,13 +1329,16 @@ async def _fallback_single_pass(
 
 
 def _get_effective_download_strategy(
-    args: CLIParams, ci_config: Dict[str, Any]
+    args: CLIParams,
+    ci_config: Dict[str, Any],
+    output_model: Optional[Type[BaseModel]] = None,
 ) -> str:
     """Determine the effective download strategy from config and feature flags.
 
     Args:
         args: CLI parameters including enabled_features and disabled_features
         ci_config: Code interpreter configuration
+        output_model: Pydantic model for structured output (None if no structured output)
 
     Returns:
         Either "single_pass" or "two_pass_sentinel"
@@ -1361,6 +1364,42 @@ def _get_effective_download_strategy(
                 strategy = "single_pass"
         except Exception as e:
             logger.warning(f"Failed to parse feature flags: {e}")
+
+    # AUTO-ENABLE two_pass_sentinel for structured output + auto_download
+    # This is a workaround for OpenAI API bug where structured output mode
+    # prevents container_file_citation annotations from being generated.
+    # See: docs/known-issues/2025-06-responses-ci-file-output.md
+    # TODO: Remove this auto-enable logic when OpenAI fixes the underlying API bug
+
+    # Check if feature was explicitly disabled via feature flags
+    feature_explicitly_disabled = False
+    if enabled_features or disabled_features:
+        try:
+            from .click_options import parse_feature_flags
+
+            parsed_flags = parse_feature_flags(
+                tuple(enabled_features), tuple(disabled_features)
+            )
+            ci_hack_flag = parsed_flags.get("ci-download-hack")
+            if ci_hack_flag == "off":
+                feature_explicitly_disabled = True
+        except Exception:
+            # If parsing fails, don't block auto-enable
+            pass
+
+    if (
+        strategy
+        == "single_pass"  # Don't override explicit two_pass_sentinel config
+        and output_model is not None  # Structured output is being used
+        and ci_config.get("auto_download", True)  # Auto-download is enabled
+        and not feature_explicitly_disabled  # Don't override explicit disable
+    ):
+        logger.info(
+            "Auto-enabling two_pass_sentinel download strategy because structured output "
+            "is incompatible with Code Interpreter file downloads. This works around "
+            "a known OpenAI API bug. See docs/known-issues/2025-06-responses-ci-file-output.md"
+        )
+        strategy = "two_pass_sentinel"
 
     return strategy
 
@@ -1440,7 +1479,14 @@ async def execute_model(
             _has_new_attachment_syntax,
         )
 
-        if _has_new_attachment_syntax(args):
+        # Create shared upload manager if we have new attachment syntax OR
+        # if Code Interpreter is explicitly enabled (even without files)
+        needs_upload_manager = (
+            _has_new_attachment_syntax(args)
+            or "code-interpreter" in enabled_tools
+        )
+
+        if needs_upload_manager:
             logger.debug(
                 "Initializing shared upload manager for new attachment system"
             )
@@ -1609,11 +1655,14 @@ async def execute_model(
                                 "Code Interpreter manager has no uploaded file IDs"
                             )
 
-            # Build tool configuration if we have a manager and files
-            if code_interpreter_manager and file_ids:
+            # Build tool configuration if we have a manager
+            # Note: We add the tool even without files when explicitly enabled via --enable-tool
+            if code_interpreter_manager:
                 # Cast to concrete CodeInterpreterManager to access build_tool_config
                 concrete_ci_manager = code_interpreter_manager
                 if hasattr(concrete_ci_manager, "build_tool_config"):
+                    # Ensure file_ids is a list (empty if no files)
+                    file_ids = file_ids or []
                     ci_tool_config = concrete_ci_manager.build_tool_config(
                         file_ids
                     )
@@ -1823,7 +1872,9 @@ async def execute_model(
 
         # Check for two-pass sentinel mode
         ci_config = config.get_code_interpreter_config()
-        effective_strategy = _get_effective_download_strategy(args, ci_config)
+        effective_strategy = _get_effective_download_strategy(
+            args, ci_config, output_model
+        )
         if (
             effective_strategy == "two_pass_sentinel"
             and output_model
