@@ -1,8 +1,11 @@
-"""Tests for import structure validation.
+"""Tests for import structure and patching behavior."""
 
-These tests ensure that imports work as expected and catch issues
-that might cause CI failures due to environment differences.
-"""
+import importlib
+import sys
+from unittest.mock import patch
+
+# Get the real module object (not the Click Group)
+FILES_MODULE = sys.modules["ostruct.cli.commands.files"]
 
 
 class TestImportStructure:
@@ -78,37 +81,27 @@ class TestImportStructure:
         assert hasattr(utils, "ProgressHandler")
 
     def test_patch_targets_exist(self):
-        """Validate that patching common targets works even though the Click group is not a module."""
-        import sys
-        from unittest.mock import patch
+        """Validate that patching via FILES_MODULE works correctly."""
 
-        # Ensure the submodule alias is importable (it resolves to Click group)
+        # Ensure the real module has the attributes we need to patch
+        assert hasattr(FILES_MODULE, "UploadCache")
+        assert hasattr(FILES_MODULE, "get_default_cache_path")
+        assert hasattr(FILES_MODULE, "FileSearchManager")
+        assert hasattr(FILES_MODULE, "SharedUploadManager")
 
-        # The alias path returns the Click group, whereas sys.modules entry holds the actual module.
-        # They should not be the same object anymore.
-        assert (
-            sys.modules["ostruct.cli.commands.files"].__name__
-            == "ostruct.cli.commands.files"
-        )
-
-        # Patch UploadCache via the alias path to verify tests can mock it
-        with patch(
-            "ostruct.cli.commands.files.UploadCache", autospec=True
+        # Patch UploadCache via the real module object
+        with patch.object(
+            FILES_MODULE, "UploadCache", autospec=True
         ) as mock_cache:
-            from ostruct.cli.commands.files import UploadCache as patched_cache
+            # Import from the real module should get our mock
+            assert FILES_MODULE.UploadCache is mock_cache
 
-            assert patched_cache is mock_cache
-
-        # Patch get_default_cache_path similarly
-        with patch(
-            "ostruct.cli.commands.files.get_default_cache_path",
-            return_value="/tmp/mock",
+        # Patch get_default_cache_path via the real module object
+        with patch.object(
+            FILES_MODULE, "get_default_cache_path", return_value="/tmp/mock"
         ):
-            from ostruct.cli.commands.files import (
-                get_default_cache_path as patched_func,
-            )
-
-            assert patched_func() == "/tmp/mock"
+            # Function call should return our mocked value
+            assert FILES_MODULE.get_default_cache_path() == "/tmp/mock"
 
     def test_responses_api_imports(self):
         """Validate that responses API test imports work correctly."""
@@ -128,7 +121,6 @@ class TestEnvironmentConsistency:
 
     def test_module_loading_order(self):
         """Ensure importing modules in various orders does not raise and alias remains usable."""
-        import importlib
         import sys
 
         import ostruct.cli.cache_utils

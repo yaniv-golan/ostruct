@@ -1,11 +1,15 @@
-"""Tests for the enhanced files upload command."""
+"""Tests for files upload command."""
 
 import json
+import sys
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from click.testing import CliRunner
 from ostruct.cli.commands.files import files
+
+# Get the real module object (not the Click Group)
+FILES_MODULE = sys.modules["ostruct.cli.commands.files"]
 
 
 @pytest.fixture
@@ -76,9 +80,9 @@ def mock_fs_manager():
 class TestFilesUploadBasic:
     """Test basic upload functionality."""
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.FileSearchManager")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
+    @patch.object(FILES_MODULE, "FileSearchManager")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_single_file_upload(
@@ -123,8 +127,8 @@ class TestFilesUploadBasic:
         assert "file-123" in result.output
         mock_manager._perform_upload.assert_called_once()
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_cached_file_upload(
@@ -166,8 +170,8 @@ class TestFilesUploadBasic:
 class TestFilesUploadBatch:
     """Test batch upload functionality."""
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_multiple_files_upload(
@@ -204,8 +208,8 @@ class TestFilesUploadBatch:
         assert "✅ Uploaded test2.pdf" in result.output
         assert mock_manager._perform_upload.call_count == 2
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_directory_upload(
@@ -234,8 +238,8 @@ class TestFilesUploadBatch:
         assert "✅ Uploaded sub2.png" in result.output
         assert mock_manager._perform_upload.call_count == 2
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_collection_upload(
@@ -275,8 +279,8 @@ class TestFilesUploadBatch:
 class TestFilesUploadGlobPatterns:
     """Test glob pattern support."""
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_file_glob_pattern(
@@ -313,8 +317,8 @@ class TestFilesUploadGlobPatterns:
         finally:
             os.chdir(old_cwd)
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_global_pattern_filter(
@@ -407,9 +411,9 @@ class TestFilesUploadDryRun:
 class TestFilesUploadInteractive:
     """Test interactive mode."""
 
-    @patch("ostruct.cli.commands.files.questionary")
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "questionary")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_interactive_file_selection(
@@ -450,7 +454,7 @@ class TestFilesUploadInteractive:
         assert mock_questionary.checkbox.call_count == 2
         assert mock_manager._perform_upload.call_count == 1
 
-    @patch("ostruct.cli.commands.files.questionary")
+    @patch.object(FILES_MODULE, "questionary")
     def test_interactive_cancelled(self, mock_questionary, temp_files):
         """Test interactive mode cancelled by user."""
         # Mock keyboard interrupt
@@ -462,7 +466,7 @@ class TestFilesUploadInteractive:
         assert result.exit_code == 0
         assert "Operation cancelled" in result.output
 
-    @patch("ostruct.cli.commands.files.questionary")
+    @patch.object(FILES_MODULE, "questionary")
     def test_interactive_no_files_selected(self, mock_questionary, temp_files):
         """Test interactive mode with no files selected."""
         # Mock empty selection
@@ -527,8 +531,8 @@ class TestFilesUploadErrorHandling:
         assert result.exit_code != 0
         assert "Tag must be in format KEY=VALUE" in result.output
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_upload_error_handling(
@@ -572,9 +576,9 @@ class TestFilesUploadErrorHandling:
 class TestFilesUploadToolBindings:
     """Test tool binding functionality."""
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.FileSearchManager")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
+    @patch.object(FILES_MODULE, "FileSearchManager")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_file_search_binding(
@@ -623,8 +627,8 @@ class TestFilesUploadToolBindings:
         mock_fs_manager.create_vector_store_with_retry.assert_called_once()
         mock_fs_manager._add_files_to_vector_store_with_retry.assert_called_once()
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_multiple_tool_bindings(
@@ -667,8 +671,8 @@ class TestFilesUploadToolBindings:
 class TestFilesUploadJsonOutput:
     """Test JSON output mode."""
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     def test_json_output_empty_files(
         self, mock_client, mock_cache_cls, mock_upload_manager_cls
@@ -694,8 +698,8 @@ class TestFilesUploadJsonOutput:
 class TestFilesUploadTagsAndMetadata:
     """Test tags and metadata handling."""
 
-    @patch("ostruct.cli.commands.files.SharedUploadManager")
-    @patch("ostruct.cli.commands.files.UploadCache")
+    @patch.object(FILES_MODULE, "SharedUploadManager")
+    @patch.object(FILES_MODULE, "UploadCache")
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"})
     def test_multiple_tags(
