@@ -667,10 +667,6 @@ Next Steps
 - See :doc:`tool_integration` for multi-tool coordination
 - Check :doc:`cli_reference` for all available options
 
-**Community Examples:**
-
-Visit the `examples/data-science/ <https://github.com/yaniv-golan/ostruct/tree/main/examples/data-science>`_ directory for complete working examples and notebooks.
-
 See Also
 ========
 
