@@ -1366,19 +1366,19 @@ Ready-to-use JSON schema templates for common data science workflows. These sche
          "required": ["rows", "columns"]
        },
        "statistical_analysis": {
-         "type": "object",
-         "properties": {
-           "descriptive_stats": {
+     "type": "object",
+     "properties": {
+       "descriptive_stats": {
              "type": "object",
              "patternProperties": {
                "^[a-zA-Z_][a-zA-Z0-9_]*$": {
-                 "type": "object",
-                 "properties": {
+         "type": "object",
+         "properties": {
                    "count": {"type": "number"},
-                   "mean": {"type": "number"},
-                   "median": {"type": "number"},
+           "mean": {"type": "number"},
+           "median": {"type": "number"},
                    "std": {"type": "number"},
-                   "min": {"type": "number"},
+           "min": {"type": "number"},
                    "max": {"type": "number"},
                    "q25": {"type": "number"},
                    "q75": {"type": "number"},
@@ -1387,13 +1387,13 @@ Ready-to-use JSON schema templates for common data science workflows. These sche
                  },
                  "required": ["count", "mean", "std"]
                }
-             }
-           },
-           "correlations": {
-             "type": "array",
-             "items": {
-               "type": "object",
-               "properties": {
+         }
+       },
+       "correlations": {
+         "type": "array",
+         "items": {
+           "type": "object",
+           "properties": {
                  "variable_1": {"type": "string"},
                  "variable_2": {"type": "string"},
                  "correlation_coefficient": {"type": "number", "minimum": -1, "maximum": 1},
@@ -1410,7 +1410,7 @@ Ready-to-use JSON schema templates for common data science workflows. These sche
                "type": "object",
                "properties": {
                  "test_name": {"type": "string"},
-                 "variables": {"type": "array", "items": {"type": "string"}},
+             "variables": {"type": "array", "items": {"type": "string"}},
                  "statistic": {"type": "number"},
                  "p_value": {"type": "number", "minimum": 0, "maximum": 1},
                  "degrees_of_freedom": {"type": "integer", "minimum": 0},
@@ -1435,10 +1435,10 @@ Ready-to-use JSON schema templates for common data science workflows. These sche
          "type": "object",
          "properties": {
            "key_patterns": {
-             "type": "array",
-             "items": {
-               "type": "object",
-               "properties": {
+         "type": "array",
+         "items": {
+           "type": "object",
+           "properties": {
                  "pattern": {"type": "string"},
                  "variables_involved": {"type": "array", "items": {"type": "string"}},
                  "strength": {"type": "string", "enum": ["weak", "moderate", "strong"]},
