@@ -1,5 +1,6 @@
 """Tests for OpenAI Responses API integration."""
 
+import importlib
 import json
 import os
 from unittest.mock import AsyncMock, Mock, patch
@@ -8,6 +9,10 @@ from ostruct.cli.cli import create_cli
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from tests.test_cli import CliTestRunner
+
+# Import modules for proper patching
+CLIENT_UTILS = importlib.import_module("ostruct.cli.utils.client_utils")
+UPLOAD_MOD = importlib.import_module("ostruct.cli.upload_cache")
 
 # Test workspace base directory
 TEST_BASE_DIR = "/test_workspace/base"
@@ -127,8 +132,7 @@ class MockResponsesAPIHelper:
 class TestResponsesAPIIntegration:
     """Test OpenAI Responses API integration and streaming."""
 
-    @patch("ostruct.cli.utils.client_utils.create_openai_client")
-    @patch("ostruct.cli.upload_cache.UploadCache")
+    @patch.object(CLIENT_UTILS, "create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -137,7 +141,6 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_upload_cache_class: Mock,
         mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -161,8 +164,6 @@ class TestResponsesAPIIntegration:
         mock_validation_registry.get_instance.return_value = mock_registry
 
         # Mock upload cache to avoid database file issues
-        mock_cache = Mock()
-        mock_upload_cache_class.return_value = mock_cache
 
         cli_runner = CliTestRunner()
 
@@ -217,8 +218,7 @@ class TestResponsesAPIIntegration:
         )  # Responses API uses 'input' not 'messages'
         assert "text" in call_args[1]  # Responses API uses 'text' format
 
-    @patch("ostruct.cli.utils.client_utils.create_openai_client")
-    @patch("ostruct.cli.upload_cache.UploadCache")
+    @patch.object(CLIENT_UTILS, "create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -227,7 +227,6 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
-        mock_upload_cache_class: Mock,
         mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -252,7 +251,7 @@ class TestResponsesAPIIntegration:
 
         # Mock upload cache to avoid database file issues
         mock_cache = Mock()
-        mock_upload_cache_class.return_value = mock_cache
+        mock_create_client.return_value = mock_cache
 
         cli_runner = CliTestRunner()
 
@@ -299,7 +298,7 @@ class TestResponsesAPIIntegration:
         assert result.exit_code == 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.utils.client_utils.create_openai_client")
+    @patch.object(CLIENT_UTILS, "create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -381,7 +380,7 @@ class TestResponsesAPIIntegration:
         call_args = mock_client.responses.create.call_args
         assert call_args is not None
 
-    @patch("ostruct.cli.utils.client_utils.create_openai_client")
+    @patch.object(CLIENT_UTILS, "create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -451,7 +450,7 @@ class TestResponsesAPIIntegration:
         assert result.exit_code != 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.utils.client_utils.create_openai_client")
+    @patch.object(CLIENT_UTILS, "create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -524,7 +523,7 @@ class TestResponsesAPIIntegration:
         assert result.exit_code == 0
         mock_client.responses.create.assert_called_once()
 
-    @patch("ostruct.cli.utils.client_utils.create_openai_client")
+    @patch.object(CLIENT_UTILS, "create_openai_client")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
