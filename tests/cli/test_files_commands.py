@@ -71,8 +71,8 @@ def mock_openai_client():
 class TestFilesBindCommand:
     """Tests for files bind command."""
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_bind_file_to_tools(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -110,8 +110,8 @@ class TestFilesBindCommand:
         assert metadata["bindings"]["user_data"] is True
         assert metadata["bindings"]["file_search"] is True
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_bind_file_json_output(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -137,8 +137,8 @@ class TestFilesBindCommand:
         assert output_data["file_id"] == "file-123"
         assert "bindings" in output_data
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_bind_file_not_found(self, mock_cache_path, mock_cache_class):
         """Test bind command with non-existent file."""
         mock_cache_path.return_value = "/test/cache.db"
@@ -189,8 +189,8 @@ class TestFilesRmCommand:
         )
 
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.upload_cache.UploadCache")
+    @patch("ostruct.cli.cache_utils.get_default_cache_path")
     def test_rm_file_json_output(
         self,
         mock_cache_path,
@@ -248,8 +248,8 @@ class TestFilesRmCommand:
 class TestFilesGcCommand:
     """Tests for files gc command."""
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_gc_basic(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -278,8 +278,8 @@ class TestFilesGcCommand:
             or "No cleanup needed" in result.output
         )
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_gc_json_output(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -309,8 +309,8 @@ class TestFilesGcCommand:
 class TestFilesDiagnoseCommand:
     """Tests for files diagnose command."""
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     def test_diagnose_all_probes_pass(
         self, mock_client_func, mock_cache_path, mock_cache_class
@@ -353,8 +353,8 @@ class TestFilesDiagnoseCommand:
         assert "vector" in result.output
         assert "sandbox" in result.output
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
     def test_diagnose_json_output(
         self, mock_client_func, mock_cache_path, mock_cache_class
@@ -427,8 +427,8 @@ class TestFilesDiagnoseCommand:
 class TestFilesVectorStoresCommand:
     """Tests for files vector-stores command."""
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_vector_stores_list(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -445,8 +445,8 @@ class TestFilesVectorStoresCommand:
             "test_store" in result.output
         )  # From mock data (ostruct_ prefix removed)
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_vector_stores_json_output(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -463,8 +463,8 @@ class TestFilesVectorStoresCommand:
         assert "vector_stores" in output_data
         assert len(output_data["vector_stores"]) == 1
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_vector_stores_empty(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -483,8 +483,8 @@ class TestFilesVectorStoresCommand:
 class TestFilesListCommand:
     """Tests for files list command."""
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_list_files(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -499,8 +499,8 @@ class TestFilesListCommand:
         assert "File ID" in result.output
         assert "file-123" in result.output
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_list_files_json_output(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
@@ -520,8 +520,8 @@ class TestFilesListCommand:
             assert "file_id" in output_data["data"][0]
             assert "path" in output_data["data"][0]
 
-    @patch("ostruct.cli.commands.files.UploadCache")
-    @patch("ostruct.cli.commands.files.get_default_cache_path")
+    @patch("ostruct.cli.commands.files.UploadCache", create=True)
+    @patch("ostruct.cli.commands.files.get_default_cache_path", create=True)
     def test_list_files_with_vector_store_filter(
         self, mock_cache_path, mock_cache_class, mock_upload_cache
     ):
