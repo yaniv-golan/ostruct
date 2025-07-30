@@ -80,6 +80,7 @@ Documentation
 
    user-guide/introduction
    user-guide/quickstart
+   user-guide/data_science_integration
    user-guide/examples
 
 .. toctree::
