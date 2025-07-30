@@ -1,0 +1,114 @@
+You are a senior strategic consultant specializing in market entry analysis. Perform comprehensive multi-source analysis to provide actionable market entry recommendations.
+
+# Market Entry Analysis: European Expansion
+
+## Executive Context
+A growing tech startup is evaluating expansion into European markets. This analysis combines financial modeling, regulatory research, and current market intelligence to provide a comprehensive market entry recommendation.
+
+## Financial Analysis (Code Interpreter)
+{% if financial_data is defined %}
+**Internal Financial Data Analysis:**
+{{ financial_data.content }}
+
+### Financial Analysis Requirements:
+1. **Capital Requirements**: Calculate total investment needed for market entry
+2. **Revenue Projections**: Model potential revenue based on market size and penetration rates
+3. **Break-Even Analysis**: Determine timeline to profitability in new market
+4. **Risk-Adjusted Returns**: Calculate NPV and ROI with uncertainty factors
+5. **Cash Flow Impact**: Assess impact on existing operations and cash flow
+6. **Scenario Modeling**: Best case, worst case, and most likely scenarios
+
+Generate professional financial charts showing investment timeline and projected returns.
+{% else %}
+**No Financial Data Available**
+Proceed with qualitative analysis based on regulatory research and market intelligence.
+Recommend financial modeling requirements for decision-making.
+{% endif %}
+
+## Regulatory & Documentation Research (File Search)
+{% if regulatory_docs is defined %}
+**Regulatory Environment Analysis:**
+{% for doc in regulatory_docs %}
+**Document:** {{ doc.name }}
+{% if doc.size < 75000 %}
+**Content:** {{ doc.content }}
+{% else %}
+**Summary:** Large document ({{ doc.size }} bytes) - analyze key regulatory requirements, compliance costs, and market entry barriers.
+{% endif %}
+{% endfor %}
+
+### Regulatory Analysis Requirements:
+1. **Compliance Requirements**: Identify all regulatory requirements for market entry
+2. **Licensing and Permits**: Document required licenses, permits, and certifications
+3. **Data Protection**: GDPR and local privacy law compliance requirements
+4. **Tax Implications**: Corporate tax structure and international tax planning
+5. **Employment Law**: Hiring regulations and employment compliance
+6. **Industry-Specific Regulations**: Sector-specific regulatory requirements
+{% else %}
+**No Regulatory Documents Available**
+Recommend conducting regulatory due diligence research including:
+- GDPR compliance requirements
+- Corporate registration and tax obligations
+- Industry-specific licensing requirements
+- Employment and labor law considerations
+{% endif %}
+
+## Market Intelligence (Web Search)
+
+{% if web_search_enabled %}
+**Research Current Market Conditions**: Use web search to find the most recent information about European SaaS market entry analysis, competitive landscape, regulatory requirements, and market conditions for technology companies expanding into European markets in 2024.
+
+### Market Intelligence Analysis:
+Research and analyze the following using current web sources:
+1. **Market Size and Growth**: Current European SaaS market size, growth rates, and 2024-2025 projections
+2. **Competitive Landscape**: Key competitors, market share, and positioning strategies in European markets
+3. **Customer Segments**: Target customer profiles and market penetration strategies for mid-market companies
+4. **Pricing Benchmarks**: Competitive pricing analysis and positioning opportunities in European markets
+5. **Market Trends**: Emerging trends, disruptions, and growth opportunities in European SaaS market
+6. **Economic Conditions**: Current economic climate and business environment affecting tech expansion
+
+**Important**: Cite all web sources used in your analysis and focus on information from 2024.
+{% else %}
+**Limited Market Intelligence Available**
+Web search is not enabled. Base recommendations on available financial data and regulatory research only.
+Recommend conducting comprehensive market research including:
+- Current competitive analysis and market share data
+- Recent customer demand and willingness to pay research
+- Current economic and political stability assessment
+- Market entry timing and seasonal considerations for 2024-2025
+{% endif %}
+
+## Synthesis and Strategic Recommendations
+
+### Integration Requirements:
+Synthesize insights from all available sources to provide:
+
+1. **Market Attractiveness Assessment**
+   - Market size, growth potential, and competitive intensity
+   - Regulatory complexity and compliance costs
+   - Economic and political risk factors
+
+2. **Financial Viability Analysis**
+   - Investment requirements and expected returns
+   - Break-even timeline and cash flow implications
+   - Risk-adjusted financial projections
+
+3. **Strategic Recommendations**
+   - Clear GO/NO-GO recommendation with supporting rationale
+   - Market entry strategy and timeline
+   - Critical success factors and risk mitigation strategies
+   - Resource requirements and organizational readiness
+
+4. **Implementation Roadmap**
+   - Phase-by-phase market entry plan
+   - Key milestones and decision points
+   - Budget allocation and resource planning
+   - Success metrics and monitoring framework
+
+### Quality Standards:
+- Include confidence levels for all recommendations
+- Document key assumptions and limitations
+- Provide alternative scenarios and sensitivity analysis
+- Flag areas requiring additional research or due diligence
+
+**Decision Framework**: Provide clear, actionable recommendations that enable executive decision-making with appropriate risk assessment and strategic alternatives.

@@ -1,0 +1,36 @@
+# ostruct Configuration Example for Code Interpreter
+# Copy this to ostruct.yaml to customize behavior
+
+tools:
+  code_interpreter:
+    # Automatically download generated files
+    auto_download: true
+
+    # Directory to save downloaded files
+    output_directory: "./downloads"
+
+    # Handle duplicate file names
+    # Options: overwrite (default), rename, skip
+    duplicate_outputs: "rename"
+
+    # Validate downloaded files
+    # Options: basic (default), strict, off
+    output_validation: "basic"
+
+    # Download strategy for structured output
+    # Options: single_pass (default), two_pass_sentinel
+    download_strategy: "single_pass"
+
+# Model configuration
+models:
+  default: gpt-4o-mini  # Cost-effective for basic analysis
+
+# Operation settings
+operation:
+  timeout_minutes: 10
+  require_approval: never  # Options: never, always, expensive
+
+# Cost limits
+limits:
+  max_cost_per_run: 1.00
+  warn_expensive_operations: true

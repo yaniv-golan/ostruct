@@ -1,0 +1,137 @@
+#!/usr/bin/env -S ostruct runx
+---
+cli:
+  name: jupyter-integration
+  description: A self-executing template for jupyter-integration
+  positional:
+    - name: input_text
+      help: Input text to process
+  options:
+    format:
+      names: ["--format", "-f"]
+      help: Output format
+      default: "json"
+      choices: ["json", "yaml", "text"]
+    verbose:
+      names: ["--verbose", "-v"]
+      help: Enable verbose output
+      action: "store_true"
+    # Examples of different file routing targets
+    config_file:
+      names: ["--config"]
+      help: Configuration file (template access only)
+      type: "file"
+      target: "prompt"
+    data_file:
+      names: ["--data"]
+      help: Data file for analysis (Code Interpreter)
+      type: "file"
+      target: "ci"
+    docs_file:
+      names: ["--docs"]
+      help: Documentation file (File Search)
+      type: "file"
+      target: "fs"
+    pdf_file:
+      names: ["--pdf"]
+      help: PDF file for vision analysis (user-data)
+      type: "file"
+      target: "ud"
+    auto_file:
+      names: ["--auto"]
+      help: Auto-routed file (based on file type)
+      type: "file"
+      target: "auto"
+
+schema: |
+  {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "string",
+        "description": "The processed result"
+      },
+      "format": {
+        "type": "string",
+        "description": "The output format used"
+      },
+      "input_length": {
+        "type": "integer",
+        "description": "Length of input text"
+      },
+      "files_processed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of files that were processed"
+      }
+    },
+    "required": ["result", "format", "input_length"]
+  }
+
+defaults:
+  format: "json"
+  verbose: false
+
+global_args:
+  pass_through_global: true
+  --model:
+    values: ["gpt-4o", "gpt-4.1", "o1"]
+    mode: "allowed"
+    default: "gpt-4.1"
+  --verbose:
+    mode: "pass-through"
+---
+{% if verbose %}
+Processing input: "{{ input_text }}" in {{ format }} format
+{% endif %}
+
+# Task: Process Input Text
+
+You are a helpful assistant that processes text input according to the specified format.
+
+## Input
+- Text: {{ input_text }}
+- Format: {{ format }}
+- Verbose: {{ verbose }}
+
+{% if config_file is defined %}
+## Configuration
+Configuration from: {{ config_file.name }}
+{{ config_file.content }}
+{% endif %}
+
+{% if data_file is defined %}
+## Data Analysis
+Data file available for Code Interpreter analysis: {{ data_file.name }}
+{% endif %}
+
+{% if docs_file is defined %}
+## Documentation Search
+Documentation available for File Search: {{ docs_file.name }}
+{% endif %}
+
+{% if pdf_file is defined %}
+## PDF Analysis
+PDF file available for vision analysis: {{ pdf_file.name }}
+{% endif %}
+
+{% if auto_file is defined %}
+## Auto-routed File
+Auto-routed file: {{ auto_file.name }}
+{% endif %}
+
+## Instructions
+1. Analyze the input text
+2. Process it according to the format requirement
+3. Use any provided files to enhance the analysis
+4. Return the result in the specified structure
+
+## Output Requirements
+- result: Your processed text
+- format: The format used ({{ format }})
+- input_length: Length of the input text ({{ input_text|length }})
+- files_processed: List of files that were processed
+
+Please process the input now.

@@ -1,0 +1,243 @@
+{
+  "type": "object",
+  "properties": {
+    "executive_summary": {
+      "type": "string",
+      "description": "2-3 sentence executive summary of market entry recommendation"
+    },
+    "financial_analysis": {
+      "type": "object",
+      "properties": {
+        "investment_required": {
+          "type": "number",
+          "description": "Total investment required in USD"
+        },
+        "revenue_projections": {
+          "type": "object",
+          "properties": {
+            "year_1": {"type": "number"},
+            "year_2": {"type": "number"},
+            "year_3": {"type": "number"}
+          }
+        },
+        "break_even_timeline": {
+          "type": "string",
+          "description": "Expected timeline to break-even"
+        },
+        "roi_projection": {
+          "type": "number",
+          "description": "Projected return on investment as decimal"
+        },
+        "npv": {
+          "type": "number",
+          "description": "Net present value of market entry investment"
+        },
+        "financial_confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Confidence level in financial projections"
+        }
+      },
+      "required": ["investment_required", "break_even_timeline", "financial_confidence"]
+    },
+    "regulatory_assessment": {
+      "type": "object",
+      "properties": {
+        "compliance_requirements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "requirement": {"type": "string"},
+              "complexity": {"type": "string", "enum": ["low", "medium", "high"]},
+              "estimated_cost": {"type": "number"},
+              "timeline": {"type": "string"}
+            }
+          }
+        },
+        "regulatory_risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "risk": {"type": "string"},
+              "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+              "mitigation_strategy": {"type": "string"}
+            }
+          }
+        },
+        "total_compliance_cost": {
+          "type": "number",
+          "description": "Estimated total compliance costs"
+        },
+        "regulatory_confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Confidence level in regulatory assessment"
+        }
+      },
+      "required": ["compliance_requirements", "regulatory_risks", "regulatory_confidence"]
+    },
+    "market_intelligence": {
+      "type": "object",
+      "properties": {
+        "market_size": {
+          "type": "object",
+          "properties": {
+            "total_addressable_market": {"type": "number"},
+            "serviceable_addressable_market": {"type": "number"},
+            "serviceable_obtainable_market": {"type": "number"}
+          }
+        },
+        "competitive_landscape": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "competitor": {"type": "string"},
+              "market_share": {"type": "number"},
+              "strengths": {"type": "array", "items": {"type": "string"}},
+              "weaknesses": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "market_trends": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "trend": {"type": "string"},
+              "impact": {"type": "string", "enum": ["positive", "negative", "neutral"]},
+              "timeframe": {"type": "string"}
+            }
+          }
+        },
+        "customer_segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "segment": {"type": "string"},
+              "size": {"type": "number"},
+              "growth_rate": {"type": "number"},
+              "willingness_to_pay": {"type": "string"}
+            }
+          }
+        },
+        "market_confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Confidence level in market intelligence"
+        }
+      },
+      "required": ["market_trends", "customer_segments", "market_confidence"]
+    },
+    "strategic_recommendation": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["go", "no_go", "conditional_go", "delayed_entry", "requires_more_research"]
+        },
+        "confidence_level": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "key_rationale": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Top 3-5 reasons supporting the recommendation"
+        },
+        "critical_success_factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "factor": {"type": "string"},
+              "importance": {"type": "string", "enum": ["critical", "high", "medium"]},
+              "current_readiness": {"type": "string", "enum": ["ready", "needs_development", "not_ready"]}
+            }
+          }
+        },
+        "risk_factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "risk": {"type": "string"},
+              "probability": {"type": "string", "enum": ["low", "medium", "high"]},
+              "impact": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+              "mitigation_strategy": {"type": "string"}
+            }
+          }
+        },
+        "alternative_strategies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "strategy": {"type": "string"},
+              "pros": {"type": "array", "items": {"type": "string"}},
+              "cons": {"type": "array", "items": {"type": "string"}},
+              "feasibility": {"type": "string", "enum": ["high", "medium", "low"]}
+            }
+          }
+        }
+      },
+      "required": ["decision", "confidence_level", "key_rationale", "critical_success_factors", "risk_factors"]
+    },
+    "implementation_roadmap": {
+      "type": "object",
+      "properties": {
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phase": {"type": "string"},
+              "duration": {"type": "string"},
+              "key_activities": {"type": "array", "items": {"type": "string"}},
+              "budget": {"type": "number"},
+              "success_criteria": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "total_timeline": {
+          "type": "string",
+          "description": "Total timeline from start to full market presence"
+        },
+        "resource_requirements": {
+          "type": "object",
+          "properties": {
+            "personnel": {"type": "array", "items": {"type": "string"}},
+            "technology": {"type": "array", "items": {"type": "string"}},
+            "partnerships": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "success_metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric": {"type": "string"},
+              "target": {"type": "string"},
+              "timeframe": {"type": "string"}
+            }
+          }
+        }
+      },
+      "required": ["phases", "total_timeline", "success_metrics"]
+    },
+    "data_sources_used": {
+      "type": "object",
+      "properties": {
+        "financial_data_available": {"type": "boolean"},
+        "regulatory_docs_analyzed": {"type": "integer"},
+        "web_research_conducted": {"type": "boolean"},
+        "data_quality_assessment": {"type": "string"},
+        "limitations": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "required": ["executive_summary", "strategic_recommendation", "implementation_roadmap", "data_sources_used"]
+}
