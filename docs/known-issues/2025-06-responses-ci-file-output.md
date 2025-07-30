@@ -40,18 +40,34 @@ Instead of one API call with structured output, we make **two strategic calls**:
 
 ### **Configuration**
 
+#### Automatic (Recommended) - v1.6+
+
+As of ostruct v1.6+, the two-pass sentinel strategy is **automatically enabled** when:
+
+- Code Interpreter is enabled
+- Structured output (JSON schema) is being used
+- `auto_download: true` (default)
+
+**No configuration needed!** ostruct detects the incompatible combination and applies the workaround automatically.
+
+#### Manual Configuration
+
+For explicit control, you can still configure the strategy manually:
+
 ```yaml
 # ostruct.yaml
 tools:
   code_interpreter:
-    download_strategy: "two_pass_sentinel"  # Enable workaround
+    download_strategy: "two_pass_sentinel"  # Explicit enable
+    # OR
+    download_strategy: "single_pass"        # Explicit disable (files won't download)
     auto_download: true
     output_directory: "./downloads"
 ```
 
 **Options**:
 
-- `"single_pass"` (default) - Original behavior, backward compatible
+- `"single_pass"` - Original behavior, backward compatible (files won't download with structured output)
 - `"two_pass_sentinel"` - Enable workaround for reliable file downloads
 
 ### **CLI Override Flags**
