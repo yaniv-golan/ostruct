@@ -5,7 +5,7 @@ import click
 from .models import _list_models_impl, get_next_minor_version
 
 
-@click.command("list-models", deprecated=True)
+@click.command("list-models", deprecated=True, hidden=True)
 @click.option(
     "--format",
     type=click.Choice(["table", "json", "simple"]),

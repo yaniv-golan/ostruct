@@ -52,10 +52,6 @@ click.rich_click.COMMAND_GROUPS = {
                 "setup",
             ],
         },
-        {
-            "name": "Deprecated Commands",
-            "commands": ["list-models", "update-registry"],
-        },
     ]
 }
 

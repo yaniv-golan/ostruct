@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Main CLI module for ostruct."""
 
-import os
 import sys
 from typing import Optional
 
@@ -115,22 +114,12 @@ def create_cli_group() -> click.Group:
         hidden=True,  # Hide from help output - feature not ready for release
         help=f"{safe_emoji('📖')} Output comprehensive help for all commands in JSON format",
     )
-    @click.option(
-        "--unicode/--no-unicode",
-        default=None,
-        help="Force enable/disable Unicode emoji display (overrides auto-detection)",
-        envvar="OSTRUCT_UNICODE",
-    )
     @click.pass_context
     def cli_group(
         ctx: click.Context,
         config: Optional[str] = None,
-        unicode: Optional[bool] = None,
     ) -> None:
         """ostruct - AI-powered structured output with multi-tool integration."""
-        # Handle Unicode preference
-        if unicode is not None:
-            os.environ["OSTRUCT_UNICODE"] = "1" if unicode else "0"
 
         # Load configuration
         try:

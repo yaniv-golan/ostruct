@@ -7,7 +7,7 @@ import click
 from .models import _update_registry_impl, get_next_minor_version
 
 
-@click.command("update-registry", deprecated=True)
+@click.command("update-registry", deprecated=True, hidden=True)
 @click.option(
     "--url",
     help="URL to fetch the registry from. Defaults to official repository.",

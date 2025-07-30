@@ -140,10 +140,12 @@ class TestModelsCommand:
         assert re.search(version_pattern, result.stderr_bytes.decode())
 
     def test_models_with_global_options(
-        self, runner, cli, mock_model_registry
+        self, runner, cli, mock_model_registry, monkeypatch
     ):
         """Test that models subcommands work with global CLI options."""
-        result = runner.invoke(cli, ["--unicode", "models", "list"])
+        # Test with OSTRUCT_UNICODE environment variable instead of CLI flag
+        monkeypatch.setenv("OSTRUCT_UNICODE", "1")
+        result = runner.invoke(cli, ["models", "list"])
         assert result.exit_code == 0
         assert "Available Models:" in result.output
 
