@@ -276,8 +276,15 @@ class CodeInterpreterManager:
                             file_id, container_id=container_id
                         )
 
-                        # Based on expert guidance: in v1.83.0+, result should have .content property
-                        if hasattr(result, "content"):
+                        # Handle different response types from OpenAI SDK
+                        if hasattr(result, "read"):
+                            # AsyncContent objects have a read() method
+                            file_content = await result.read()
+                            logger.debug(
+                                f"✓ Got content via result.read(): {len(file_content)} bytes"
+                            )
+                        elif hasattr(result, "content"):
+                            # Some responses have direct .content property
                             file_content = result.content
                             logger.debug(
                                 f"✓ Got content via result.content: {len(file_content)} bytes"
@@ -285,6 +292,7 @@ class CodeInterpreterManager:
                         elif hasattr(result, "response") and hasattr(
                             result.response, "content"
                         ):
+                            # Nested response structure
                             file_content = result.response.content
                             logger.debug(
                                 f"✓ Got content via result.response.content: {len(file_content)} bytes"
