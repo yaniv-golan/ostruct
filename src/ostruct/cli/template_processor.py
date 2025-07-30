@@ -679,6 +679,8 @@ def _build_tool_context(
         enabled_features = args.get("enabled_features", [])
         disabled_features = args.get("disabled_features", [])
 
+        # Check for explicit feature flag overrides first
+        feature_explicitly_disabled = False
         if enabled_features or disabled_features:
             try:
                 from .click_options import parse_feature_flags
@@ -693,8 +695,36 @@ def _build_tool_context(
                     )
                 elif ci_hack_flag == "off":
                     effective_ci_config["download_strategy"] = "single_pass"
+                    feature_explicitly_disabled = True
             except Exception as e:
+                import logging
+
+                logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to parse feature flags: {e}")
+
+        # AUTO-ENABLE two_pass_sentinel for structured output + auto_download
+        # This is a workaround for OpenAI API bug where structured output mode
+        # prevents container_file_citation annotations from being generated.
+        # See: docs/known-issues/2025-06-responses-ci-file-output.md
+        # TODO: Remove this auto-enable logic when OpenAI fixes the underlying API bug
+        if (
+            effective_ci_config.get("download_strategy")
+            == "single_pass"  # Don't override explicit two_pass_sentinel config
+            and effective_ci_config.get(
+                "auto_download", True
+            )  # Auto-download is enabled
+            and not feature_explicitly_disabled  # Don't override explicit disable
+            # Note: We assume structured output will be used since this is called during run command processing
+        ):
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(
+                "Auto-enabling two_pass_sentinel download strategy for template processing because structured output "
+                "is incompatible with Code Interpreter file downloads. This works around "
+                "a known OpenAI API bug. See docs/known-issues/2025-06-responses-ci-file-output.md"
+            )
+            effective_ci_config["download_strategy"] = "two_pass_sentinel"
 
         context["code_interpreter_config"] = effective_ci_config
     else:
