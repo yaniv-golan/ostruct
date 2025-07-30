@@ -613,6 +613,35 @@ tools:
 
 📖 **Full Documentation:** <https://ostruct.readthedocs.io/>
 
+## For LLMs: Quick Reference
+
+🤖 **Teaching an LLM to use ostruct?** The [`llms.txt`](llms.txt) file provides a comprehensive, LLM-optimized reference covering all commands, flags, and usage patterns in a structured format.
+
+**How to use `llms.txt`:**
+
+1. **For AI assistants**: Include the entire file in your context when helping users with ostruct
+2. **For training**: Use as reference material for LLM fine-tuning on ostruct usage
+3. **For documentation**: Quick lookup of all CLI flags and command patterns
+4. **For automation**: Parse the structured format to generate help text or validation
+5. **Provide a stable URL**: Most modern LLMs can directly fetch and read the file. Pass the raw GitHub URL (e.g., `https://raw.githubusercontent.com/yaniv-golan/ostruct/main/llms.txt`) in your prompt instead of pasting the entire content.
+
+The file follows the [llms.txt specification](https://llmstxt.org/#format) and includes:
+
+- Complete command surface area with all subcommands
+- All CLI flags organized by category (attachment, security, model, tools, etc.)
+- Template functions and filters reference
+- Best practices and operational limits
+- Common usage patterns and heuristics
+
+**Example usage in LLM prompts:**
+
+```
+Use the ostruct CLI reference available at:
+https://raw.githubusercontent.com/yaniv-golan/ostruct/main/llms.txt
+
+Now help the user create a template that analyzes CSV data using Code Interpreter.
+```
+
 ### Quick Start
 
 1. Set your OpenAI API key:
