@@ -147,7 +147,7 @@ File Search
 File Search enables semantic search across uploaded documents, allowing the model to find relevant information from large document collections.
 
 .. warning::
-   **Known Issue**: The OpenAI Responses API `file_search` tool currently has a widespread issue where it returns empty results despite successful vector store creation. This affects all models and is an upstream OpenAI API bug. See `known-issues/2025-07-openai-file-search-empty-results.md <../known-issues/2025-07-openai-file-search-empty-results.md>`_ for detailed information and community reports.
+   **Known Issue**: The OpenAI Responses API `file_search` tool currently has a widespread issue where it returns empty results despite successful vector store creation. This affects all models and is an upstream OpenAI API bug. See `known-issues/2025-07-openai-file-search-empty-results <../known-issues/2025-07-openai-file-search-empty-results>`_ for detailed information and community reports.
 
 How It Works
 ------------
@@ -570,7 +570,7 @@ Common Issues
 - Package availability: Check Python environment limitations
 
 **File Search:**
-- **Empty results**: Known OpenAI API issue - see `known-issues/2025-07-openai-file-search-empty-results.md <../known-issues/2025-07-openai-file-search-empty-results.md>`_
+- **Empty results**: Known OpenAI API issue - see `known-issues/2025-07-openai-file-search-empty-results <../known-issues/2025-07-openai-file-search-empty-results>`_
 - Indexing failures: Ensure documents are text-readable
 - Search timeouts: Increase timeout values for large document sets
 - Poor search results: Use more specific queries and relevant documents
