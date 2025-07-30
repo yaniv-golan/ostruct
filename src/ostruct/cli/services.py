@@ -67,16 +67,49 @@ class MCPServiceConfiguration(ServiceConfigurationBase):
     )
 
     def validate_servers(self) -> List[str]:
-        """Validate server configurations and return any errors."""
+        """Validate server configurations and return any errors.
+
+        Supports both MCP transport formats:
+        1. STDIO format: {"name": "...", "command": "..."}
+        2. HTTP format: {"url": "...", "label": "..."}
+        """
         errors = []
         for i, server in enumerate(self.servers):
             if not isinstance(server, dict):
                 errors.append(f"Server {i}: Must be a dictionary")
                 continue
-            if "name" not in server:
-                errors.append(f"Server {i}: Missing required 'name' field")
-            if "command" not in server:
-                errors.append(f"Server {i}: Missing required 'command' field")
+
+            # Support two MCP transport formats as per MCP specification:
+            # 1. STDIO format: {"name": "...", "command": "..."}
+            # 2. HTTP format: {"url": "...", "label": "..."}
+
+            has_stdio_fields = "name" in server and "command" in server
+            has_http_fields = "url" in server
+
+            if not has_stdio_fields and not has_http_fields:
+                errors.append(
+                    f"Server {i}: Must have either STDIO format (name+command) "
+                    f"or HTTP format (url) fields"
+                )
+                continue
+
+            if has_stdio_fields:
+                # Validate STDIO format
+                if not isinstance(server.get("name"), str):
+                    errors.append(f"Server {i}: 'name' must be a string")
+                if not isinstance(server.get("command"), str):
+                    errors.append(f"Server {i}: 'command' must be a string")
+
+            if has_http_fields:
+                # Validate HTTP format
+                if not isinstance(server.get("url"), str):
+                    errors.append(f"Server {i}: 'url' must be a string")
+                # label is optional for HTTP format
+                if "label" in server and not isinstance(
+                    server.get("label"), str
+                ):
+                    errors.append(f"Server {i}: 'label' must be a string")
+
         return errors
 
 
@@ -346,6 +379,34 @@ class ServiceContainer:
         ] = {}
         self._validate_service_configurations()
 
+    def _convert_mcp_servers_to_dict_format(
+        self, mcp_servers: List[Any]
+    ) -> List[Dict[str, Any]]:
+        """Convert MCP servers from CLI format to dictionary format for validation.
+
+        Handles both formats:
+        - CLI format: ["label@url", "url"] -> [{"url": "url", "label": "label"}]
+        - Dict format: [{"name": "...", "command": "..."}] -> unchanged
+        """
+        converted_servers = []
+
+        for server in mcp_servers:
+            if isinstance(server, str):
+                # CLI format: parse "label@url" or just "url"
+                if "@" in server:
+                    label, url = server.rsplit("@", 1)
+                    converted_servers.append({"url": url, "label": label})
+                else:
+                    converted_servers.append({"url": server})
+            elif isinstance(server, dict):
+                # Already in dict format, pass through
+                converted_servers.append(server)
+            else:
+                # Invalid format, let validation catch it
+                converted_servers.append(server)
+
+        return converted_servers
+
     async def get_mcp_manager(self) -> Optional[MCPManagerProtocol]:
         """Get or create MCP server manager.
 
@@ -474,7 +535,10 @@ class ServiceContainer:
         # Validate MCP configuration if present
         if self.args.get("mcp_servers"):
             try:
-                mcp_config = {"servers": self.args["mcp_servers"]}
+                mcp_servers = self._convert_mcp_servers_to_dict_format(
+                    self.args["mcp_servers"]
+                )
+                mcp_config = {"servers": mcp_servers}
                 self._validated_configs["mcp"] = validator.validate_mcp_config(
                     mcp_config
                 )
