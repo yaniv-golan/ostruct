@@ -94,6 +94,19 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   --mcp-require-approval {always|never}     --mcp-allowed-tools JSON
   ```
 
+* **Web Search tool patterns**
+
+  * **When to use**: Real-time information (news, prices, events), fact verification, current data beyond training cutoff, research requiring citations.
+  * **Context size**: `low` (3-5 results, faster), `medium` (5-8 results, balanced), `high` (8-12 results, comprehensive). Affects token usage and response time.
+  * **Geographic targeting**: `--ws-country` for country-specific results, `--ws-region` for broader regional focus, `--ws-city` for local information.
+  * **Integration**: Use `--tool-choice web-search` to force web search use, or `auto` to let model decide based on query needs.
+  * **Output format**: Web search results appear in LLM response with automatic citations as numbered references [1], [2] with URLs.
+  * **Template detection**: Use `{% if web_search_enabled %}` to conditionally prompt for web search when tool is available.
+  * **Result access**: Search results integrated into model's response context; no separate template variable - model includes findings and citations directly in output.
+
+* **Citation placement**: put numeric refs [n] inline *and* list full entries in the `sources` array when the schema defines it; otherwise include refs only inline.
+* **Quick example**: `ostruct run tpl.j2 sch.json -V question='...' --enable-tool web-search --ws-context-size low --dry-run`
+
 * **Upload‑cache** `--cache-uploads | --no-cache-uploads`, `--cache-path PATH`
 
 * **Environment variables** `OSTRUCT_TEMPLATE_FILE_LIMIT`, `OSTRUCT_TEMPLATE_TOTAL_LIMIT`, `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`, `OSTRUCT_CACHE_UPLOADS`, `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`, `OSTRUCT_IGNORE_GITIGNORE`, `OSTRUCT_GITIGNORE_FILE` for size limits, caching, and gitignore behaviour.
@@ -140,3 +153,39 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
 [7]: https://github.com/yaniv-golan/ostruct/
 [8]: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs
 [9]: https://developer.mamezou-tech.com/en/blogs/2024/08/07/openai-structured-outputs/
+
+## Minimal end-to-end example
+
+```jinja2
+# tpl.j2 (snippet)
+{% if web_search_enabled %}
+**IMPORTANT**: Use web search to answer the question and cite every source in the `sources` array.
+{% endif %}
+Question: {{ question }}
+```
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "answer": {"type": "string"},
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string"},
+          "url":   {"type": "string"}
+        },
+        "required": ["title", "url"]
+      }
+    }
+  },
+  "required": ["answer", "sources"]
+}
+```
+
+```bash
+ostruct run tpl.j2 sch.json -V question='Latest AI safety news' \
+  --enable-tool web-search --ws-context-size low
+```
