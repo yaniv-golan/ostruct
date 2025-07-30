@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - v1.6
+
+### Added
+
+#### 🤖 Intelligent Download Strategy Auto-Selection
+
+- **Auto-Enable Two-Pass Sentinel**: ostruct now automatically enables the `two_pass_sentinel` download strategy when:
+  - Code Interpreter is enabled
+  - Structured output (JSON schema) is being used
+  - `auto_download: true` (default)
+
+  This works around a critical OpenAI API bug where structured output mode prevents file download annotations. The auto-enable behavior ensures files download successfully without manual configuration.
+
+- **Smart Fallback Logic**: Users can still explicitly set `download_strategy: "single_pass"` in configuration to override the auto-enable behavior if needed.
+
+### Technical Notes
+
+- **Workaround Implementation**: This feature implements an automatic workaround for the known OpenAI Responses API issue documented in `docs/known-issues/2025-06-responses-ci-file-output.md`
+- **Future Removal**: This auto-enable logic will be removed when OpenAI resolves the underlying API bug
+- **Performance Impact**: Two-pass execution adds ~2-3 seconds to structured output requests but ensures reliable file downloads
+
+### Fixed
+
+#### 🛠️ Code Interpreter Tool Enablement
+
+- **Tool Choice Without Files**: Fixed critical bug where `--enable-tool code-interpreter` and `--tool-choice code-interpreter` would fail with "Tool choice not found in tools parameter" when no files were uploaded
+- **File-Free Code Execution**: Code Interpreter can now be enabled for model-generated files without requiring input file uploads
+- **Valid Use Cases Restored**:
+  - `ostruct run template.j2 schema.json --enable-tool code-interpreter` - Let the model create files from scratch
+  - `ostruct run template.j2 schema.json --tool-choice code-interpreter` - Force Code Interpreter usage for data generation
+- **Backward Compatibility**: All existing Code Interpreter workflows with file uploads continue to work unchanged
+
+#### 🔧 MCP Server Configuration Validation
+
+- **HTTP MCP Server Support**: Fixed validation error that prevented HTTP-based MCP servers from working with the `--mcp-server` flag
+- **Unified Transport Support**: MCP server validation now properly supports both transport formats:
+  - **STDIO format**: `{"name": "server-name", "command": "command-to-run"}` for local subprocess servers
+  - **HTTP format**: `{"url": "https://server-url", "label": "optional-label"}` for remote HTTP/SSE servers
+- **CLI Integration**: Resolved conflict between CLI MCP integration and service configuration validation systems
+- **Backward Compatibility**: All existing STDIO MCP server configurations continue to work unchanged
+
 ## [1.5.0] - 2025-07-30
 
 ### Added
