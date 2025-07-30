@@ -1,8 +1,8 @@
 # ostruct
 
-> **Schema‑first CLI.** Locally renders sandboxed Jinja2 templates → produces the final prompt *and* JSON Schema only; no OS‑level side‑effects are possible because the template runs inside a restricted Jinja `SandboxedEnvironment`([jinja.palletsprojects.com][1]). The prompt and schema are then sent to OpenAI’s **Structured Outputs** endpoint, where the model both *generates* and *validates* the JSON so it exactly matches the supplied schema — eliminating client‑side re‑parsing or retries([OpenAI][2], [OpenAI Community][3]). This design turns ostruct into a pure orchestration layer that also adds multi‑tool context (Web Search, File Search, Code‑Interpreter, MCP) and strict file‑routing security([Ostruct][4], [Ostruct][5]).
+> **Schema‑first CLI.** Locally renders sandboxed Jinja2 templates → produces the final prompt *and* JSON Schema only; no OS‑level side‑effects are possible because the template runs inside a restricted Jinja `SandboxedEnvironment`([jinja.palletsprojects.com][1]). The prompt and schema are then sent to OpenAI's **Structured Outputs** endpoint, where the model both *generates* and *validates* the JSON so it exactly matches the supplied schema — eliminating client‑side re‑parsing or retries([OpenAI][2], [OpenAI Community][3]). This design turns ostruct into a pure orchestration layer that also adds multi‑tool context (Web Search, File Search, Code‑Interpreter, MCP) and strict file‑routing security([Ostruct][4], [Ostruct][5]).
 
-A single binary `ostruct` covers every workflow (classic templates, self‑executing **OST** files, scaffolding, environment setup, model registry) while guarding against accidental data leaks through explicit `--allow/--strict-urls` gates([Ostruct][6], [GitHub][7]). All flags are grouped below so an LLM can parse or emit any valid invocation without further docs.
+A single binary `ostruct` covers every workflow (classic templates, self‑executing **OST** files, scaffolding, environment setup, model registry) while guarding against accidental data leaks through explicit `--allow/--strict-urls` gates([Ostruct][6], [GitHub][7]). All flags are grouped below so an LLM can parse or emit any valid invocation without further docs.
 
 ---
 
@@ -11,9 +11,9 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   * *Templates execute locally* within a Jinja2 sandbox; they may read passed variables / file aliases, perform filters and control‑flow, and emit text; controlled file access occurs through the LazyFileContent system.
   * *OpenAI enforces validity*: the `response_format={"type":"json_object","schema":…}` parameter activates constrained decoding; any schema violation triggers an API error rather than malformed output reaching the CLI([Microsoft Learn][8], [developer.mamezou-tech.com][9]). `ostruct` then re-validates with Pydantic for additional type safety.
   * *LLM cost hygiene*: include only the schema‑relevant parts of large files; use `--dry-run` for offline token estimates and to preview the fully‑expanded prompt without burning quota.
-  * *Security*: default deny on unknown paths; override with `--allow` flags or by listing approved roots in a policy file; `.gitignore` respected unless `--ignore-gitignore` is set.
+  * *Security*: default deny on unknown paths; override with `--allow-paths` flags or by listing approved roots in a policy file; `.gitignore` respected unless `--ignore-gitignore` is set.
   * *Tool routing*: attach data to specific tools via `[target:]alias path` (`ci:` for Code Interpreter, `fs:` for File Search, `web:` for Web Search, `ud:` for direct PDF/vision input, `prompt:` for inline‑only, `auto:` for type-based routing). **Known issue**: OpenAI Responses API `file_search` returns empty results despite successful vector store creation (upstream bug, affects all models).
-  * *JSON Schema rules* mirror OpenAI: top‑level must be `"type":"object"`, every property declares `"type"` and `"description"`, arrays require `"items"`, `$defs` allowed, avoid `oneOf/anyOf` for best success rate([developer.mamezou-tech.com][9]).
+  * *JSON Schema rules* mirror OpenAI: top‑level must be `"type":"object"`, every property declares `"type"` and `"description"`, arrays require `"items"`, `$defs` allowed, avoid `oneOf/anyOf` for best success rate([developer.mamezou-tech.com][9]).
 
 * **Command surface (every sub‑command)**
 
@@ -23,7 +23,8 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   ostruct files {upload|list|gc|bind|rm|diagnose|vector-stores}  # file mgmt/cache
   ostruct scaffold {template|schema|ost}      # quick-start files
   ostruct setup {windows-register|windows-unregister}
-  ostruct models {list|update} | quick-ref
+  ostruct models {list|update}
+  ostruct --quick-ref                         # concise usage examples
   ```
 
 * **Global attachment & security flags**
@@ -33,11 +34,11 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   -D/--dir       [target:]ALIAS PATH
   -C/--collect   [target:]ALIAS @filelist
      --recursive --pattern GLOB
-  -A/--allow DIR         --allow-file FILE
-  --allow-list FILE      --allow-insecure-url URL
+  --allow-paths DIR         --allow-file FILE
+  --allow-list FILE         --allow-insecure-url URL
   --path-security {permissive|warn|strict}
   --strict-urls | --no-strict-urls
-  --max-file-size SIZE   --ignore-gitignore | --gitignore-file PATH
+  --max-file-size SIZE      --ignore-gitignore | --gitignore-file PATH
   ```
 
 * **Files command flags**
@@ -76,8 +77,9 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   ```
   --output-file FILE          --dry-run | --dry-run-json
   --run-summary-json          --progress {none|basic|detailed}
-  --verbose | --debug | --debug-openai-stream | --debug-validation
+  --verbose | --debug | --debug-validation
   --template-debug CAP1[,CAP2|all]
+  --help-debug                # troubleshooting guide
   ```
 
 * **Tool‑integration toggles & per‑tool flags**
@@ -98,7 +100,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
 
 * **Template functions**
 
-  * Template function `file_ref(alias)` creates structured file references: renders as `<alias>` in-prompt and automatically generates XML appendix at prompt end containing actual file contents. Only referenced aliases appear in appendix. Alternative to manual `{{ alias.content }}` access for reference material placement.
+  * Template function `get_embed_ref(alias)` creates structured file references: renders as `<alias>` in-prompt and automatically generates XML appendix at prompt end containing actual file contents. Use with `embed_text(alias)` to mark for inclusion. Only referenced aliases appear in appendix. Replaces deprecated `file_ref()` function.
   * Template function `safe_get(path, default)` prevents errors when accessing nested object properties: takes dot-separated string path (e.g., `"config.database.host"`) and returns value if exists/non-empty, otherwise returns default. Avoids UndefinedError/KeyError exceptions from risky direct access like `{{ config.database.host }}`.
   * Template filter `single` extracts single item from file collections: `{{ files | single }}` returns the file when exactly one file exists, raises error otherwise. Use for templates expecting one file but receiving collections.
   * Template filters `to_json` and `from_json` handle JSON conversion: `{{ data | to_json }}` serializes objects to JSON strings, `{{ json_string | from_json }}` parses JSON strings to objects. Provides safe fallbacks for non‑serializable objects.
@@ -114,7 +116,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
   * Template + attachments trimmed to fit model context (see `--max-output-tokens` and tool token overhead budgets).
   * Binary files have limited template access; content access raises errors but metadata (`.name`, `.path`, `.size`) works normally; pass binary files to Code‑Interpreter for analysis.
 
-  * Auto‑routing file‑type detection upgraded with Magika if `pip install ostruct-cli[enhanced-detection]` is used.
+  * Auto‑routing file‑type detection upgraded with Magika if `pip install ostruct-cli[enhanced-detection]` is used.
 
 * **Always‑remember heuristics**
 
@@ -125,13 +127,16 @@ A single binary `ostruct` covers every workflow (classic templates, self‑exec
 
 ## Resources
 
-* [GitHub repo](https://github.com/yaniv-golan/ostruct/) - includes this llms.txt for LLM use
+* [GitHub repo](https://github.com/yaniv-golan/ostruct/) - includes this llms.txt for LLM use
 * [Full docs (Read‑the‑Docs)](https://ostruct.readthedocs.io/en/latest/)
 * [llms.txt format specification](https://llmstxt.org/#format)
 
 [1]: https://jinja.palletsprojects.com/en/stable/sandbox/
 [2]: https://platform.openai.com/docs/guides/structured-outputs
 [3]: https://community.openai.com/t/structured-outputs-now-available-in-the-api/896796
+[4]: https://ostruct.readthedocs.io/en/latest/security/overview.html
+[5]: https://ostruct.readthedocs.io/en/latest/user-guide/security_and_path_control.html
+[6]: https://ostruct.readthedocs.io/en/latest/user-guide/security_and_path_control.html
 [7]: https://github.com/yaniv-golan/ostruct/
 [8]: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs
 [9]: https://developer.mamezou-tech.com/en/blogs/2024/08/07/openai-structured-outputs/
