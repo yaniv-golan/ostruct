@@ -78,7 +78,9 @@ class TestFilesBindCommand:
     ):
         """Test binding a file to tools."""
         mock_cache_path.return_value = "/test/cache.db"
-        mock_cache_class.return_value = mock_upload_cache
+        mock_cache_class.side_effect = (
+            lambda *args, **kwargs: mock_upload_cache
+        )
 
         # Set up the mock to return a file with the expected file_id
         file_info = Mock()
@@ -117,7 +119,9 @@ class TestFilesBindCommand:
     ):
         """Test bind command with JSON output."""
         mock_cache_path.return_value = "/test/cache.db"
-        mock_cache_class.return_value = mock_upload_cache
+        mock_cache_class.side_effect = (
+            lambda *args, **kwargs: mock_upload_cache
+        )
 
         # Set up the mock to return a file with the expected file_id
         file_info = Mock()
