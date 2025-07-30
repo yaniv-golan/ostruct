@@ -128,6 +128,7 @@ class TestResponsesAPIIntegration:
     """Test OpenAI Responses API integration and streaming."""
 
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
+    @patch("ostruct.cli.upload_cache.UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -136,6 +137,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
+        mock_upload_cache_class: Mock,
         mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -157,6 +159,10 @@ class TestResponsesAPIIntegration:
         mock_registry_class.get_instance.return_value = mock_registry
         mock_runner_registry.get_instance.return_value = mock_registry
         mock_validation_registry.get_instance.return_value = mock_registry
+
+        # Mock upload cache to avoid database file issues
+        mock_cache = Mock()
+        mock_upload_cache_class.return_value = mock_cache
 
         cli_runner = CliTestRunner()
 
@@ -212,6 +218,7 @@ class TestResponsesAPIIntegration:
         assert "text" in call_args[1]  # Responses API uses 'text' format
 
     @patch("ostruct.cli.utils.client_utils.create_openai_client")
+    @patch("ostruct.cli.upload_cache.UploadCache")
     @patch("ostruct.cli.model_validation.ModelRegistry")
     @patch("ostruct.cli.runner.ModelRegistry")
     @patch("openai_model_registry.ModelRegistry")
@@ -220,6 +227,7 @@ class TestResponsesAPIIntegration:
         mock_registry_class: Mock,
         mock_runner_registry: Mock,
         mock_validation_registry: Mock,
+        mock_upload_cache_class: Mock,
         mock_create_client: Mock,
         fs: FakeFilesystem,
     ) -> None:
@@ -241,6 +249,10 @@ class TestResponsesAPIIntegration:
         mock_registry_class.get_instance.return_value = mock_registry
         mock_runner_registry.get_instance.return_value = mock_registry
         mock_validation_registry.get_instance.return_value = mock_registry
+
+        # Mock upload cache to avoid database file issues
+        mock_cache = Mock()
+        mock_upload_cache_class.return_value = mock_cache
 
         cli_runner = CliTestRunner()
 
