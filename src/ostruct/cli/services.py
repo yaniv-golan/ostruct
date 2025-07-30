@@ -97,8 +97,17 @@ class MCPServiceConfiguration(ServiceConfigurationBase):
                 # Validate STDIO format
                 if not isinstance(server.get("name"), str):
                     errors.append(f"Server {i}: 'name' must be a string")
-                if not isinstance(server.get("command"), str):
-                    errors.append(f"Server {i}: 'command' must be a string")
+                command = server.get("command")
+                if not isinstance(command, (str, list)):
+                    errors.append(
+                        f"Server {i}: 'command' must be a string or list of strings"
+                    )
+                elif isinstance(command, list) and not all(
+                    isinstance(item, str) for item in command
+                ):
+                    errors.append(
+                        f"Server {i}: 'command' list must contain only strings"
+                    )
 
             if has_http_fields:
                 # Validate HTTP format

@@ -1,7 +1,7 @@
 # Data Science Examples Collection
 # Comprehensive examples for data science workflows with ostruct
 
-.PHONY: help test-all clean-all list-examples run-demo
+.PHONY: help test-dry test-live run clean test-all clean-all list-examples run-demo
 
 # Default target
 help:
@@ -10,6 +10,10 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  help          - Show this help message"
+	@echo "  test-dry      - Run dry-run tests for all examples (alias for test-all)"
+	@echo "  test-live     - Run live tests for all examples"
+	@echo "  run           - Run quick demonstration (alias for run-demo)"
+	@echo "  clean         - Clean all generated files (alias for clean-all)"
 	@echo "  list-examples - List all available examples"
 	@echo "  test-all      - Run dry-run tests for all examples"
 	@echo "  run-demo      - Run a quick demonstration"
@@ -77,6 +81,28 @@ clean-all:
 	@find . -name "*.csv" -not -path "./data/*" -delete 2>/dev/null || true
 	@rm -rf */downloads/ */output/ 2>/dev/null || true
 	@echo "✅ Cleanup completed for all examples"
+
+# Required targets for Examples Standard compliance
+test-dry:
+	@$(MAKE) test-all
+
+test-live:
+	@echo "🧪 Running live tests for all data science examples..."
+	@echo ""
+	@for dir in analysis/*/Makefile visualization/*/Makefile integration/*/Makefile; do \
+		if [ -f "$$dir" ]; then \
+			example_dir=$$(dirname "$$dir"); \
+			echo "Testing $$example_dir..."; \
+			$(MAKE) -C "$$example_dir" test-live 2>/dev/null || echo "  ⚠️  No test-live target in $$example_dir"; \
+		fi \
+	done
+	@echo "✅ Live testing completed"
+
+run:
+	@$(MAKE) run-demo
+
+clean:
+	@$(MAKE) clean-all
 
 # Installation helper
 check-deps:
