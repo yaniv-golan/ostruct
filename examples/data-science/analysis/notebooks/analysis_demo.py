@@ -19,7 +19,9 @@ from typing import Any, Dict, Optional
 import pandas as pd
 
 
-def analyze_data(csv_file: str, description: str = "Dataset analysis") -> Dict[str, Any]:
+def analyze_data(
+    csv_file: str, description: str = "Dataset analysis"
+) -> Dict[str, Any]:
     """
     Analyze CSV data using ostruct and return structured results.
 
@@ -37,11 +39,17 @@ def analyze_data(csv_file: str, description: str = "Dataset analysis") -> Dict[s
 
     # Build ostruct command
     cmd = [
-        'ostruct', 'run',
-        'templates/main.j2', 'schemas/main.json',
-        '--file', f'ci:sales', csv_file,
-        '--enable-tool', 'code-interpreter',
-        '--model', 'gpt-4o-mini'
+        "ostruct",
+        "run",
+        "templates/main.j2",
+        "schemas/main.json",
+        "--file",
+        f"ci:sales",
+        csv_file,
+        "--enable-tool",
+        "code-interpreter",
+        "--model",
+        "gpt-4o-mini",
     ]
 
     try:
@@ -50,7 +58,7 @@ def analyze_data(csv_file: str, description: str = "Dataset analysis") -> Dict[s
             cmd,
             capture_output=True,
             text=True,
-            cwd=Path(__file__).parent.parent  # Run from analysis directory
+            cwd=Path(__file__).parent.parent,  # Run from analysis directory
         )
 
         if result.returncode == 0:
@@ -72,7 +80,7 @@ def print_summary(results: Dict[str, Any]) -> None:
     print("\n📊 ANALYSIS SUMMARY")
     print("=" * 50)
 
-    summary = results.get('summary', {})
+    summary = results.get("summary", {})
     print(f"Total Sales:      ${summary.get('total_sales', 0):,.2f}")
     print(f"Average Price:    ${summary.get('average_price', 0):.2f}")
     print(f"Product Count:    {summary.get('product_count', 0)}")
@@ -80,17 +88,19 @@ def print_summary(results: Dict[str, Any]) -> None:
 
     print("\n📈 SALES BY PRODUCT")
     print("-" * 30)
-    sales_by_product = results.get('sales_by_product', {})
-    for product, sales in sorted(sales_by_product.items(), key=lambda x: x[1], reverse=True):
+    sales_by_product = results.get("sales_by_product", {})
+    for product, sales in sorted(
+        sales_by_product.items(), key=lambda x: x[1], reverse=True
+    ):
         print(f"{product:<15} ${sales:>10,.2f}")
 
     print("\n📋 DATA QUALITY")
     print("-" * 20)
-    quality = results.get('data_quality', {})
+    quality = results.get("data_quality", {})
     print(f"Rows Processed:   {quality.get('rows_processed', 0)}")
     print(f"Missing Values:   {quality.get('missing_values', 0)}")
 
-    issues = quality.get('data_issues', [])
+    issues = quality.get("data_issues", [])
     if issues:
         print("Issues Found:")
         for issue in issues:
@@ -100,7 +110,7 @@ def print_summary(results: Dict[str, Any]) -> None:
 
     print("\n🎨 VISUALIZATION")
     print("-" * 20)
-    chart_info = results.get('chart_info', {})
+    chart_info = results.get("chart_info", {})
     print(f"Chart Type:       {chart_info.get('chart_type', 'N/A')}")
     print(f"Filename:         {chart_info.get('filename', 'N/A')}")
     print(f"Description:      {chart_info.get('description', 'N/A')}")
@@ -152,7 +162,7 @@ def main():
 
         # Save results for further processing
         output_file = "analysis_results.json"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(results, f, indent=2)
         print(f"\n💾 Results saved to: {output_file}")
 
@@ -173,7 +183,10 @@ if __name__ == "__main__":
 
 # Additional utility functions for Jupyter/production use
 
-def batch_analyze(csv_files: list, output_dir: str = "batch_results") -> Dict[str, Any]:
+
+def batch_analyze(
+    csv_files: list, output_dir: str = "batch_results"
+) -> Dict[str, Any]:
     """
     Analyze multiple CSV files in batch.
 
@@ -194,7 +207,7 @@ def batch_analyze(csv_files: list, output_dir: str = "batch_results") -> Dict[st
             # Save individual results
             filename = Path(csv_file).stem
             output_file = Path(output_dir) / f"{filename}_analysis.json"
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 json.dump(results, f, indent=2)
 
             batch_results[csv_file] = results
@@ -206,7 +219,9 @@ def batch_analyze(csv_files: list, output_dir: str = "batch_results") -> Dict[st
     return batch_results
 
 
-def production_analysis(input_file: str, output_dir: str, config: Optional[Dict] = None) -> bool:
+def production_analysis(
+    input_file: str, output_dir: str, config: Optional[Dict] = None
+) -> bool:
     """
     Production-ready data analysis with comprehensive error handling.
 
@@ -227,16 +242,23 @@ def production_analysis(input_file: str, output_dir: str, config: Optional[Dict]
             raise FileNotFoundError(f"Input file not found: {input_file}")
 
         # Configure model and settings
-        model = config.get('model', 'gpt-4o-mini') if config else 'gpt-4o-mini'
+        model = config.get("model", "gpt-4.1") if config else "gpt-4.1"
 
         # Build command with configuration
         cmd = [
-            'ostruct', 'run',
-            'templates/main.j2', 'schemas/main.json',
-            '--file', f'ci:sales', input_file,
-            '--enable-tool', 'code-interpreter',
-            '--model', model,
-            '--output-file', f'{output_dir}/analysis.json'
+            "ostruct",
+            "run",
+            "templates/main.j2",
+            "schemas/main.json",
+            "--file",
+            f"ci:sales",
+            input_file,
+            "--enable-tool",
+            "code-interpreter",
+            "--model",
+            model,
+            "--output-file",
+            f"{output_dir}/analysis.json",
         ]
 
         # Run analysis
@@ -256,7 +278,10 @@ def production_analysis(input_file: str, output_dir: str, config: Optional[Dict]
 
 # Jupyter notebook helpers
 
-def jupyter_quick_analysis(df: pd.DataFrame, filename: str = "temp_data.csv") -> Dict[str, Any]:
+
+def jupyter_quick_analysis(
+    df: pd.DataFrame, filename: str = "temp_data.csv"
+) -> Dict[str, Any]:
     """
     Quick analysis helper for Jupyter notebooks.
 
