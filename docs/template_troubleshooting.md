@@ -64,6 +64,8 @@ filename.txt
 3. **Place markdown link outside JSON** - Link must be plain text after the JSON block
 4. **Let ostruct handle downloads** - File downloads are automatic when Code Interpreter generates files
 
+For detailed Code Interpreter download troubleshooting, see [troubleshooting-ci-downloads.md](troubleshooting-ci-downloads.md).
+
 #### Troubleshooting File Downloads
 
 **Files not downloading?**

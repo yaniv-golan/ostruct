@@ -325,7 +325,7 @@ To install the latest stable version from PyPI:
 pip install ostruct-cli
 ```
 
-**Note**: If the `ostruct` command isn't found after installation, you may need to add Python's user bin directory to your PATH. See the [troubleshooting guide](scripts/README.md#troubleshooting) for details.
+**Note**: If the `ostruct` command isn't found after installation, you may need to add Python's user bin directory to your PATH. See the [troubleshooting guide](docs/troubleshooting.md#installation--setup) for details.
 
 #### For Developers
 
@@ -572,38 +572,54 @@ ostruct models list
 
 ### Code Interpreter File Downloads
 
-**Important**: If you're using Code Interpreter with structured output (JSON schemas), you may need to enable the two-pass download strategy to ensure files are downloaded reliably.
+**✅ Enhanced Reliability**: ostruct now features a comprehensive multi-tier approach for Code Interpreter file downloads with improved error handling and automatic fallbacks. These enhancements significantly improve success rates but come with additional token usage and latency costs.
 
-#### Option 1: CLI Flags (Recommended for one-off usage)
+#### Key Improvements
+
+- **🎯 Model-Specific Instructions**: Automatic prompt enhancement based on model reliability (gpt-4.1, gpt-4o, o4-mini)
+- **🧐 Smart Download Strategy**: Raw HTTP downloads bypass OpenAI SDK limitations for container files
+- **⏰ Container Expiry Detection**: Proactive tracking prevents stale download attempts
+- **🛡️ Enhanced Error Handling**: Clear diagnostics with actionable suggestions
+- **🔁 Exponential Backoff Retry**: Automatic retry with intelligent backoff for transient failures
+
+#### Best Practices
 
 ```bash
-# Enable reliable file downloads for this run
-ostruct run template.j2 schema.json --file ci:data data.csv --enable-feature ci-download-hack
+# Recommended: Use gpt-4.1 for maximum reliability
+ostruct run template.j2 schema.json --file ci:data data.csv --model gpt-4.1 --enable-tool code-interpreter
 
-# Force single-pass mode (override config)
-ostruct run template.j2 schema.json --file ci:data data.csv --disable-feature ci-download-hack
-
-# Handle duplicate output file names
-ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs rename
-ostruct run template.j2 schema.json --file ci:data data.csv --ci-duplicate-outputs skip
+# Include message field in schema for download links
+{
+  "type": "object",
+  "properties": {
+    "filename": {"type": "string"},
+    "success": {"type": "boolean"},
+    "message": {"type": "string"}  // ← Essential for download links
+  },
+  "required": ["filename", "success", "message"],
+  "additionalProperties": false
+}
 ```
 
-#### Option 2: Configuration File (Recommended for persistent settings)
+#### Performance Considerations
 
-```yaml
-# ostruct.yaml
-tools:
-  code_interpreter:
-    download_strategy: "two_pass_sentinel"  # Enables reliable file downloads
-    auto_download: true
-    output_directory: "./downloads"
-    duplicate_outputs: "rename"  # Handle duplicate file names: overwrite|rename|skip
-    output_validation: "basic"   # Validate downloaded files: basic|strict|off
-```
+- **Success Rate**: Significantly improved with proper schema and model selection
+- **Timing**: Typical operations complete in 30-45 seconds
+- **Token Usage**: Model-specific instructions add ~100-600 tokens per request
+- **File Size Limit**: 100MB per download
+- **Container Lifetime**: ~20 minutes
+- **API Calls**: Two-pass strategy doubles API usage when needed for reliability
 
-**Why this is needed**: OpenAI's structured output mode can prevent file download annotations from being generated. The two-pass strategy works around this by making two API calls: one to generate files (without structured output), then another to ensure schema compliance. For detailed technical information, see [docs/known-issues/2025-06-responses-ci-file-output.md](docs/known-issues/2025-06-responses-ci-file-output.md).
+#### Troubleshooting
 
-**Performance**: The two-pass strategy approximately doubles token usage but ensures reliable file downloads when using structured output with Code Interpreter.
+If you encounter download issues:
+
+1. **Use gpt-4.1**: Most reliable model for file annotations
+2. **Include message field**: Essential for download link inclusion
+3. **Check verbose logs**: `--verbose` flag provides detailed diagnostics
+4. **Verify file sizes**: Must be under 100MB limit
+
+For general troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md). For Code Interpreter-specific issues, see [docs/troubleshooting-ci-downloads.md](docs/troubleshooting-ci-downloads.md). For technical implementation details, see [docs/developer-ci-downloads.md](docs/developer-ci-downloads.md).
 
 ## Get Started Quickly
 

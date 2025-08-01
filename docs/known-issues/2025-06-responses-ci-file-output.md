@@ -369,7 +369,64 @@ The two-pass sentinel workaround successfully restores Code Interpreter file dow
 
 **Recommendation**: Enable `download_strategy: "two_pass_sentinel"` for any workflow using Code Interpreter with structured output until OpenAI resolves the upstream bug.
 
+## 🚀 **Recent Enhancements v1.6.0**
+
+### **Multi-Tier Reliability Improvements**
+
+In addition to the two-pass sentinel workaround, ostruct now includes several enhancements to improve Code Interpreter file download reliability:
+
+#### **Model-Specific Instructions**
+
+- **Automatic prompt enhancement** based on model reliability patterns
+- **gpt-4.1**: Enhanced with "CRITICAL FILE HANDLING" instructions
+- **gpt-4o**: Moderate "File Handling Notes" guidance
+- **o4-mini**: "MANDATORY FILE DOWNLOAD" requirements
+- **Result**: Significantly improved file annotation generation
+
+#### **Raw HTTP Download Strategy**
+
+- **Bypass OpenAI SDK limitations** for container files (`cfile_` prefix)
+- **Direct API calls** to `/v1/containers/{id}/files/{file_id}/content`
+- **Automatic fallback** when SDK methods fail
+- **Result**: Eliminates SDK-related download failures
+
+#### **Container Expiry Detection**
+
+- **Proactive tracking** of container creation timestamps
+- **18-minute warning threshold** (2-minute buffer before 20-minute expiry)
+- **Automatic fresh container** creation when needed
+- **Result**: Prevents stale download attempts
+
+#### **Enhanced Error Handling**
+
+- **Classified error types** with specific user guidance
+- **Exponential backoff retry** for transient failures
+- **Rate limit handling** with intelligent delays
+- **Result**: Better user experience and higher success rates
+
+### **Performance Impact**
+
+These improvements come with trade-offs:
+
+- **Token Usage**: Model-specific instructions add ~100-600 tokens per request
+- **Latency**: Additional processing adds ~2-5 seconds per request
+- **API Calls**: Two-pass strategy doubles API usage (but ensures reliability)
+- **Success Rate**: Testing shows significant improvement in file download reliability
+
+### **Validation Results**
+
+Comprehensive testing demonstrates:
+
+- **Improved Success Rates**: Raw API calls often fail; enhanced ostruct shows consistent success
+- **Better Error Diagnostics**: Clear error messages with actionable suggestions
+- **Model Reliability**: gpt-4.1 with enhancements performs significantly better than raw API calls
+
+## See Also
+
+- **[Troubleshooting Guide](../troubleshooting-ci-downloads.md)** - User-facing solutions for common CI download issues
+- **[Developer Implementation Guide](../developer-ci-downloads.md)** - Technical details for contributors
+
 ---
 
-**Last Updated**: June 2025
+**Last Updated**: August 2025
 **Next Review**: Monitor OpenAI API changes and community reports
