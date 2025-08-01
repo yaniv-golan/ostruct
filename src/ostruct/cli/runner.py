@@ -47,6 +47,48 @@ class InvalidResponseFormatError(Exception):
     pass
 
 
+def _validate_schema_for_ci_downloads(
+    schema: Dict[str, Any], tools: List[Dict[str, Any]]
+) -> None:
+    """Validate that schema includes message field for Code Interpreter file downloads"""
+    # Check if Code Interpreter is enabled
+    has_code_interpreter = any(
+        tool.get("type") == "code_interpreter" for tool in (tools or [])
+    )
+
+    if not has_code_interpreter:
+        return
+
+    if not schema:
+        return
+
+    properties = schema.get("properties", {})
+    if not properties:
+        return
+
+    # Check if message field exists
+    has_message_field = "message" in properties
+    has_text_field = any(
+        field_name in properties
+        for field_name in [
+            "text",
+            "response",
+            "output",
+            "result",
+            "content",
+            "description",
+        ]
+    )
+
+    if not has_message_field and not has_text_field:
+        logger.warning(
+            "⚠️  Code Interpreter enabled but schema lacks text field for download links. "
+            "Generated files may not be downloadable without a field like 'message' where "
+            "the AI can include download links. Consider adding: "
+            "{'message': {'type': 'string'}} to your schema."
+        )
+
+
 def make_strict(obj: Any) -> None:
     """Transform Pydantic schema for Responses API strict mode.
 
@@ -664,6 +706,7 @@ def _build_message_content(
     user_prompt: str,
     shared_upload_manager: Optional[Any] = None,
     upload_cache: Optional[Any] = None,
+    model: Optional[str] = None,
     **kwargs: Any,
 ) -> Any:
     """Build message content with user-data file elements and attachment processing.
@@ -673,11 +716,26 @@ def _build_message_content(
         user_prompt: User prompt text (may contain attachment placeholders)
         shared_upload_manager: Upload manager for user-data files
         upload_cache: Cache for attachment placeholder processing
+        model: Model name for applying model-specific instructions
         **kwargs: Additional arguments (ignored)
 
     Returns:
         Message content (string or structured content with file elements)
     """
+    # Apply model-specific instructions if model is provided
+    if model:
+        from .template_processor import inject_model_instructions
+
+        # Create temporary messages structure for instruction injection
+        temp_messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        enhanced_messages = inject_model_instructions(temp_messages, model)
+        # Extract the enhanced prompts
+        system_prompt = enhanced_messages[0]["content"]
+        user_prompt = enhanced_messages[1]["content"]
+
     # Process attachment placeholders first
     processed_user_prompt, attachment_elements = (
         _process_attachment_placeholders(user_prompt, upload_cache)
@@ -836,6 +894,9 @@ async def create_structured_output(
         strict_schema = copy.deepcopy(schema)
         make_strict(strict_schema)
 
+        # Validate schema for Code Interpreter downloads
+        _validate_schema_for_ci_downloads(strict_schema, tools or [])
+
         # Generate schema name from model class name
         schema_name = output_schema.__name__.lower()
 
@@ -844,6 +905,7 @@ async def create_structured_output(
             system_prompt,
             user_prompt,
             shared_upload_manager=shared_upload_manager,
+            model=model,
         )
 
         # Prepare API call parameters

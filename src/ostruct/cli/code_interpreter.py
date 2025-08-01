@@ -6,12 +6,15 @@ and integrating code execution capabilities with the OpenAI Responses API.
 
 import logging
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from openai import AsyncOpenAI
 
+from .container_downloader import ContainerFileDownloader
 from .errors import (
+    ContainerExpiredError,
     DownloadError,
     DownloadFileNotFoundError,
     DownloadNetworkError,
@@ -22,6 +25,55 @@ if TYPE_CHECKING:
     from .upload_manager import SharedUploadManager
 
 logger = logging.getLogger(__name__)
+
+
+class ContainerTracker:
+    """Track container creation and expiry"""
+
+    def __init__(self) -> None:
+        self.containers: Dict[str, datetime] = {}
+
+    def register_container(self, container_id: str) -> None:
+        """Register a new container with current timestamp"""
+        self.containers[container_id] = datetime.now()
+
+    def is_container_expired(self, container_id: str) -> bool:
+        """Check if container is likely expired (18 minute threshold)"""
+        if container_id not in self.containers:
+            return False
+
+        age = datetime.now() - self.containers[container_id]
+        return age > timedelta(minutes=18)  # 2-minute buffer
+
+    def get_container_age(self, container_id: str) -> Optional[timedelta]:
+        """Get container age for logging"""
+        if container_id not in self.containers:
+            return None
+        return datetime.now() - self.containers[container_id]
+
+
+# Global container tracker
+container_tracker = ContainerTracker()
+
+
+async def _download_file_content(
+    client: AsyncOpenAI, file_id: str, container_id: Optional[str] = None
+) -> bytes:
+    """Download file content with proper fallback strategy"""
+
+    if file_id.startswith("cfile_") and container_id:
+        # Use raw HTTP for container files (SDK limitation)
+        downloader = ContainerFileDownloader(client.api_key)
+        try:
+            return await downloader.download_container_file(
+                file_id, container_id
+            )
+        finally:
+            await downloader.close()
+    else:
+        # Use SDK for regular uploaded files
+        result = await client.files.content(file_id)
+        return result.read()
 
 
 class CodeInterpreterManager:
@@ -255,98 +307,31 @@ class CodeInterpreterManager:
                 container_id = ann.get("container_id")
                 filename = ann.get("filename") or file_id
 
-                # Use container-specific API for cfile_* IDs
-                if file_id.startswith("cfile_") and container_id:
+                # Check container expiry before attempting download
+                if container_id and container_tracker.is_container_expired(
+                    container_id
+                ):
+                    age = container_tracker.get_container_age(container_id)
+                    logger.warning(
+                        f"Container {container_id} likely expired (age: {age}). "
+                        f"File {file_id} may not be downloadable."
+                    )
+                    # Still attempt download but with better error handling
+
+                # Use new download method with proper fallback strategy
+                try:
+                    file_content = await _download_file_content(
+                        self.client, file_id, container_id
+                    )
                     logger.debug(
-                        f"Using container API for {file_id} in container {container_id}"
+                        f"✓ Downloaded {len(file_content)} bytes for {file_id}"
                     )
-
-                    # Try different approaches to access the Container Files API
-                    file_content = None
-
-                    # Approach 1: Direct method call (should work in v1.84.0+)
-                    try:
-                        logger.debug(
-                            "Attempting direct containers.files.content() call"
-                        )
-                        # Note: type: ignore[operator] is needed due to mypy false positive
-                        # The OpenAI SDK's type annotations incorrectly suggest AsyncContent is not callable
-                        # but the method works correctly at runtime and returns an object with .content property
-                        result = await self.client.containers.files.content(  # type: ignore[operator]
-                            file_id, container_id=container_id
-                        )
-
-                        # Handle different response types from OpenAI SDK
-                        if hasattr(result, "read"):
-                            # AsyncContent objects have a read() method
-                            file_content = await result.read()
-                            logger.debug(
-                                f"✓ Got content via result.read(): {len(file_content)} bytes"
-                            )
-                        elif hasattr(result, "content"):
-                            # Some responses have direct .content property
-                            file_content = result.content
-                            logger.debug(
-                                f"✓ Got content via result.content: {len(file_content)} bytes"
-                            )
-                        elif hasattr(result, "response") and hasattr(
-                            result.response, "content"
-                        ):
-                            # Nested response structure
-                            file_content = result.response.content
-                            logger.debug(
-                                f"✓ Got content via result.response.content: {len(file_content)} bytes"
-                            )
-                        else:
-                            logger.debug(
-                                f"Result type: {type(result)}, available attrs: {[a for a in dir(result) if not a.startswith('_')]}"
-                            )
-
-                    except Exception as e:
-                        logger.debug(f"Direct method call failed: {e}")
-
-                    # Approach 2: Try using the raw HTTP client if direct method fails
-                    if file_content is None:
-                        try:
-                            logger.debug(
-                                "Attempting raw HTTP request to container files endpoint"
-                            )
-                            import httpx
-
-                            # Construct the URL manually
-                            base_url = str(self.client.base_url).rstrip("/")
-                            url = f"{base_url}/containers/{container_id}/files/{file_id}/content"
-
-                            # Use the client's HTTP client with auth headers
-                            headers = {
-                                "Authorization": f"Bearer {self.client.api_key}",
-                                "User-Agent": "ostruct/container-files-client",
-                            }
-
-                            async with httpx.AsyncClient() as http_client:
-                                response = await http_client.get(
-                                    url, headers=headers
-                                )
-                                response.raise_for_status()
-                                file_content = response.content
-                                logger.debug(
-                                    f"✓ Got content via raw HTTP: {len(file_content)} bytes"
-                                )
-
-                        except Exception as e:
-                            logger.debug(f"Raw HTTP request failed: {e}")
-
-                    if file_content is None:
-                        raise Exception(
-                            f"Failed to download container file {file_id} using both direct API and raw HTTP methods"
-                        )
-                else:
-                    logger.debug(f"Using standard Files API for {file_id}")
-                    # Use standard Files API for regular uploaded files
-                    file_content_resp = await self.client.files.content(
-                        file_id
+                except ContainerExpiredError:
+                    logger.error(
+                        f"Container {container_id} expired. File {file_id} unavailable. "
+                        f"Consider reducing processing time or implementing container refresh."
                     )
-                    file_content = file_content_resp.read()
+                    continue
 
                 # Handle file naming conflicts
                 local_path = output_path / filename

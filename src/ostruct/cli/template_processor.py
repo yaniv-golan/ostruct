@@ -875,3 +875,79 @@ async def create_template_context_from_routing(
             raise e.__cause__
         # Wrap other errors
         raise ValueError(f"Error collecting files: {e}")
+
+
+# Model-specific instruction templates for better file handling
+MODEL_SPECIFIC_INSTRUCTIONS = {
+    "gpt-4.1": {
+        "system_append": """
+### CRITICAL FILE HANDLING REQUIREMENTS
+
+When using the python tool to create files:
+
+1. **ALWAYS provide download links** in this exact format:
+   [Download Filename](sandbox:/mnt/data/filename.ext)
+
+2. **Include download links in your response** - this is REQUIRED for file retrieval
+
+3. **Save files to /mnt/data/** directory only
+
+4. **Confirm file creation** with explicit success messages
+
+Example response format:
+"I've created the chart and saved it as analysis.png.
+[Download Chart](sandbox:/mnt/data/analysis.png)"
+
+This is essential for proper file handling.
+""",
+        "user_append": """
+
+IMPORTANT: Please include download links for any files you create using the format:
+[Download Filename](sandbox:/mnt/data/filename.ext)
+""",
+    },
+    "gpt-4o": {
+        "system_append": """
+### File Handling Notes
+When creating files with the python tool, include download links in your response:
+[Download Filename](sandbox:/mnt/data/filename.ext)
+""",
+        "user_append": "",
+    },
+    "o4-mini": {
+        "system_append": """
+### MANDATORY FILE DOWNLOAD INSTRUCTIONS
+
+For ANY file you create with python:
+1. Save to /mnt/data/ directory
+2. Include download link: [Download Name](sandbox:/mnt/data/file.ext)
+3. Confirm file creation in your response
+
+This is REQUIRED for file retrieval.
+""",
+        "user_append": "\n\nIMPORTANT: Include download links for all created files.",
+    },
+}
+
+
+def inject_model_instructions(messages: List[Dict], model: str) -> List[Dict]:
+    """Inject model-specific instructions for better file handling"""
+
+    instructions = MODEL_SPECIFIC_INSTRUCTIONS.get(
+        model, MODEL_SPECIFIC_INSTRUCTIONS["gpt-4o"]
+    )
+
+    # Add to system message
+    for msg in messages:
+        if msg["role"] == "system":
+            msg["content"] += instructions["system_append"]
+            break
+
+    # Add to user message if needed
+    if instructions["user_append"]:
+        for msg in reversed(messages):
+            if msg["role"] == "user":
+                msg["content"] += instructions["user_append"]
+                break
+
+    return messages
