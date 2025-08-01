@@ -88,7 +88,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   --tool-choice [auto|none|required|code-interpreter|file-search|web-search]  # auto=model picks, none=template-only, required=force tool use, single tool=restrict to that tool
   --enable-tool/--disable-tool web-search   --ws-context-size LEVEL
   --ws-country CC  --ws-region REGION  --ws-city CITY
-  --ci-cleanup  --ci-download-dir DIR       --ci-duplicate-outputs MODE
+  --ci-cleanup  --ci-download-dir DIR       --ci-duplicate-outputs MODE  --ci-download-timeout SEC
   --fs-cleanup  --fs-store-name NAME        --fs-timeout SEC  --fs-retries N
   --mcp-server LABEL@URL    --mcp-headers JSON
   --mcp-require-approval {always|never}     --mcp-allowed-tools JSON
@@ -113,13 +113,18 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   * **Performance**: Adds ~2‑3s execution time but ensures reliable file downloads
   * **Override**: Set `download_strategy: "single_pass"` in config to disable (files won't download)
   * **Future**: Auto‑enable will be removed when OpenAI fixes the underlying API bug
+  * **Schema requirement**: Include `"message": {"type": "string"}` in schema for reliable downloads; ostruct warns if missing
+  * **Download mechanics**: Raw HTTP via containers API with exponential backoff, 100MB size limit, progress reporting
+  * **Error handling**: Container expiry detection, classified errors (DownloadError/ContainerExpiredError/EnhancedDownloadError)
+  * **Model instructions**: Automatic model‑specific prompts injected to improve file annotation reliability
+  * **Model reliability**: gpt-4.1 most reliable for CI downloads; gpt-4o/gpt-4o-mini may require retries; o1-preview/o1-mini less reliable due to reasoning overhead affecting file annotations
 
 * **Citation placement**: put numeric refs [n] inline *and* list full entries in the `sources` array when the schema defines it; otherwise include refs only inline.
 * **Quick example**: `ostruct run tpl.j2 sch.json -V question='...' --enable-tool web-search --ws-context-size low --dry-run`
 
 * **Upload‑cache** `--cache-uploads | --no-cache-uploads`, `--cache-path PATH`
 
-* **Environment variables** `OSTRUCT_TEMPLATE_FILE_LIMIT`, `OSTRUCT_TEMPLATE_TOTAL_LIMIT`, `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`, `OSTRUCT_CACHE_UPLOADS`, `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`, `OSTRUCT_IGNORE_GITIGNORE`, `OSTRUCT_GITIGNORE_FILE` for size limits, caching, and gitignore behaviour.
+* **Environment variables** `OSTRUCT_TEMPLATE_FILE_LIMIT`, `OSTRUCT_TEMPLATE_TOTAL_LIMIT`, `OSTRUCT_TEMPLATE_PREVIEW_LIMIT`, `OSTRUCT_CACHE_UPLOADS`, `OSTRUCT_DISABLE_REGISTRY_UPDATE_CHECKS`, `OSTRUCT_IGNORE_GITIGNORE`, `OSTRUCT_GITIGNORE_FILE`, `OSTRUCT_MAX_DOWNLOAD_SIZE` for size limits, caching, gitignore behaviour, and CI download limits.
 
 * **Template functions**
 
@@ -147,6 +152,8 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   2. Use explicit `--tool-choice none` when structured data is the *only* goal.
   3. Keep schemas minimal but descriptive; model matches keys by name, descriptions improve coercion quality.
   4. Refresh models via `models update` to lock in newest OpenAI releases.
+  5. CI file downloads require `message` field in schema; use `--help-debug` for troubleshooting guides.
+  6. For CI file generation/download: prefer gpt-4.1 > gpt-4o > gpt-4o-mini > o1-models for reliability.
 
 ## Resources
 
