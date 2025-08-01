@@ -5,17 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.6.0] - Unreleased
 
 ### Added
 
-### Changed
+#### 🛡️ Enhanced Code Interpreter File Download Reliability
 
-### Fixed
-
-## [1.6.0-rc1] - 2025-07-31
-
-### Added
+- **Model-Specific Instructions**: Automatically inject tailored prompts for different models (gpt-4.1, gpt-4o, o4-mini) to improve file annotation reliability
+- **Raw HTTP Download Fallback**: Direct HTTP downloads for container files when SDK limitations prevent normal file access
+- **Container Expiry Detection**: Proactive detection and handling of expired Code Interpreter containers
+- **Enhanced Error Classification**: Detailed error types with user-friendly messages and actionable suggestions
+- **Exponential Backoff Retry Logic**: Automatic retries for transient download failures with intelligent backoff
+- **Progress Integration**: Download progress reporting integrated with existing `--progress` flag system
+- **Schema Validation Warnings**: Automatic warnings when Code Interpreter is enabled but schema lacks text fields for download links
 
 #### 🤖 Intelligent Download Strategy Auto-Selection
 
@@ -28,13 +30,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Smart Fallback Logic**: Users can still explicitly set `download_strategy: "single_pass"` in configuration to override the auto-enable behavior if needed.
 
-### Technical Notes
+#### 🔧 Developer Infrastructure
 
-- **Workaround Implementation**: This feature implements an automatic workaround for the known OpenAI Responses API issue documented in `docs/known-issues/2025-06-responses-ci-file-output.md`
-- **Future Removal**: This auto-enable logic will be removed when OpenAI resolves the underlying API bug
-- **Performance Impact**: Two-pass execution adds ~2-3 seconds to structured output requests but ensures reliable file downloads
+- **Comprehensive Testing Suite**: Mini-tests, integration tests, and performance benchmarks for CI download reliability
+- **Enhanced Logging**: Detailed download attempt logging with credential sanitization
+- **Memory Protection**: File size limits (100MB) to prevent memory exhaustion during downloads
+
+#### 📚 Documentation Enhancements
+
+- **General Troubleshooting Guide**: New comprehensive `docs/troubleshooting.md` covering installation, API connection, model issues, template problems, tool integration, and performance troubleshooting
+- **Enhanced Documentation Cross-References**: Improved linking between troubleshooting guides, known issues, and developer documentation
+
+### Changed
+
+- **Download Strategy**: Prioritizes raw HTTP downloads for container files over SDK methods due to better reliability
+- **Error Messages**: More specific and actionable error messages for download failures
+- **Progress Reporting**: File downloads now integrate with existing progress system instead of separate implementation
 
 ### Fixed
+
+#### 🛡️ Code Interpreter File Download Issues
+
+- **Container File Downloads**: Resolved SDK limitations preventing download of `cfile_*` prefixed files from Code Interpreter
+- **Structured Output Compatibility**: Fixed file download issues when using structured JSON output with Code Interpreter
+- **Container Expiry Handling**: Improved detection and error messaging for expired Code Interpreter containers
 
 #### 🛠️ Code Interpreter Tool Enablement
 
@@ -53,6 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **HTTP format**: `{"url": "https://server-url", "label": "optional-label"}` for remote HTTP/SSE servers
 - **CLI Integration**: Resolved conflict between CLI MCP integration and service configuration validation systems
 - **Backward Compatibility**: All existing STDIO MCP server configurations continue to work unchanged
+
+### Technical Notes
+
+- **Workaround Implementation**: Enhanced download features implement automatic workarounds for the known OpenAI Responses API issue documented in `docs/known-issues/2025-06-responses-ci-file-output.md`
+- **Future Removal**: Auto-enable logic will be removed when OpenAI resolves the underlying API bug
+- **Performance Impact**: Two-pass execution and enhanced reliability features add ~2-3 seconds to structured output requests but ensure reliable file downloads
 
 ## [1.5.0] - 2025-07-30
 
