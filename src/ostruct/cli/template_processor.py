@@ -708,7 +708,7 @@ def _build_tool_context(
         # See: docs/known-issues/2025-06-responses-ci-file-output.md
         # TODO: Remove this auto-enable logic when OpenAI fixes the underlying API bug
         if (
-            effective_ci_config.get("download_strategy")
+            effective_ci_config.get("download_strategy", "single_pass")
             == "single_pass"  # Don't override explicit two_pass_sentinel config
             and effective_ci_config.get(
                 "auto_download", True

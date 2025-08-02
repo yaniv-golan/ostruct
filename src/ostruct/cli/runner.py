@@ -2019,7 +2019,12 @@ async def execute_model(
             print(json_content)
 
         # Handle file downloads from Code Interpreter if any were generated
-        if code_interpreter_info and output_buffer:
+        # Skip if files were already downloaded in two-pass mode
+        if (
+            code_interpreter_info
+            and output_buffer
+            and not getattr(output_buffer[-1], "_downloaded_files", None)
+        ):
             try:
                 # Get the API response from the last output item
                 last_response = output_buffer[-1]
