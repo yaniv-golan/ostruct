@@ -2293,6 +2293,12 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
 
         # 4. Dry Run Output Phase - Moved after all validations
         if args.get("dry_run", False):
+            # Validate API key availability in dry-run mode (warn only)
+            from .utils.client_utils import validate_api_key_availability
+
+            api_key = args.get("api_key")
+            validate_api_key_availability(api_key=api_key, warn_only=True)
+
             report_success(
                 "Dry run completed successfully - all validations passed"
             )

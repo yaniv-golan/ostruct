@@ -107,10 +107,10 @@ def run(
             params[k] = v  # type: ignore[literal-required]
 
         # UNIFIED GUIDELINES: Validate JSON flag combinations
-        if kwargs.get("dry_run_json") and not kwargs.get("dry_run"):
-            raise click.BadOptionUsage(
-                "--dry-run-json", "--dry-run-json requires --dry-run"
-            )
+        # Auto-enable dry-run mode when --dry-run-json is used
+        if kwargs.get("dry_run_json"):
+            kwargs["dry_run"] = True
+            params["dry_run"] = True
 
         if kwargs.get("run_summary_json") and kwargs.get("dry_run"):
             raise click.BadOptionUsage(
@@ -422,6 +422,15 @@ def run(
                 model=params.get("model", "gpt-4o"),
                 **plan_kwargs,
             )
+
+            # Validate API key availability and add to plan for JSON output
+            from ..utils.client_utils import validate_api_key_availability
+
+            api_key = kwargs.get("api_key")
+            api_key_available = validate_api_key_availability(
+                api_key=api_key, warn_only=True
+            )
+            plan["api_key_available"] = api_key_available
 
             if kwargs.get("dry_run_json"):
                 # Output JSON to stdout - output plan directly without data wrapper
