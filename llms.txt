@@ -79,7 +79,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   --output-file FILE          --dry-run | --dry-run-json  # --dry-run-json auto-enables dry-run
   --run-summary-json          --progress {none|basic|detailed}
   --verbose | --debug | --debug-validation
-  --template-debug CAP1[,CAP2|all]
+  --template-debug pre-expand,vars,preview,steps,post-expand|all
   --help-debug                # troubleshooting guide
   ```
 
