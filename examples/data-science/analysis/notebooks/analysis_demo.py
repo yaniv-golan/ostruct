@@ -48,6 +48,7 @@ def analyze_data(
         csv_file,
         "--enable-tool",
         "code-interpreter",
+        "--ci-download",  # Enable file downloads for charts/visualizations
         "--model",
         "gpt-4o-mini",
     ]

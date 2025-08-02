@@ -9,13 +9,15 @@ run_example() {
     "test-dry"|"test-live")
       run_test templates/main.j2 schemas/main.json \
         --file ci:sales data/test_tiny.csv \
-        --enable-tool code-interpreter
+        --enable-tool code-interpreter \
+        --ci-download
       ;;
     "full")
       echo "🚀 Running full example..."
       run_ostruct templates/main.j2 schemas/main.json \
         --file ci:sales data/sample.csv \
-        --enable-tool code-interpreter
+        --enable-tool code-interpreter \
+        --ci-download
       echo "✅ Example completed successfully"
       ;;
   esac
