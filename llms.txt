@@ -11,7 +11,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   * *Templates execute locally* within a Jinja2 sandbox; they may read passed variables / file aliases, perform filters and control‑flow, and emit text; controlled file access occurs through the LazyFileContent system.
   * *OpenAI enforces validity*: the `response_format={"type":"json_object","schema":…}` parameter activates constrained decoding; any schema violation triggers an API error rather than malformed output reaching the CLI([Microsoft Learn][8], [developer.mamezou-tech.com][9]). `ostruct` then re-validates with Pydantic for additional type safety.
   * *LLM cost hygiene*: include only the schema‑relevant parts of large files; use `--dry-run` for offline token estimates and to preview the fully‑expanded prompt without burning quota.
-  * *Security*: default deny on unknown paths; override with `--allow-paths` flags or by listing approved roots in a policy file; `.gitignore` respected unless `--ignore-gitignore` is set.
+  * *Security*: default deny on unknown paths; override with `--allow` flags or by listing approved roots in a policy file; `.gitignore` respected unless `--ignore-gitignore` is set.
   * *Tool routing*: attach data to specific tools via `[target:]alias path` (`ci:` for Code Interpreter, `fs:` for File Search, `web:` for Web Search, `ud:` for direct PDF/vision input, `prompt:` for inline‑only, `auto:` for type-based routing). **Known issue**: OpenAI Responses API `file_search` returns empty results despite successful vector store creation (upstream bug, affects all models).
   * *JSON Schema rules* mirror OpenAI: top‑level must be `"type":"object"`, every property declares `"type"` and `"description"`, arrays require `"items"`, `$defs` allowed, avoid `oneOf/anyOf` for best success rate([developer.mamezou-tech.com][9]).
 
@@ -21,7 +21,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   ostruct run TEMPLATE SCHEMA [OPTIONS]        # main execution path
   ostruct runx OST_FILE [ARGS]                # self‑executing template with front‑matter
   ostruct files {upload|list|gc|bind|rm|diagnose|vector-stores}  # file mgmt/cache
-  ostruct scaffold {template|schema|ost}      # quick-start files
+  ostruct scaffold template                  # quick-start template files
   ostruct setup {windows-register|windows-unregister}
   ostruct models {list|update}
   ostruct --quick-ref                         # concise usage examples
@@ -34,7 +34,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   -D/--dir       [target:]ALIAS PATH
   -C/--collect   [target:]ALIAS @filelist
      --recursive --pattern GLOB
-  --allow-paths DIR         --allow-file FILE
+  --allow DIR               --allow-file FILE
   --allow-list FILE         --allow-insecure-url URL
   --path-security {permissive|warn|strict}
   --strict-urls | --no-strict-urls
@@ -68,7 +68,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   --reasoning-effort {low|medium|high}
   ```
 
-* **System‑prompt controls** `--sys-prompt TEXT | --sys-prompt-file FILE | --ignore-task-sysprompt`
+* **System‑prompt controls** `--sys-prompt TEXT | --sys-file FILE | --ignore-task-sysprompt`
 
 * **API / config** `--api-key`, `--timeout`, `--config PATH`
   * **API key sources** (in order of precedence): `--api-key` flag → `OPENAI_API_KEY` env var → `.env` file
@@ -106,6 +106,32 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   * **Output format**: Web search results appear in LLM response with automatic citations as numbered references [1], [2] with URLs.
   * **Template detection**: Use `{% if web_search_enabled %}` to conditionally prompt for web search when tool is available.
   * **Result access**: Search results integrated into model's response context; no separate template variable - model includes findings and citations directly in output.
+
+* **Jupyter/Notebook integration**
+
+  * **CRITICAL subprocess pattern**: `subprocess.run(cmd, env=os.environ, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=180, check=True)` - prevents asyncio deadlock
+  * **API key setup**: Cross-platform support - Colab Secrets (`userdata.get('OPENAI_API_KEY')`), environment variables, .env files with secure getpass fallback
+  * **Template detection**: Use `{% if code_interpreter_enabled %}` for computational sections, `{% if web_search_enabled %}` for current data needs
+  * **File routing**: `ci:` for datasets/notebooks, `fs:` for research papers/docs, `ud:` for images/PDFs, `auto:` for mixed content
+  * **Production patterns**: Batch processing with error handling, timeout management, intermediate result caching, automated cleanup of temp files
+
+* **Use case mental models**
+
+  * **Business intelligence**: `--file ci:sales quarterly_data.csv --file fs:reports market_research/ --enable-tool web-search` → competitive analysis with internal metrics
+  * **Security analysis**: `--file fs:logs system_logs/ --file ci:vulns scan_results.csv --enable-tool code-interpreter` → threat assessment with data correlation
+  * **Document processing**: `--file fs:docs contracts/ --file ud:images diagrams/ --enable-tool file-search` → multi-format document synthesis and analysis
+  * **Financial reporting**: `--file ci:data financials.csv --enable-tool web-search --ws-context-size high` → regulatory compliance + market context analysis
+  * **Research synthesis**: `--file fs:papers literature/ --enable-tool web-search --enable-tool code-interpreter` → academic research + current data validation
+  * **Risk assessment**: Multi-tool orchestration combining historical data, document analysis, and current market intelligence for comprehensive risk modeling
+
+* **Schema design patterns** (**CRITICAL**: Include `"message": {"type": "string"}` when using `--ci-download` for file generation)
+
+  * **Data science**: `{"summary": {"type": "object"}, "insights": {"type": "array", "items": {"type": "string"}}, "visualizations": {"type": "array"}, "message": {"type": "string"}, "confidence": {"type": "string", "enum": ["high", "medium", "low"]}}`
+  * **Business intelligence**: `{"executive_summary": {"type": "string"}, "key_metrics": {"type": "object"}, "recommendations": {"type": "array"}, "risk_factors": {"type": "array"}, "message": {"type": "string"}}`
+  * **Security analysis**: `{"threat_level": {"type": "string", "enum": ["critical", "high", "medium", "low"]}, "vulnerabilities": {"type": "array"}, "mitigation_steps": {"type": "array"}, "message": {"type": "string"}}`
+  * **Document processing**: `{"document_type": {"type": "string"}, "key_findings": {"type": "array"}, "extracted_data": {"type": "object"}, "summary": {"type": "string"}, "message": {"type": "string"}}`
+  * **Financial reporting**: `{"financial_health": {"type": "string"}, "key_ratios": {"type": "object"}, "trend_analysis": {"type": "object"}, "risk_assessment": {"type": "array"}, "message": {"type": "string"}}`
+  * **Research synthesis**: `{"research_question": {"type": "string"}, "findings": {"type": "array"}, "evidence_quality": {"type": "string"}, "gaps": {"type": "array"}, "message": {"type": "string"}}`
 
 * **Code‑Interpreter download behavior (v2.0+)**
 
