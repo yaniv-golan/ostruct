@@ -177,7 +177,7 @@ click.rich_click.OPTION_GROUPS = {
             "name": "System Prompt Options",
             "options": [
                 "--sys-prompt",
-                "--sys-prompt-file",
+                "--sys-file",
                 "--sys-prompt-script",
                 "--sys-prompt-template",
                 "--sys-prompt-script-args",
@@ -207,8 +207,12 @@ click.rich_click.OPTION_GROUPS = {
             "name": "Security and Path Control Options",
             "options": [
                 "--path-security",
-                "--allow-paths",
-                "--disallow-paths",
+                "--allow",
+                "--allow-file",
+                "--allow-list",
+                "--allow-insecure-url",
+                "--strict-urls",
+                "--no-strict-urls",
             ],
         },
         {
