@@ -5,9 +5,11 @@ This directory contains migration tools to help users transition from ostruct v0
 ## Migration Tools Overview
 
 ### 🔧 `migrate_cli_syntax.py` - Main Migration Script
+
 Migrates shell scripts, Python scripts, and other files containing ostruct CLI commands.
 
 **Usage:**
+
 ```bash
 # Preview changes (dry run)
 python migrate_cli_syntax.py *.sh --dry-run
@@ -23,6 +25,7 @@ python migrate_cli_syntax.py --config ostruct.yaml
 ```
 
 **Supported Migrations:**
+
 - `-f alias file` → `--file alias file`
 - `-d alias dir` → `--dir alias dir`
 - `-fc file` → `--file ci:data file`
@@ -32,9 +35,11 @@ python migrate_cli_syntax.py --config ostruct.yaml
 - Security options: `-A` → `--allow`
 
 ### ⚙️ `migrate_config.py` - Configuration Migration
+
 Specialized tool for migrating ostruct configuration files (YAML).
 
 **Usage:**
+
 ```bash
 # Analyze configuration
 python migrate_config.py ostruct.yaml --analyze
@@ -47,15 +52,18 @@ python migrate_config.py ostruct.yaml --validate
 ```
 
 **Configuration Changes:**
+
 - `file_routing` → `attachments` section
 - `security.allowed_dirs` → `attachments.allowed_directories`
 - Adds new `path_security` configuration
 - Adds new `tools` configuration for code_interpreter and file_search
 
 ### 📦 `batch_migrate.py` - Project-Wide Migration
+
 Migrates entire projects or directories containing multiple ostruct files.
 
 **Usage:**
+
 ```bash
 # Analyze entire project
 python batch_migrate.py /path/to/project --analyze
@@ -68,6 +76,7 @@ python batch_migrate.py /path/to/project --validate --report migration_report.md
 ```
 
 **Features:**
+
 - Automatic file discovery (scripts, configs, CI/CD files)
 - Risk assessment based on project size and complexity
 - Comprehensive migration reporting
@@ -76,6 +85,7 @@ python batch_migrate.py /path/to/project --validate --report migration_report.md
 ## Migration Process Recommendations
 
 ### 1. Pre-Migration Checklist
+
 - [ ] **Backup your project** - Create a full backup before migration
 - [ ] **Update ostruct** - Install v0.9.0 before testing
 - [ ] **Review dependencies** - Check if any external scripts use ostruct
@@ -84,30 +94,35 @@ python batch_migrate.py /path/to/project --validate --report migration_report.md
 ### 2. Migration Steps
 
 #### Step 1: Analysis
+
 ```bash
 # Analyze your project to understand scope
 python batch_migrate.py . --analyze --recursive
 ```
 
 #### Step 2: Preview Changes
+
 ```bash
 # Preview all changes that will be made
 python batch_migrate.py . --dry-run --recursive
 ```
 
 #### Step 3: Migrate Configuration
+
 ```bash
 # Migrate configuration files first
 python migrate_config.py ostruct.yaml --validate
 ```
 
 #### Step 4: Migrate Scripts
+
 ```bash
 # Migrate all scripts with validation
 python batch_migrate.py . --validate --recursive
 ```
 
 #### Step 5: Generate Report
+
 ```bash
 # Create comprehensive migration report
 python batch_migrate.py . --validate --report migration_report.md
@@ -116,6 +131,7 @@ python batch_migrate.py . --validate --report migration_report.md
 ### 3. Post-Migration Validation
 
 #### Test Migration Results
+
 ```bash
 # Test basic functionality
 ostruct run template.j2 schema.json --file data file.txt --dry-run
@@ -130,18 +146,21 @@ ostruct run template.j2 schema.json --config ostruct.yaml --dry-run
 #### Common Issues and Solutions
 
 **Issue**: "attachment without alias" error
+
 ```bash
 # OLD (invalid): --file file.txt
 # NEW (correct): --file data file.txt
 ```
 
 **Issue**: Security path violations
+
 ```bash
 # Add explicit path allowances
 ostruct run template.j2 schema.json --path-security strict --allow /project/data
 ```
 
 **Issue**: Missing tool targets
+
 ```bash
 # OLD: -fc data.csv
 # NEW: --file ci:data data.csv
@@ -150,7 +169,9 @@ ostruct run template.j2 schema.json --path-security strict --allow /project/data
 ## Migration Examples
 
 ### Shell Script Migration
+
 **Before (v0.8.x):**
+
 ```bash
 #!/bin/bash
 ostruct run analysis.j2 schema.json \
@@ -161,6 +182,7 @@ ostruct run analysis.j2 schema.json \
 ```
 
 **After (v0.9.0):**
+
 ```bash
 #!/bin/bash
 ostruct run analysis.j2 schema.json \
@@ -171,7 +193,9 @@ ostruct run analysis.j2 schema.json \
 ```
 
 ### Configuration Migration
+
 **Before (v0.8.x):**
+
 ```yaml
 file_routing:
   default_target: template
@@ -184,6 +208,7 @@ security:
 ```
 
 **After (v0.9.0):**
+
 ```yaml
 attachments:
   default_target: prompt
@@ -208,12 +233,16 @@ models:
 ## Backup and Recovery
 
 ### Backup Strategy
+
 All migration tools create `.bak` backup files automatically:
+
 - `script.sh` → `script.sh.bak`
 - `ostruct.yaml` → `ostruct.yaml.bak`
 
 ### Recovery Process
+
 If migration issues occur:
+
 ```bash
 # Restore from backup
 mv script.sh.bak script.sh
@@ -228,16 +257,19 @@ find . -name "*.bak" -exec sh -c 'mv "$1" "${1%.bak}"' _ {} \;
 ### Common Migration Issues
 
 **Files not found:**
+
 - Ensure you're in the correct directory
 - Check file permissions
 - Use `--recursive` for subdirectories
 
 **Syntax errors after migration:**
+
 - Run with `--validate` to check for issues
 - Review the migration report for warnings
 - Test individual commands with `--dry-run`
 
 **Performance issues:**
+
 - Large projects may take time to analyze
 - Use `--analyze` first to estimate scope
 - Consider migrating in batches for very large projects
@@ -259,4 +291,4 @@ find . -name "*.bak" -exec sh -c 'mv "$1" "${1%.bak}"' _ {} \;
 
 ---
 
-For additional help, consult the main [MIGRATION_GUIDE.md](../../MIGRATION_GUIDE.md) or file an issue at the ostruct repository.
+For additional help, file an issue at the ostruct repository.
