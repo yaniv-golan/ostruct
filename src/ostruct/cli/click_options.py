@@ -357,7 +357,7 @@ def output_options(f: Union[Command, Callable[..., Any]]) -> Command:
         click.option(
             "--dry-run-json",
             is_flag=True,
-            help="""Output execution plan as JSON (requires --dry-run).
+            help="""Output execution plan as JSON (automatically enables dry-run mode).
         Outputs structured execution plan to stdout for programmatic consumption.""",
         ),
         click.option(

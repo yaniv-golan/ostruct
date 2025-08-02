@@ -81,9 +81,8 @@ def generate_json_output_modes() -> Dict[str, Any]:
             "scope": "single_command_or_full_cli",
         },
         "dry_run_json": {
-            "description": "Output execution plan as JSON with --dry-run",
+            "description": "Output execution plan as JSON (automatically enables dry-run mode)",
             "output_destination": "stdout",
-            "requires": ["--dry-run"],
             "exit_behavior": "exits_after_output",
             "scope": "execution_plan",
         },
