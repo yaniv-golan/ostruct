@@ -115,7 +115,7 @@ The ``stdin`` variable contains piped input when available:
 - ``code_interpreter_enabled`` - True when files are routed with ``ci:`` target
 - ``file_search_enabled`` - True when files are routed with ``fs:`` target
 - ``web_search_enabled`` - True when ``--enable-tool web-search`` is used
-- ``auto_download_enabled`` - True when Code Interpreter auto-download is enabled
+- ``auto_download_enabled`` - True when Code Interpreter file downloads are enabled (``--ci-download`` flag or legacy config)
 - ``code_interpreter_config`` - Configuration object for Code Interpreter settings
 - ``current_model`` - The OpenAI model being used (e.g., "gpt-4o")
 

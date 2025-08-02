@@ -140,6 +140,7 @@ Tool Variables
 
    ``auto_download_enabled`` and ``code_interpreter_config`` are useful when you
    write *meta*-templates that must adapt to different Code-Interpreter settings.
+   ``auto_download_enabled`` reflects the ``--ci-download`` flag or legacy config.
    Most templates can ignore them.
 
 Standard Input

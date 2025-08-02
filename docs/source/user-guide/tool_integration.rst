@@ -120,22 +120,34 @@ File Download Behavior
 ostruct automatically handles the OpenAI API file download bug by enabling the two-pass sentinel strategy when:
 
 * Code Interpreter is enabled
-* Structured output (JSON schema) is provided
-* Auto-download is enabled (default)
+* File downloads are explicitly enabled (``--ci-download`` flag)
 
-This ensures reliable file downloads without manual configuration.
+This ensures reliable file downloads when needed while optimizing performance when downloads are not required.
 
-**Manual Configuration**
+**CLI Usage**
 
-For explicit control over download behavior:
+Enable file downloads explicitly when needed:
+
+.. code-block:: bash
+
+   # Enable downloads for generated files (charts, reports, data)
+   ostruct run analysis.j2 schema.json --file ci:data data.csv --ci-download
+
+   # Computation only - no downloads (faster execution)
+   ostruct run analysis.j2 schema.json --file ci:data data.csv
+
+**Configuration (Deprecated)**
+
+.. deprecated:: 1.6.0
+   The ``auto_download`` configuration option is deprecated. Use ``--ci-download`` CLI flag instead.
 
 .. code-block:: yaml
 
-   # ostruct.yaml
+   # ostruct.yaml (legacy configuration)
    tools:
      code_interpreter:
        download_strategy: "two_pass_sentinel"  # Force enable
-       auto_download: true
+       auto_download: false  # New default (changed from true)
        output_directory: "./downloads"
 
 **Performance Notes**
