@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.6.0] - Unreleased
+## [1.6.0] - 2025-08-2
 
 ### 💥 BREAKING CHANGES
 
@@ -34,6 +34,28 @@ See migration guide: `docs/migration/auto-download.md`
 - **CLI**: New `--ci-download` flag for explicit Code Interpreter file download control
 - **Documentation**: Comprehensive migration guide for `auto_download` → `--ci-download` transition
 - **Backward Compatibility**: Deprecation warnings for legacy `auto_download: true` config during transition period
+
+#### 🔬 Data Science Integration Examples
+
+- **Complete Example Suite**: New `examples/data-science/` directory with production-ready workflows:
+  - **Analysis Pipeline**: CSV data processing with Code Interpreter integration (`examples/data-science/analysis/`)
+  - **Market Entry Analysis**: Complex business analysis example with financial projections and regulatory data (`examples/data-science/integration/market-entry/`)
+  - **Interactive Jupyter Integration**: Full `ostruct_data_analysis.ipynb` notebook with environment detection, experiment tracking, and chart display
+  - **Self-Executing OST File**: `jupyter_integration.ost` for streamlined notebook integration
+- **Development Infrastructure**: Makefiles, requirements files, and sample datasets for easy setup and testing
+- **Documentation**: Comprehensive READMEs and integration guides for each example workflow
+
+#### 🛠️ Dry-Run & API Key Validation Improvements
+
+- **`--dry-run-json` UX Enhancement**: Flag now automatically enables dry-run mode - no need for redundant `--dry-run` flag
+
+  ```bash
+  # Before: ostruct run template.j2 schema.json --dry-run --dry-run-json
+  # After:  ostruct run template.j2 schema.json --dry-run-json
+  ```
+
+- **API Key Validation in Dry-Run**: Dry-run mode now validates API key availability from all sources (CLI flag, environment variable, .env file)
+- **Enhanced JSON Output**: `--dry-run-json` now includes `api_key_available` field for programmatic validation
 
 #### 🛡️ Enhanced Code Interpreter File Download Reliability
 
@@ -65,6 +87,9 @@ See migration guide: `docs/migration/auto-download.md`
 #### 📚 Documentation Enhancements
 
 - **General Troubleshooting Guide**: New comprehensive `docs/troubleshooting.md` covering installation, API connection, model issues, template problems, tool integration, and performance troubleshooting
+- **Data Science Integration Guide**: New `docs/source/user-guide/data_science_integration.rst` with comprehensive Sphinx documentation for data science workflows
+- **Developer CI Downloads Guide**: New `docs/developer-ci-downloads.md` with technical details for Code Interpreter file download implementation
+- **Specialized Troubleshooting**: New `docs/troubleshooting-ci-downloads.md` focused on Code Interpreter download issues and solutions
 - **Enhanced Documentation Cross-References**: Improved linking between troubleshooting guides, known issues, and developer documentation
 
 ### Changed
