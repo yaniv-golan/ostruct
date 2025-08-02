@@ -44,7 +44,7 @@ def analyze_data(
         "templates/main.j2",
         "schemas/main.json",
         "--file",
-        f"ci:sales",
+        "ci:sales",
         csv_file,
         "--enable-tool",
         "code-interpreter",
