@@ -214,8 +214,8 @@ ostruct run template.j2 schema.json \
 ### 2. JSON Output Options
 
 ```bash
-# Get execution plan as JSON
-ostruct run template.j2 schema.json --dry-run --dry-run-json
+# Get execution plan as JSON (automatically enables dry-run)
+ostruct run template.j2 schema.json --dry-run-json
 
 # Get run summary as JSON
 ostruct run template.j2 schema.json --run-summary-json
@@ -248,7 +248,7 @@ ostruct run batch.j2 schema.json --collect ci:data @file-list.txt
 # Test syntax validation
 ostruct run template.j2 schema.json --dry-run --file data file.txt
 
-# Verify file routing
+# Verify file routing (includes API key validation status)
 ostruct run template.j2 schema.json --dry-run-json --file ci:data file.csv
 
 # Check security settings

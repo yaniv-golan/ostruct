@@ -71,11 +71,12 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
 * **System‑prompt controls** `--sys-prompt TEXT | --sys-prompt-file FILE | --ignore-task-sysprompt`
 
 * **API / config** `--api-key`, `--timeout`, `--config PATH`
+  * **API key sources** (in order of precedence): `--api-key` flag → `OPENAI_API_KEY` env var → `.env` file
 
 * **Output, validation & debug**
 
   ```
-  --output-file FILE          --dry-run | --dry-run-json
+  --output-file FILE          --dry-run | --dry-run-json  # --dry-run-json auto-enables dry-run
   --run-summary-json          --progress {none|basic|detailed}
   --verbose | --debug | --debug-validation
   --template-debug CAP1[,CAP2|all]

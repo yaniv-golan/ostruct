@@ -1016,7 +1016,18 @@ Output and Execution Options
 
 .. option:: --dry-run-json
 
-   Output execution plan as JSON (requires --dry-run).
+   Output execution plan as JSON (automatically enables dry-run mode).
+
+   **JSON Output Fields:**
+
+   The JSON output includes standard execution plan fields plus:
+
+   - ``api_key_available`` (boolean): Whether OpenAI API key is properly configured
+   - ``schema_version``: Output format version
+   - ``type``: Always "execution_plan" for dry-run output
+   - ``timestamp``: ISO format timestamp
+   - ``template``, ``schema``, ``model``: Configuration details
+   - ``attachments``: File and directory attachments
 
 .. option:: --run-summary-json
 
