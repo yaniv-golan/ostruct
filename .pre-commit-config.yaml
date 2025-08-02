@@ -42,6 +42,6 @@ repos:
         types: [python]
     -   id: clean-jupyter-notebooks
         name: Clean Jupyter notebook outputs
-        entry: jupyter nbconvert --clear-output --inplace
+        entry: bash -c 'if command -v jupyter &> /dev/null; then jupyter nbconvert --clear-output --inplace "$@"; else echo "Jupyter not available, skipping notebook cleaning"; fi' --
         language: system
         files: \.ipynb$
