@@ -17,7 +17,9 @@ class TestOstructConfig:
         config = OstructConfig()
 
         assert config.models.default == "gpt-4.1"
-        assert config.tools.code_interpreter["auto_download"] is True
+        assert (
+            config.tools.code_interpreter["auto_download"] is False
+        )  # New default
         assert config.tools.file_search["max_results"] == 10
         assert config.operation.timeout_minutes == 60
         assert config.limits.max_cost_per_run == 10.00

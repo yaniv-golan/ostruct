@@ -14,7 +14,9 @@ class TestCodeInterpreterManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.mock_client = AsyncMock()
-        self.manager = CodeInterpreterManager(self.mock_client)
+        # Enable downloads for tests that need them
+        test_args = {"ci_download": True}
+        self.manager = CodeInterpreterManager(self.mock_client, args=test_args)  # type: ignore[arg-type]
 
     def test_manager_initialization(self):
         """Test manager initialization."""
@@ -375,7 +377,9 @@ class TestCodeInterpreterIntegration:
     def setup_method(self):
         """Set up test fixtures."""
         self.mock_client = AsyncMock()
-        self.manager = CodeInterpreterManager(self.mock_client)
+        # Enable downloads for tests that need them
+        test_args = {"ci_download": True}
+        self.manager = CodeInterpreterManager(self.mock_client, args=test_args)  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_full_workflow_upload_and_cleanup(self):
@@ -472,7 +476,9 @@ class TestCodeInterpreterPerformance:
     def setup_method(self):
         """Set up test fixtures."""
         self.mock_client = AsyncMock()
-        self.manager = CodeInterpreterManager(self.mock_client)
+        # Enable downloads for tests that need them
+        test_args = {"ci_download": True}
+        self.manager = CodeInterpreterManager(self.mock_client, args=test_args)  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_batch_file_upload_efficiency(self):
@@ -520,7 +526,9 @@ class TestCodeInterpreterSecurity:
     def setup_method(self):
         """Set up test fixtures."""
         self.mock_client = AsyncMock()
-        self.manager = CodeInterpreterManager(self.mock_client)
+        # Enable downloads for tests that need them
+        test_args = {"ci_download": True}
+        self.manager = CodeInterpreterManager(self.mock_client, args=test_args)  # type: ignore[arg-type]
 
     def test_file_path_validation(self):
         """Test validation of file paths for security."""

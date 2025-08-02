@@ -16,8 +16,26 @@ class MockModel(BaseModel):
 class TestDownloadStrategyAutoEnable:
     """Test auto-enable functionality for two_pass_sentinel download strategy."""
 
-    def test_auto_enable_with_structured_output_and_auto_download(self):
-        """Test that two_pass_sentinel is auto-enabled when structured output + auto_download + CI are used."""
+    def test_auto_enable_with_structured_output_and_cli_download(self):
+        """Test that two_pass_sentinel is auto-enabled when structured output + --ci-download + CI are used."""
+        args: CLIParams = {
+            "enabled_features": [],
+            "disabled_features": [],
+            "ci_download": True,
+        }
+        ci_config = {
+            "auto_download": False,
+            "download_strategy": "single_pass",
+        }
+        output_model: Optional[Type[BaseModel]] = MockModel
+
+        strategy = _get_effective_download_strategy(
+            args, ci_config, output_model
+        )
+        assert strategy == "two_pass_sentinel"
+
+    def test_auto_enable_with_structured_output_and_legacy_config(self):
+        """Test backward compatibility: two_pass_sentinel is auto-enabled with legacy auto_download: true."""
         args: CLIParams = {"enabled_features": [], "disabled_features": []}
         ci_config = {"auto_download": True, "download_strategy": "single_pass"}
         output_model: Optional[Type[BaseModel]] = MockModel
@@ -38,9 +56,12 @@ class TestDownloadStrategyAutoEnable:
         )
         assert strategy == "single_pass"
 
-    def test_no_auto_enable_when_auto_download_disabled(self):
-        """Test that two_pass_sentinel is NOT auto-enabled when auto_download is false."""
-        args: CLIParams = {"enabled_features": [], "disabled_features": []}
+    def test_no_auto_enable_when_downloads_disabled(self):
+        """Test that two_pass_sentinel is NOT auto-enabled when downloads are disabled (new default)."""
+        args: CLIParams = {
+            "enabled_features": [],
+            "disabled_features": [],
+        }  # No --ci-download flag
         ci_config = {
             "auto_download": False,
             "download_strategy": "single_pass",
@@ -53,17 +74,19 @@ class TestDownloadStrategyAutoEnable:
         assert strategy == "single_pass"
 
     def test_no_auto_enable_when_auto_download_missing(self):
-        """Test that two_pass_sentinel is auto-enabled when auto_download is missing (defaults to True)."""
+        """Test that two_pass_sentinel is NOT auto-enabled when auto_download is missing (defaults to False)."""
         args: CLIParams = {"enabled_features": [], "disabled_features": []}
         ci_config = {
             "download_strategy": "single_pass"
-        }  # auto_download missing, defaults to True
+        }  # auto_download missing, defaults to False (new behavior)
         output_model: Optional[Type[BaseModel]] = MockModel
 
         strategy = _get_effective_download_strategy(
             args, ci_config, output_model
         )
-        assert strategy == "two_pass_sentinel"
+        assert (
+            strategy == "single_pass"
+        )  # No downloads enabled, so no two-pass needed
 
     def test_respect_explicit_two_pass_config(self):
         """Test that explicit two_pass_sentinel config is preserved."""
@@ -132,7 +155,7 @@ class TestDownloadStrategyAutoEnable:
         assert strategy == "single_pass"  # Feature flag prevents auto-enable
 
     def test_default_config_with_structured_output(self):
-        """Test auto-enable with completely default configuration."""
+        """Test no auto-enable with completely default configuration (new behavior)."""
         args: CLIParams = {"enabled_features": [], "disabled_features": []}
         ci_config = {}  # Empty config, all defaults
         output_model: Optional[Type[BaseModel]] = MockModel
@@ -140,8 +163,8 @@ class TestDownloadStrategyAutoEnable:
         strategy = _get_effective_download_strategy(
             args, ci_config, output_model
         )
-        # download_strategy defaults to "single_pass", auto_download defaults to True
-        assert strategy == "two_pass_sentinel"
+        # download_strategy defaults to "single_pass", auto_download defaults to False (new)
+        assert strategy == "single_pass"  # No downloads enabled by default
 
     def test_backward_compatibility_no_output_model_param(self):
         """Test that function works when output_model parameter is not provided."""
@@ -226,7 +249,7 @@ class TestDownloadStrategyEdgeCases:
         assert strategy == "two_pass_sentinel"
 
     def test_empty_ci_config(self):
-        """Test with empty CI configuration."""
+        """Test with empty CI configuration (new default behavior)."""
         args: CLIParams = {"enabled_features": [], "disabled_features": []}
         ci_config = {}
         output_model: Optional[Type[BaseModel]] = MockModel
@@ -234,8 +257,8 @@ class TestDownloadStrategyEdgeCases:
         strategy = _get_effective_download_strategy(
             args, ci_config, output_model
         )
-        # Should use defaults: download_strategy="single_pass", auto_download=True
-        assert strategy == "two_pass_sentinel"
+        # Should use defaults: download_strategy="single_pass", auto_download=False (new)
+        assert strategy == "single_pass"
 
     def test_none_values(self):
         """Test with None values in configuration."""
