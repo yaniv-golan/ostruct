@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2025-08-03
+
+### Fixed
+
+#### Code Interpreter Download Strategy
+
+- Fixed issue where `--ci-download` flag was not properly triggering two-pass sentinel mode with structured outputs
+- Resolved "No sentinel JSON found in first pass" warnings when using Code Interpreter file downloads
+- Template processor now receives correct download strategy for proper sentinel marker injection
+- Auto-enable logic for two-pass mode now executes before template processing rather than after
+
+#### CLI Help System
+
+- Corrected CLI option groupings in help output to match actual available flags
+- Fixed `--sys-prompt-file` reference to correct `--sys-file` flag name
+- Updated security options to reflect current flag names (`--allow` instead of `--allow-paths`)
+- Removed references to non-existent `--disallow-paths` flag
+
+#### Documentation
+
+- Updated `llms.txt` with correct flag references and enhanced schema design patterns
+- Added Jupyter/notebook integration guidance and use case mental models
+- Corrected scaffold command documentation to show proper OST file creation syntax
+
+### Changed
+
+#### Internal Improvements
+
+- Enhanced template context handling for download strategy determination
+- Added `_effective_download_strategy` field to CLIParams TypedDict for better type safety
+- Improved execution flow to ensure strategy decisions occur before template processing
+
 ## [1.6.0] - 2025-08-02
 
 ### 💥 BREAKING CHANGES
