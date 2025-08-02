@@ -93,3 +93,6 @@ class CLIParams(TypedDict, total=False):
 
     # Template processing configuration
     max_file_size: Optional[int]
+
+    # Internal fields (set during execution)
+    _effective_download_strategy: str

@@ -1940,10 +1940,11 @@ async def execute_model(
         # Debug log the final tools array
         logger.debug(f"Final tools array being passed to API: {tools}")
 
-        # Check for two-pass sentinel mode
+        # Check for two-pass sentinel mode (reuse strategy determined during template processing)
         ci_config = config.get_code_interpreter_config()
-        effective_strategy = _get_effective_download_strategy(
-            args, ci_config, output_model
+        # Get the effective strategy that was calculated during template processing
+        effective_strategy = args.get(
+            "_effective_download_strategy", "single_pass"
         )
         if (
             effective_strategy == "two_pass_sentinel"
@@ -2261,6 +2262,31 @@ async def run_cli_async(args: CLIParams) -> ExitCode:
 
         # 2. Template Processing Phase
         handler.simple_phase("Rendering template", "📝")
+
+        # Fix: Determine effective download strategy before template processing
+        # This ensures the template processor gets the correct strategy for sentinel injection
+        from .config import get_config
+        from .model_creation import create_dynamic_model
+
+        output_model = create_dynamic_model(schema) if schema else None
+        config = get_config()
+        ci_config = config.get_code_interpreter_config()
+        effective_strategy = _get_effective_download_strategy(
+            args, ci_config, output_model
+        )
+
+        # Update template_context with the correct strategy
+        if "code_interpreter_config" in template_context:
+            template_context["code_interpreter_config"][
+                "download_strategy"
+            ] = effective_strategy
+            logger.debug(
+                f"Updated template context with effective strategy: {effective_strategy}"
+            )
+
+        # Store effective strategy for later use in execute_main_operation
+        args["_effective_download_strategy"] = effective_strategy
+
         system_prompt, user_prompt = await process_templates(
             args, task_template, template_context, env, template_path or ""
         )
