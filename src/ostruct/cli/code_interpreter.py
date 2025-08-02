@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+if TYPE_CHECKING:
+    from .types import CLIParams
+
 from openai import AsyncOpenAI
 
 from .container_downloader import ContainerFileDownloader
@@ -84,6 +87,7 @@ class CodeInterpreterManager:
         client: AsyncOpenAI,
         config: Optional[Dict[str, Any]] = None,
         upload_manager: Optional["SharedUploadManager"] = None,
+        args: Optional["CLIParams"] = None,
     ) -> None:
         """Initialize Code Interpreter manager.
 
@@ -91,11 +95,13 @@ class CodeInterpreterManager:
             client: AsyncOpenAI client instance
             config: Code interpreter configuration dict
             upload_manager: Optional shared upload manager for deduplication
+            args: CLI arguments for accessing flags like ci_download
         """
         self.client = client
         self.uploaded_file_ids: List[str] = []
         self.config = config or {}
         self.upload_manager = upload_manager
+        self.args: Dict[str, Any] = dict(args) if args else {}
 
     async def upload_files_for_code_interpreter(
         self, files: List[str]
@@ -273,9 +279,16 @@ class CodeInterpreterManager:
         if not response:
             return []
 
-        # Check if auto_download is enabled
-        if not self.config.get("auto_download", True):
-            logger.debug("Auto-download disabled in configuration")
+        # Check CLI flag first, then fall back to config (for backward compatibility)
+        cli_download_enabled = self.args.get("ci_download", False)
+        config_download_enabled = self.config.get("auto_download", False)
+
+        download_enabled = cli_download_enabled or config_download_enabled
+
+        if not download_enabled:
+            logger.debug(
+                "File downloads disabled (use --ci-download to enable)"
+            )
             return []
 
         # Ensure output directory exists

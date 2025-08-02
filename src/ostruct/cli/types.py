@@ -60,6 +60,7 @@ class CLIParams(TypedDict, total=False):
     ci_download_dir: str
     ci_duplicate_outputs: Optional[str]
     ci_cleanup: bool
+    ci_download: bool
     file_search_files: FileRoutingResult  # Fixed: was List[str]
     file_search_dirs: List[str]
     fs_store_name: str

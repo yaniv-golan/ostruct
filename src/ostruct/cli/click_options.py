@@ -484,6 +484,15 @@ def feature_options(f: Union[Command, Callable[..., Any]]) -> Command:
         Example: --ci-download-dir ./results""",
             shell_complete=click.Path(file_okay=False, dir_okay=True),
         ),
+        click.option(
+            "--ci-download",
+            is_flag=True,
+            default=False,
+            help="""🤖 [CODE INTERPRETER] Enable automatic downloading of generated files.
+        By default, Code Interpreter results are returned in JSON format only.
+        Use this flag when you need to save generated charts, reports, or data files locally.
+        Example: --ci-download""",
+        ),
     ):
         cmd = deco(cmd)
 

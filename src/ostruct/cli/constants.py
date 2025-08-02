@@ -32,7 +32,7 @@ class DefaultConfig:
 
     # Code Interpreter defaults
     CODE_INTERPRETER: Dict[str, Any] = {
-        "auto_download": True,
+        "auto_download": False,  # Changed from True - new default optimizes for computation over file downloads
         "output_directory": DefaultPaths.CODE_INTERPRETER_OUTPUT_DIR,
         "download_strategy": "single_pass",
     }

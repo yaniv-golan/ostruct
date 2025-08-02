@@ -429,8 +429,23 @@ class OstructConfig(BaseModel):
         return self.mcp
 
     def get_code_interpreter_config(self) -> Dict[str, Any]:
-        """Get code interpreter configuration."""
-        return self.tools.code_interpreter
+        """Get code interpreter configuration with deprecation handling."""
+        ci_config = self.tools.code_interpreter.copy()
+
+        # Handle deprecated auto_download setting
+        if "auto_download" in ci_config and ci_config["auto_download"] is True:
+            import warnings
+
+            warnings.warn(
+                "DEPRECATED: 'auto_download: true' config option is deprecated. "
+                "Use --ci-download CLI flag instead. "
+                "This setting will be ignored in a future version. "
+                "See migration guide: https://ostruct.dev/migration/auto-download",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        return ci_config
 
     def get_file_search_config(self) -> Dict[str, Any]:
         """Get file search configuration."""

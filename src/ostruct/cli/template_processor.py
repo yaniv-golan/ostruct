@@ -672,7 +672,14 @@ def _build_tool_context(
     # Add CI config if enabled
     if code_interpreter_enabled:
         ci_config = config.get_code_interpreter_config()
-        context["auto_download_enabled"] = ci_config.get("auto_download", True)
+
+        # Check CLI flag first, then config for backward compatibility
+        cli_download_enabled = args.get("ci_download", False)
+        config_download_enabled = ci_config.get("auto_download", False)
+
+        context["auto_download_enabled"] = (
+            cli_download_enabled or config_download_enabled
+        )
 
         # Handle feature flags for CI config
         effective_ci_config = dict(ci_config)

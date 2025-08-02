@@ -387,7 +387,7 @@ async def process_code_interpreter_configuration(
         effective_ci_config["duplicate_outputs"] = args["ci_duplicate_outputs"]
 
     # Create Code Interpreter manager
-    manager = CodeInterpreterManager(client, effective_ci_config)
+    manager = CodeInterpreterManager(client, effective_ci_config, args=args)
 
     # Validate files before upload
     validation_errors = manager.validate_files_for_upload(files_to_upload)
@@ -1449,11 +1449,16 @@ def _get_effective_download_strategy(
             # If parsing fails, don't block auto-enable
             pass
 
+    # Check if downloads are enabled via CLI flag or config
+    cli_download_enabled = args.get("ci_download", False)
+    config_download_enabled = ci_config.get("auto_download", False)
+    download_enabled = cli_download_enabled or config_download_enabled
+
     if (
         strategy
         == "single_pass"  # Don't override explicit two_pass_sentinel config
         and output_model is not None  # Structured output is being used
-        and ci_config.get("auto_download", True)  # Auto-download is enabled
+        and download_enabled  # Downloads are explicitly enabled
         and not feature_explicitly_disabled  # Don't override explicit disable
     ):
         logger.info(
@@ -1665,7 +1670,10 @@ async def execute_model(
                 from .code_interpreter import CodeInterpreterManager
 
                 code_interpreter_manager = CodeInterpreterManager(
-                    client, config=None, upload_manager=shared_upload_manager
+                    client,
+                    config=None,
+                    upload_manager=shared_upload_manager,
+                    args=args,
                 )
 
                 # Get file IDs from shared manager
