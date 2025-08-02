@@ -89,7 +89,7 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   --tool-choice [auto|none|required|code-interpreter|file-search|web-search]  # auto=model picks, none=template-only, required=force tool use, single tool=restrict to that tool
   --enable-tool/--disable-tool web-search   --ws-context-size LEVEL
   --ws-country CC  --ws-region REGION  --ws-city CITY
-  --ci-cleanup  --ci-download-dir DIR       --ci-duplicate-outputs MODE  --ci-download-timeout SEC
+  --ci-cleanup  --ci-download  --ci-download-dir DIR  --ci-duplicate-outputs MODE  --ci-download-timeout SEC
   --fs-cleanup  --fs-store-name NAME        --fs-timeout SEC  --fs-retries N
   --mcp-server LABEL@URL    --mcp-headers JSON
   --mcp-require-approval {always|never}     --mcp-allowed-tools JSON
@@ -107,17 +107,18 @@ A single binary `ostruct` covers every workflow (classic templates, self‑execu
   * **Template detection**: Use `{% if web_search_enabled %}` to conditionally prompt for web search when tool is available.
   * **Result access**: Search results integrated into model's response context; no separate template variable - model includes findings and citations directly in output.
 
-* **Code‑Interpreter auto‑download behavior (v1.6+)**
+* **Code‑Interpreter download behavior (v2.0+)**
 
-  * **Auto‑workaround**: ostruct automatically enables two‑pass sentinel strategy when structured output + auto_download + CI are used together
-  * **Rationale**: Works around OpenAI API bug where JSON schema response_format prevents container_file_citation annotations
-  * **Performance**: Adds ~2‑3s execution time but ensures reliable file downloads
-  * **Override**: Set `download_strategy: "single_pass"` in config to disable (files won't download)
-  * **Future**: Auto‑enable will be removed when OpenAI fixes the underlying API bug
-  * **Schema requirement**: Include `"message": {"type": "string"}` in schema for reliable downloads; ostruct warns if missing
+  * **Default**: File downloads are **disabled by default** for performance - use `--ci-download` flag to enable
+  * **Rationale**: Most CI usage is computational (analysis, stats) where JSON response contains the value, not files
+  * **Performance**: Single‑pass execution by default (~2‑3s faster), two‑pass only when downloads enabled
+  * **Auto‑workaround**: When `--ci-download` used, automatically enables two‑pass sentinel strategy for structured output
+  * **Migration**: `auto_download: true` config deprecated - use `--ci-download` flag instead
+  * **Usage**: Add `--ci-download` for charts, reports, visualizations; skip for calculations, analysis results
+  * **Schema requirement**: Include `"message": {"type": "string"}` in schema for reliable downloads when using `--ci-download`
   * **Download mechanics**: Raw HTTP via containers API with exponential backoff, 100MB size limit, progress reporting
   * **Error handling**: Container expiry detection, classified errors (DownloadError/ContainerExpiredError/EnhancedDownloadError)
-  * **Model instructions**: Automatic model‑specific prompts injected to improve file annotation reliability
+  * **Model instructions**: Automatic model‑specific prompts injected to improve file annotation reliability when downloads enabled
   * **Model reliability**: gpt-4.1 most reliable for CI downloads; gpt-4o/gpt-4o-mini may require retries; o1-preview/o1-mini less reliable due to reasoning overhead affecting file annotations
 
 * **Citation placement**: put numeric refs [n] inline *and* list full entries in the `sources` array when the schema defines it; otherwise include refs only inline.

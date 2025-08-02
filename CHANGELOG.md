@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.6.0] - Unreleased
 
+### 💥 BREAKING CHANGES
+
+#### Code Interpreter Download Behavior Overhaul
+
+- **File downloads now disabled by default** for Code Interpreter to optimize for the common use case (computation over file generation)
+- **New `--ci-download` flag** provides explicit control over file downloads - add this flag when you need to save generated charts, reports, or data files locally
+- **Deprecated `auto_download` config option** - use `--ci-download` CLI flag instead for clearer intent and better performance
+- **Performance improvement**: Single-pass execution by default (~2-3s faster) with two-pass sentinel mode only when downloads are explicitly enabled
+- **Migration required**: Existing commands that need file downloads must add `--ci-download` flag
+
+**Migration Example:**
+
+```bash
+# OLD (files downloaded automatically)
+ostruct run analysis.j2 schema.json --enable-tool code-interpreter
+
+# NEW (explicit flag for file downloads)
+ostruct run analysis.j2 schema.json --enable-tool code-interpreter --ci-download
+```
+
+See migration guide: `docs/migration/auto-download.md`
+
 ### Added
+
+- **CLI**: New `--ci-download` flag for explicit Code Interpreter file download control
+- **Documentation**: Comprehensive migration guide for `auto_download` → `--ci-download` transition
+- **Backward Compatibility**: Deprecation warnings for legacy `auto_download: true` config during transition period
 
 #### 🛡️ Enhanced Code Interpreter File Download Reliability
 
@@ -43,9 +69,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Default Behavior**: Code Interpreter file downloads disabled by default (breaking change)
+- **Performance**: Faster single-pass execution when file downloads not needed
+- **Configuration**: `auto_download: false` is now the default in `CODE_INTERPRETER` constants
+
 - **Download Strategy**: Prioritizes raw HTTP downloads for container files over SDK methods due to better reliability
 - **Error Messages**: More specific and actionable error messages for download failures
 - **Progress Reporting**: File downloads now integrate with existing progress system instead of separate implementation
+
+### Deprecated
+
+- **Config**: `auto_download` setting in `tools.code_interpreter` configuration (use `--ci-download` flag instead)
 
 ### Fixed
 

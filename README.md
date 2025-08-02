@@ -585,8 +585,8 @@ ostruct models list
 #### Best Practices
 
 ```bash
-# Recommended: Use gpt-4.1 for maximum reliability
-ostruct run template.j2 schema.json --file ci:data data.csv --model gpt-4.1 --enable-tool code-interpreter
+# Recommended: Use gpt-4.1 for maximum reliability, add --ci-download for file outputs
+ostruct run template.j2 schema.json --file ci:data data.csv --model gpt-4.1 --enable-tool code-interpreter --ci-download
 
 # Include message field in schema for download links
 {
@@ -1108,8 +1108,11 @@ options:
 #### Multi-Tool Integration
 
 ```bash
-# OST template with multiple tools enabled
-ostruct runx analysis.ost data.csv --enable-tool code-interpreter --enable-tool file-search
+# OST files pre-configure their tool usage internally - users get clean interfaces
+./data-analyzer.ost sales_data.csv --include-charts --output-format json
+
+# The OST template author handles complexity like --enable-tool and --ci-download internally
+# Users never need to know about ostruct's raw flags
 ```
 
 #### Environment Setup
