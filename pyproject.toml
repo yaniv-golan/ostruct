@@ -95,7 +95,7 @@ build = ">=1.2.2.post1,<2.0"
 twine = ">=6.0.1,<7.0"
 python-dotenv = ">=1.0.1,<2.0"
 types-jsonschema = ">=4.23.0.20241208"
-anyio = {version = "==3.7.1", extras = ["trio"]}
+anyio = {version = "==4.10.0", extras = ["trio"]}
 sphinx = ">=7.0.0,<9.0"
 types-pyyaml = ">=6.0.12.20241230"
 types-pygments = ">=2.19.0.20250107"
